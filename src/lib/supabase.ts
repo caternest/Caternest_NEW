@@ -113,6 +113,39 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
         delete sanitized.updatedAt;
       }
 
+      // Explicitly map orders schema fields bi-directionally to support both old and new layouts
+      if (tableName === 'orders') {
+        if (sanitized.phone && !sanitized.customerPhone) {
+          sanitized.customerPhone = sanitized.phone;
+        } else if (sanitized.customerPhone && !sanitized.phone) {
+          sanitized.phone = sanitized.customerPhone;
+        }
+
+        if (sanitized.guests !== undefined && sanitized.guestCount === undefined) {
+          sanitized.guestCount = sanitized.guests;
+        } else if (sanitized.guestCount !== undefined && sanitized.guests === undefined) {
+          sanitized.guests = sanitized.guestCount;
+        }
+
+        if (sanitized.totalEstimate !== undefined && sanitized.totalAmount === undefined) {
+          sanitized.totalAmount = sanitized.totalEstimate;
+        } else if (sanitized.totalAmount !== undefined && sanitized.totalEstimate === undefined) {
+          sanitized.totalEstimate = sanitized.totalAmount;
+        }
+
+        if (sanitized.specialNotes && !sanitized.notes) {
+          sanitized.notes = sanitized.specialNotes;
+        } else if (sanitized.notes && !sanitized.specialNotes) {
+          sanitized.specialNotes = sanitized.notes;
+        }
+
+        if (sanitized.selectedItems && !sanitized.items) {
+          sanitized.items = sanitized.selectedItems;
+        } else if (sanitized.items && !sanitized.selectedItems) {
+          sanitized.selectedItems = sanitized.items;
+        }
+      }
+
       const { error } = await supabase
         .from(tableName)
         .upsert(sanitized, { onConflict: 'id' });
@@ -147,15 +180,39 @@ export async function fetchWithSupabaseFallback(tableName: string, localStorageK
     }
 
     if (data && data.length > 0) {
+      let finalData: any[] = data;
+      // Map rich structure to fit both older and modern expectations in downstream caching
+      if (tableName === 'orders') {
+        finalData = data.map((item: any) => {
+          const mapped = { ...item };
+          if (mapped.customerPhone && !mapped.phone) mapped.phone = mapped.customerPhone;
+          if (mapped.phone && !mapped.customerPhone) mapped.customerPhone = mapped.phone;
+
+          if (mapped.guestCount !== undefined && mapped.guests === undefined) mapped.guests = mapped.guestCount;
+          if (mapped.guests !== undefined && mapped.guestCount === undefined) mapped.guestCount = mapped.guests;
+
+          if (mapped.totalAmount !== undefined && mapped.totalEstimate === undefined) mapped.totalEstimate = Number(mapped.totalAmount);
+          if (mapped.totalEstimate !== undefined && mapped.totalAmount === undefined) mapped.totalAmount = mapped.totalEstimate;
+
+          if (mapped.notes && !mapped.specialNotes) mapped.specialNotes = mapped.notes;
+          if (mapped.specialNotes && !mapped.notes) mapped.notes = mapped.specialNotes;
+
+          if (mapped.items && !mapped.selectedItems) mapped.selectedItems = mapped.items;
+          if (mapped.selectedItems && !mapped.items) mapped.items = mapped.selectedItems;
+
+          return mapped;
+        });
+      }
+
       // Sync browser local state as a high fidelity cache
-      localStorage.setItem(localStorageKey, JSON.stringify(data));
-      return data;
+      localStorage.setItem(localStorageKey, JSON.stringify(finalData));
+      return finalData;
     } else if (parsedLocal && parsedLocal.length > 0) {
       // Seed first-time client records down to Supabase to prevent loss of local demo work
       await syncLocalTableToSupabase(tableName, parsedLocal);
       return parsedLocal;
     }
-    return [];
+    return [] as any[];
   } catch (err) {
     console.warn(`Database connection failed on "${tableName}", defaulting to transient state:`, err);
     return parsedLocal;
