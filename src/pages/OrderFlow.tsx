@@ -654,9 +654,7 @@ export default function OrderFlow() {
           platformFee: platformFee,
           status: 'Submitted',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updated_at: new Date().toISOString()
       };
       localStorage.setItem('orders', JSON.stringify([...currentOrders, newOrder]));
       toast(isQuote ? "Quotation requested successfully!" : "Booking requested successfully!", "success");

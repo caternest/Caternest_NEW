@@ -28,7 +28,7 @@ export default function PartnerDashboard() {
         const allOrders = JSON.parse(rawOrders);
         const myOrders = allOrders.filter((o: any) => o.catererId === id);
         // sort by newest
-        myOrders.sort((a: any, b: any) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime());
+        myOrders.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setPartnerOrders(myOrders);
     }
   }, [id]);

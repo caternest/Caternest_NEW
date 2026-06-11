@@ -99,7 +99,20 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
   try {
     for (const item of localData) {
       const sanitized = { ...item };
-      // Map some camelCase fields to snake_case if tables expect them, or upsert direct JSON matches
+      // Standardize timestamps into snake_case and remove camelCase copies to prevent warning/error
+      if (sanitized.createdAt) {
+        if (!sanitized.created_at) {
+          sanitized.created_at = sanitized.createdAt;
+        }
+        delete sanitized.createdAt;
+      }
+      if (sanitized.updatedAt) {
+        if (!sanitized.updated_at) {
+          sanitized.updated_at = sanitized.updatedAt;
+        }
+        delete sanitized.updatedAt;
+      }
+
       const { error } = await supabase
         .from(tableName)
         .upsert(sanitized, { onConflict: 'id' });

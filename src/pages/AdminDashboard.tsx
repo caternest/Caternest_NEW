@@ -149,13 +149,10 @@ export default function AdminDashboard() {
           const extra: any = {};
           if (targetStatus === 'approved' || targetStatus === 'Approved') {
             extra.approved_at = nowStr;
-            extra.approvedAt = nowStr;
           } else if (targetStatus === 'rejected' || targetStatus === 'Rejected') {
             extra.rejected_at = nowStr;
-            extra.rejectedAt = nowStr;
           } else if (targetStatus === 'completed' || targetStatus === 'Completed') {
             extra.completed_at = nowStr;
-            extra.completedAt = nowStr;
           }
           
           return {
@@ -163,7 +160,6 @@ export default function AdminDashboard() {
             status: targetStatus,
             status_history: nextHistory,
             updated_at: nowStr,
-            updatedAt: nowStr,
             ...extra
           };
         }
@@ -188,8 +184,7 @@ export default function AdminDashboard() {
             targetRole: 'customer',
             userId: o.userId || '',
             read: false,
-            created_at: new Date().toISOString(),
-            createdAt: new Date().toISOString()
+            created_at: new Date().toISOString()
           });
           notifications.push({
             id: 'notif-' + Math.random().toString(36).substring(2, 9),
@@ -199,8 +194,7 @@ export default function AdminDashboard() {
             targetRole: 'caterer',
             catererId: o.catererId || '',
             read: false,
-            created_at: new Date().toISOString(),
-            createdAt: new Date().toISOString()
+            created_at: new Date().toISOString()
           });
           localStorage.setItem('notifications', JSON.stringify(notifications));
         } catch(err) {
@@ -1085,7 +1079,7 @@ export default function AdminDashboard() {
                                                   {ord.status}
                                               </span>
                                           </td>
-                                          <td className="px-6 py-4 text-xs text-slate-500">{new Date(ord.created_at || ord.createdAt).toLocaleDateString()}</td>
+                                          <td className="px-6 py-4 text-xs text-slate-500">{new Date(ord.created_at).toLocaleDateString()}</td>
                                           <td className="px-6 py-4 text-center">
                                               <button 
                                                   onClick={() => {
