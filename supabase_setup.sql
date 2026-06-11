@@ -91,7 +91,30 @@ CREATE TABLE IF NOT EXISTS public.orders (
     "pricingSlabs" JSONB DEFAULT '[]'::jsonb,
     "addonItems" JSONB DEFAULT '[]'::jsonb,
     "selectedMenu" JSONB DEFAULT '[]'::jsonb,
-    "notes" TEXT
+    "notes" TEXT,
+    "status_history" JSONB DEFAULT '[]'::jsonb,
+    "statusHistory" JSONB DEFAULT '[]'::jsonb,
+    "internal_notes" TEXT,
+    "internalNotes" TEXT,
+    "quotation" JSONB DEFAULT '{}'::jsonb,
+    "approved_at" TIMESTAMPTZ,
+    "approvedAt" TIMESTAMPTZ,
+    "rejected_at" TIMESTAMPTZ,
+    "rejectedAt" TIMESTAMPTZ,
+    "completed_at" TIMESTAMPTZ,
+    "completedAt" TIMESTAMPTZ
+);
+
+-- Notifications table
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    "orderId" TEXT,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    "targetRole" TEXT NOT NULL,
+    "catererId" UUID,
+    read BOOLEAN DEFAULT false
 );
 
 -- Audit / System Logs table
@@ -112,6 +135,7 @@ ALTER TABLE public.caterer_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.food_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Ensure storage.objects has RLS enabled
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
@@ -162,6 +186,11 @@ CREATE POLICY "Allow updates on orders" ON public.orders
 -- Audit Logs Policies
 DROP POLICY IF EXISTS "Allow insert/select on audit logs" ON public.audit_logs;
 CREATE POLICY "Allow insert/select on audit logs" ON public.audit_logs
+    FOR ALL USING (true) WITH CHECK (true);
+
+-- Notifications Policies
+DROP POLICY IF EXISTS "Allow insert/select on notifications" ON public.notifications;
+CREATE POLICY "Allow insert/select on notifications" ON public.notifications
     FOR ALL USING (true) WITH CHECK (true);
 
 -- ==========================================

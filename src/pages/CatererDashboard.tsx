@@ -6,6 +6,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../components/Toast';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
 import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
+import { 
+  performOrderStatusUpdate, 
+  storeNotification, 
+  normalizeStatus, 
+  getStatusBadgeColor, 
+  getStatusLabel 
+} from '../lib/orderUtils';
 
 interface ImageUploaderProps {
   label: string;
@@ -169,6 +176,11 @@ export default function CatererDashboard() {
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [modifyData, setModifyData] = useState<any>({ price: 0, package: '', guests: 0, notes: '' });
 
+  // Order Management Extra States
+  const [showChangesRequestModal, setShowChangesRequestModal] = useState(false);
+  const [changesRequestText, setChangesRequestText] = useState('');
+  const [internalNotesText, setInternalNotesText] = useState('');
+
   // Menu Builder State
   const [draftPackages, setDraftPackages] = useState<any[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -299,61 +311,205 @@ export default function CatererDashboard() {
     }
   };
 
-  const updateOrderStatus = (id: string, newStatus: string, changes?: any) => {
-      const rawOrders = localStorage.getItem('orders');
-      if (rawOrders) {
-          const allOrders = JSON.parse(rawOrders);
-          const updated = allOrders.map((o: any) => {
-              if (o.id === id) {
-                 return {
-                     ...o,
-                     status: newStatus,
-                     ...changes
-                 };
-              }
-              return o;
-          });
-          localStorage.setItem('orders', JSON.stringify(updated));
-          refreshData();
-          toast(`Order status updated to ${newStatus}`, 'success');
+  const handleOpenOrderDetails = (ord: any) => {
+    setSelectedOrder(ord);
+    setInternalNotesText(ord.internalNotes || ord.internal_notes || '');
+  };
+
+  const handleSaveInternalNotes = (orderId: string) => {
+    const rawOrders = localStorage.getItem('orders');
+    if (rawOrders) {
+      const allOrders = JSON.parse(rawOrders);
+      const updated = allOrders.map((o: any) => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            internalNotes: internalNotesText,
+            internal_notes: internalNotesText
+          };
+        }
+        return o;
+      });
+      localStorage.setItem('orders', JSON.stringify(updated));
+      if (selectedOrder) {
+        setSelectedOrder({ ...selectedOrder, internalNotes: internalNotesText, internal_notes: internalNotesText });
       }
+      refreshData();
+      toast("Internal notes updated successfully", "success");
+    }
+  };
+
+  const handleRequestChanges = () => {
+    if (!changesRequestText.trim()) {
+      toast("Please specify what changes or details you are requesting.", "error");
+      return;
+    }
+    performOrderStatusUpdate(
+      selectedOrder.id, 
+      'changes_requested', 
+      { 
+        changesRequestedMemo: changesRequestText,
+        specialNotes: changesRequestText 
+      }, 
+      user?.email || 'partner@caternest.com', 
+      'partner'
+    );
+    
+    storeNotification(
+      selectedOrder.id,
+      "Details Requested",
+      `The caterer has requested updates for your order #${selectedOrder.id}: ${changesRequestText}`,
+      "customer",
+      caterer?.id
+    );
+
+    setShowChangesRequestModal(false);
+    setSelectedOrder(null);
+    setChangesRequestText('');
+    refreshData();
+    toast("Requested changes successfully", "success");
   };
 
   const handleApprove = (id: string) => {
-      updateOrderStatus(id, 'Approved');
+    performOrderStatusUpdate(id, 'approved', {}, user?.email || 'partner@caternest.com', 'partner');
+    
+    const ord = partnerOrders.find(o => o.id === id);
+    storeNotification(
+      id,
+      "Order Approved! 🎉",
+      `Your booking query for ${ord?.eventDate || 'selected date'} has been approved by the caterer.`,
+      "customer",
+      caterer?.id
+    );
+    
+    storeNotification(
+      id,
+      "Order Approved",
+      `Order #${id} has been approved by ${caterer?.businessName || 'Caterer'}.`,
+      "admin"
+    );
+
+    refreshData();
+    setSelectedOrder(null);
+    toast("Order approved successfully", "success");
   };
 
   const handleReject = () => {
-      if(!rejectReason.trim()) {
-          toast("Please provide a rejection reason.", "error");
-          return;
-      }
-      updateOrderStatus(selectedOrder.id, 'Rejected', { rejectionReason: rejectReason });
-      setShowRejectModal(false);
-      setSelectedOrder(null);
-      setRejectReason('');
+    if(!rejectReason.trim()) {
+      toast("Please provide a rejection reason.", "error");
+      return;
+    }
+    performOrderStatusUpdate(
+      selectedOrder.id, 
+      'rejected', 
+      { rejectionReason: rejectReason }, 
+      user?.email || 'partner@caternest.com', 
+      'partner'
+    );
+    
+    storeNotification(
+      selectedOrder.id,
+      "Order Rejected",
+      `Your booking request was declined. Reason: ${rejectReason}`,
+      "customer",
+      caterer?.id
+    );
+    
+    setShowRejectModal(false);
+    setSelectedOrder(null);
+    setRejectReason('');
+    refreshData();
+    toast("Order rejected successfully", "success");
   };
 
   const handleModify = () => {
-      updateOrderStatus(selectedOrder.id, 'Modified', {
-         pricePerPlate: modifyData.price,
-         guests: modifyData.guests,
-         specialNotes: modifyData.notes,
-         totalEstimate: modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)
-      });
-      setShowModifyModal(false);
-      setSelectedOrder(null);
+    performOrderStatusUpdate(
+      selectedOrder.id, 
+      'changes_requested', 
+      {
+        pricePerPlate: modifyData.price,
+        guests: modifyData.guests,
+        specialNotes: modifyData.notes,
+        totalEstimate: modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)
+      }, 
+      user?.email || 'partner@caternest.com', 
+      'partner'
+    );
+    
+    storeNotification(
+      selectedOrder.id,
+      "Quote Proposal Adjusted",
+      `The caterer has sent an adjusted quotation of ₹${(modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)).toLocaleString()}`,
+      "customer",
+      caterer?.id
+    );
+
+    setShowModifyModal(false);
+    setSelectedOrder(null);
+    refreshData();
+    toast("Adjusted quotation sent to customer", "success");
   };
 
   const openModifyModal = (ord: any) => {
-      setSelectedOrder(ord);
-      setModifyData({
-          price: ord.pricePerPlate,
-          package: ord.packageDetails?.packageName || 'Custom',
-          guests: ord.guests,
-          notes: ord.specialNotes || ''
-      });
-      setShowModifyModal(true);
+    setSelectedOrder(ord);
+    setModifyData({
+      price: ord.pricePerPlate,
+      package: ord.packageDetails?.packageName || 'Custom',
+      guests: ord.guests,
+      notes: ord.specialNotes || ''
+    });
+    setShowModifyModal(true);
+  };
+
+  // Notification tab state hooks and triggers
+  const [localNotifications, setLocalNotifications] = useState<any[]>([]);
+  
+  const reloadNotifications = () => {
+    const raw = localStorage.getItem('notifications') || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      const filtered = parsed.filter((n: any) => 
+        n.targetRole === 'caterer' && 
+        (!n.catererId || n.catererId === caterer?.id || n.catererId === user?.id)
+      );
+      setLocalNotifications(filtered);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'notifications' || caterer) {
+      reloadNotifications();
+    }
+  }, [activeTab, caterer]);
+
+  const handleMarkNotificationRead = (id: string) => {
+    const raw = localStorage.getItem('notifications') || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      const updated = parsed.map((n: any) => n.id === id ? { ...n, read: true } : n);
+      localStorage.setItem('notifications', JSON.stringify(updated));
+      reloadNotifications();
+      toast("Notification marked read", "success");
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  const handleClearAllNotifications = () => {
+    const raw = localStorage.getItem('notifications') || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      const remaining = parsed.filter((n: any) => 
+        !(n.targetRole === 'caterer' && (!n.catererId || n.catererId === caterer?.id || n.catererId === user?.id))
+      );
+      localStorage.setItem('notifications', JSON.stringify(remaining));
+      reloadNotifications();
+      toast("Notifications cleared", "success");
+    } catch(err) {
+      console.error(err);
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -472,30 +628,37 @@ export default function CatererDashboard() {
   };
 
   const totalOrders = partnerOrders.length;
-  const pendingOrders = partnerOrders.filter(o => ['Pending Caterer Review', 'Submitted'].includes(o.status)).length;
-  const approvedOrders = partnerOrders.filter(o => o.status === 'Approved').length;
-  const modifiedOrders = partnerOrders.filter(o => o.status === 'Modified').length;
-  const rejectedOrders = partnerOrders.filter(o => ['Rejected', 'Cancelled'].includes(o.status)).length;
-  const completedOrders = partnerOrders.filter(o => o.status === 'Completed').length;
+  const pendingOrders = partnerOrders.filter(o => {
+    const s = normalizeStatus(o.status);
+    return s === 'pending' || s === 'updated_by_customer';
+  }).length;
+  const approvedOrders = partnerOrders.filter(o => normalizeStatus(o.status) === 'approved').length;
+  const modifiedOrders = partnerOrders.filter(o => normalizeStatus(o.status) === 'changes_requested').length;
+  const rejectedOrders = partnerOrders.filter(o => {
+    const s = normalizeStatus(o.status);
+    return s === 'rejected' || s === 'cancelled';
+  }).length;
+  const completedOrders = partnerOrders.filter(o => normalizeStatus(o.status) === 'completed').length;
   
   // Calculate Revenue
   const revenue = partnerOrders
-      .filter(o => o.status === 'Approved' || o.status === 'Completed')
+      .filter(o => {
+        const s = normalizeStatus(o.status);
+        return s === 'approved' || s === 'completed';
+      })
       .reduce((acc, curr) => acc + (((Number(curr.pricePerPlate) || 0) * (Number(curr.guests) || 0)) * 0.9), 0);
   
   // This month revenue
   const thisMonthRevenue = partnerOrders
-      .filter(o => (o.status === 'Approved' || o.status === 'Completed') && new Date(o.createdAt).getMonth() === new Date().getMonth())
+      .filter(o => {
+        const s = normalizeStatus(o.status);
+        const isApprovedOrCompleted = s === 'approved' || s === 'completed';
+        return isApprovedOrCompleted && new Date(o.createdAt).getMonth() === new Date().getMonth();
+      })
       .reduce((acc, curr) => acc + (((Number(curr.pricePerPlate) || 0) * (Number(curr.guests) || 0)) * 0.9), 0);
 
   const getStatusColor = (status: string) => {
-    switch(status) {
-        case 'Approved': case 'Completed': return 'bg-green-100 text-green-800';
-        case 'Rejected': case 'Cancelled': return 'bg-red-100 text-red-800';
-        case 'Modified': return 'bg-blue-100 text-blue-800';
-        case 'Pending Caterer Review': case 'Submitted': return 'bg-amber-100 text-amber-800';
-        default: return 'bg-slate-100 text-slate-800';
-    }
+    return getStatusBadgeColor(status);
   };
 
   const navItems = [
@@ -849,7 +1012,52 @@ export default function CatererDashboard() {
                   </div>
                )}
 
-               {['notifications', 'gallery', 'settings'].includes(activeTab) && (
+               {activeTab === 'notifications' && (
+                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-4xl mx-auto">
+                       <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+                           <div>
+                               <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2"><Bell className="text-brand-gold-500" /> Notifications Inbox</h2>
+                               <p className="text-sm text-slate-500 mt-1">Status changes, system updates, and incoming quotations</p>
+                           </div>
+                           {localNotifications.length > 0 && (
+                               <button onClick={handleClearAllNotifications} className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-xl text-xs transition-colors">
+                                   Clear All
+                               </button>
+                           )}
+                       </div>
+
+                       <div className="space-y-3">
+                           {localNotifications.map((n) => (
+                               <div key={n.id} className={cn("p-4 rounded-xl border transition-all flex justify-between items-start", n.read ? "bg-slate-50 border-slate-150" : "bg-brand-gold-50/20 border-brand-gold-100 shadow-sm")}>
+                                   <div className="space-y-1">
+                                       <div className="flex items-center gap-2">
+                                           <span className={cn("w-2 h-2 rounded-full", n.read ? "bg-slate-300" : "bg-brand-gold-500")} />
+                                           <h4 className="font-bold text-slate-800 text-sm">{n.title}</h4>
+                                       </div>
+                                       <p className="text-xs text-slate-600 pl-4">{n.message}</p>
+                                       {n.orderId && <p className="text-[10px] text-slate-400 font-mono pl-4">Order ID: {n.orderId}</p>}
+                                   </div>
+                                   {!n.read && (
+                                       <button onClick={() => handleMarkNotificationRead(n.id)} className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-[10px] font-bold transition-all">
+                                           Mark Read
+                                        </button>
+                                   )}
+                               </div>
+                           ))}
+                           {localNotifications.length === 0 && (
+                               <div className="text-center py-12 text-slate-500">
+                                   <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                                       <Bell size={24} />
+                                   </div>
+                                   <p className="font-semibold text-slate-700">All caught up!</p>
+                                   <p className="text-xs text-slate-500 mt-1">You have no new notifications.</p>
+                                </div>
+                            )}
+                       </div>
+                   </div>
+               )}
+
+               {['gallery', 'settings'].includes(activeTab) && (
                    <div className="pt-20 text-center flex flex-col items-center">
                        <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
                            <Settings size={32}/>
@@ -938,19 +1146,35 @@ export default function CatererDashboard() {
                                        {selectedOrder.specialNotes}
                                    </div>
                                )}
+
+                               <div className="mt-4 bg-slate-50 border border-slate-200 p-4 rounded-xl text-left">
+                                   <span className="font-bold text-slate-900 text-sm block mb-1.5 flex items-center gap-1.5">📝 Caterer Internal Notes (Private)</span>
+                                   <textarea 
+                                       value={internalNotesText}
+                                       onChange={(e) => setInternalNotesText(e.target.value)}
+                                       placeholder="Add private notes (e.g. staff setup instructions, chef reminders)..."
+                                       className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs focus:border-brand-gold-500 outline-none resize-none h-16 mb-2"
+                                   />
+                                   <button 
+                                       onClick={() => handleSaveInternalNotes(selectedOrder.id)}
+                                       className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition"
+                                   >
+                                       Save Memo
+                                   </button>
+                               </div>
                            </div>
                       </div>
 
-                      <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
-                          {['Submitted', 'Pending Caterer Review'].includes(selectedOrder.status) && (
+                      <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 flex-wrap">
+                          {['pending', 'Submitted', 'Pending Caterer Review', 'updated_by_customer', 'changes_requested'].includes(normalizeStatus(selectedOrder.status)) ? (
                               <>
-                                 <button onClick={() => setShowRejectModal(true)} className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 font-bold rounded-xl transition-colors">Reject</button>
-                                 <button onClick={() => openModifyModal(selectedOrder)} className="px-4 py-2 border-2 border-brand-gold-500 text-brand-gold-700 hover:bg-brand-gold-50 font-bold rounded-xl transition-colors">Modify</button>
-                                 <button onClick={() => handleApprove(selectedOrder.id)} className="px-6 py-2 bg-brand-green-900 text-white hover:bg-brand-green-800 font-bold rounded-xl transition-colors shadow-lg shadow-brand-green-900/20">Approve Order</button>
+                                 <button onClick={() => setShowRejectModal(true)} className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 font-bold rounded-xl text-xs transition-colors">Reject</button>
+                                 <button onClick={() => setShowChangesRequestModal(true)} className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 font-bold rounded-xl text-xs transition-colors">Request Changes</button>
+                                 <button onClick={() => openModifyModal(selectedOrder)} className="px-4 py-2 border-2 border-brand-gold-500 text-brand-gold-700 hover:bg-brand-gold-50 font-bold rounded-xl text-xs transition-colors">Edit Quotation</button>
+                                 <button onClick={() => handleApprove(selectedOrder.id)} className="px-5 py-2 bg-brand-green-900 text-white hover:bg-brand-green-800 font-bold rounded-xl text-xs transition-colors shadow-lg shadow-brand-green-900/20">Approve Order</button>
                               </>
-                          )}
-                          {!['Submitted', 'Pending Caterer Review'].includes(selectedOrder.status) && (
-                              <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition">Close</button>
+                          ) : (
+                              <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition">Close</button>
                           )}
                       </div>
                   </motion.div>

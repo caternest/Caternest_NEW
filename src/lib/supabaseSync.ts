@@ -17,7 +17,7 @@ export function initializeSupabaseSync() {
   localStorage.setItem = function (key, value) {
     originalSetItem.call(localStorage, key, value);
 
-    if (key === 'registrations' || key === 'orders' || key === 'auditLogs') {
+    if (key === 'registrations' || key === 'orders' || key === 'auditLogs' || key === 'notifications') {
       try {
         const parsed = JSON.parse(value);
         if (Array.isArray(parsed)) {
@@ -25,7 +25,9 @@ export function initializeSupabaseSync() {
             ? 'caterer_registrations' 
             : key === 'orders' 
               ? 'orders' 
-              : 'audit_logs';
+              : key === 'auditLogs'
+                ? 'audit_logs'
+                : 'notifications';
           
           // Fire non-blocking upload sequence
           syncLocalTableToSupabase(tableName, parsed);
@@ -80,6 +82,20 @@ export function initializeSupabaseSync() {
           originalSetItem.call(localStorage, 'auditLogs', JSON.stringify(remoteLogs));
         } else if (localLogs.length > 0) {
           await syncLocalTableToSupabase('audit_logs', localLogs);
+        }
+      }
+
+      // Sync Notifications
+      const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+      const { data: remoteNotifications, error: nError } = await supabase
+        .from('notifications')
+        .select('*');
+
+      if (!nError) {
+        if (remoteNotifications && remoteNotifications.length > 0) {
+          originalSetItem.call(localStorage, 'notifications', JSON.stringify(remoteNotifications));
+        } else if (localNotifications.length > 0) {
+          await syncLocalTableToSupabase('notifications', localNotifications);
         }
       }
 

@@ -21,6 +21,15 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<string | null>(null);
+
+  // Admin order filter and detail states
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminCatererFilter, setAdminCatererFilter] = useState('');
+  const [adminStatusFilter, setAdminStatusFilter] = useState('');
+  const [adminEventDateFilter, setAdminEventDateFilter] = useState('');
+  const [selectedAdminOrder, setSelectedAdminOrder] = useState<any | null>(null);
+  const [adminMemoText, setAdminMemoText] = useState('');
+
   const navigate = useNavigate();
 
   const fetchFoodImages = () => {
@@ -122,6 +131,107 @@ export default function AdminDashboard() {
       const updatedLogs = [{ ...newLog, date: newLog.timestamp, by: 'Admin', entity: entityName }, ...existingLogs];
       localStorage.setItem('auditLogs', JSON.stringify(updatedLogs));
       setAuditLogs(updatedLogs);
+  };
+
+  const performAdminOrderStatusUpdate = (orderId: string, targetStatus: string) => {
+    const raw = localStorage.getItem('orders') || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      const updated = parsed.map((o: any) => {
+        if (o.id === orderId) {
+          const history = Array.isArray(o.status_history) ? o.status_history : [];
+          const nowStr = new Date().toISOString();
+          const nextHistory = [
+            ...history,
+            { status: targetStatus, changedAt: nowStr, changedBy: 'admin', note: `Status forced by Administrator` }
+          ];
+          
+          const extra: any = {};
+          if (targetStatus === 'approved' || targetStatus === 'Approved') {
+            extra.approved_at = nowStr;
+            extra.approvedAt = nowStr;
+          } else if (targetStatus === 'rejected' || targetStatus === 'Rejected') {
+            extra.rejected_at = nowStr;
+            extra.rejectedAt = nowStr;
+          } else if (targetStatus === 'completed' || targetStatus === 'Completed') {
+            extra.completed_at = nowStr;
+            extra.completedAt = nowStr;
+          }
+          
+          return {
+            ...o,
+            status: targetStatus,
+            status_history: nextHistory,
+            ...extra
+          };
+        }
+        return o;
+      });
+      localStorage.setItem('orders', JSON.stringify(updated));
+      setOrders(updated);
+
+      // Create Admin Audit Log and Customer notification
+      const o = updated.find((ord: any) => ord.id === orderId);
+      if (o) {
+        logAudit(`Force status: ${targetStatus}`, `Order #${orderId} (${o.customerName})`);
+        
+        const notificationRaw = localStorage.getItem('notifications') || '[]';
+        try {
+          const notifications = JSON.parse(notificationRaw);
+          notifications.push({
+            id: 'notif-' + Math.random().toString(36).substring(2, 9),
+            orderId: orderId,
+            title: `Order Status Adjusted by Admin`,
+            message: `Your order for ${o.catererName} has been updated to '${targetStatus}' by the system administrator.`,
+            targetRole: 'customer',
+            userId: o.userId || '',
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+          notifications.push({
+            id: 'notif-' + Math.random().toString(36).substring(2, 9),
+            orderId: orderId,
+            title: `Order Force Updated`,
+            message: `Order #${orderId} has been updated to '${targetStatus}' by the administrator.`,
+            targetRole: 'caterer',
+            catererId: o.catererId || '',
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+          localStorage.setItem('notifications', JSON.stringify(notifications));
+        } catch(err) {
+          console.error(err);
+        }
+      }
+      toast(`Order #${orderId} updated to ${targetStatus}`, "success");
+      fetchSupabaseData();
+    } catch (err) {
+      console.error(err);
+      toast("Error performing status change", "error");
+    }
+  };
+
+  const saveAdminOrderMemo = (orderId: string, memo: string) => {
+    const raw = localStorage.getItem('orders') || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      const updated = parsed.map((o: any) => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            internal_notes: memo,
+            internalNotes: memo
+          };
+        }
+        return o;
+      });
+      localStorage.setItem('orders', JSON.stringify(updated));
+      setOrders(updated);
+      toast("Internal administrative note saved", "success");
+      fetchSupabaseData();
+    } catch(err) {
+      console.error(err);
+    }
   };
 
   const deleteImageMapping = (itemName: string) => {
@@ -559,7 +669,7 @@ export default function AdminDashboard() {
                        )}
                    </div>
                 </button>
-                <button onClick={() => navigate('/orders')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <button onClick={() => setActiveTab('orders')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <CreditCard size={18} /> All Orders
                 </button>
                 <button onClick={() => setActiveTab('images')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'images' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
@@ -836,6 +946,172 @@ export default function AdminDashboard() {
                          </div>
                      ))
                  )}
+              </div>
+          )}
+
+          {activeTab === 'orders' && (
+              <div className="space-y-6">
+                  {/* Order statistics */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                          <p className="text-xs font-bold text-slate-500 uppercase">Total Orders</p>
+                          <p className="text-3xl font-bold font-display text-slate-900 mt-1">{orders.length}</p>
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                          <p className="text-xs font-bold text-amber-600 uppercase font-poppins">Pending Review</p>
+                          <p className="text-3xl font-bold font-display text-amber-600 mt-1">
+                              {orders.filter(o => ['pending', 'Submitted', 'Pending Caterer Review', 'updated_by_customer'].includes(o.status)).length}
+                          </p>
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                          <p className="text-xs font-bold text-green-700 uppercase font-poppins">Approved & Active</p>
+                          <p className="text-3xl font-bold font-display text-green-700 mt-1">
+                              {orders.filter(o => ['Approved', 'approved'].includes(o.status)).length}
+                          </p>
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                          <p className="text-xs font-bold text-slate-700 uppercase font-poppins">Completed</p>
+                          <p className="text-3xl font-bold font-display text-slate-700 mt-1">
+                              {orders.filter(o => ['Completed', 'completed'].includes(o.status)).length}
+                          </p>
+                      </div>
+                  </div>
+
+                  {/* Filter panel */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4">
+                          <div className="flex-1 relative">
+                              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                              <input 
+                                  type="text"
+                                  placeholder="Search by Order ID, Customer, or Caterer..."
+                                  value={adminSearch}
+                                  onChange={(e) => setAdminSearch(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-brand-gold-500 outline-none font-medium"
+                              />
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                              <label className="block text-xs font-bold text-slate-600 mb-1">Caterer Partner</label>
+                              <select 
+                                  value={adminCatererFilter}
+                                  onChange={(e) => setAdminCatererFilter(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+                              >
+                                  <option value="">All partners</option>
+                                  {Array.from(new Set(orders.map(o => o.catererName || 'Unknown'))).filter(Boolean).map(c => (
+                                      <option key={c} value={c}>{c}</option>
+                                  ))}
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-600 mb-1">Order Status</label>
+                              <select 
+                                  value={adminStatusFilter}
+                                  onChange={(e) => setAdminStatusFilter(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+                              >
+                                  <option value="">All statuses</option>
+                                  <option value="pending">Pending</option>
+                                  <option value="Submitted">Submitted</option>
+                                  <option value="Approved">Approved</option>
+                                  <option value="changes_requested">Changes Requested</option>
+                                  <option value="updated_by_customer">Updated By Customer</option>
+                                  <option value="Completed">Completed</option>
+                                  <option value="Cancelled">Cancelled</option>
+                                  <option value="Rejected">Rejected</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-600 mb-1">Event Date</label>
+                              <input 
+                                  type="date"
+                                  value={adminEventDateFilter}
+                                  onChange={(e) => setAdminEventDateFilter(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-brand-gold-500"
+                              />
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-sm text-left border-collapse whitespace-nowrap">
+                              <thead className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 font-bold uppercase tracking-wider">
+                                  <tr>
+                                      <th className="px-6 py-4">Order ID</th>
+                                      <th className="px-6 py-4">Customer</th>
+                                      <th className="px-6 py-4">Caterer Partner</th>
+                                      <th className="px-6 py-4">Event Date</th>
+                                      <th className="px-6 py-4">Package & Guests</th>
+                                      <th className="px-6 py-4">Total Amount</th>
+                                      <th className="px-6 py-4">Status</th>
+                                      <th className="px-6 py-4">Created Date</th>
+                                      <th className="px-6 py-4 text-center">Actions</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                  {orders.filter((o) => {
+                                      const matchesSearch = o.id.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
+                                      const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
+                                      const matchesStatus = !adminStatusFilter || o.status?.toLowerCase() === adminStatusFilter.toLowerCase();
+                                      const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
+                                      return matchesSearch && matchesCaterer && matchesStatus && matchesEventDate;
+                                  }).map((ord) => (
+                                      <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
+                                          <td className="px-6 py-4 font-mono font-bold text-slate-700 text-xs">{ord.id}</td>
+                                          <td className="px-6 py-4 font-bold text-slate-900">{ord.customerName}</td>
+                                          <td className="px-6 py-4 text-slate-700 font-medium">{ord.catererName}</td>
+                                          <td className="px-6 py-4 text-slate-600 font-medium">{ord.eventDate || 'N/A'}</td>
+                                          <td className="px-6 py-4 text-xs text-slate-600">
+                                              <span className="font-bold">{ord.packageDetails?.packageName || 'Custom'}</span><br/>
+                                              <span>{ord.guests} guests</span>
+                                          </td>
+                                          <td className="px-6 py-4 font-bold text-slate-950">₹{ord.totalEstimate?.toLocaleString()}</td>
+                                          <td className="px-6 py-4">
+                                              <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider", 
+                                                  ['Approved', 'approved'].includes(ord.status) ? "bg-green-100 text-green-800" :
+                                                  ['Rejected', 'rejected', 'Cancelled', 'cancelled'].includes(ord.status) ? "bg-rose-100 text-rose-800" :
+                                                  "bg-amber-100 text-amber-800"
+                                              )}>
+                                                  {ord.status}
+                                              </span>
+                                          </td>
+                                          <td className="px-6 py-4 text-xs text-slate-500">{new Date(ord.createdAt || ord.created_at).toLocaleDateString()}</td>
+                                          <td className="px-6 py-4 text-center">
+                                              <button 
+                                                  onClick={() => {
+                                                      setSelectedAdminOrder(ord);
+                                                      setAdminMemoText(ord.internal_notes || ord.internalNotes || '');
+                                                  }} 
+                                                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg text-xs font-bold transition-all text-slate-700"
+                                              >
+                                                  View / Manage
+                                              </button>
+                                          </td>
+                                      </tr>
+                                  ))}
+                                  {orders.filter((o) => {
+                                      const matchesSearch = o.id.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
+                                      const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
+                                      const matchesStatus = !adminStatusFilter || o.status?.toLowerCase() === adminStatusFilter.toLowerCase();
+                                      const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
+                                      return matchesSearch && matchesCaterer && matchesStatus && matchesEventDate;
+                                  }).length === 0 && (
+                                      <tr>
+                                          <td colSpan={9} className="px-6 py-12 text-center text-slate-500 font-medium">No orders matched the selected filters.</td>
+                                      </tr>
+                                  )}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
               </div>
           )}
 
@@ -1325,6 +1601,196 @@ export default function AdminDashboard() {
                       >
                           Save Changes
                       </button>
+                  </div>
+              </motion.div>
+          </div>
+      )}
+
+      {/* Admin Order Status & Manage Modal */}
+      {selectedAdminOrder && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex justify-end">
+              <motion.div 
+                  initial={{ x: "100%" }}
+                  animate={{ x: 0 }}
+                  className="bg-white w-full max-w-2xl h-screen flex flex-col shadow-2xl relative font-sans overflow-hidden"
+              >
+                  {/* Header */}
+                  <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+                      <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Administrative Panel</p>
+                          <h3 className="text-xl font-bold text-slate-900 mt-1">Manage Order #{selectedAdminOrder.id}</h3>
+                      </div>
+                      <button 
+                          onClick={() => setSelectedAdminOrder(null)}
+                          className="w-10 h-10 rounded-full border border-slate-200 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition"
+                      >
+                          ✕
+                      </button>
+                  </div>
+
+                  {/* Scrollable Content */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                      {/* Customer / Caterer info */}
+                      <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <div>
+                              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Customer Details</p>
+                              <p className="font-bold text-slate-900 mt-1">{selectedAdminOrder.customerName}</p>
+                              <p className="text-xs text-slate-500">{selectedAdminOrder.phone || 'No phone recorded'}</p>
+                              <p className="text-xs text-slate-500 font-mono mt-1">ID: {selectedAdminOrder.userId || 'N/A'}</p>
+                          </div>
+                          <div>
+                              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Caterer details</p>
+                              <p className="font-bold text-brand-green-900 mt-1">{selectedAdminOrder.catererName}</p>
+                              <p className="text-xs text-slate-500">Id: {selectedAdminOrder.catererId}</p>
+                          </div>
+                      </div>
+
+                      {/* Event Parameters */}
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-1">Event specifications</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="bg-slate-50 p-3 rounded-lg text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">Event Date</p>
+                                  <p className="text-sm font-bold text-slate-800 mt-1">{selectedAdminOrder.eventDate || 'N/A'}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-lg text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">Event Time</p>
+                                  <p className="text-sm font-bold text-slate-800 mt-1">{selectedAdminOrder.eventTime || 'Not Selected'}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-lg text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">Guests</p>
+                                  <p className="text-sm font-bold text-slate-800 mt-1">{selectedAdminOrder.guests || 0}</p>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-lg text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">Package Name</p>
+                                  <p className="text-sm font-bold text-brand-green-900 mt-1">{selectedAdminOrder.packageDetails?.packageName || 'Custom'}</p>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Estimate Pricing */}
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-1">Cost & Platform revenue breakdown</h4>
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                              <div className="flex justify-between items-center text-xs">
+                                  <span className="text-slate-600">Base Food Cost (₹{selectedAdminOrder.pricePerPlate || 0} × {selectedAdminOrder.guests || 0} guests)</span>
+                                  <span className="font-bold text-slate-800">₹{((selectedAdminOrder.pricePerPlate || 0) * (selectedAdminOrder.guests || 0)).toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs border-b border-dashed border-slate-200 pb-2">
+                                  <span className="text-slate-600">Admin Platform Fee</span>
+                                  <span className="font-bold text-slate-800">₹{(selectedAdminOrder.platformFee || 0).toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-sm font-bold text-slate-900 pt-1">
+                                  <span>Total Order Estimate</span>
+                                  <span className="text-brand-green-900">₹{(selectedAdminOrder.totalEstimate || 0).toLocaleString()}</span>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Selected Items */}
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-1">Selected custom menu</h4>
+                          <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-xl max-h-40 overflow-y-auto">
+                              <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                  {(selectedAdminOrder.selectedItems || []).map((item: string, idx: number) => (
+                                      <li key={idx} className="flex items-center gap-1.5 text-slate-700">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-brand-gold-500 shrink-0"></span>
+                                          <span>{item}</span>
+                                      </li>
+                                  ))}
+                                  {(!selectedAdminOrder.selectedItems || selectedAdminOrder.selectedItems.length === 0) && (
+                                      <li className="text-slate-400 text-xs italic">No items selected.</li>
+                                  )}
+                              </ul>
+                          </div>
+                      </div>
+
+                      {/* Admin Memo Editor */}
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Administrative Internal Notes (Private to Admin)</h4>
+                          <textarea 
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium outline-none focus:border-brand-gold-500 h-20 resize-none"
+                              placeholder="Add a private administrative note about this customer, caterer, or order status..."
+                              value={adminMemoText}
+                              onChange={(e) => setAdminMemoText(e.target.value)}
+                          ></textarea>
+                          <div className="flex justify-end mt-1.5">
+                              <button 
+                                  onClick={() => saveAdminOrderMemo(selectedAdminOrder.id, adminMemoText)}
+                                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition"
+                              >
+                                  Save Administrative Notes
+                              </button>
+                          </div>
+                      </div>
+
+                      {/* Status History */}
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-100 pb-1">Order Status History & Transitions</h4>
+                          <div className="space-y-2 max-h-28 overflow-y-auto pr-1">
+                              {Array.isArray(selectedAdminOrder.status_history) && selectedAdminOrder.status_history.map((hist: any, idx: number) => (
+                                  <div key={idx} className="bg-slate-50 p-2.5 rounded-lg text-xs flex justify-between items-start gap-3">
+                                      <div>
+                                          <span className="font-bold text-slate-800">Status Changed to: '{hist.status}'</span>
+                                          {hist.note && <p className="text-slate-500 mt-0.5 text-[10px] italic">Note: {hist.note}</p>}
+                                      </div>
+                                      <div className="text-right whitespace-nowrap text-[10px] text-slate-400">
+                                          <p className="font-bold">By {hist.changedBy || 'user'}</p>
+                                          <p>{new Date(hist.changedAt || hist.date).toLocaleString()}</p>
+                                      </div>
+                                  </div>
+                              ))}
+                              {(!selectedAdminOrder.status_history || selectedAdminOrder.status_history.length === 0) && (
+                                  <p className="text-[10px] text-slate-400 italic">No historical changes documented.</p>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Force Custom actions */}
+                  <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center gap-3 shrink-0 flex-wrap">
+                      <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Force Actions:</span>
+                          <button 
+                              onClick={() => {
+                                  performAdminOrderStatusUpdate(selectedAdminOrder.id, 'Cancelled');
+                                  setSelectedAdminOrder(null);
+                              }}
+                              className="px-3 py-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl text-xs font-bold transition"
+                          >
+                              Cancel Order
+                          </button>
+                          <button 
+                              onClick={() => {
+                                  performAdminOrderStatusUpdate(selectedAdminOrder.id, 'Rejected');
+                                  setSelectedAdminOrder(null);
+                              }}
+                              className="px-3 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-bold transition"
+                          >
+                              Reject
+                          </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                          <button 
+                              onClick={() => {
+                                  performAdminOrderStatusUpdate(selectedAdminOrder.id, 'Approved');
+                                  setSelectedAdminOrder(null);
+                              }}
+                              className="px-4 py-2 bg-brand-green-900 text-white font-bold hover:bg-brand-green-800 rounded-xl text-xs transition animate-pulse"
+                          >
+                              Force Approve
+                          </button>
+                          <button 
+                              onClick={() => {
+                                  performAdminOrderStatusUpdate(selectedAdminOrder.id, 'Completed');
+                                  setSelectedAdminOrder(null);
+                              }}
+                              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition"
+                          >
+                              Mark Completed
+                          </button>
+                      </div>
                   </div>
               </motion.div>
           </div>
