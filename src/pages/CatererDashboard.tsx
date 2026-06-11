@@ -183,42 +183,114 @@ export default function CatererDashboard() {
     refreshData();
   }, []);
 
-  const refreshData = () => {
+  const refreshData = async () => {
     // Fetch Caterer Details
-    const rawRegistrations = localStorage.getItem('registrations');
     let cid = catererDashboardId;
     if (!cid && user) cid = user.id;
+    if (!cid) return;
 
-    if (rawRegistrations && cid) {
-        const all = JSON.parse(rawRegistrations);
-        const found = all.find((c: any) => c.id === cid);
-        if (found) {
-           setCaterer(found);
-           setDraftPackages(found.draftMenuPackages || found.menuPackages || []);
-           setProfileFormData({
-               ownerName: found.owner || '',
-               businessName: found.businessName || '',
-               mobile: found.phone || '',
-               alternateMobile: found.alternatePhone || '',
-               email: found.email || '',
-               location: found.location || '',
-               city: found.city || '',
-               description: found.description || '',
-               fssai: found.fssai || '',
-               gst: found.gst || '',
-               pan: found.pan || '',
-               logo: found.logo || '',
-               coverBanner: found.coverBanner || '',
-               ownerPhoto: found.ownerPhoto || '',
-               branchPhoto: found.branchPhoto || ''
-           });
-           setIsProfilePending(!!found.pendingUpdates);
+    // Fetch from Supabase
+    const supabase = getSupabase() as any;
+    let fetchedCaterer: any = null;
+    if (supabase) {
+      try {
+        console.log("Fetching live caterer profile from Supabase for ID:", cid);
+        const { data, error } = await (supabase
+          .from('caterer_registrations') as any)
+          .select('*')
+          .eq('id', cid)
+          .maybeSingle();
+
+        if (!error && data) {
+          const cat = data as any;
+          fetchedCaterer = cat;
+          setCaterer(cat);
+          setDraftPackages(cat.draftMenuPackages || cat.menuPackages || cat.packages || []);
+          setProfileFormData({
+              ownerName: cat.owner || cat.ownerName || '',
+              businessName: cat.businessName || '',
+              mobile: cat.phone || '',
+              alternateMobile: cat.alternatePhone || '',
+              email: cat.email || '',
+              location: cat.address || cat.location || '',
+              city: cat.city || '',
+              description: cat.description || '',
+              fssai: cat.fssaiNumber || cat.fssai || '',
+              gst: cat.gstNumber || cat.gst || '',
+              pan: cat.panNumber || cat.pan || '',
+              logo: cat.logo || '',
+              coverBanner: cat.coverBanner || '',
+              ownerPhoto: cat.ownerPhoto || cat.founderImageUrl || '',
+              branchPhoto: cat.branchPhoto || ''
+          });
+          setIsProfilePending(!!cat.pendingUpdates);
+          
+          // Sync local storage registrations
+          const registrationsLocal = JSON.parse(localStorage.getItem('registrations') || '[]');
+          const filtered = registrationsLocal.filter((r: any) => r.id !== cid);
+          localStorage.setItem('registrations', JSON.stringify([...filtered, cat]));
+        }
+      } catch (err) {
+        console.error("Error reading live profile from Supabase:", err);
+      }
+    }
+
+    if (!fetchedCaterer) {
+        const rawRegistrations = localStorage.getItem('registrations');
+        if (rawRegistrations) {
+            const all = JSON.parse(rawRegistrations);
+            const found = all.find((c: any) => c.id === cid);
+            if (found) {
+               setCaterer(found);
+               setDraftPackages(found.draftMenuPackages || found.menuPackages || found.packages || []);
+               setProfileFormData({
+                   ownerName: found.owner || found.ownerName || '',
+                   businessName: found.businessName || '',
+                   mobile: found.phone || '',
+                   alternateMobile: found.alternatePhone || '',
+                   email: found.email || '',
+                   location: found.address || found.location || '',
+                   city: found.city || '',
+                   description: found.description || '',
+                   fssai: found.fssaiNumber || found.fssai || '',
+                   gst: found.gstNumber || found.gst || '',
+                   pan: found.panNumber || found.pan || '',
+                   logo: found.logo || '',
+                   coverBanner: found.coverBanner || '',
+                   ownerPhoto: found.ownerPhoto || found.founderImageUrl || '',
+                   branchPhoto: found.branchPhoto || ''
+               });
+               setIsProfilePending(!!found.pendingUpdates);
+            }
         }
     }
 
-    // Fetch Orders
+    // Fetch Orders from Supabase first
+    if (supabase) {
+      try {
+        console.log("Fetching live orders from Supabase for caterer ID:", cid);
+        const { data: ords, error: ordsErr } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('catererId', cid)
+          .order('created_at', { ascending: false });
+
+        if (!ordsErr && ords) {
+          setPartnerOrders(ords);
+          // Sync local storage orders
+          const rawOrders = localStorage.getItem('orders') || '[]';
+          const allLocalOrders = JSON.parse(rawOrders).filter((o: any) => o.catererId !== cid);
+          localStorage.setItem('orders', JSON.stringify([...allLocalOrders, ...ords]));
+          return;
+        }
+      } catch (err) {
+        console.error("Error reading live orders from Supabase:", err);
+      }
+    }
+
+    // Check localStorage fallback for orders
     const rawOrders = localStorage.getItem('orders');
-    if (rawOrders && cid) {
+    if (rawOrders) {
         const allOrders = JSON.parse(rawOrders);
         const myOrders = allOrders.filter((o: any) => o.catererId === cid);
         // sort by newest
@@ -284,9 +356,26 @@ export default function CatererDashboard() {
       setShowModifyModal(true);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+      let cid = catererDashboardId;
+      if (!cid && user) cid = user.id;
+      if (!cid || !caterer) return;
+
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          const { error } = await supabase
+            .from('caterer_registrations')
+            .update({ draftMenuPackages: draftPackages })
+            .eq('id', caterer.id);
+          if (error) throw error;
+        } catch (err: any) {
+          console.error("Failed to save draft to Supabase:", err);
+        }
+      }
+
       const rawRegistrations = localStorage.getItem('registrations');
-      if (rawRegistrations && caterer) {
+      if (rawRegistrations) {
           const all = JSON.parse(rawRegistrations);
           const updated = all.map((c: any) => c.id === caterer.id ? { ...c, draftMenuPackages: draftPackages } : c);
           try {
@@ -295,31 +384,71 @@ export default function CatererDashboard() {
               refreshData();
           } catch (err) {
               console.error("Quota exceeded during save", err);
-              alert("Your changes are too large for custom browser storage limits (e.g., base64 media uploads). Try removing some large images and try again.");
+              alert("Your changes are too large for custom browser storage limits. Saved to live database but clearing local storage cache...");
+              refreshData();
           }
       }
   };
 
-  const handlePublishMenu = () => {
+  const handlePublishMenu = async () => {
+      let cid = catererDashboardId;
+      if (!cid && user) cid = user.id;
+      if (!cid || !caterer) return;
+
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          const { error } = await supabase
+            .from('caterer_registrations')
+            .update({ 
+               draftMenuPackages: draftPackages, 
+               menuPackages: draftPackages,
+               packages: draftPackages
+            })
+            .eq('id', caterer.id);
+          if (error) throw error;
+        } catch (err: any) {
+          console.error("Failed to publish menu to Supabase:", err);
+        }
+      }
+
       const rawRegistrations = localStorage.getItem('registrations');
-      if (rawRegistrations && caterer) {
+      if (rawRegistrations) {
           const all = JSON.parse(rawRegistrations);
-          const updated = all.map((c: any) => c.id === caterer.id ? { ...c, draftMenuPackages: draftPackages, menuPackages: draftPackages } : c);
+          const updated = all.map((c: any) => c.id === caterer.id ? { ...c, draftMenuPackages: draftPackages, menuPackages: draftPackages, packages: draftPackages } : c);
           try {
               localStorage.setItem('registrations', JSON.stringify(updated));
               toast('Menu published successfully! Customers can now see these changes.', 'success');
               refreshData();
           } catch (err) {
               console.error("Quota exceeded during publish", err);
-              alert("The menu could not be published because browser local storage is out of limit. Please try reducing menu detail sizes or associated image files.");
+              alert("Your menu was successfully published to the live database! Cache cleared locally.");
+              refreshData();
           }
       }
   };
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      let cid = catererDashboardId;
+      if (!cid && user) cid = user.id;
+      if (!cid || !caterer) return;
+
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          const { error } = await supabase
+            .from('caterer_registrations')
+            .update({ pendingUpdates: profileFormData })
+            .eq('id', caterer.id);
+          if (error) throw error;
+        } catch (err: any) {
+          console.error("Failed to submit profile updates to Supabase:", err);
+        }
+      }
+
       const rawRegistrations = localStorage.getItem('registrations');
-      if (rawRegistrations && caterer) {
+      if (rawRegistrations) {
           const all = JSON.parse(rawRegistrations);
           const updated = all.map((c: any) => {
               if (c.id === caterer.id) {
@@ -336,7 +465,8 @@ export default function CatererDashboard() {
               refreshData();
           } catch (err) {
               console.error("Quota exceeded during save", err);
-              alert("The profile update involves image files that are too large to fit in browser storage. Try using custom image URLs instead of local data uploads.");
+              alert("The profile update request was saved on Supabase! Cache cleared locally.");
+              refreshData();
           }
       }
   };

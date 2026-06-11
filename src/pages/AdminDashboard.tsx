@@ -34,10 +34,56 @@ export default function AdminDashboard() {
       .catch(err => console.error("Error loading images list:", err));
   };
 
+  const fetchSupabaseData = async () => {
+    const supabase = getSupabase() as any;
+    if (supabase) {
+      try {
+        // Fetch registrations
+        const { data: regData, error: regError } = await supabase
+          .from('caterer_registrations')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!regError && regData) {
+          setRegistrations(regData);
+          localStorage.setItem('registrations', JSON.stringify(regData));
+        }
+
+        // Fetch orders
+        const { data: ordData, error: ordError } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!ordError && ordData) {
+          setOrders(ordData);
+          localStorage.setItem('orders', JSON.stringify(ordData));
+        }
+
+        // Fetch audit logs
+        const { data: logData, error: logError } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!logError && logData) {
+          const formattedLogs = logData.map((l: any) => ({
+            ...l,
+            date: l.timestamp || l.created_at || new Date().toISOString(),
+            by: l.role || 'Admin',
+            entity: l.details || l.action,
+            action: l.action
+          }));
+          setAuditLogs(formattedLogs);
+          localStorage.setItem('auditLogs', JSON.stringify(formattedLogs));
+        }
+      } catch (err) {
+        console.error("Error reading from Supabase in AdminDashboard:", err);
+      }
+    }
+  };
+
   useEffect(() => {
-    const raw = localStorage.getItem('registrations');
-    if (raw) {
-      setRegistrations(JSON.parse(raw));
+    const rawRegistrations = localStorage.getItem('registrations');
+    if (rawRegistrations) {
+      setRegistrations(JSON.parse(rawRegistrations));
     }
     
     const rawOrders = localStorage.getItem('orders');
@@ -50,18 +96,30 @@ export default function AdminDashboard() {
         setAuditLogs(JSON.parse(rawLogs));
     }
 
+    fetchSupabaseData();
     fetchFoodImages();
   }, []);
 
-  const logAudit = (action: string, entityName: string) => {
+  const logAudit = async (action: string, entityName: string) => {
       const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
       const newLog = {
-          date: new Date().toISOString(),
-          by: 'Admin',
+          timestamp: new Date().toISOString(),
           action,
-          entity: entityName
+          details: `User action on entity: ${entityName}`,
+          user_email: 'admin@quickchef.com',
+          role: 'Admin'
       };
-      const updatedLogs = [newLog, ...existingLogs];
+      
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          await supabase.from('audit_logs').insert([newLog]);
+        } catch (err) {
+          console.error("Failed to write audit log to Supabase:", err);
+        }
+      }
+      
+      const updatedLogs = [{ ...newLog, date: newLog.timestamp, by: 'Admin', entity: entityName }, ...existingLogs];
       localStorage.setItem('auditLogs', JSON.stringify(updatedLogs));
       setAuditLogs(updatedLogs);
   };
@@ -274,14 +332,24 @@ export default function AdminDashboard() {
     reader.readAsDataURL(file);
   };
 
-  const moveToTrash = (id: string) => {
+  const moveToTrash = async (id: string) => {
       const r = registrations.find(x => x.id === id);
-      const updated = registrations.map(x => x.id === id ? { 
-          ...x, 
+      const updatePayload = { 
           status: 'Trashed',
           deletedDate: new Date().toISOString(),
           deletedBy: 'Admin'
-      } : x);
+      };
+      
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          await supabase.from('caterer_registrations').update(updatePayload).eq('id', id);
+        } catch (err) {
+          console.error("Supabase update error:", err);
+        }
+      }
+
+      const updated = registrations.map(x => x.id === id ? { ...x, ...updatePayload } : x);
       setRegistrations(updated);
       localStorage.setItem('registrations', JSON.stringify(updated));
       logAudit('Moved to Trash', r?.businessName || id);
@@ -289,24 +357,43 @@ export default function AdminDashboard() {
       toast('Caterer moved to Trash', 'success');
   };
 
-  const handleRestore = (id: string) => {
+  const handleRestore = async (id: string) => {
       const r = registrations.find(x => x.id === id);
-      const updated = registrations.map(x => x.id === id ? { 
-          ...x, 
+      const updatePayload = { 
           status: 'Pending Approval',
           restoredDate: new Date().toISOString(),
           restoredBy: 'Admin'
-      } : x);
+      };
+
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          await supabase.from('caterer_registrations').update(updatePayload).eq('id', id);
+        } catch (err) {
+          console.error("Supabase update error:", err);
+        }
+      }
+
+      const updated = registrations.map(x => x.id === id ? { ...x, ...updatePayload } : x);
       setRegistrations(updated);
       localStorage.setItem('registrations', JSON.stringify(updated));
       logAudit('Restored from Trash', r?.businessName || id);
       toast('Caterer restored and moved to Pending Review.', 'success');
   };
 
-  const executePermanentDelete = (id: string) => {
+  const executePermanentDelete = async (id: string) => {
       const r = registrations.find(x => x.id === id);
-      const updated = registrations.filter(x => x.id !== id);
       
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          await supabase.from('caterer_registrations').delete().eq('id', id);
+        } catch (err) {
+          console.error("Supabase deletion error:", err);
+        }
+      }
+
+      const updated = registrations.filter(x => x.id !== id);
       setRegistrations(updated);
       localStorage.setItem('registrations', JSON.stringify(updated));
       logAudit('Permanently Deleted', r?.businessName || id);
@@ -314,14 +401,63 @@ export default function AdminDashboard() {
       toast('Caterer permanently deleted', 'success');
   };
 
-  const handleAction = (id: string, newStatus: string) => {
+  const handleAction = async (id: string, newStatus: string) => {
+    const supabase = getSupabase() as any;
+    if (supabase) {
+      try {
+        await supabase.from('caterer_registrations').update({ status: newStatus }).eq('id', id);
+      } catch (err) {
+        console.error("Supabase update error:", err);
+      }
+    }
+
     const updated = registrations.map(r => r.id === id ? { ...r, status: newStatus } : r);
     setRegistrations(updated);
     localStorage.setItem('registrations', JSON.stringify(updated));
     toast(`Caterer marked as ${newStatus}`, 'success');
   };
 
-  const handleApproveProfileUpdate = (id: string) => {
+  const handleApproveProfileUpdate = async (id: string) => {
+      const item = registrations.find(r => r.id === id);
+      if (item && item.pendingUpdates) {
+          const mergedPayload = {
+              owner: item.pendingUpdates.ownerName || item.owner,
+              ownerName: item.pendingUpdates.ownerName || item.owner || item.ownerName,
+              businessName: item.pendingUpdates.businessName || item.businessName,
+              phone: item.pendingUpdates.mobile || item.phone,
+              alternatePhone: item.pendingUpdates.alternateMobile || item.alternatePhone,
+              email: item.pendingUpdates.email || item.email,
+              address: item.pendingUpdates.location || item.location || item.address,
+              city: item.pendingUpdates.city || item.city,
+              description: item.pendingUpdates.description || item.description,
+              fssaiNumber: item.pendingUpdates.fssai || item.fssai || item.fssaiNumber,
+              gstNumber: item.pendingUpdates.gst || item.gst || item.gstNumber,
+              panNumber: item.pendingUpdates.pan || item.pan || item.panNumber,
+              logo: item.pendingUpdates.logo || item.logo,
+              coverBanner: item.pendingUpdates.coverBanner || item.coverBanner,
+              ownerPhoto: item.pendingUpdates.ownerPhoto || item.ownerPhoto,
+              branchPhoto: item.pendingUpdates.branchPhoto || item.branchPhoto,
+              pendingUpdates: null
+          };
+
+          const supabase = getSupabase() as any;
+          if (supabase) {
+              try {
+                  await supabase.from('caterer_registrations').update(mergedPayload).eq('id', id);
+              } catch (err) {
+                  console.error("Supabase update error during approval:", err);
+              }
+          }
+
+          const updated = registrations.map(r => r.id === id ? { ...r, ...mergedPayload } : r);
+          setRegistrations(updated);
+          localStorage.setItem('registrations', JSON.stringify(updated));
+          toast('Profile updates approved!', 'success');
+          return;
+      }
+  };
+
+  const handleApproveProfileUpdateOld = (id: string) => {
       const updated = registrations.map(r => {
           if (r.id === id && r.pendingUpdates) {
              return {
@@ -351,7 +487,16 @@ export default function AdminDashboard() {
       toast('Profile updates approved!', 'success');
   };
 
-  const handleRejectProfileUpdate = (id: string) => {
+  const handleRejectProfileUpdate = async (id: string) => {
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        try {
+          await supabase.from('caterer_registrations').update({ pendingUpdates: null }).eq('id', id);
+        } catch (err) {
+          console.error("Supabase update error during reject:", err);
+        }
+      }
+
       const updated = registrations.map(r => {
           if (r.id === id) {
              return {

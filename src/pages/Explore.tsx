@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Search, ChevronRight, ChevronLeft, Check, ChefHat, Heart, Users, Award, MenuSquare, ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { getSupabase } from '../lib/supabase';
 
 // Reusable Image Slider Component
 function ImageSlider({ images, isHovered }: { images: string[], isHovered: boolean }) {
@@ -80,40 +81,117 @@ export default function Explore() {
   console.log("Explore component initialized with DEMO_CATERERS count:", DEMO_CATERERS?.length, "caterers count state:", caterers?.length);
 
   useEffect(() => {
-    let allCaterers = [...(DEMO_CATERERS || [])];
-    const raw = localStorage.getItem('registrations');
-    if (raw) {
-      try {
-        const allRegs = JSON.parse(raw);
-        if (Array.isArray(allRegs)) {
-          const approved = allRegs.filter((r: any) => r && r.status === 'Approved');
+    const fetchCaterers = async () => {
+      let allCaterers = [...(DEMO_CATERERS || [])];
+      
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('caterer_registrations')
+            .select('*')
+            .or('status.eq.Approved,status.eq.approved');
+            
+          if (error) {
+            throw error;
+          }
           
-          const formattedCaterers = approved.map((r: any) => ({
-             id: r.id,
-             name: r.businessName || 'Premium Caterer',
-             location: r.location || 'Hyderabad', 
-             type: r.type || 'Veg + Non-Veg',
-             startingPrice: r.startingPrice || 300,
-             rating: typeof r.rating === 'number' ? r.rating : 5.0,
-             reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
-             description: r.description || 'Welcome to our premium catering service.',
-             images: r.galleryPhotos || r.images || [],
-             logo: r.logo || null,
-             coverBanner: r.coverBanner || null,
-             address: r.address || 'Hyderabad, Telangana',
-             phone: r.phone || '+91 00000 00000',
-             menus: r.menus || [],
-             menuPackages: r.menuPackages || r.packages || [],
-             packages: r.packages || r.menuPackages || [],
-             menuItems: r.menuItems || []
-          }));
-          allCaterers = [...allCaterers, ...formattedCaterers];
+          if (data && Array.isArray(data)) {
+            const formattedCaterers = data.map((r: any) => ({
+               id: r.id,
+               name: r.businessName || 'Premium Caterer',
+               location: r.address || r.location || 'Hyderabad', 
+               type: r.type || 'Veg + Non-Veg',
+               startingPrice: r.startingPrice || 350,
+               rating: typeof r.rating === 'number' ? r.rating : 5.0,
+               reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
+               description: r.description || 'Welcome to our premium catering service.',
+               images: r.galleryPhotos || r.gallery || r.images || [],
+               logo: r.logo || null,
+               coverBanner: r.coverBanner || null,
+               address: r.address || 'Hyderabad, Telangana',
+               phone: r.phone || '+91 00000 00000',
+               menus: r.menus || [],
+               menuPackages: r.menuPackages || r.packages || [],
+               packages: r.packages || r.menuPackages || [],
+               menuItems: r.menuItems || []
+            }));
+            
+            allCaterers = [...allCaterers, ...formattedCaterers];
+            // Cache locally
+            localStorage.setItem('registrations', JSON.stringify(data));
+          }
+        } catch (e: any) {
+          console.error("Error fetching registrations from Supabase in Explore page, falling back to local:", e);
+          const raw = localStorage.getItem('registrations');
+          if (raw) {
+            try {
+              const allRegs = JSON.parse(raw);
+              if (Array.isArray(allRegs)) {
+                const approved = allRegs.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved'));
+                const formattedCaterers = approved.map((r: any) => ({
+                   id: r.id,
+                   name: r.businessName || 'Premium Caterer',
+                   location: r.location || 'Hyderabad', 
+                   type: r.type || 'Veg + Non-Veg',
+                   startingPrice: r.startingPrice || 350,
+                   rating: typeof r.rating === 'number' ? r.rating : 5.0,
+                   reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
+                   description: r.description || 'Welcome to our premium catering service.',
+                   images: r.galleryPhotos || r.images || [],
+                   logo: r.logo || null,
+                   coverBanner: r.coverBanner || null,
+                   address: r.address || 'Hyderabad, Telangana',
+                   phone: r.phone || '+91 00000 00000',
+                   menus: r.menus || [],
+                   menuPackages: r.menuPackages || r.packages || [],
+                   packages: r.packages || r.menuPackages || [],
+                   menuItems: r.menuItems || []
+                }));
+                allCaterers = [...allCaterers, ...formattedCaterers];
+              }
+            } catch (localParseError) {
+              console.error("Local parse error failed:", localParseError);
+            }
+          }
         }
-      } catch (e) {
-        console.error("Error parsing registrations in Explore page:", e);
+      } else {
+        const raw = localStorage.getItem('registrations');
+        if (raw) {
+          try {
+            const allRegs = JSON.parse(raw);
+            if (Array.isArray(allRegs)) {
+              const approved = allRegs.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved'));
+              const formattedCaterers = approved.map((r: any) => ({
+                 id: r.id,
+                 name: r.businessName || 'Premium Caterer',
+                 location: r.location || 'Hyderabad', 
+                 type: r.type || 'Veg + Non-Veg',
+                 startingPrice: r.startingPrice || 350,
+                 rating: typeof r.rating === 'number' ? r.rating : 5.0,
+                 reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
+                 description: r.description || 'Welcome to our premium catering service.',
+                 images: r.galleryPhotos || r.images || [],
+                 logo: r.logo || null,
+                 coverBanner: r.coverBanner || null,
+                 address: r.address || 'Hyderabad, Telangana',
+                 phone: r.phone || '+91 00000 00000',
+                 menus: r.menus || [],
+                 menuPackages: r.menuPackages || r.packages || [],
+                 packages: r.packages || r.menuPackages || [],
+                 menuItems: r.menuItems || []
+              }));
+              allCaterers = [...allCaterers, ...formattedCaterers];
+            }
+          } catch (e) {
+            console.error("Error parsing registrations in Explore page:", e);
+          }
+        }
       }
-    }
-    setCaterers(allCaterers);
+      setCaterers(allCaterers);
+    };
+
+    fetchCaterers();
   }, []);
 
   const filteredCaterers = (() => {

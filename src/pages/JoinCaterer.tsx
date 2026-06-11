@@ -334,84 +334,111 @@ export default function JoinCaterer() {
       }));
   };
 
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async (e: any) => {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
-    const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
+    
+    // Construct registration payload
     const newReg = {
-      id: Math.random().toString(36).substr(2, 9),
       userId: user?.id || 'demo-user',
       businessName: formData.businessName,
       owner: formData.ownerName,
+      ownerName: formData.ownerName,
       email: formData.email,
       phone: formData.mobile,
       alternatePhone: formData.alternateMobile,
       username: formData.username,
       password: formData.password,
-      location: formData.location,
+      address: formData.location,
       city: formData.city,
-      type: 'Caterer',
       status: 'Pending Approval',
-      date: new Date().toLocaleDateString('en-GB'),
-      menuPackages: menuPackages,
       logo: formData.catererLogo,
       coverBanner: formData.coverBanner,
+      founderImageUrl: formData.founderPhoto,
       ownerPhoto: formData.founderPhoto,
       branchPhoto: formData.branchPhoto,
-      galleryPhotos: formData.galleryPhotos
+      galleryPhotos: formData.galleryPhotos,
+      gallery: formData.galleryPhotos,
+      packages: menuPackages,
+      draftMenuPackages: menuPackages
     };
 
-    try {
-      localStorage.setItem('registrations', JSON.stringify([...existing, newReg]));
-      setStatus('pending');
-    } catch (err) {
-      console.error("Failed to save due to storage quota limit, attempting with minimized images", err);
-      // Quota exceeded - try to remove base64 uploads to fit within 5MB limit
-      const minimizedReg = {
-        ...newReg,
-        logo: (formData.catererLogo && formData.catererLogo.startsWith('data:image/')) ? '' : formData.catererLogo,
-        coverBanner: (formData.coverBanner && formData.coverBanner.startsWith('data:image/')) ? '' : formData.coverBanner,
-        ownerPhoto: (formData.founderPhoto && formData.founderPhoto.startsWith('data:image/')) ? '' : formData.founderPhoto,
-        branchPhoto: (formData.branchPhoto && formData.branchPhoto.startsWith('data:image/')) ? '' : formData.branchPhoto,
-        galleryPhotos: formData.galleryPhotos ? formData.galleryPhotos.filter(photo => photo && !photo.startsWith('data:image/')) : []
-      };
+    console.log("Database write starting. Payload to be inserted into public.caterer_registrations:", newReg);
+
+    const supabase = getSupabase();
+    if (supabase) {
       try {
-        localStorage.setItem('registrations', JSON.stringify([...existing, minimizedReg]));
-        alert("Your application was submitted successfully! (Note: High-resolution image uploads were optimized/cleared to fit local storage limit).");
+        const { data, error } = await (supabase
+          .from('caterer_registrations') as any)
+          .insert([newReg])
+          .select();
+
+        if (error) {
+          throw error;
+         }
+
+        console.log("Database write successful. Insert result:", data);
+        
+        // Populate local storage as a local high fidelity cache as well
+        const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
+        localStorage.setItem('registrations', JSON.stringify([...existing, { ...newReg, id: (data as any)?.[0]?.id || Math.random().toString(36).substr(2, 9) }]));
+        
         setStatus('pending');
-      } catch (err2) {
-        // If it still fails, let's optimize the existing registration history list to free room
-        console.warn("Optimizing existing history item sizes in localStorage...");
-        const optimizedExisting = existing.map((entry: any) => ({
-          ...entry,
-          logo: (entry.logo && entry.logo.startsWith('data:image/')) ? '' : entry.logo,
-          coverBanner: (entry.coverBanner && entry.coverBanner.startsWith('data:image/')) ? '' : entry.coverBanner,
-          ownerPhoto: (entry.ownerPhoto && entry.ownerPhoto.startsWith('data:image/')) ? '' : entry.ownerPhoto,
-          branchPhoto: (entry.branchPhoto && entry.branchPhoto.startsWith('data:image/')) ? '' : entry.branchPhoto,
-          galleryPhotos: entry.galleryPhotos ? entry.galleryPhotos.filter((photo: string) => photo && !photo.startsWith('data:image/')) : []
-        }));
+      } catch (err: any) {
+        console.error("CRITICAL DATABASE INSERT ERROR:", err);
+        alert(`Failed to save registration directly to Supabase: ${err.message || err.toString()}`);
+      }
+    } else {
+      console.warn("Supabase is not configured. Saving to localStorage as fallback...");
+      const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
+      const fallbackReg = { ...newReg, id: Math.random().toString(36).substr(2, 9) };
+      try {
+        localStorage.setItem('registrations', JSON.stringify([...existing, fallbackReg]));
+        setStatus('pending');
+      } catch (err) {
+        console.error("Failed to save due to storage quota limit, attempting with minimized images", err);
+        const minimizedReg = {
+          ...fallbackReg,
+          logo: (formData.catererLogo && formData.catererLogo.startsWith('data:image/')) ? '' : formData.catererLogo,
+          coverBanner: (formData.coverBanner && formData.coverBanner.startsWith('data:image/')) ? '' : formData.coverBanner,
+          ownerPhoto: (formData.founderPhoto && formData.founderPhoto.startsWith('data:image/')) ? '' : formData.founderPhoto,
+          branchPhoto: (formData.branchPhoto && formData.branchPhoto.startsWith('data:image/')) ? '' : formData.branchPhoto,
+          galleryPhotos: formData.galleryPhotos ? formData.galleryPhotos.filter(photo => photo && !photo.startsWith('data:image/')) : []
+        };
         try {
-          localStorage.setItem('registrations', JSON.stringify([...optimizedExisting, minimizedReg]));
-          alert("Your application was submitted successfully! (We optimized existing browser storage space to fit your registration).");
+          localStorage.setItem('registrations', JSON.stringify([...existing, minimizedReg]));
+          alert("Your application was submitted successfully! (Note: High-resolution image uploads were optimized/cleared to fit local storage limit).");
           setStatus('pending');
-        } catch (err3) {
-          // Ultimate fallback: minimal details with clear history if absolutely full
-          const minimalReg = {
-            ...newReg,
-            logo: '',
-            coverBanner: '',
-            ownerPhoto: '',
-            branchPhoto: '',
-            galleryPhotos: [],
-            menuPackages: []
-          };
+        } catch (err2) {
+          console.warn("Optimizing existing history item sizes in localStorage...");
+          const optimizedExisting = existing.map((entry: any) => ({
+            ...entry,
+            logo: (entry.logo && entry.logo.startsWith('data:image/')) ? '' : entry.logo,
+            coverBanner: (entry.coverBanner && entry.coverBanner.startsWith('data:image/')) ? '' : entry.coverBanner,
+            ownerPhoto: (entry.ownerPhoto && entry.ownerPhoto.startsWith('data:image/')) ? '' : entry.ownerPhoto,
+            branchPhoto: (entry.branchPhoto && entry.branchPhoto.startsWith('data:image/')) ? '' : entry.branchPhoto,
+            galleryPhotos: entry.galleryPhotos ? entry.galleryPhotos.filter((photo: string) => photo && !photo.startsWith('data:image/')) : []
+          }));
           try {
-            localStorage.setItem('registrations', JSON.stringify([minimalReg]));
-            alert("Your browser's local storage was severely full. We have successfully submitted your primary text details.");
+            localStorage.setItem('registrations', JSON.stringify([...optimizedExisting, minimizedReg]));
             setStatus('pending');
-          } catch (err4) {
-            alert("Could not submit because your browser local storage is completely full. Please clear some browser storage and try again.");
+          } catch (err3) {
+            const minimalReg = {
+              ...fallbackReg,
+              logo: '',
+              coverBanner: '',
+              ownerPhoto: '',
+              branchPhoto: '',
+              galleryPhotos: [],
+              packages: []
+            };
+            try {
+              localStorage.setItem('registrations', JSON.stringify([minimalReg]));
+              setStatus('pending');
+            } catch (err4) {
+              alert("Could not submit because your browser local storage is completely full. Please clear some browser storage and try again.");
+            }
           }
         }
       }
