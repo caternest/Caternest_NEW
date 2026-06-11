@@ -2,6 +2,11 @@
 -- Copy and run this script in the Supabase SQL Editor to set up your database.
 
 -- ==========================================
+-- 0. EXTENSIONS SCHEMA & PREREQUISITES
+-- ==========================================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- ==========================================
 -- 1. DATABASE TABLES
 -- ==========================================
 
@@ -29,8 +34,8 @@ CREATE TABLE IF NOT EXISTS public.caterer_registrations (
     "aadhaarNumber" TEXT,
     "fssaiNumber" TEXT,
     "gstNumber" TEXT,
-    "logoUrl" TEXT,
-    "coverUrl" TEXT,
+    "logo" TEXT,
+    "coverBanner" TEXT,
     "founderImageUrl" TEXT,
     "gallery" TEXT[],
     "packages" JSONB DEFAULT '[]'::jsonb,
@@ -101,41 +106,54 @@ ALTER TABLE public.food_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- Ensure storage.objects has RLS enabled
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
 -- ==========================================
 -- 3. CREATE POLICIES FOR TABLES
 -- ==========================================
 
 -- Caterer Registrations Policies
+DROP POLICY IF EXISTS "Allow public read access to caterers" ON public.caterer_registrations;
 CREATE POLICY "Allow public read access to caterers" ON public.caterer_registrations
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Allow anyone to insert registrations (joining flow)" ON public.caterer_registrations;
 CREATE POLICY "Allow anyone to insert registrations (joining flow)" ON public.caterer_registrations
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow user to update his/her own registration" ON public.caterer_registrations;
 CREATE POLICY "Allow user to update his/her own registration" ON public.caterer_registrations
     FOR UPDATE USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow direct deletes for owners/admin" ON public.caterer_registrations;
 CREATE POLICY "Allow direct deletes for owners/admin" ON public.caterer_registrations
     FOR DELETE USING (true);
 
 -- Food Images Policies
+DROP POLICY IF EXISTS "Allow public read to food image library" ON public.food_images;
 CREATE POLICY "Allow public read to food image library" ON public.food_images
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Allow insert/update/delete for everyone/admin" ON public.food_images;
 CREATE POLICY "Allow insert/update/delete for everyone/admin" ON public.food_images
     FOR ALL USING (true) WITH CHECK (true);
 
 -- Orders Policies
+DROP POLICY IF EXISTS "Allow public select on orders" ON public.orders;
 CREATE POLICY "Allow public select on orders" ON public.orders
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Allow insertion on orders" ON public.orders;
 CREATE POLICY "Allow insertion on orders" ON public.orders
     FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow updates on orders" ON public.orders;
 CREATE POLICY "Allow updates on orders" ON public.orders
     FOR UPDATE USING (true) WITH CHECK (true);
 
 -- Audit Logs Policies
+DROP POLICY IF EXISTS "Allow insert/select on audit logs" ON public.audit_logs;
 CREATE POLICY "Allow insert/select on audit logs" ON public.audit_logs
     FOR ALL USING (true) WITH CHECK (true);
 
@@ -143,38 +161,45 @@ CREATE POLICY "Allow insert/select on audit logs" ON public.audit_logs
 -- 4. STORAGE BUCKETS SETUP
 -- ==========================================
 
--- Enter these in the Storage section of the Supabase dashboard manually OR run these helpers if using plpgsql:
--- Make sure the buckets exist or create them.
--- Buckets: menu-cards, food-images, gallery-images, branding-images, documents
-
--- Enable storage policies (by default, users can create buckets via UI).
--- Here are public/private policies for storage objects.
-
--- Policy for Public Buckets: menu-cards, food-images, gallery-images, branding-images
--- Public files can be viewed by anyone, uploaded by anyone.
+-- Policies for Public Buckets: menu-cards, food-images, gallery-images, branding-images
+DROP POLICY IF EXISTS "Allow public read image access menu_cards" ON storage.objects;
 CREATE POLICY "Allow public read image access menu_cards"
     ON storage.objects FOR SELECT USING (bucket_id = 'menu-cards');
+
+DROP POLICY IF EXISTS "Allow anyone to upload to menu_cards" ON storage.objects;
 CREATE POLICY "Allow anyone to upload to menu_cards"
     ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'menu-cards');
 
+DROP POLICY IF EXISTS "Allow public read image access food_images" ON storage.objects;
 CREATE POLICY "Allow public read image access food_images"
     ON storage.objects FOR SELECT USING (bucket_id = 'food-images');
+
+DROP POLICY IF EXISTS "Allow anyone to upload to food_images" ON storage.objects;
 CREATE POLICY "Allow anyone to upload to food_images"
     ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'food-images');
 
+DROP POLICY IF EXISTS "Allow public read image access gallery_images" ON storage.objects;
 CREATE POLICY "Allow public read image access gallery_images"
     ON storage.objects FOR SELECT USING (bucket_id = 'gallery-images');
+
+DROP POLICY IF EXISTS "Allow anyone to upload to gallery_images" ON storage.objects;
 CREATE POLICY "Allow anyone to upload to gallery_images"
     ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'gallery-images');
 
+DROP POLICY IF EXISTS "Allow public read image access branding_images" ON storage.objects;
 CREATE POLICY "Allow public read image access branding_images"
     ON storage.objects FOR SELECT USING (bucket_id = 'branding-images');
+
+DROP POLICY IF EXISTS "Allow anyone to upload to branding_images" ON storage.objects;
 CREATE POLICY "Allow anyone to upload to branding_images"
     ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'branding-images');
 
 -- Policy for Private Bucket: documents (No public read, only authenticated/ownership check)
+DROP POLICY IF EXISTS "Restrict read on documents bucket" ON storage.objects;
 CREATE POLICY "Restrict read on documents bucket"
     ON storage.objects FOR SELECT USING (bucket_id = 'documents');
+
+DROP POLICY IF EXISTS "Allow uploads to documents" ON storage.objects;
 CREATE POLICY "Allow uploads to documents"
     ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'documents');
 
@@ -197,10 +222,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Triggers for automatic status updates
-CREATE OR REPLACE TRIGGER tr_caterer_updated
+DROP TRIGGER IF EXISTS tr_caterer_updated ON public.caterer_registrations;
+CREATE TRIGGER tr_caterer_updated
     BEFORE UPDATE ON public.caterer_registrations
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
-CREATE OR REPLACE TRIGGER tr_orders_updated
+DROP TRIGGER IF EXISTS tr_orders_updated ON public.orders;
+CREATE TRIGGER tr_orders_updated
     BEFORE UPDATE ON public.orders
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
