@@ -41,27 +41,52 @@ export function getSupabase() {
 // Helper to check if a bucket exists or upload file to Supabase storage
 export async function uploadToSupabaseBucket(bucket: string, filePath: string, fileBody: any, fileType: string = 'image/jpeg') {
   try {
-    const formData = new FormData();
-    formData.append('bucket', bucket);
-    formData.append('filePath', filePath);
-    formData.append('fileType', fileType);
-    formData.append('file', fileBody);
+    console.log(`[STORAGE CLIENT LOGGER] Requesting signed URL. Bucket: ${bucket}, Path: ${filePath}, Type: ${fileType}`);
 
-    const res = await fetch('/api/upload', {
+    // 1. Fetch pre-signed direct upload instruction from server
+    const signRes = await fetch('/api/storage/sign', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ bucket, filePath })
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`Upload API error for bucket ${bucket}:`, errText);
+    if (!signRes.ok) {
+      const errText = await signRes.text();
+      console.error(`[STORAGE CLIENT LOGGER] Failed to retrieve pre-signed URL for bucket ${bucket}:`, errText);
       return null;
     }
 
-    const json = await res.json();
-    return json.publicUrl || null;
+    const signJson = await signRes.json();
+    const { signedUrl, publicUrl } = signJson;
+
+    if (!signedUrl) {
+      console.error(`[STORAGE CLIENT LOGGER] Storage returned empty signed URL configuration:`, signJson);
+      return null;
+    }
+
+    console.log(`[STORAGE CLIENT LOGGER] Signed upload URL acquired. Uploading raw binary directly to Supabase storage...`);
+
+    // 2. Transmit the raw binary file directly to S3/Supabase storage endpoint with PUT
+    const uploadRes = await fetch(signedUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": fileType
+      },
+      body: fileBody
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      console.error(`[STORAGE CLIENT LOGGER] Direct object storage PUT operation failed:`, errText);
+      return null;
+    }
+
+    console.log(`[STORAGE CLIENT LOGGER] Direct client-to-bucket upload successful. Returning resolution URL: ${publicUrl}`);
+    return publicUrl || null;
   } catch (error) {
-    console.error(`Upload error in client wrapper for bucket ${bucket}:`, error);
+    console.error(`[STORAGE CLIENT LOGGER] direct-client-upload execution crash under bucket ${bucket}:`, error);
     return null;
   }
 }

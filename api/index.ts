@@ -27,6 +27,49 @@ const getSupabaseClient = () => {
 // API routes
 const upload = multer({ storage: multer.memoryStorage() });
 
+app.post("/api/storage/sign", async (req: any, res: any) => {
+  const bucket = req.body.bucket || "branding-images";
+  const filePath = req.body.filePath;
+
+  console.log(`[STORAGE SIGN] Initiating pre-signed URL generation. Bucket: ${bucket}, File Path: ${filePath}`);
+
+  if (!filePath) {
+    const errorMsg = "Presign failed: No filePath provided in JSON body";
+    console.error(`[STORAGE SIGN] ${errorMsg}`);
+    return res.status(400).json({ error: errorMsg });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    const errorMsg = "Presign failed: Supabase backend client or service role key is not configured.";
+    console.error(`[STORAGE SIGN] ${errorMsg}`);
+    return res.status(500).json({ error: errorMsg });
+  }
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUploadUrl(filePath);
+
+    if (error) {
+      console.error(`[STORAGE SIGN] Storage Error generating signed URL for bucket ${bucket}:`, error.message || error);
+      return res.status(500).json({ error: error.message, details: error });
+    }
+
+    const { data: publicData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    const publicUrl = publicData?.publicUrl || null;
+
+    console.log(`[STORAGE SIGN] Presigned URL and Public verification URL generated successfully under Service Role.`);
+    return res.json({ success: true, signedUrl: data.signedUrl, token: data.token, path: data.path, publicUrl });
+  } catch (err: any) {
+    console.error(`[STORAGE SIGN] Unexpected Error in pre-sign handler for bucket ${bucket}:`, err);
+    return res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
 app.post("/api/upload", upload.single("file"), async (req: any, res: any) => {
   const bucket = req.body.bucket || "branding-images";
   const filePath = req.body.filePath;
