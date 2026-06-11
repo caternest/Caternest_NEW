@@ -155,7 +155,7 @@ export function performOrderStatusUpdate(
       // Build Status History item
       const historyItem = {
         status: normalizedStatus,
-        updatedAt: timestamp,
+        updated_at: timestamp,
         updatedBy: actorEmail,
         role: actorRole,
         notes: extraData.notes || extraData.rejectionReason || extraData.specialNotes || 'Status changed'
@@ -187,7 +187,6 @@ export function performOrderStatusUpdate(
         status: normalizedStatus, // Persists standard value
         statusHistory: newHistory,
         status_history: newHistory,
-        updatedAt: timestamp,
         updated_at: timestamp,
         ...datesObj,
         ...extraData

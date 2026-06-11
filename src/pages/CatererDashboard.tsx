@@ -306,7 +306,7 @@ export default function CatererDashboard() {
         const allOrders = JSON.parse(rawOrders);
         const myOrders = allOrders.filter((o: any) => o.catererId === cid);
         // sort by newest
-        myOrders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        myOrders.sort((a: any, b: any) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime());
         setPartnerOrders(myOrders);
     }
   };
@@ -653,7 +653,7 @@ export default function CatererDashboard() {
       .filter(o => {
         const s = normalizeStatus(o.status);
         const isApprovedOrCompleted = s === 'approved' || s === 'completed';
-        return isApprovedOrCompleted && new Date(o.createdAt).getMonth() === new Date().getMonth();
+        return isApprovedOrCompleted && new Date(o.created_at || o.createdAt).getMonth() === new Date().getMonth();
       })
       .reduce((acc, curr) => acc + (((Number(curr.pricePerPlate) || 0) * (Number(curr.guests) || 0)) * 0.9), 0);
 
@@ -771,7 +771,7 @@ export default function CatererDashboard() {
                                    <div>
                                        <p className="font-bold text-slate-800 text-sm">New order received from {ord.customerName}</p>
                                        <p className="text-xs text-slate-500 mt-1">Package: {ord.packageDetails?.packageName || 'Custom'} • Guests: {ord.guests} • Date: {ord.eventDate || 'TBD'}</p>
-                                       <p className="text-[10px] text-slate-400 mt-2">{new Date(ord.createdAt).toLocaleString()}</p>
+                                       <p className="text-[10px] text-slate-400 mt-2">{new Date(ord.created_at || ord.createdAt).toLocaleString()}</p>
                                    </div>
                                </div>
                            ))}
@@ -806,7 +806,7 @@ export default function CatererDashboard() {
                                   {partnerOrders.map((ord) => (
                                       <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors group">
                                           <td className="px-6 py-4 font-mono font-medium text-slate-700">{ord.id}</td>
-                                          <td className="px-6 py-4 text-slate-500">{new Date(ord.createdAt).toLocaleDateString()}<br/><span className="text-[10px]">{new Date(ord.createdAt).toLocaleTimeString()}</span></td>
+                                          <td className="px-6 py-4 text-slate-500">{new Date(ord.created_at || ord.createdAt).toLocaleDateString()}<br/><span className="text-[10px]">{new Date(ord.created_at || ord.createdAt).toLocaleTimeString()}</span></td>
                                           <td className="px-6 py-4 font-bold text-slate-800">{ord.customerName}</td>
                                           <td className="px-6 py-4 text-slate-500">{ord.phone || 'N/A'}</td>
                                           <td className="px-6 py-4 text-slate-600">{ord.packageDetails?.packageName || 'Custom'}</td>
@@ -859,7 +859,7 @@ export default function CatererDashboard() {
                                       return (
                                       <tr key={'pay-'+ord.id} className="hover:bg-slate-50 transition-colors">
                                           <td className="px-6 py-4 font-mono font-medium text-slate-700">{ord.id}</td>
-                                          <td className="px-6 py-4 text-slate-500">{new Date(ord.createdAt).toLocaleDateString()}</td>
+                                          <td className="px-6 py-4 text-slate-500">{new Date(ord.created_at || ord.createdAt).toLocaleDateString()}</td>
                                           <td className="px-6 py-4 font-bold text-slate-800">{ord.customerName}</td>
                                           <td className="px-6 py-4">₹{gross.toLocaleString()}</td>
                                           <td className="px-6 py-4 text-red-600">-₹{((gross * 0.1) + (ord.platformFee || 0)).toLocaleString()}</td>
@@ -1069,10 +1069,10 @@ export default function CatererDashboard() {
                )}
 
             </div>
-        </div>
+         </div>
       </div>
 
-      {/* Order Details Modal */}
+              {/* Order Details Modal */}
       <AnimatePresence>
           {selectedOrder && !showRejectModal && !showModifyModal && (
               <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1085,7 +1085,7 @@ export default function CatererDashboard() {
                       <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                           <div>
                               <h3 className="font-display font-bold text-2xl text-slate-900">Order #{selectedOrder.id}</h3>
-                              <p className="text-sm text-slate-500">Created: {new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                              <p className="text-sm text-slate-500">Created: {new Date(selectedOrder.created_at || selectedOrder.createdAt).toLocaleString()}</p>
                           </div>
                           <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><X size={20}/></button>
                       </div>

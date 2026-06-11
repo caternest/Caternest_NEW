@@ -162,6 +162,8 @@ export default function AdminDashboard() {
             ...o,
             status: targetStatus,
             status_history: nextHistory,
+            updated_at: nowStr,
+            updatedAt: nowStr,
             ...extra
           };
         }
@@ -186,6 +188,7 @@ export default function AdminDashboard() {
             targetRole: 'customer',
             userId: o.userId || '',
             read: false,
+            created_at: new Date().toISOString(),
             createdAt: new Date().toISOString()
           });
           notifications.push({
@@ -196,6 +199,7 @@ export default function AdminDashboard() {
             targetRole: 'caterer',
             catererId: o.catererId || '',
             read: false,
+            created_at: new Date().toISOString(),
             createdAt: new Date().toISOString()
           });
           localStorage.setItem('notifications', JSON.stringify(notifications));
@@ -1081,7 +1085,7 @@ export default function AdminDashboard() {
                                                   {ord.status}
                                               </span>
                                           </td>
-                                          <td className="px-6 py-4 text-xs text-slate-500">{new Date(ord.createdAt || ord.created_at).toLocaleDateString()}</td>
+                                          <td className="px-6 py-4 text-xs text-slate-500">{new Date(ord.created_at || ord.createdAt).toLocaleDateString()}</td>
                                           <td className="px-6 py-4 text-center">
                                               <button 
                                                   onClick={() => {
