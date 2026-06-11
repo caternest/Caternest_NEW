@@ -40,29 +40,28 @@ export function getSupabase() {
 
 // Helper to check if a bucket exists or upload file to Supabase storage
 export async function uploadToSupabaseBucket(bucket: string, filePath: string, fileBody: any, fileType: string = 'image/jpeg') {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
   try {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, fileBody, {
-        contentType: fileType,
-        upsert: true
-      });
+    const formData = new FormData();
+    formData.append('bucket', bucket);
+    formData.append('filePath', filePath);
+    formData.append('fileType', fileType);
+    formData.append('file', fileBody);
 
-    if (error) {
-      console.error(`Error uploading to bucket ${bucket}:`, error.message);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`Upload API error for bucket ${bucket}:`, errText);
       return null;
     }
 
-    const { data: publicData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    return publicData?.publicUrl || null;
+    const json = await res.json();
+    return json.publicUrl || null;
   } catch (error) {
-    console.error(`Upload error in bucket ${bucket}:`, error);
+    console.error(`Upload error in client wrapper for bucket ${bucket}:`, error);
     return null;
   }
 }

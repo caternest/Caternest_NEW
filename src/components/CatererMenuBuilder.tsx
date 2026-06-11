@@ -208,35 +208,30 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
     }, 1000);
 
     try {
-      const base64Images: string[] = [];
-      const readPromises = Array.from(files).map(async (file: File) => {
+      const urls: string[] = [];
+      const uploadPromises = Array.from(files).map(async (file: File) => {
           try {
-            const supabase = getSupabase();
-            if (supabase) {
-              const fileExt = file.name.split('.').pop();
+              const fileExt = file.name.split('.').pop() || 'pdf';
               const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
-              await uploadToSupabaseBucket('menu-cards', fileName, file, file.type);
-            }
+              const publicUrl = await uploadToSupabaseBucket('menu-cards', fileName, file, file.type);
+              if (publicUrl) {
+                  urls.push(publicUrl);
+              } else {
+                  console.warn(`Upload failed for ${file.name}, returned empty URL`);
+              }
           } catch (uploadErr) {
-            console.warn("Storage item upload failed:", uploadErr);
+            console.error("Storage item upload failed:", uploadErr);
           }
-
-          return new Promise<void>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                  if (event.target?.result) {
-                      base64Images.push(event.target.result as string);
-                  }
-                  resolve();
-              };
-              reader.readAsDataURL(file);
-          });
       });
 
-      await Promise.all(readPromises);
+      await Promise.all(uploadPromises);
       clearInterval(uploadInterval);
       setUploadProgress(100);
       setScanStatus('Analyzing menu layout & text...');
+
+      if (urls.length === 0) {
+        throw new Error('Could not upload menu documents to secure storage. Please check your storage settings and try again.');
+      }
 
       // Simulate scan progress
       const scanInterval = setInterval(() => {
@@ -255,8 +250,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         headers: {
           'Content-Type': 'application/json',
         },
-        // We now send 'images' array for multi-file support
-        body: JSON.stringify({ images: base64Images }),
+        body: JSON.stringify({ urls }),
       });
 
       clearInterval(scanInterval);

@@ -4,12 +4,14 @@ import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import fs from "fs";
+import multer from "multer";
 
 dotenv.config();
 
 const app = express();
 
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Lazy initializer for Supabase Server Client
 const getSupabaseClient = () => {
@@ -23,21 +25,133 @@ const getSupabaseClient = () => {
 };
 
 // API routes
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post("/api/upload", upload.single("file"), async (req: any, res: any) => {
+  const bucket = req.body.bucket || "branding-images";
+  const filePath = req.body.filePath;
+  const fileType = req.body.fileType || "image/jpeg";
+  const file = req.file;
+
+  console.log(`[STORAGE LOG] Initiating upload. Bucket: ${bucket}, File Name/Path: ${filePath}, File Type: ${fileType}, System File Size: ${file ? file.size : 0} bytes`);
+
+  if (!file) {
+    const errorMsg = "Upload failed: No file provided under post multipart field 'file'";
+    console.error(`[STORAGE LOG] ${errorMsg}`);
+    return res.status(400).json({ error: errorMsg });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    const errorMsg = "Upload failed: Supabase backend client or service role key is not configured.";
+    console.error(`[STORAGE LOG] ${errorMsg}`);
+    return res.status(500).json({ error: errorMsg });
+  }
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file.buffer, {
+        contentType: fileType,
+        upsert: true
+      });
+
+    const uploadResultLog = error ? `Error: ${error.message || JSON.stringify(error)}` : "Success";
+    console.log(`[STORAGE LOG] Upload attempt complete. Result: ${uploadResultLog}`);
+
+    if (error) {
+      console.error(`[STORAGE LOG] Storage Error uploading to bucket ${bucket}:`, error.message || error);
+      return res.status(500).json({ error: error.message, details: error });
+    }
+
+    const { data: publicData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    const publicUrl = publicData?.publicUrl || null;
+
+    console.log(`[STORAGE LOG] Upload successful! Bucket: ${bucket}, File Name: ${filePath}, Result URL: ${publicUrl}`);
+
+    return res.json({ success: true, publicUrl });
+  } catch (err: any) {
+    console.error(`[STORAGE LOG] Unexpected Error in upload handler for bucket ${bucket}:`, err);
+    return res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
 const parseMenuHandler = async (req: any, res: any) => {
   try {
-    const { imageBase64, images, catererId } = req.body;
+    const { imageBase64, images, urls, catererId } = req.body;
     
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
     }
 
-    const imageArray = images || (imageBase64 ? [imageBase64] : []);
-    if (imageArray.length === 0) {
-      return res.status(400).json({ error: "Image data is required" });
+    const parts: any[] = [];
+
+    if (urls && Array.isArray(urls) && urls.length > 0) {
+      console.log(`[MENU PARSER] Processing menu files from public URLs:`, urls);
+      for (const url of urls) {
+        try {
+          console.log(`[MENU PARSER] Server fetching menu file: ${url}`);
+          const fetchRes = await fetch(url);
+          if (!fetchRes.ok) {
+            throw new Error(`HTTP error fetching ${url}: ${fetchRes.statusText}`);
+          }
+          const arrayBuf = await fetchRes.arrayBuffer();
+          const base64Data = Buffer.from(arrayBuf).toString("base64");
+          
+          let mimeType = fetchRes.headers.get("content-type") || "application/pdf";
+          if (url.toLowerCase().endsWith(".pdf")) {
+            mimeType = "application/pdf";
+          } else if (url.toLowerCase().endsWith(".png")) {
+            mimeType = "image/png";
+          } else if (url.toLowerCase().endsWith(".jpg") || url.toLowerCase().endsWith(".jpeg")) {
+            mimeType = "image/jpeg";
+          }
+
+          parts.push({
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType
+            }
+          });
+        } catch (fetchErr: any) {
+          console.error(`[MENU PARSER] Failed to fetch menu file from storage: ${url}`, fetchErr);
+        }
+      }
+    } else {
+      const imageArray = images || (imageBase64 ? [imageBase64] : []);
+      if (imageArray.length === 0) {
+        return res.status(400).json({ error: "Image data (images/imageBase64) or urls is required" });
+      }
+
+      imageArray.forEach((b64: string) => {
+        const match = b64.match(/^data:(.+?);base64,(.+)$/);
+        let mimeType = "image/jpeg";
+        let base64Data = b64;
+    
+        if (match) {
+          mimeType = match[1];
+          base64Data = match[2];
+        } else {
+          base64Data = b64.replace(/^data:image\/\w+;base64,/, "");
+        }
+        parts.push({
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType
+          }
+        });
+      });
+    }
+
+    if (parts.length === 0) {
+      return res.status(400).json({ error: "No valid menu document content could be fetched or extracted" });
     }
 
     // Lazy initialization of active GoogleGenAI Client
@@ -48,25 +162,6 @@ const parseMenuHandler = async (req: any, res: any) => {
           'User-Agent': 'aistudio-build',
         }
       }
-    });
-
-    const parts: any[] = imageArray.map((b64: string) => {
-      const match = b64.match(/^data:(.+?);base64,(.+)$/);
-      let mimeType = "image/jpeg";
-      let base64Data = b64;
-  
-      if (match) {
-        mimeType = match[1];
-        base64Data = match[2];
-      } else {
-        base64Data = b64.replace(/^data:image\/\w+;base64,/, "");
-      }
-      return {
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      };
     });
 
     const prompt = `
