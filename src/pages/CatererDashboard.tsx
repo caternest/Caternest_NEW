@@ -339,115 +339,136 @@ export default function CatererDashboard() {
     }
   };
 
-  const handleRequestChanges = () => {
+  const handleRequestChanges = async () => {
     if (!changesRequestText.trim()) {
       toast("Please specify what changes or details you are requesting.", "error");
       return;
     }
-    performOrderStatusUpdate(
-      selectedOrder.id, 
-      'changes_requested', 
-      { 
-        changesRequestedMemo: changesRequestText,
-        specialNotes: changesRequestText 
-      }, 
-      user?.email || 'partner@caternest.com', 
-      'partner'
-    );
     
-    storeNotification(
-      selectedOrder.id,
-      "Details Requested",
-      `The caterer has requested updates for your order #${selectedOrder.id}: ${changesRequestText}`,
-      "customer",
-      caterer?.id
-    );
+    try {
+      await performOrderStatusUpdate(
+        selectedOrder.id, 
+        'changes_requested', 
+        { 
+          changesRequestedMemo: changesRequestText,
+          specialNotes: changesRequestText 
+        }, 
+        user?.email || 'partner@caternest.com', 
+        'partner'
+      );
+      
+      storeNotification(
+        selectedOrder.id,
+        "Details Requested",
+        `The caterer has requested updates for your order #${selectedOrder.id}: ${changesRequestText}`,
+        "customer",
+        caterer?.id
+      );
 
-    setShowChangesRequestModal(false);
-    setSelectedOrder(null);
-    setChangesRequestText('');
-    refreshData();
-    toast("Requested changes successfully", "success");
+      setShowChangesRequestModal(false);
+      setSelectedOrder(null);
+      setChangesRequestText('');
+      await refreshData();
+      toast("Requested changes successfully", "success");
+    } catch (err) {
+      console.error("Failed to request changes:", err);
+      toast("Error requested changes", "error");
+    }
   };
 
-  const handleApprove = (id: string) => {
-    performOrderStatusUpdate(id, 'approved', {}, user?.email || 'partner@caternest.com', 'partner');
-    
-    const ord = partnerOrders.find(o => o.id === id);
-    storeNotification(
-      id,
-      "Order Approved! 🎉",
-      `Your booking query for ${ord?.eventDate || 'selected date'} has been approved by the caterer.`,
-      "customer",
-      caterer?.id
-    );
-    
-    storeNotification(
-      id,
-      "Order Approved",
-      `Order #${id} has been approved by ${caterer?.businessName || 'Caterer'}.`,
-      "admin"
-    );
+  const handleApprove = async (id: string) => {
+    try {
+      await performOrderStatusUpdate(id, 'approved', {}, user?.email || 'partner@caternest.com', 'partner');
+      
+      const ord = partnerOrders.find(o => o.id === id);
+      storeNotification(
+        id,
+        "Order Approved! 🎉",
+        `Your booking query for ${ord?.eventDate || 'selected date'} has been approved by the caterer.`,
+        "customer",
+        caterer?.id
+      );
+      
+      storeNotification(
+        id,
+        "Order Approved",
+        `Order #${id} has been approved by ${caterer?.businessName || 'Caterer'}.`,
+        "admin"
+      );
 
-    refreshData();
-    setSelectedOrder(null);
-    toast("Order approved successfully", "success");
+      await refreshData();
+      setSelectedOrder(null);
+      toast("Order approved successfully", "success");
+    } catch (err) {
+      console.error("Failed to approve order:", err);
+      toast("Error approving order", "error");
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if(!rejectReason.trim()) {
       toast("Please provide a rejection reason.", "error");
       return;
     }
-    performOrderStatusUpdate(
-      selectedOrder.id, 
-      'rejected', 
-      { rejectionReason: rejectReason }, 
-      user?.email || 'partner@caternest.com', 
-      'partner'
-    );
-    
-    storeNotification(
-      selectedOrder.id,
-      "Order Rejected",
-      `Your booking request was declined. Reason: ${rejectReason}`,
-      "customer",
-      caterer?.id
-    );
-    
-    setShowRejectModal(false);
-    setSelectedOrder(null);
-    setRejectReason('');
-    refreshData();
-    toast("Order rejected successfully", "success");
+    try {
+      await performOrderStatusUpdate(
+        selectedOrder.id, 
+        'rejected', 
+        { rejectionReason: rejectReason }, 
+        user?.email || 'partner@caternest.com', 
+        'partner'
+      );
+      
+      storeNotification(
+        selectedOrder.id,
+        "Order Rejected",
+        `Your booking request was declined. Reason: ${rejectReason}`,
+        "customer",
+        caterer?.id
+      );
+      
+      setShowRejectModal(false);
+      setSelectedOrder(null);
+      setRejectReason('');
+      await refreshData();
+      toast("Order rejected successfully", "success");
+    } catch (err) {
+      console.error("Failed to reject order:", err);
+      toast("Error rejecting order", "error");
+    }
   };
 
-  const handleModify = () => {
-    performOrderStatusUpdate(
-      selectedOrder.id, 
-      'changes_requested', 
-      {
-        pricePerPlate: modifyData.price,
-        guests: modifyData.guests,
-        specialNotes: modifyData.notes,
-        totalEstimate: modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)
-      }, 
-      user?.email || 'partner@caternest.com', 
-      'partner'
-    );
-    
-    storeNotification(
-      selectedOrder.id,
-      "Quote Proposal Adjusted",
-      `The caterer has sent an adjusted quotation of ₹${(modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)).toLocaleString()}`,
-      "customer",
-      caterer?.id
-    );
+  const handleModify = async () => {
+    try {
+      await performOrderStatusUpdate(
+        selectedOrder.id, 
+        'quotation_updated', 
+        {
+          pricePerPlate: modifyData.price,
+          guests: modifyData.guests,
+          specialNotes: modifyData.notes,
+          totalEstimate: modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)
+        }, 
+        user?.email || 'partner@caternest.com', 
+        'partner'
+      );
+      
+      storeNotification(
+        selectedOrder.id,
+        "Quote Proposal Adjusted",
+        `The caterer has sent an adjusted quotation of ₹${(modifyData.price * modifyData.guests + (selectedOrder.platformFee || 0)).toLocaleString()}`,
+        "customer",
+        caterer?.id
+      );
 
-    setShowModifyModal(false);
-    setSelectedOrder(null);
-    refreshData();
-    toast("Adjusted quotation sent to customer", "success");
+      setShowModifyModal(false);
+      setSelectedOrder(null);
+      await refreshData();
+      toast("Adjusted quotation sent to customer", "success");
+    } catch (err) {
+      console.error("Failed to modify quote:", err);
+      toast("Error modifying quote", "error");
+    }
   };
 
   const openModifyModal = (ord: any) => {
@@ -1195,6 +1216,25 @@ export default function CatererDashboard() {
                      <div className="flex gap-3 justify-end mt-2">
                          <button onClick={() => setShowRejectModal(false)} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancel</button>
                          <button onClick={handleReject} className="px-4 py-2 font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-md shadow-red-600/20 w-32">Confirm Reject</button>
+                     </div>
+                 </motion.div>
+              </div>
+          )}
+
+          {showChangesRequestModal && (
+              <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+                     <h3 className="text-xl font-bold text-slate-900 mb-2">Request Order Changes</h3>
+                     <p className="text-sm text-slate-500 mb-4">Please specify what changes, details, or clarifications you are requesting from the customer. The customer will be prompted to update their choices.</p>
+                     <textarea 
+                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-blue-500 outline-none resize-none h-24 mb-4"
+                         placeholder="e.g. Please specify dessert choices, adjust event start time, etc..."
+                         value={changesRequestText}
+                         onChange={(e)=>setChangesRequestText(e.target.value)}
+                     ></textarea>
+                     <div className="flex gap-3 justify-end mt-2">
+                         <button onClick={() => { setShowChangesRequestModal(false); setChangesRequestText(''); }} className="px-4 py-2 font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancel</button>
+                         <button onClick={handleRequestChanges} className="px-4 py-2 font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md shadow-blue-600/20">Send Request</button>
                      </div>
                  </motion.div>
               </div>

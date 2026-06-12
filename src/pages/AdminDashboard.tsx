@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
+import { generateUUID } from '../lib/orderUtils';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images'>('overview');
@@ -133,34 +134,69 @@ export default function AdminDashboard() {
       setAuditLogs(updatedLogs);
   };
 
-  const performAdminOrderStatusUpdate = (orderId: string, targetStatus: string) => {
+  const performAdminOrderStatusUpdate = async (orderId: string, targetStatus: string) => {
     const raw = localStorage.getItem('orders') || '[]';
+    // Requirement 7: Console log BEFORE update
+    console.log("[ORDER UPDATE PROGRESS] Admin forcing status: Before update:", { orderId, targetStatus });
+    
     try {
       const parsed = JSON.parse(raw);
+      const o = parsed.find((ord: any) => ord.id === orderId);
+      
+      const history = o && Array.isArray(o.status_history) ? o.status_history : [];
+      const nowStr = new Date().toISOString();
+      const nextHistory = [
+        ...history,
+        { status: targetStatus, changedAt: nowStr, changedBy: 'admin', note: `Status forced by Administrator` }
+      ];
+      
+      const extra: any = {};
+      if (targetStatus === 'approved' || targetStatus === 'Approved') {
+        extra.approved_at = nowStr;
+        extra.approvedAt = nowStr;
+      } else if (targetStatus === 'rejected' || targetStatus === 'Rejected') {
+        extra.rejected_at = nowStr;
+        extra.rejectedAt = nowStr;
+      } else if (targetStatus === 'completed' || targetStatus === 'Completed') {
+        extra.completed_at = nowStr;
+        extra.completedAt = nowStr;
+      }
+
+      const updatePayload = {
+        status: targetStatus,
+        status_history: nextHistory,
+        statusHistory: nextHistory,
+        updated_at: nowStr,
+        ...extra
+      };
+
+      // Requirement 6: Every action must be persisted DIRECTLY in Supabase orders table
+      const supabase = getSupabase() as any;
+      if (supabase) {
+        console.log(`[ORDER UPDATE PROGRESS] Direct SQL forcing status update in Supabase...`);
+        const { data, error } = await supabase
+          .from('orders')
+          .update(updatePayload)
+          .eq('id', orderId)
+          .select();
+
+        // Requirement 7: Console log update error or result
+        if (error) {
+          console.error("[ORDER UPDATE ERROR] Admin status update rejected by Supabase:", error);
+          throw error;
+        }
+
+        console.log("[ORDER UPDATE SUCCESS] Updated row result:", data);
+      } else {
+        console.warn("[ORDER UPDATE PROGRESS] Supabase not connected. Updating local state cache only.");
+      }
+
+      // Update local storage
       const updated = parsed.map((o: any) => {
         if (o.id === orderId) {
-          const history = Array.isArray(o.status_history) ? o.status_history : [];
-          const nowStr = new Date().toISOString();
-          const nextHistory = [
-            ...history,
-            { status: targetStatus, changedAt: nowStr, changedBy: 'admin', note: `Status forced by Administrator` }
-          ];
-          
-          const extra: any = {};
-          if (targetStatus === 'approved' || targetStatus === 'Approved') {
-            extra.approved_at = nowStr;
-          } else if (targetStatus === 'rejected' || targetStatus === 'Rejected') {
-            extra.rejected_at = nowStr;
-          } else if (targetStatus === 'completed' || targetStatus === 'Completed') {
-            extra.completed_at = nowStr;
-          }
-          
           return {
             ...o,
-            status: targetStatus,
-            status_history: nextHistory,
-            updated_at: nowStr,
-            ...extra
+            ...updatePayload
           };
         }
         return o;
@@ -168,15 +204,14 @@ export default function AdminDashboard() {
       localStorage.setItem('orders', JSON.stringify(updated));
       setOrders(updated);
 
-      // Create Admin Audit Log and Customer notification
-      const o = updated.find((ord: any) => ord.id === orderId);
+      // Create admin audit log and notifications
       if (o) {
         logAudit(`Force status: ${targetStatus}`, `Order #${orderId} (${o.customerName})`);
         
         const notificationRaw = localStorage.getItem('notifications') || '[]';
         try {
           const notifications = JSON.parse(notificationRaw);
-          notifications.push({
+          const customerNotif = {
             id: 'notif-' + Math.random().toString(36).substring(2, 9),
             orderId: orderId,
             title: `Order Status Adjusted by Admin`,
@@ -185,8 +220,8 @@ export default function AdminDashboard() {
             userId: o.userId || '',
             read: false,
             created_at: new Date().toISOString()
-          });
-          notifications.push({
+          };
+          const catererNotif = {
             id: 'notif-' + Math.random().toString(36).substring(2, 9),
             orderId: orderId,
             title: `Order Force Updated`,
@@ -195,16 +230,33 @@ export default function AdminDashboard() {
             catererId: o.catererId || '',
             read: false,
             created_at: new Date().toISOString()
-          });
+          };
+          notifications.push(customerNotif);
+          notifications.push(catererNotif);
           localStorage.setItem('notifications', JSON.stringify(notifications));
+
+          // Also insert notifications into Supabase table directly for robustness
+          if (supabase) {
+            const sanitizedCatererId = o.catererId && o.catererId.length === 36 ? o.catererId : null;
+            await supabase.from('notifications').insert([
+              { ...customerNotif, id: generateUUID() },
+              { ...catererNotif, id: generateUUID(), catererId: sanitizedCatererId }
+            ]);
+          }
         } catch(err) {
-          console.error(err);
+          console.error("Failed to generate admin push notifications:", err);
         }
       }
+
+      // Requirement 7: Console log AFTER complete load
+      console.log("[ORDER UPDATE PROGRESS] Force status successfully resolved.");
+
       toast(`Order #${orderId} updated to ${targetStatus}`, "success");
-      fetchSupabaseData();
+      
+      // Requirement 8: Automatically refresh the layout
+      await fetchSupabaseData();
     } catch (err) {
-      console.error(err);
+      console.error("[ORDER UPDATE ERROR] Failure during Admin status force transaction:", err);
       toast("Error performing status change", "error");
     }
   };
