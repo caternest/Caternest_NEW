@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     "specialNotes" TEXT,
     "pricePerPlate" NUMERIC,
     "platformFee" NUMERIC,
+    "venue" TEXT,
     "status_history" JSONB DEFAULT '[]'::jsonb,
     "statusHistory" JSONB DEFAULT '[]'::jsonb,
     "internal_notes" TEXT,
@@ -277,3 +278,28 @@ DROP TRIGGER IF EXISTS tr_orders_updated ON public.orders;
 CREATE TRIGGER tr_orders_updated
     BEFORE UPDATE ON public.orders
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- ==========================================
+-- 6. SCHEMAS SYNC MIGRATIONS (FOR EXISTING TABLES)
+-- ==========================================
+-- Run this block if you already have the 'public.orders' table created
+-- but need to add any missing column to prevent schema cache warnings!
+
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "venue" TEXT;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "eventType" TEXT;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "phone" TEXT;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "guests" INTEGER;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "totalEstimate" NUMERIC;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "pricePerPlate" NUMERIC;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "platformFee" NUMERIC;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "selectedItems" JSONB DEFAULT '[]'::jsonb;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "packageDetails" JSONB DEFAULT '{}'::jsonb;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "matchedSlab" JSONB DEFAULT '{}'::jsonb;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "specialNotes" TEXT;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "internalNotes" TEXT;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "statusHistory" JSONB DEFAULT '[]'::jsonb;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMPTZ;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "rejectedAt" TIMESTAMPTZ;
+-- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMPTZ;
+-- NOTIFY pgrst, 'reload schema';
+
