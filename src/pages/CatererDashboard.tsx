@@ -167,6 +167,12 @@ export default function CatererDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [partnerOrders, setPartnerOrders] = useState<any[]>([]);
   const [caterer, setCaterer] = useState<any>(null);
+
+  // New filters and date-range states
+  const [orderListFilter, setOrderListFilter] = useState<'all' | 'pending' | 'approved' | 'completed' | 'revenue'>('all');
+  const [eventFilter, setEventFilter] = useState<'7' | '15' | '30' | 'custom'>('7');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   
   // Modals
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -193,7 +199,32 @@ export default function CatererDashboard() {
 
   useEffect(() => {
     refreshData();
-  }, []);
+
+    const supabase = getSupabase();
+    if (supabase) {
+      let cid = catererDashboardId;
+      if (!cid && user) cid = user.id;
+      if (cid) {
+        // Subscribe to order modifications for this caterer
+        const channel = supabase
+          .channel(`caterer-orders-realtime-${cid}`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'orders', filter: `catererId=eq.${cid}` },
+            (payload) => {
+              console.log("[REALTIME] Order update received on Caterer Dashboard:", payload);
+              refreshData();
+              reloadNotifications();
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }
+    }
+  }, [user]);
 
   const refreshData = async () => {
     // Fetch Caterer Details
@@ -682,10 +713,75 @@ export default function CatererDashboard() {
     return getStatusBadgeColor(status);
   };
 
+  const unreadNotificationsCount = localNotifications.filter(n => !n.read).length;
+
+  const filteredOrderList = partnerOrders.filter((o) => {
+    const norm = normalizeStatus(o.status);
+    if (orderListFilter === 'pending') {
+      return norm === 'pending' || norm === 'changes_requested' || o.status === 'Submitted' || o.status === 'Pending Caterer Review';
+    }
+    if (orderListFilter === 'approved') {
+      return norm === 'approved' || o.status === 'Approved';
+    }
+    if (orderListFilter === 'completed') {
+      return norm === 'completed' || o.status === 'Completed';
+    }
+    if (orderListFilter === 'revenue') {
+      return norm === 'approved' || norm === 'completed' || o.status === 'Approved' || o.status === 'Completed';
+    }
+    return true; // 'all'
+  });
+
+  const getFilteredUpcomingEvents = () => {
+    const approved = partnerOrders.filter(o => {
+      const norm = normalizeStatus(o.status);
+      return (norm === 'approved' || o.status === 'Approved') && o.eventDate;
+    });
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const filtered = approved.filter(o => {
+      const evDate = new Date(o.eventDate);
+      if (isNaN(evDate.getTime())) return false;
+      
+      if (evDate < todayStart) return false;
+
+      const diffTime = evDate.getTime() - todayStart.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (eventFilter === '7') {
+        return diffDays <= 7;
+      }
+      if (eventFilter === '15') {
+        return diffDays <= 15;
+      }
+      if (eventFilter === '30') {
+        return diffDays <= 30;
+      }
+      if (eventFilter === 'custom') {
+        if (customStartDate) {
+          const start = new Date(customStartDate);
+          if (!isNaN(start.getTime()) && evDate < start) return false;
+        }
+        if (customEndDate) {
+          const end = new Date(customEndDate);
+          const endPlusDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59);
+          if (!isNaN(end.getTime()) && evDate > endPlusDay) return false;
+        }
+        return true;
+      }
+      return true;
+    });
+
+    filtered.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+    return filtered;
+  };
+
   const navItems = [
       { id: 'dashboard', label: 'Dashboard', icon: Activity },
       { id: 'orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrders > 0 ? pendingOrders : null },
-      { id: 'notifications', label: 'Notifications', icon: Bell },
+      { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null },
       { id: 'payments', label: 'Payments', icon: CreditCard },
       { id: 'profile', label: 'Profile', icon: User },
       { id: 'gallery', label: 'Gallery', icon: ImageIcon },
@@ -733,34 +829,136 @@ export default function CatererDashboard() {
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                            <div><p className="text-sm font-bold text-slate-500">Total Orders</p><p className="text-2xl font-bold text-slate-900">{totalOrders}</p></div>
+                            <button onClick={() => { setActiveTab('orders'); setOrderListFilter('all'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-blue-600 transition-colors uppercase tracking-wider">Total Orders</p><p className="text-2xl font-bold text-slate-900 mt-1">{totalOrders}</p></button>
                             <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><Package size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                            <div><p className="text-sm font-bold text-slate-500">Pending Orders</p><p className="text-2xl font-bold text-amber-600">{pendingOrders}</p></div>
+                            <button onClick={() => { setActiveTab('orders'); setOrderListFilter('pending'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-amber-600 transition-colors uppercase tracking-wider">Pending Orders</p><p className="text-2xl font-bold text-amber-600 mt-1">{pendingOrders}</p></button>
                             <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><Clock size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                            <div><p className="text-sm font-bold text-slate-500">Approved</p><p className="text-2xl font-bold text-green-600">{approvedOrders}</p></div>
+                            <button onClick={() => { setActiveTab('orders'); setOrderListFilter('approved'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-green-600 transition-colors uppercase tracking-wider">Approved</p><p className="text-2xl font-bold text-green-600 mt-1">{approvedOrders}</p></button>
                             <div className="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><CheckCircle size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                            <div><p className="text-sm font-bold text-slate-500">Completed</p><p className="text-2xl font-bold text-slate-800">{completedOrders}</p></div>
+                            <button onClick={() => { setActiveTab('orders'); setOrderListFilter('completed'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-slate-700 transition-colors uppercase tracking-wider">Completed</p><p className="text-2xl font-bold text-slate-800 mt-1">{completedOrders}</p></button>
                             <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center"><CheckCircle2 size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-                            <div><p className="text-sm font-bold text-slate-500">Revenue</p><p className="text-2xl font-bold text-brand-gold-600">₹{(revenue/1000).toFixed(1)}k</p></div>
+                            <button onClick={() => { setActiveTab('orders'); setOrderListFilter('revenue'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-brand-gold-600 transition-colors uppercase tracking-wider">Revenue</p><p className="text-2xl font-bold text-brand-gold-600 mt-1">₹{(revenue/1000).toFixed(1)}k</p></button>
                             <div className="w-10 h-10 rounded-lg bg-brand-gold-50 text-brand-gold-600 flex items-center justify-center"><Activity size={20}/></div>
                         </div>
                     </div>
 
                     <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-8">
                         <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
-                            <h3 className="font-bold text-slate-900">Upcoming Events (Next 7 Days)</h3>
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-lg font-display">Upcoming Scheduled Events</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Filter and manage confirmed celebrations</p>
+                                
+                                {/* Range selector row */}
+                                <div className="flex flex-wrap gap-4 items-center justify-between mt-4 bg-slate-50 p-4 rounded-xl border border-slate-150 w-full md:min-w-[700px]">
+                                    <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl shrink-0">
+                                        {[
+                                            { id: '7', label: '7 Days' },
+                                            { id: '15', label: '15 Days' },
+                                            { id: '30', label: '30 Days' },
+                                            { id: 'custom', label: 'Custom Range' }
+                                        ].map((tab) => (
+                                            <button
+                                                key={tab.id}
+                                                type="button"
+                                                onClick={() => setEventFilter(tab.id as any)}
+                                                className={cn(
+                                                    "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                                                    eventFilter === tab.id
+                                                        ? "bg-white text-slate-900 shadow-sm"
+                                                        : "text-slate-500 hover:text-slate-850"
+                                                )}
+                                            >
+                                                {tab.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    
+                                    {eventFilter === 'custom' && (
+                                        <div className="flex items-center gap-2 animate-fade-in text-xs font-bold text-slate-600">
+                                            <span>From</span>
+                                            <input 
+                                                type="date" 
+                                                value={customStartDate} 
+                                                onChange={(e) => setCustomStartDate(e.target.value)} 
+                                                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-brand-gold-500" 
+                                            />
+                                            <span>To</span>
+                                            <input 
+                                                type="date" 
+                                                value={customEndDate} 
+                                                onChange={(e) => setCustomEndDate(e.target.value)} 
+                                                className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-brand-gold-500" 
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* New rich layout grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 w-full md:min-w-[700px]">
+                                    {getFilteredUpcomingEvents().map(ord => (
+                                        <div key={'upcoming-event-'+ord.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-brand-green-300 transition-all flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex gap-4 items-center mb-4">
+                                                    <div className="w-14 h-14 bg-brand-green-900 text-white rounded-xl flex flex-col items-center justify-center border border-brand-green-800 flex-shrink-0 shadow-sm">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand-gold-300">{new Date(ord.eventDate).toLocaleDateString('en-US', {month: 'short'})}</span>
+                                                        <span className="text-xl font-display font-extrabold leading-none">{new Date(ord.eventDate).getDate()}</span>
+                                                    </div>
+                                                    <div className="truncate">
+                                                        <p className="font-bold text-slate-900 text-sm truncate" title={ord.customerName}>{ord.customerName}</p>
+                                                        <span className={cn("px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border", getStatusColor(ord.status))}>
+                                                            {ord.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="space-y-1.5 text-xs text-slate-650 font-medium border-t border-slate-100 pt-3">
+                                                    <p className="flex justify-between">
+                                                        <span className="text-slate-400">Guests:</span> 
+                                                        <span className="font-semibold text-slate-800">{ord.guests}</span>
+                                                    </p>
+                                                    <p className="flex justify-between">
+                                                        <span className="text-slate-400">Package:</span> 
+                                                        <span className="font-semibold text-slate-800 truncate max-w-[140px]" title={ord.packageDetails?.packageName}>{ord.packageDetails?.packageName || 'Custom'}</span>
+                                                    </p>
+                                                    <p className="flex justify-between">
+                                                        <span className="text-slate-400">Phone:</span> 
+                                                        <span className="font-semibold text-slate-800">{ord.phone || ord.customerPhone || 'N/A'}</span>
+                                                    </p>
+                                                    <p className="flex justify-between items-start gap-2">
+                                                        <span className="text-slate-400 shrink-0">Venue:</span> 
+                                                        <span className="font-semibold text-slate-800 text-right truncate max-w-[140px]" title={ord.venue}>{ord.venue || 'TBD'}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                                <button onClick={() => handleOpenOrderDetails(ord)} className="text-xs font-bold text-brand-green-905 hover:text-brand-green-800 flex items-center gap-1 active:scale-95">
+                                                    View Details <ChevronRight size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {getFilteredUpcomingEvents().length === 0 && (
+                                        <div className="col-span-full py-10 text-center text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-205">
+                                            <CalendarDays size={28} className="mx-auto mb-2 text-slate-300" />
+                                            <p className="font-bold text-slate-600">No scheduled events</p>
+                                            <p className="text-xs text-slate-400 mt-1">No upcoming events are scheduled within this timeframe.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                             <button onClick={() => setActiveTab('orders')} className="text-sm font-bold text-brand-green-700 hover:text-brand-green-800">View All Calendar</button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {partnerOrders.filter(o => ['Approved', 'Modified'].includes(o.status) && o.eventDate).slice(0, 3).map(ord => (
+                            {[].map(ord => (
                                 <div key={'upcoming-'+ord.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-4 hover:border-brand-green-300 transition-colors">
                                     <div className="w-12 h-12 bg-white rounded-lg flex flex-col items-center justify-center border border-slate-200 flex-shrink-0">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase">{new Date(ord.eventDate).toLocaleDateString('en-US', {month: 'short'})}</span>
@@ -773,7 +971,7 @@ export default function CatererDashboard() {
                                     </div>
                                 </div>
                             ))}
-                            {partnerOrders.filter(o => ['Approved', 'Modified'].includes(o.status)).length === 0 && (
+                            {false && (
                                 <div className="col-span-full py-8 text-center text-slate-500 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
                                     No upcoming events scheduled for this week.
                                 </div>
@@ -804,8 +1002,34 @@ export default function CatererDashboard() {
 
                {activeTab === 'orders' && (
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-140px)]">
-                      <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                          <h2 className="text-xl font-bold text-slate-900">Order Management</h2>
+                      <div className="p-6 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50 gap-4">
+                          <div>
+                              <h2 className="text-xl font-bold text-slate-900">Order Management</h2>
+                              <p className="text-xs text-slate-500 mt-0.5">Filter, review, and confirm customer booking requests</p>
+                          </div>
+                          <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                              {[
+                                { id: 'all', label: 'All Orders' },
+                                { id: 'pending', label: 'Pending' },
+                                { id: 'approved', label: 'Approved' },
+                                { id: 'completed', label: 'Completed' },
+                                { id: 'revenue', label: 'Revenue Base' }
+                              ].map((f) => (
+                                  <button
+                                      key={f.id}
+                                      type="button"
+                                      onClick={() => setOrderListFilter(f.id as any)}
+                                      className={cn(
+                                          "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                                          orderListFilter === f.id 
+                                              ? "bg-white text-slate-900 shadow-sm cursor-default"
+                                              : "text-slate-500 hover:text-slate-900 cursor-pointer"
+                                      )}
+                                  >
+                                      {f.label}
+                                  </button>
+                              ))}
+                          </div>
                       </div>
                       
                       <div className="overflow-x-auto flex-1">
@@ -824,7 +1048,7 @@ export default function CatererDashboard() {
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                  {partnerOrders.map((ord) => (
+                                  {filteredOrderList.map((ord) => (
                                       <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors group">
                                           <td className="px-6 py-4 font-mono font-medium text-slate-700">{ord.id}</td>
                                           <td className="px-6 py-4 text-slate-500">{new Date(ord.created_at).toLocaleDateString()}<br/><span className="text-[10px]">{new Date(ord.created_at).toLocaleTimeString()}</span></td>
@@ -845,8 +1069,8 @@ export default function CatererDashboard() {
                                           </td>
                                       </tr>
                                   ))}
-                                  {partnerOrders.length === 0 && (
-                                      <tr><td colSpan={9} className="px-6 py-12 text-center text-slate-500">No orders found.</td></tr>
+                                  {filteredOrderList.length === 0 && (
+                                      <tr><td colSpan={9} className="px-6 py-12 text-center text-slate-500 italic font-medium">No {orderListFilter !== 'all' ? orderListFilter : ''} orders found.</td></tr>
                                   )}
                               </tbody>
                           </table>
