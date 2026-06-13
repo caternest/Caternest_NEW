@@ -12,6 +12,59 @@ export default function Orders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Edit state for changes_requested workflow
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({
+    eventDate: '',
+    eventType: '',
+    venue: '',
+    guests: 0,
+    specialNotes: ''
+  });
+
+  const startEditing = (o: any) => {
+    setEditingOrderId(o.id);
+    setEditForm({
+      eventDate: o.eventDate || '',
+      eventType: o.eventType || '',
+      venue: o.venue || o.address || '',
+      guests: Number(o.guests ?? o.guestCount ?? 0),
+      specialNotes: o.specialNotes || o.notes || ''
+    });
+  };
+
+  const handleResubmitOrder = async (orderId: string, catererId: string) => {
+    try {
+      console.log("[RESUBMITTING ORDER]", orderId);
+      await performOrderStatusUpdate(
+        orderId,
+        'updated_by_customer',
+        {
+          eventDate: editForm.eventDate,
+          eventType: editForm.eventType,
+          venue: editForm.venue,
+          guests: Number(editForm.guests),
+          guestCount: Number(editForm.guests),
+          specialNotes: editForm.specialNotes,
+          notes: editForm.specialNotes
+        },
+        user?.email || 'customer@caternest.com',
+        'customer'
+      );
+
+      await storeNotification(orderId, "Order Resubmitted", "Order resubmitted successfully", "customer");
+      await storeNotification(orderId, "Order Resubmitted", "Customer has resubmitted order", "caterer", catererId);
+      await storeNotification(orderId, "Order Resubmitted", "Order resubmitted", "admin");
+
+      toast("Order resubmitted successfully!", "success");
+      setEditingOrderId(null);
+      await fetchOrders();
+    } catch (err) {
+      console.error("Error resubmitting order:", err);
+      toast("Failed to resubmit order", "error");
+    }
+  };
+
   // Customer notification states
   const [activeSegment, setActiveSegment] = useState<'bookings' | 'notifications'>('bookings');
   const [customerNotifications, setCustomerNotifications] = useState<any[]>([]);
@@ -439,26 +492,118 @@ export default function Orders() {
                                }
 
                                // 3. Changes Requested State
-                               if (norm === 'changes_requested') {
-                                   return (
-                                       <div className="mt-6 pt-6 border-t border-slate-100">
-                                           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                                               <div className="flex gap-3 items-start mb-3">
-                                                   <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0 font-bold">?</div>
-                                                   <div>
-                                                       <h4 className="font-bold text-amber-950 text-sm">Changes / Details Requested by Caterer</h4>
-                                                       <p className="text-xs text-amber-800 mt-0.5">"{o.changesRequestedMemo || o.specialNotes || o.notes || 'Please provide details.'}"</p>
-                                                   </div>
-                                               </div>
-                                               <div className="flex gap-2 justify-end">
-                                                   <Link to={`/caterer/${o.catererId}`} className="bg-brand-green-905 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-brand-green-800 transition-colors">Modify Choices</Link>
-                                               </div>
-                                           </div>
-                                       </div>
-                                   );
-                               }
+                                if (norm === 'changes_requested') {
+                                    const isEditing = editingOrderId === o.id;
+                                    return (
+                                        <div className="mt-6 pt-6 border-t border-slate-100">
+                                            <div className="bg-amber-50 border border-amber-400 rounded-2xl p-4 sm:p-5 shadow-sm">
+                                                <div className="flex gap-3 items-start mb-3">
+                                                    <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-800 shrink-0 font-bold">?</div>
+                                                    <div>
+                                                        <h4 className="font-bold text-amber-955 text-sm">Changes Requested By Caterer</h4>
+                                                        <p className="text-xs text-amber-900 mt-0.5">"{o.changesRequestedMemo || o.specialNotes || o.notes || 'Please verify or update your booking options.'}"</p>
+                                                    </div>
+                                                </div>
 
-                               // 4. Quotation Updated State
+                                                {isEditing ? (
+                                                    <div className="bg-white border border-amber-200 p-4 rounded-xl space-y-4 mt-4">
+                                                        <p className="text-xs font-bold text-amber-900 border-b border-amber-150 pb-2 flex items-center gap-1">
+                                                            ✏️ Edit Booking Details
+                                                        </p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Event Date</label>
+                                                                <input 
+                                                                    type="date" 
+                                                                    className="w-full bg-slate-55 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-805 focus:border-amber-400 outline-none"
+                                                                    value={editForm.eventDate} 
+                                                                    onChange={(e) => setEditForm({...editForm, eventDate: e.target.value})}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Event Type</label>
+                                                                <select 
+                                                                    className="w-full bg-slate-55 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-805 focus:border-amber-400 outline-none"
+                                                                    value={editForm.eventType} 
+                                                                    onChange={(e) => setEditForm({...editForm, eventType: e.target.value})}
+                                                                >
+                                                                    <option value="Wedding">Wedding</option>
+                                                                    <option value="Birthday">Birthday</option>
+                                                                    <option value="Corporate Event">Corporate Event</option>
+                                                                    <option value="House Party">House Party</option>
+                                                                    <option value="Anniversary">Anniversary</option>
+                                                                    <option value="Cocktail Party">Cocktail Party</option>
+                                                                    <option value="Other">Other</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Venue Address</label>
+                                                                <textarea 
+                                                                    rows={2} 
+                                                                    className="w-full bg-slate-55 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-805 focus:border-amber-400 outline-none"
+                                                                    value={editForm.venue} 
+                                                                    onChange={(e) => setEditForm({...editForm, venue: e.target.value})}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Guest Count</label>
+                                                                <input 
+                                                                    type="number" 
+                                                                    className="w-full bg-slate-55 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-805 focus:border-amber-400 outline-none"
+                                                                    value={editForm.guests ?? 0} 
+                                                                    onChange={(e) => setEditForm({...editForm, guests: parseInt(e.target.value) || 0})}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Special Requests</label>
+                                                            <textarea 
+                                                                rows={2} 
+                                                                className="w-full bg-slate-55 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-805 focus:border-amber-400 outline-none"
+                                                                value={editForm.specialNotes} 
+                                                                onChange={(e) => setEditForm({...editForm, specialNotes: e.target.value})}
+                                                                placeholder="e.g. extra onions, less spicy..."
+                                                            />
+                                                        </div>
+
+                                                        <div className="flex gap-2 justify-end pt-2">
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => setEditingOrderId(null)} 
+                                                                className="bg-slate-100 hover:bg-slate-200 text-slate-705 px-4 py-2 rounded-lg text-xs font-bold transition-all"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => handleResubmitOrder(o.id, o.catererId)} 
+                                                                className="bg-brand-green-905 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-brand-green-800 transition-all active:scale-95 flex items-center gap-1"
+                                                            >
+                                                                Resubmit Order
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-2 justify-end mt-4">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => startEditing(o)} 
+                                                            className="bg-brand-green-905 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-brand-green-800 transition-colors"
+                                                        >
+                                                            Enable Edit Mode
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+// 4. Quotation Updated State
                                if (norm === 'quotation_updated') {
                                    return (
                                        <div className="mt-6 pt-6 border-t border-slate-100">

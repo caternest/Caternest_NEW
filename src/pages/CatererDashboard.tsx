@@ -827,26 +827,30 @@ export default function CatererDashboard() {
                  <>
                     <h1 className="text-3xl font-display font-bold text-slate-900 mb-8">Dashboard Overview</h1>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                             <button onClick={() => { setActiveTab('orders'); setOrderListFilter('all'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-blue-600 transition-colors uppercase tracking-wider">Total Orders</p><p className="text-2xl font-bold text-slate-900 mt-1">{totalOrders}</p></button>
-                            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><Package size={20}/></div>
+                            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Package size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                             <button onClick={() => { setActiveTab('orders'); setOrderListFilter('pending'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-amber-600 transition-colors uppercase tracking-wider">Pending Orders</p><p className="text-2xl font-bold text-amber-600 mt-1">{pendingOrders}</p></button>
-                            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><Clock size={20}/></div>
+                            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><Clock size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                             <button onClick={() => { setActiveTab('orders'); setOrderListFilter('approved'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-green-600 transition-colors uppercase tracking-wider">Approved</p><p className="text-2xl font-bold text-green-600 mt-1">{approvedOrders}</p></button>
-                            <div className="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><CheckCircle size={20}/></div>
+                            <div className="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center shrink-0"><CheckCircle size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                             <button onClick={() => { setActiveTab('orders'); setOrderListFilter('completed'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-slate-700 transition-colors uppercase tracking-wider">Completed</p><p className="text-2xl font-bold text-slate-800 mt-1">{completedOrders}</p></button>
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center"><CheckCircle2 size={20}/></div>
+                            <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0"><CheckCircle2 size={20}/></div>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                            <button onClick={() => { setActiveTab('orders'); setOrderListFilter('rejected'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-red-600 transition-colors uppercase tracking-wider">Rejected</p><p className="text-2xl font-bold text-red-600 mt-1">{rejectedOrders}</p></button>
+                            <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0"><XCircle size={20}/></div>
                         </div>
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                             <button onClick={() => { setActiveTab('orders'); setOrderListFilter('revenue'); }} className="text-left w-full group active:scale-95"><p className="text-xs font-semibold text-slate-500 group-hover:text-brand-gold-600 transition-colors uppercase tracking-wider">Revenue</p><p className="text-2xl font-bold text-brand-gold-600 mt-1">₹{(revenue/1000).toFixed(1)}k</p></button>
-                            <div className="w-10 h-10 rounded-lg bg-brand-gold-50 text-brand-gold-600 flex items-center justify-center"><Activity size={20}/></div>
+                            <div className="w-10 h-10 rounded-lg bg-brand-gold-50 text-brand-gold-600 flex items-center justify-center shrink-0"><Activity size={20}/></div>
                         </div>
                     </div>
 

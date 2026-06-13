@@ -1002,7 +1002,7 @@ export default function AdminDashboard() {
           {activeTab === 'orders' && (
               <div className="space-y-6">
                   {/* Order statistics */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                       <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                           <p className="text-xs font-bold text-slate-500 uppercase">Total Orders</p>
                           <p className="text-3xl font-bold font-display text-slate-900 mt-1">{orders.length}</p>
@@ -1023,6 +1023,12 @@ export default function AdminDashboard() {
                           <p className="text-xs font-bold text-slate-700 uppercase font-poppins">Completed</p>
                           <p className="text-3xl font-bold font-display text-slate-700 mt-1">
                               {orders.filter(o => ['Completed', 'completed'].includes(o.status)).length}
+                          </p>
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                          <p className="text-xs font-bold text-red-600 uppercase font-poppins">Rejected</p>
+                          <p className="text-3xl font-bold font-display text-red-600 mt-1">
+                              {orders.filter(o => ['rejected', 'Rejected'].includes(o.status)).length}
                           </p>
                       </div>
                   </div>

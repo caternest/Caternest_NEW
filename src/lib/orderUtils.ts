@@ -233,14 +233,25 @@ export async function performOrderStatusUpdate(
 
   // Requirement 5: Create precise new action history log
   let noteText = '';
-  if (normalizedStatus === 'approved') noteText = 'Order approved';
-  else if (normalizedStatus === 'rejected') noteText = extraData.rejectionReason || 'Order rejected';
-  else if (normalizedStatus === 'changes_requested') noteText = extraData.changesRequestedMemo || 'Changes requested by caterer';
-  else if (normalizedStatus === 'quotation_updated') noteText = extraData.specialNotes || `Quotation updated: Plate price ₹${extraData.pricePerPlate}`;
-  else noteText = extraData.notes || extraData.specialNotes || 'Status updated';
+  let historyAction = normalizedStatus;
+
+  if (newStatus.toLowerCase() === 'submitted' || newStatus.toLowerCase() === 'updated_by_customer') {
+    noteText = 'Customer updated booking and resubmitted';
+    historyAction = 'updated_by_customer';
+  } else if (normalizedStatus === 'approved') {
+    noteText = 'Order approved';
+  } else if (normalizedStatus === 'rejected') {
+    noteText = extraData.rejectionReason || 'Order rejected';
+  } else if (normalizedStatus === 'changes_requested') {
+    noteText = extraData.changesRequestedMemo || 'Changes requested by caterer';
+  } else if (normalizedStatus === 'quotation_updated') {
+    noteText = extraData.specialNotes || `Quotation updated: Plate price ₹${extraData.pricePerPlate}`;
+  } else {
+    noteText = extraData.notes || extraData.specialNotes || 'Status updated';
+  }
 
   const historyItem = {
-    action: normalizedStatus,
+    action: historyAction,
     actor: actorRole === 'partner' ? 'caterer' : actorRole,
     timestamp: timestamp,
     note: noteText
@@ -250,7 +261,7 @@ export async function performOrderStatusUpdate(
 
   // Prepare standard mapped database update payload (Standard + Snake case copies)
   const statusUpdateFields: any = {
-    status: normalizedStatus,
+    status: newStatus.toLowerCase() === 'submitted' ? 'submitted' : normalizedStatus,
     statusHistory: newHistory,
     status_history: newHistory,
     updated_at: timestamp
