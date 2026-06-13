@@ -1,15 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { ChefHat, Search, Menu, X, User, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package } from 'lucide-react';
+import { ChefHat, Menu, X, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getSupabase } from '../lib/supabase';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -23,9 +31,175 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Explore Caterers', path: '/explore' },
+    { name: 'Become a Caterer', path: '/partner-selection' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
   ];
+
+  const fetchNavbarNotifications = async () => {
+    if (!user) return;
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .order('id', { ascending: false });
+
+        if (!error && data) {
+          let filtered = data;
+          if (user.roles.includes('admin')) {
+            filtered = data.filter((n: any) => n.targetRole === 'admin');
+          } else if (user.roles.includes('partner')) {
+            const myCatererIds = JSON.parse(localStorage.getItem('registrations') || '[]')
+              .filter((r: any) => r.userId === user.id)
+              .map((r: any) => r.id);
+            filtered = data.filter((n: any) => n.targetRole === 'caterer' && (myCatererIds.includes(n.catererId) || !n.catererId));
+          } else {
+            const myOrderIds = JSON.parse(localStorage.getItem('orders') || '[]')
+              .filter((o: any) => o.userId === user.id || o.customerEmail?.toLowerCase() === user.email.toLowerCase() || o.customerName === user.name)
+              .map((o: any) => o.id);
+            filtered = data.filter((n: any) => n.targetRole === 'customer' && (myOrderIds.includes(n.orderId) || !n.orderId));
+          }
+          setNotifications(filtered);
+          return;
+        }
+      } catch(e) {
+        console.error("Supabase notifications loading failed:", e);
+      }
+    }
+
+    // Fallback to localStorage
+    try {
+      const raw = localStorage.getItem('notifications') || '[]';
+      const parsed = JSON.parse(raw);
+      let filtered = parsed;
+      if (user.roles.includes('admin')) {
+        filtered = parsed.filter((n: any) => n.targetRole === 'admin');
+      } else if (user.roles.includes('partner')) {
+        const myCatererIds = JSON.parse(localStorage.getItem('registrations') || '[]')
+          .filter((r: any) => r.userId === user.id)
+          .map((r: any) => r.id);
+        filtered = parsed.filter((n: any) => n.targetRole === 'caterer' && (myCatererIds.includes(n.catererId) || !n.catererId));
+      } else {
+        const myOrderIds = JSON.parse(localStorage.getItem('orders') || '[]')
+          .filter((o: any) => o.userId === user.id || o.customerEmail?.toLowerCase() === user.email.toLowerCase() || o.customerName === user.name)
+          .map((o: any) => o.id);
+        filtered = parsed.filter((n: any) => n.targetRole === 'customer' && (myOrderIds.includes(n.orderId) || !n.orderId));
+      }
+      setNotifications(filtered);
+    } catch(e) {}
+  };
+
+  useEffect(() => {
+    fetchNavbarNotifications();
+
+    const supabase = getSupabase();
+    if (supabase && user) {
+      // Setup real-time postgres changes listener
+      const channel = supabase
+        .channel('navbar-notifications-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+          fetchNavbarNotifications();
+        })
+        .subscribe();
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  // Click outside and escaping close implementation
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Profile outside close
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+        if (!target.closest('[data-keep-profile-open="true"]')) {
+          setIsProfileDropdownOpen(false);
+        }
+      }
+
+      // Notifications outside close
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileDropdownOpen(false);
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Closes open segments on navigation change
+  useEffect(() => {
+    setIsProfileDropdownOpen(false);
+    setIsNotificationsOpen(false);
+  }, [location.pathname]);
+
+  const handleMarkNavbarNotificationRead = async (id: string, orderId?: string) => {
+    // 1. Update localStorage
+    try {
+      const raw = localStorage.getItem('notifications') || '[]';
+      const parsed = JSON.parse(raw);
+      const updated = parsed.map((n: any) => n.id === id ? { ...n, read: true } : n);
+      localStorage.setItem('notifications', JSON.stringify(updated));
+    } catch(e) {}
+
+    // 2. Update Supabase
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await (supabase.from('notifications') as any).update({ read: true }).eq('id', id);
+      } catch(e) {}
+    }
+
+    await fetchNavbarNotifications();
+
+    // 3. Redirect matching roles
+    if (user) {
+      if (user.roles.includes('admin')) {
+        navigate('/admin-dashboard');
+      } else if (user.roles.includes('partner')) {
+        navigate('/caterer-dashboard');
+      } else {
+        navigate('/orders');
+      }
+    }
+  };
+
+  const handleClearAllNavbarNotifications = async () => {
+    const raw = localStorage.getItem('notifications') || '[]';
+    try {
+      const parsed = JSON.parse(raw);
+      const idsToRemove = notifications.map(n => n.id);
+      const remaining = parsed.filter((n: any) => !idsToRemove.includes(n.id));
+      localStorage.setItem('notifications', JSON.stringify(remaining));
+    } catch(e) {}
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const idsToRemove = notifications.map(n => n.id);
+        await (supabase.from('notifications') as any).delete().in('id', idsToRemove);
+      } catch(e) {}
+    }
+
+    fetchNavbarNotifications();
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const isHome = location.pathname === '/';
   const navClass = cn(
@@ -35,15 +209,15 @@ export default function Navbar() {
 
   const textClass = cn(
     'transition-colors font-medium font-poppins text-sm',
-    'text-slate-700 hover:text-brand-gold-600'
+    'text-slate-700 hover:text-brand-gold-600 font-bold'
   );
 
   return (
-    <nav className={navClass}>
+    <nav className={navClass} id="main-navigation-navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center bg-transparent">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex items-center gap-3 group" id="navbar-logo-link">
             <div className="bg-brand-gold-500 p-2 rounded-xl text-white group-hover:scale-105 transition-transform">
               <ChefHat size={28} />
             </div>
@@ -58,10 +232,15 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-8" id="desktop-links-container">
             <div className="flex items-center gap-6">
               {navLinks.map((link) => (
-                <Link key={link.name} to={link.path} className={textClass}>
+                <Link 
+                  key={link.name} 
+                  to={link.path} 
+                  data-keep-profile-open="true" 
+                  className={cn(textClass, location.pathname === link.path && "text-brand-gold-600")}
+                >
                   {link.name}
                 </Link>
               ))}
@@ -73,11 +252,11 @@ export default function Navbar() {
                   </div>
               )}
               {!user ? (
-                <>
+                <div className="flex items-center gap-3" id="navbar-anonymous-actions">
                   <Link to="/caterer-login" className="flex items-center gap-2 px-4 py-2 font-poppins font-medium text-sm text-brand-gold-700 bg-brand-gold-50 hover:bg-brand-gold-100 rounded-full transition-colors border border-brand-gold-100">
                     <ChefHat size={16} /> Caterer Login
                   </Link>
-                  <Link to="/admin-login" className="flex items-center gap-2 px-4 py-2 font-poppins font-medium text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors mr-2 border border-indigo-100">
+                  <Link to="/admin-login" className="flex items-center gap-2 px-4 py-2 font-poppins font-medium text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors border border-indigo-100">
                     <Settings size={16} /> Admin Login
                   </Link>
                   <Link to="/login" className="px-4 py-2 font-poppins font-medium text-sm text-slate-700 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
@@ -89,101 +268,162 @@ export default function Navbar() {
                   >
                     Sign Up
                   </Link>
-                </>
+                </div>
               ) : (
-                <div className="relative">
-                  <div className="flex items-center gap-4">
-                    <button className="relative p-2 text-slate-500 hover:text-brand-green-900 transition-colors">
-                        <Bell size={20} />
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                <div className="flex items-center gap-4" id="navbar-signed-actions">
+                  {/* Real-time sync Bell */}
+                  <div className="relative" ref={notificationRef} id="bell-container">
+                    <button 
+                      onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                      className="relative p-2 text-slate-500 hover:text-brand-green-900 transition-colors"
+                      id="navbar-notification-bell-btn"
+                    >
+                      <Bell size={20} />
+                      {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 w-5 h-5 bg-rose-500 text-white text-[9px] rounded-full border-2 border-white flex items-center justify-center font-bold font-sans">
+                          {unreadCount}
+                        </span>
+                      )}
                     </button>
+
+                    <AnimatePresence>
+                      {isNotificationsOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-105 overflow-hidden z-50 text-slate-900"
+                        >
+                          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h4 className="font-bold font-display text-sm text-slate-800">Alerts ({unreadCount})</h4>
+                            {notifications.length > 0 && (
+                              <button onClick={handleClearAllNavbarNotifications} className="text-[10px] text-rose-600 hover:underline font-bold">
+                                Clear All
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                            {notifications.map((n) => (
+                              <div 
+                                key={n.id} 
+                                onClick={() => handleMarkNavbarNotificationRead(n.id, n.orderId)}
+                                className={cn(
+                                  "p-3.5 text-left text-xs cursor-pointer hover:bg-slate-50 transition-colors flex flex-col gap-1",
+                                  n.read ? "opacity-75" : "bg-brand-gold-50/20 font-medium"
+                                )}
+                              >
+                                <div className="flex justify-between items-start gap-1">
+                                  <span className="font-bold text-slate-900 line-clamp-1">{n.title}</span>
+                                  {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 mt-1" />}
+                                </div>
+                                <p className="text-slate-500 font-sans leading-relaxed line-clamp-2">{n.message}</p>
+                              </div>
+                            ))}
+
+                            {notifications.length === 0 && (
+                              <div className="p-8 text-center text-slate-400">
+                                <p className="font-bold text-sm text-slate-600">All caught up! 🎉</p>
+                                <p className="text-[11px] mt-1 text-slate-400">No new alerts or booking updates.</p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Profile Dropdown */}
+                  <div className="relative" ref={dropdownRef} id="profile-container">
                     <button 
                       onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                       className="flex items-center gap-2 px-3 py-2 rounded-full transition-colors border border-slate-200 hover:bg-slate-50"
+                      id="navbar-profile-toggle-btn"
                     >
-                    <div className="w-8 h-8 rounded-full bg-brand-gold-100 text-brand-gold-600 flex items-center justify-center font-bold">
-                      {user.name.charAt(0)}
-                    </div>
-                    <span className="font-medium text-brand-green-900 font-poppins text-sm">
-                      {user.name.split(' ')[0]}
-                    </span>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {isProfileDropdownOpen && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50"
-                      >
-                        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                          <p className="font-bold text-slate-900">{user.name} {user.roles.includes('admin') && <span className="ml-1 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">Admin</span>}</p>
-                          <p className="text-sm text-slate-500 truncate">{user.email}</p>
-                        </div>
-                        <div className="p-2 flex flex-col">
-                          {user.roles.includes('admin') ? (
-                              <>
-                                <Link to="/admin-dashboard" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
-                                  <Settings size={16} /> Admin Dashboard
-                                </Link>
-                                <Link to="/admin-dashboard" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Building size={16} /> Partner Registrations
-                                </Link>
-                                <Link to="/admin-dashboard" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <ShoppingBag size={16} /> All Orders
-                                </Link>
-                                <Link to="/profile" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Settings size={16} /> Admin Profile
-                                </Link>
-                              </>
-                          ) : user.roles.includes('partner') ? (
-                              <>
-                                <Link to="/caterer-dashboard" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
-                                  <Settings size={16} /> My Dashboard
-                                </Link>
-                                <Link to="/orders" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <ShoppingBag size={16} /> My Orders
-                                </Link>
-                                <Link to="/businesses" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Building size={16} /> My Business
-                                </Link>
-                                <Link to="/businesses" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Package size={16} /> My Packages
-                                </Link>
-                                <Link to="/profile" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Settings size={16} /> Settings
-                                </Link>
-                              </>
-                          ) : (
-                              <>
-                                <Link to="/profile" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Settings size={16} /> My Profile
-                                </Link>
-                                <Link to="/orders" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <ShoppingBag size={16} /> My Bookings
-                                </Link>
-                                <Link to="/partner-selection" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                  <Handshake size={16} /> Become a Partner
-                                </Link>
-                              </>
-                          )}
-                        </div>
-                        <div className="p-2 border-t border-slate-100">
-                          <button 
-                            onClick={() => {
-                              logout();
-                              setIsProfileDropdownOpen(false);
-                            }} 
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <LogOut size={16} /> Logout
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      <div className="w-8 h-8 rounded-full bg-brand-gold-100 text-brand-gold-600 flex items-center justify-center font-bold">
+                        {user.name.charAt(0)}
+                      </div>
+                      <span className="font-medium text-brand-green-900 font-poppins text-sm">
+                        {user.name.split(' ')[0]}
+                      </span>
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isProfileDropdownOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 text-slate-900"
+                        >
+                          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                            <p className="font-bold text-slate-900">{user.name} {user.roles.includes('admin') && <span className="ml-1 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">Admin</span>}</p>
+                            <p className="text-sm text-slate-500 truncate">{user.email}</p>
+                          </div>
+                          <div className="p-2 flex flex-col">
+                            {user.roles.includes('admin') ? (
+                                <>
+                                  <Link to="/admin-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
+                                    <Settings size={16} /> Admin Dashboard
+                                  </Link>
+                                  <Link to="/admin-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Building size={16} /> Partner Registrations
+                                  </Link>
+                                  <Link to="/admin-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <ShoppingBag size={16} /> All Orders
+                                  </Link>
+                                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Settings size={16} /> Admin Profile
+                                  </Link>
+                                </>
+                            ) : user.roles.includes('partner') ? (
+                                <>
+                                  <Link to="/caterer-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
+                                    <Settings size={16} /> My Dashboard
+                                  </Link>
+                                  <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <ShoppingBag size={16} /> My Orders
+                                  </Link>
+                                  <Link to="/businesses" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Building size={16} /> My Business
+                                  </Link>
+                                  <Link to="/businesses" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Package size={16} /> My Packages
+                                  </Link>
+                                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Settings size={16} /> Settings
+                                  </Link>
+                                </>
+                            ) : (
+                                <>
+                                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Settings size={16} /> My Profile
+                                  </Link>
+                                  <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <ShoppingBag size={16} /> My Bookings
+                                  </Link>
+                                  <Link to="/partner-selection" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                    <Handshake size={16} /> Become a Partner
+                                  </Link>
+                                </>
+                            )}
+                          </div>
+                          <div className="p-2 border-t border-slate-100">
+                            <button 
+                              onClick={() => {
+                                logout();
+                                setIsProfileDropdownOpen(false);
+                              }} 
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <LogOut size={16} /> Logout
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               )}
@@ -191,10 +431,11 @@ export default function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center" id="mobile-toggle-btn-container">
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-brand-green-900"
+              className="text-brand-green-900 p-2"
+              id="navbar-mobile-toggle-btn"
             >
               {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -202,101 +443,102 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Links */}
       <AnimatePresence>
-      {isMobileMenuOpen && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="md:hidden absolute top-full left-0 right-0 bg-white shadow-xl border-t border-slate-100"
-        >
-          <div className="px-4 pt-2 pb-6 space-y-1">
-            {navLinks.map((link) => (
-              <Link 
-                key={link.name} 
-                to={link.path} 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-3 py-3 text-base font-medium font-poppins text-slate-700 hover:text-brand-gold-600 hover:bg-slate-50 rounded-lg"
-              >
-                {link.name}
-              </Link>
-            ))}
-            <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
-              {!user ? (
-                <>
-                  <Link 
-                    to="/caterer-login"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-brand-gold-50 text-brand-gold-700 rounded-lg hover:bg-brand-gold-100 border border-brand-gold-100"
-                  >
-                    <ChefHat size={18} /> Caterer Login
-                  </Link>
-                  <Link 
-                    to="/admin-login"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 border border-indigo-100"
-                  >
-                    <Settings size={18} /> Admin Login
-                  </Link>
-                  <Link 
-                    to="/login"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block text-center px-3 py-3 text-base font-medium border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
-                  >
-                    Login
-                  </Link>
-                  <Link 
-                    to="/signup"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block text-center px-3 py-3 text-base font-medium bg-brand-green-900 text-white rounded-lg hover:bg-brand-green-800"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 px-3 py-3 mb-2 bg-slate-50 rounded-xl">
-                    <div className="w-10 h-10 rounded-full bg-brand-gold-100 text-brand-gold-600 flex items-center justify-center font-bold text-lg">
-                      {user.name.charAt(0)}
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="md:hidden absolute top-full left-0 right-0 bg-white shadow-xl border-t border-slate-100"
+            id="mobile-navigation-drawer"
+          >
+            <div className="px-4 pt-2 pb-6 space-y-1">
+              {navLinks.map((link) => (
+                <Link 
+                  key={link.name} 
+                  to={link.path} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block px-3 py-3 text-base font-medium font-poppins text-slate-700 hover:text-brand-gold-600 hover:bg-slate-50 rounded-lg"
+                >
+                  {link.name}
+                </Link>
+              ))}
+              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
+                {!user ? (
+                  <>
+                    <Link 
+                      to="/caterer-login"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-brand-gold-50 text-brand-gold-700 rounded-lg hover:bg-brand-gold-100 border border-brand-gold-100"
+                    >
+                      <ChefHat size={18} /> Caterer Login
+                    </Link>
+                    <Link 
+                      to="/admin-login"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 border border-indigo-100"
+                    >
+                      <Settings size={18} /> Admin Login
+                    </Link>
+                    <Link 
+                      to="/login"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block text-center px-3 py-3 text-base font-medium border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
+                    >
+                      Login
+                    </Link>
+                    <Link 
+                      to="/signup"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block text-center px-3 py-3 text-base font-medium bg-brand-green-900 text-white rounded-lg hover:bg-brand-green-800"
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 px-3 py-3 mb-2 bg-slate-50 rounded-xl">
+                      <div className="w-10 h-10 rounded-full bg-brand-gold-100 text-brand-gold-600 flex items-center justify-center font-bold text-lg">
+                        {user.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-brand-green-900">{user.name}</p>
+                        <p className="text-sm text-slate-500">{user.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-brand-green-900">{user.name}</p>
-                      <p className="text-sm text-slate-500">{user.email}</p>
-                    </div>
-                  </div>
-                  <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                    <Settings size={20} /> My Profile
-                  </Link>
-                  <Link to="/orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                    <ShoppingBag size={20} /> My Orders
-                  </Link>
-                  <Link to="/businesses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                    <Building size={20} /> My Businesses
-                  </Link>
-                  <Link to="/partner-selection" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                    <Handshake size={20} /> Become a Partner
-                  </Link>
-                  {user.roles.includes('admin') && (
-                      <Link to="/admin-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-brand-green-900 bg-brand-green-50 rounded-lg mt-2">
-                         <Settings size={20} /> Admin Dashboard
-                      </Link>
-                  )}
-                  <button 
-                    onClick={() => {
-                      logout();
-                      setIsMobileMenuOpen(false);
-                    }} 
-                    className="w-full flex items-center gap-3 px-3 py-3 text-base font-medium text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <LogOut size={20} /> Logout
-                  </button>
-                </>
-              )}
+                    <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+                      <Settings size={20} /> My Profile
+                    </Link>
+                    <Link to="/orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+                      <ShoppingBag size={20} /> My Orders
+                    </Link>
+                    <Link to="/businesses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+                      <Building size={20} /> My Businesses
+                    </Link>
+                    <Link to="/partner-selection" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
+                      <Handshake size={20} /> Become a Partner
+                    </Link>
+                    {user.roles.includes('admin') && (
+                        <Link to="/admin-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-brand-green-900 bg-brand-green-50 rounded-lg mt-2">
+                           <Settings size={20} /> Admin Dashboard
+                        </Link>
+                    )}
+                    <button 
+                      onClick={() => {
+                        logout();
+                        setIsMobileMenuOpen(false);
+                      }} 
+                      className="w-full flex items-center gap-3 px-3 py-3 text-base font-medium text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <LogOut size={20} /> Logout
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
       </AnimatePresence>
     </nav>
   );

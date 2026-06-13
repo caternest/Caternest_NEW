@@ -6,6 +6,7 @@ import JoinSteps from '../components/JoinSteps';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
 import { useNavigate } from 'react-router-dom';
 import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
+import { storeNotification } from '../lib/orderUtils';
 
 interface ImageUploaderProps {
   label: string;
@@ -384,6 +385,14 @@ export default function JoinCaterer() {
         const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
         localStorage.setItem('registrations', JSON.stringify([...existing, { ...newReg, id: (data as any)?.[0]?.id || Math.random().toString(36).substr(2, 9) }]));
         
+        // Trigger New Partner notification
+        storeNotification(
+          "",
+          "New Partner Registration 🏢",
+          `Partner "${newReg.businessName}" submitted a business registration application. Review required!`,
+          "admin"
+        );
+
         setStatus('pending');
       } catch (err: any) {
         console.error("CRITICAL DATABASE INSERT ERROR:", err);
@@ -395,6 +404,12 @@ export default function JoinCaterer() {
       const fallbackReg = { ...newReg, id: Math.random().toString(36).substr(2, 9) };
       try {
         localStorage.setItem('registrations', JSON.stringify([...existing, fallbackReg]));
+        storeNotification(
+          "",
+          "New Partner Registration 🏢",
+          `Partner "${newReg.businessName}" submitted a business registration application. Review required!`,
+          "admin"
+        );
         setStatus('pending');
       } catch (err) {
         console.error("Failed to save due to storage quota limit, attempting with minimized images", err);

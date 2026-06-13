@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, ChevronRight, ChevronLeft, Star, Quote, ChefHat, User, ShieldCheck, Tag, CheckCircle2, ImageIcon, Heart, Users } from 'lucide-react';
+import { Search, MapPin, ChevronRight, ChevronLeft, Star, Quote, ChefHat, User, ShieldCheck, Tag, CheckCircle2, ImageIcon, Heart, Users, Calendar } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HYDERABAD_AREAS, DEMO_CATERERS, DEMO_REVIEWS } from '../data';
 import { cn } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
+import { getSupabase } from '../lib/supabase';
 
 const HERO_IMAGES = [
   'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=2070',
@@ -12,10 +14,11 @@ const HERO_IMAGES = [
 ];
 
 function HeroSection() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [searchLocation, setSearchLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -24,9 +27,81 @@ function HeroSection() {
     return () => clearInterval(timer);
   }, []);
 
-  const filteredLocations = HYDERABAD_AREAS.filter(area => 
-    area.name.toLowerCase().includes(searchLocation.toLowerCase())
-  );
+  const fetchCustomerActiveOrders = async () => {
+    if (!user) return;
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          const filtered = data.filter((o: any) => 
+            o.userId === user.id || 
+            (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
+            o.customerName === user.name
+          );
+          setActiveOrders(filtered);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      try {
+        const raw = localStorage.getItem('orders') || '[]';
+        const parsed = JSON.parse(raw);
+        const filtered = parsed.filter((o: any) => 
+          o.userId === user.id || 
+          (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
+          o.customerName === user.name
+        );
+        setActiveOrders(filtered);
+      } catch(e) {}
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomerActiveOrders();
+
+    const supabase = getSupabase();
+    if (supabase) {
+      const channel = supabase
+        .channel('homepage-active-orders-channel')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          () => {
+            fetchCustomerActiveOrders();
+          }
+        )
+        .subscribe();
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const getStatusBadgeInfo = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('submit') || s === 'pending caterer review' || s.includes('pending')) {
+      return { label: 'Submitted', bg: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500' };
+    }
+    if (s.includes('approve') || s === 'approved') {
+      return { label: 'Approved', bg: 'bg-green-100 text-green-800 border-green-200', dot: 'bg-green-500' };
+    }
+    if (s.includes('change') || s === 'changes_requested') {
+      return { label: 'Changes Requested', bg: 'bg-orange-100 text-orange-850 border-orange-200', dot: 'bg-orange-500' };
+    }
+    if (s.includes('reject') || s === 'rejected') {
+      return { label: 'Rejected', bg: 'bg-red-100 text-red-800 border-red-250', dot: 'bg-red-500' };
+    }
+    if (s.includes('complete') || s === 'completed') {
+      return { label: 'Completed', bg: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500' };
+    }
+    return { label: status, bg: 'bg-slate-100 text-slate-800 border-slate-200', dot: 'bg-slate-500' };
+  };
 
   return (
     <div className="relative h-[90vh] min-h-[750px] w-full overflow-hidden flex flex-col justify-center bg-brand-green-900 border-b-[12px] border-brand-green-950">
@@ -45,22 +120,20 @@ function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-r from-brand-green-950 via-brand-green-900/90 to-black/30" />
       <div className="absolute inset-0 bg-gradient-to-b from-brand-green-950/40 via-transparent to-brand-green-900/90" />
 
-      <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 w-full mt-16 pb-20">
-        <div className="max-w-3xl">
+      <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 w-full mt-16 pb-20 flex flex-col lg:flex-row gap-12 items-center justify-between">
+        <div className="max-w-3xl flex-1">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-extrabold text-white tracking-tight leading-[1.1] mb-4">
               Find & Book <br />
-              <span className="text-brand-gold-500 text-5xl md:text-7xl lg:text-[5.5rem] drop-shadow-lg">PREMIUM CATERERS</span><br />
               <span className="text-brand-gold-100 italic font-medium mt-3 block font-serif">For Your Special Events</span>
             </h1>
           </motion.div>
           
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="text-white/90 text-lg md:text-xl md:pr-12 mb-8 mt-6 font-light leading-relaxed">
-            Discover trusted caterers, customize menus <br className="hidden md:block" />and make your celebrations unforgettable.
+            Discover caterers, customize menus <br className="hidden md:block" />and make your celebrations unforgettable.
           </motion.p>
           
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }} className="flex flex-wrap items-center gap-6 mb-10 text-white/90 text-sm font-semibold tracking-wide">
-             <span className="flex items-center gap-2"><ShieldCheck className="text-brand-gold-500" size={18} /> Verified Caterers</span>
              <span className="flex items-center gap-2"><ChefHat className="text-brand-gold-500" size={18} /> Best Menu Options</span>
              <span className="flex items-center gap-2"><Tag className="text-brand-gold-500" size={18} /> Affordable Prices</span>
              <span className="flex items-center gap-2"><CheckCircle2 className="text-brand-gold-500" size={18} /> Secure Booking</span>
@@ -68,44 +141,17 @@ function HeroSection() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="relative bg-white p-2.5 rounded-[2rem] shadow-2xl flex flex-col sm:flex-row gap-2 max-w-3xl">
             <div className="flex flex-1 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 flex-col sm:flex-row">
-              <div className="relative flex-1">
-                <div className="absolute inset-y-0 text-xs text-slate-500 px-4 top-2 font-semibold">Location</div>
-                <div className="absolute inset-y-0 left-4 top-6 flex items-center pointer-events-none">
-                  <MapPin className="text-slate-700" size={18} />
+              {/* Static Location Hyderabad */}
+              <div className="relative flex-1 flex flex-col justify-end px-5 pt-3 pb-3">
+                <div className="absolute text-xs text-slate-500 px-1 top-2.5 font-semibold">Location</div>
+                <div className="flex items-center gap-2 mt-4 text-slate-800 font-bold text-sm">
+                  <MapPin className="text-brand-gold-500" size={18} />
+                  <span>Hyderabad</span>
                 </div>
-                <input
-                  type="text"
-                  value={searchLocation}
-                  onChange={(e) => {
-                    setSearchLocation(e.target.value);
-                    setShowLocationSuggestions(true);
-                  }}
-                  onFocus={() => setShowLocationSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
-                  placeholder="Enter your location"
-                  className="w-full pl-10 pr-4 pt-8 pb-3 rounded-t-[1.5rem] sm:rounded-l-full sm:rounded-tr-none bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0 transition-all font-bold text-sm"
-                />
-                {showLocationSuggestions && searchLocation && (
-                  <div className="absolute top-full left-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-60 overflow-y-auto z-50 py-2">
-                    {filteredLocations.map(area => (
-                      <div 
-                        key={area.id} 
-                        className="px-4 py-3 hover:bg-slate-50 cursor-pointer flex items-center gap-3 transition-colors text-left"
-                        onClick={() => {
-                          setSearchLocation(area.name);
-                          setShowLocationSuggestions(false);
-                        }}
-                      >
-                        <MapPin size={16} className="text-brand-green-500" />
-                        <span className="text-slate-700 font-medium text-sm">{area.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="relative flex-[1.5]">
-                <div className="absolute inset-y-0 text-xs text-slate-500 px-4 top-2 font-semibold">Search cuisine or caterer</div>
+                <div className="absolute inset-y-0 text-xs text-slate-500 px-4 top-2 font-semibold font-sans">Search cuisine or caterer</div>
                 <div className="absolute inset-y-0 left-4 top-6 flex items-center pointer-events-none">
                   <Search className="text-slate-700" size={18} />
                 </div>
@@ -119,7 +165,12 @@ function HeroSection() {
               </div>
             </div>
             
-            <button className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-full font-bold transition-colors shadow-lg flex items-center justify-center gap-2 whitespace-nowrap text-sm mt-2 sm:mt-0">
+            <button 
+              onClick={() => {
+                navigate(`/explore?search=${encodeURIComponent(searchQuery)}&location=Hyderabad`);
+              }}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-full font-bold transition-colors shadow-lg flex items-center justify-center gap-2 whitespace-nowrap text-sm mt-2 sm:mt-0"
+            >
               Search Caterers <ChevronRight size={18} />
             </button>
           </motion.div>
@@ -128,11 +179,59 @@ function HeroSection() {
             <Link to="/explore" className="bg-brand-gold-500 hover:bg-brand-gold-600 text-slate-900 px-8 py-3 rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(222,170,56,0.3)] flex items-center gap-2 text-sm tracking-wide">
               <ChefHat size={16} /> Explore Caterers
             </Link>
-            <Link to="/partner-selection" className="backdrop-blur-md bg-transparent hover:bg-white/10 text-brand-gold-300 px-8 py-3 rounded-full font-bold transition-colors border border-brand-gold-500/30 flex items-center gap-2 text-sm tracking-wide">
-              <User size={16} /> Become a Caterer
-            </Link>
           </motion.div>
         </div>
+
+        {/* Homepage top-right area Customer Order Summary Widget */}
+        {user && !user.roles.includes('partner') && !user.roles.includes('admin') && activeOrders.length > 0 && (
+          <div className="w-full lg:w-[420px] bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-2xl border border-white/20 shrink-0 text-slate-900 self-start lg:mt-8">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+              <h3 className="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
+                📦 My Orders <span className="text-xs font-sans px-2 py-0.5 bg-brand-green-50 text-brand-green-800 rounded-full font-bold">{activeOrders.length}</span>
+              </h3>
+              <Link to="/orders" className="text-xs text-brand-gold-600 hover:text-brand-gold-700 font-bold hover:underline">
+                View All →
+              </Link>
+            </div>
+
+            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+              {activeOrders.map((order) => {
+                const badge = getStatusBadgeInfo(order.status);
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => navigate('/orders')}
+                    className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-150 transition-all cursor-pointer group flex flex-col gap-2.5"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <h4 className="font-bold text-slate-950 text-sm group-hover:text-brand-green-900 transition-colors line-clamp-1">
+                        {order.catererName}
+                      </h4>
+                      <span className={cn("px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-md border shrink-0", badge.bg)}>
+                        {badge.label}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-y-1.5 text-[11px] text-slate-600 font-medium border-t border-slate-100/80 pt-2">
+                      <div>
+                        <span className="text-slate-400">Date:</span> {order.eventDate || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Package:</span> {order.packageDetails?.packageName || 'Custom'}
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Guests:</span> {order.guests}
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Amount:</span> <span className="text-slate-900 font-bold">₹{order.totalEstimate?.toLocaleString() || '0'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Slider Controls */}
@@ -316,10 +415,8 @@ function TrendingCaterers() {
 
 function WhyChooseUs() {
   const features = [
-    { title: 'Verified Caterers', description: 'Every caterer goes through strict quality and hygiene checks.', icon: 'ChefHat' },
     { title: 'Easy Booking', description: 'Select menus, customize dishes, and book seamlessly online.', icon: 'Calendar' },
-    { title: 'Transparent Pricing', description: 'No hidden charges. Clear per-plate pricing and cost breakdowns.', icon: 'Tag' },
-    { title: 'Trusted Reviews', description: 'Read authentic reviews from previous event hosts.', icon: 'Star' }
+    { title: 'Transparent Pricing', description: 'No hidden charges. Clear per-plate pricing and cost breakdowns.', icon: 'Tag' }
   ];
 
   return (
@@ -334,7 +431,7 @@ function WhyChooseUs() {
           <div className="w-24 h-1 bg-brand-gold-500 mx-auto rounded-full" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {features.map((feature, idx) => (
             <motion.div 
               key={idx}
@@ -357,72 +454,12 @@ function WhyChooseUs() {
   );
 }
 
-function Testimonials() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const handleNext = () => setCurrentIndex((prev) => (prev + 1) % DEMO_REVIEWS.length);
-  const handlePrev = () => setCurrentIndex((prev) => (prev - 1 + DEMO_REVIEWS.length) % DEMO_REVIEWS.length);
-
-  return (
-    <section className="py-24 bg-brand-gold-50 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-16">
-          <div className="flex items-center justify-center gap-2 text-brand-gold-600 font-semibold uppercase tracking-wider text-sm mb-4">
-            <Quote size={16} className="rotate-180" /> Testimonials <Quote size={16} />
-          </div>
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-slate-900 mb-6">What Our Customers Say</h2>
-          <div className="w-24 h-1 bg-brand-gold-500 mx-auto rounded-full" />
-        </div>
-
-        <div className="max-w-4xl mx-auto relative px-12">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white shadow-xl shadow-slate-200/50 p-10 md:p-14 rounded-3xl text-center relative border border-brand-gold-100"
-            >
-              <Quote className="text-brand-gold-200 w-20 h-20 absolute top-8 left-8" />
-              <p className="text-xl md:text-2xl font-light leading-relaxed mb-10 text-slate-700 relative z-10 font-display italic">
-                "{DEMO_REVIEWS[currentIndex].content}"
-              </p>
-              <div className="flex flex-col items-center">
-                <img 
-                  src={DEMO_REVIEWS[currentIndex].authorImage} 
-                  alt={DEMO_REVIEWS[currentIndex].authorName}
-                  className="w-16 h-16 rounded-full border-4 border-brand-gold-100 mb-4 object-cover"
-                />
-                <h4 className="font-bold text-slate-900 text-lg">{DEMO_REVIEWS[currentIndex].authorName}</h4>
-                <div className="flex text-brand-gold-500 mt-2 gap-1 mb-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} fill={i < Math.floor(DEMO_REVIEWS[currentIndex].rating) ? "currentColor" : "none"} />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-white text-slate-900 rounded-full flex items-center justify-center shadow-xl border border-slate-100 hover:bg-slate-50 transition-colors z-20">
-            <ChevronLeft size={24} />
-          </button>
-          <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-white text-slate-900 rounded-full flex items-center justify-center shadow-xl border border-slate-100 hover:bg-slate-50 transition-colors z-20">
-            <ChevronRight size={24} />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function Home() {
   return (
     <div className="min-h-screen">
       <HeroSection />
       <TrendingCaterers />
       <WhyChooseUs />
-      <Testimonials />
     </div>
   );
 }

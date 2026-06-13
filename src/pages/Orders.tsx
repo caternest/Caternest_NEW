@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase } from '../lib/supabase';
-import { normalizeStatus, getStatusLabel, getStatusBadgeColor, performOrderStatusUpdate } from '../lib/orderUtils';
+import { normalizeStatus, getStatusLabel, getStatusBadgeColor, performOrderStatusUpdate, storeNotification } from '../lib/orderUtils';
 
 export default function Orders() {
   const { user } = useAuth();
@@ -152,13 +152,35 @@ export default function Orders() {
 
   const updateStatus = async (id: string, newStatus: string) => {
      try {
+       const norm = normalizeStatus(newStatus);
        await performOrderStatusUpdate(
          id,
-         normalizeStatus(newStatus),
+         norm,
          {},
          user?.email || 'customer@caternest.com',
          user?.roles.includes('partner') ? 'partner' : user?.roles.includes('admin') ? 'admin' : 'customer'
        );
+
+       const ord = orders.find(o => o.id === id);
+       const catererId = ord?.catererId;
+       const catererName = ord?.catererName || 'Caterer';
+
+       if (user?.roles.includes('partner')) {
+         if (norm === 'completed') {
+           storeNotification(id, "Order Completed! 🏆", `Your catering order with ${catererName} has been marked as Completed.`, "customer", catererId);
+         }
+       } else if (user?.roles.includes('admin')) {
+         if ((norm as string) === 'escalation') {
+           storeNotification(id, "Order Escalated ⚠️", `Order #${id} has been escalated for review.`, "admin");
+         }
+       } else {
+         if (norm === 'approved') {
+           storeNotification(id, "Customer Updated Booking 👍", `${user?.name} approved/confirmed the quote/booking request #${id}.`, "caterer", catererId);
+         } else if (norm === 'cancelled' || norm === 'rejected') {
+           storeNotification(id, "Order Cancelled ❌", `${user?.name} has cancelled/declined order request #${id}.`, "caterer", catererId);
+         }
+       }
+
        toast(`Order status updated: ${getStatusLabel(newStatus)}`, 'success');
        await fetchOrders();
      } catch (err) {
