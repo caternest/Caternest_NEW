@@ -289,6 +289,28 @@ export async function performOrderStatusUpdate(
     ...(normalizedStatus !== 'quotation_updated' ? extraData : {})
   };
 
+  // Define exact list of valid DB column names from the orders database table
+  const VALID_ORDERS_COLUMNS = [
+    'id', 'created_at', 'updated_at', 'userId', 'catererId', 'catererName',
+    'customerName', 'customerEmail', 'customerPhone', 'eventDate', 'eventTime',
+    'guestCount', 'totalAmount', 'status', 'items', 'packageSelected',
+    'pricingSlabs', 'addonItems', 'selectedMenu', 'notes', 'phone',
+    'eventType', 'guests', 'totalEstimate', 'selectedItems', 'packageDetails',
+    'matchedSlab', 'pricePerPlate', 'platformFee', 'specialNotes', 'venue',
+    'internalNotes', 'statusHistory', 'approvedAt', 'rejectedAt', 'completedAt'
+  ];
+
+  // Strictly filter out any client-only state keys, legacy snake_case aliases, or temporary event properties
+  const dbPayload: any = {};
+  for (const k of VALID_ORDERS_COLUMNS) {
+    if (finalFields[k] !== undefined) {
+      dbPayload[k] = finalFields[k];
+    }
+  }
+
+  // Requirement: Add precise requested logging
+  console.log("UPDATE PAYLOAD", JSON.stringify(dbPayload, null, 2));
+
   // Requirement 6: Every action must be persisted DIRECTLY in Supabase orders table
   const supabase = getSupabase();
   if (supabase) {
@@ -296,12 +318,13 @@ export async function performOrderStatusUpdate(
       console.log(`[ORDER UPDATE PROGRESS] Performing direct Supabase update for order #${orderId}...`);
       const { data, error } = await (supabase as any)
         .from('orders')
-        .update(finalFields)
+        .update(dbPayload)
         .eq('id', orderId)
         .select();
 
-      // Requirement 7: Console log update error or result
+      // Requirement: Add orders table update error logging
       if (error) {
+        console.log("ORDERS TABLE UPDATE ERROR", error);
         console.error("[ORDER UPDATE ERROR] Supabase update statement rejected:", error);
         toast(`Database save rejected: ${error.message}`, "error");
         throw error;
