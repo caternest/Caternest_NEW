@@ -684,28 +684,43 @@ export default function OrderFlow() {
           updated_at: new Date().toISOString()
       };
       localStorage.setItem('orders', JSON.stringify([...currentOrders, newOrder]));
+      console.log("ORDER CREATED", newOrder);
 
       // Store notifications for Customer, Caterer, and Admin Real-time flows
-      storeNotification(
-          newOrder.id,
-          "New Booking Submitted 📨",
-          `Your booking request for ${newOrder.catererName} on ${newOrder.eventDate} has been submitted successfully. Wait for review!`,
-          "customer",
-          newOrder.catererId
-      );
-      storeNotification(
-          newOrder.id,
-          "New Order Received 🧑‍🍳",
-          `A new booking request has been received from ${newOrder.customerName} for ${newOrder.eventDate}.`,
-          "caterer",
-          newOrder.catererId
-      );
-      storeNotification(
-          newOrder.id,
-          "New Order Created 🔔",
-          `Customer ${newOrder.customerName} submitted a new order request #${newOrder.id} for ${newOrder.catererName}.`,
-          "admin"
-      );
+      try {
+          storeNotification(
+              newOrder.id,
+              "New Booking Submitted 📨",
+              `Your booking request for ${newOrder.catererName} on ${newOrder.eventDate} has been submitted successfully. Wait for review!`,
+              "customer",
+              newOrder.catererId
+          );
+      } catch (err) {
+          console.error("NOTIFICATION ERROR", err);
+      }
+
+      try {
+          storeNotification(
+              newOrder.id,
+              "New Order Received 🧑‍🍳",
+              `A new booking request has been received from ${newOrder.customerName} for ${newOrder.eventDate}.`,
+              "caterer",
+              newOrder.catererId
+          );
+      } catch (err) {
+          console.error("NOTIFICATION ERROR", err);
+      }
+
+      try {
+          storeNotification(
+              newOrder.id,
+              "New Order Created 🔔",
+              `Customer ${newOrder.customerName} submitted a new order request #${newOrder.id} for ${newOrder.catererName}.`,
+              "admin"
+          );
+      } catch (err) {
+          console.error("NOTIFICATION ERROR", err);
+      }
 
       toast(isQuote ? "Quotation requested successfully!" : "Booking requested successfully!", "success");
       navigate('/orders');

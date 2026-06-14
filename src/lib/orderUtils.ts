@@ -174,19 +174,25 @@ export function storeNotification(
     if (supabase) {
       const sanitizedCatererId = catererId && catererId.length === 36 ? catererId : null;
       (async () => {
+        const notificationPayload = {
+          id: newId,
+          orderId: orderId,
+          title: title,
+          message: message,
+          targetRole: targetRole,
+          catererId: sanitizedCatererId,
+          read: false
+        };
+        console.log("NOTIFICATION PAYLOAD", notificationPayload);
         try {
-          const { error } = await (supabase as any).from('notifications').insert([{
-            id: newId,
-            orderId: orderId,
-            title: title,
-            message: message,
-            targetRole: targetRole,
-            catererId: sanitizedCatererId,
-            read: false
-          }]);
-          if (error) console.error("[NOTIFICATION DB WRITE ERROR]", error.message);
+          const { error } = await (supabase as any).from('notifications').insert([notificationPayload]);
+          if (error) {
+            console.error("[NOTIFICATION DB WRITE ERROR]", error.message);
+            console.error("NOTIFICATION ERROR", error);
+          }
         } catch (err) {
           console.error("[NOTIFICATION DB WRITE CRASH]", err);
+          console.error("NOTIFICATION ERROR", err);
         }
       })();
     }
