@@ -25,7 +25,70 @@ const supabaseServiceKey = getEnvWord("SUPABASE_SERVICE_ROLE_KEY");
 
 export const isSupabaseConfigured = !!(supabaseUrl && (supabaseAnonKey || supabaseServiceKey));
 
-let supabaseInstance: ReturnType<typeof createClient> | null = null;
+let supabaseInstance: any = null;
+
+const tableWhitelists: Record<string, string[]> = {
+  caterer_registrations: [
+    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'ownerName',
+    'phone', 'alternatePhone', 'email', 'address', 'city', 'cuisine',
+    'categories', 'minGuests', 'pricePerPlate', 'status', 'verificationStatus',
+    'menuUploaded', 'panNumber', 'aadhaarNumber', 'fssaiNumber', 'gstNumber',
+    'logo', 'coverBanner', 'founderImageUrl', 'gallery', 'packages', 'addOns',
+    'includedItems', 'username', 'password', 'owner', 'ownerPhoto', 'branchPhoto',
+    'galleryPhotos', 'draftMenuPackages', 'aadhaarUrl', 'panUrl', 'fssaiUrl',
+    'gstUrl', 'otherDocsUrl', 'rating', 'reviewCount'
+  ],
+  orders: [
+    'id', 'created_at', 'updated_at', 'userId', 'catererId', 'catererName',
+    'customerName', 'customerEmail', 'customerPhone', 'phone', 'eventDate',
+    'eventTime', 'eventType', 'guestCount', 'guests', 'totalAmount',
+    'totalEstimate', 'status', 'items', 'selectedItems', 'packageSelected',
+    'packageDetails', 'pricingSlabs', 'matchedSlab', 'addonItems', 'selectedMenu',
+    'notes', 'specialNotes', 'pricePerPlate', 'platformFee', 'venue',
+    'status_history', 'statusHistory', 'internal_notes', 'internalNotes',
+    'quotation', 'approved_at', 'approvedAt', 'rejected_at', 'rejectedAt',
+    'completed_at', 'completedAt'
+  ],
+  notifications: [
+    'id', 'created_at', 'orderId', 'title', 'message', 'targetRole', 'catererId', 'read'
+  ],
+  audit_logs: [
+    'id', 'created_at', 'timestamp', 'action', 'details', 'user_email', 'role'
+  ],
+  food_images: [
+    'id', 'created_at', 'updated_at', 'item_name', 'image_url', 'approved_by_admin', 'status', 'category', 'cuisine'
+  ]
+};
+
+export function sanitizePayload(tableName: string, payload: any): any {
+  if (!payload || typeof payload !== 'object') return payload;
+
+  const whitelist = tableWhitelists[tableName];
+  if (!whitelist) return payload;
+
+  const processObject = (obj: any): any => {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      if (whitelist.includes(key)) {
+        cleaned[key] = obj[key];
+      } else {
+        // Safe mapping fallback logic
+        if (tableName === 'orders' && key === 'address' && !obj.venue) {
+          cleaned.venue = obj.address;
+        }
+        if (tableName === 'caterer_registrations' && (key === 'additionalPhone' || key === 'additionalMobile') && !obj.alternatePhone) {
+          cleaned.alternatePhone = obj[key];
+        }
+      }
+    }
+    return cleaned;
+  };
+
+  if (Array.isArray(payload)) {
+    return payload.map(processObject);
+  }
+  return processObject(payload);
+}
 
 export function getSupabase() {
   if (!isSupabaseConfigured) {
@@ -33,7 +96,62 @@ export function getSupabase() {
   }
   if (!supabaseInstance) {
     const activeKey = supabaseServiceKey || supabaseAnonKey;
-    supabaseInstance = createClient(supabaseUrl, activeKey);
+    const rawClient = createClient(supabaseUrl, activeKey);
+
+    supabaseInstance = new Proxy(rawClient, {
+      get(target, prop, receiver) {
+        if (prop === 'from') {
+          return (tableName: string) => {
+            const queryBuilder = target.from(tableName);
+
+            return new Proxy(queryBuilder, {
+              get(qTarget, qProp) {
+                if (qProp === 'insert' || qProp === 'upsert' || qProp === 'update') {
+                  return (values: any, options?: any) => {
+                    const sanitized = sanitizePayload(tableName, values);
+                    if (tableName === 'orders') {
+                      console.log("ORDERS UPSERT PAYLOAD", sanitized);
+                    }
+                    if (tableName === 'notifications') {
+                      console.log("NOTIFICATION PAYLOAD", sanitized);
+                    }
+
+                    let promise = qTarget[qProp](sanitized, options);
+                    const originalThen = promise.then;
+
+                    promise.then = function (onfulfilled?: any, onrejected?: any) {
+                      return originalThen.call(promise, (result: any) => {
+                        if (result?.error) {
+                          if (tableName === 'orders') {
+                            console.error("ORDERS UPSERT ERROR", result.error);
+                          } else if (tableName === 'notifications') {
+                            console.error("NOTIFICATION ERROR", result.error);
+                          }
+                        }
+                        return onfulfilled ? onfulfilled(result) : result;
+                      }, (err: any) => {
+                        if (tableName === 'orders') {
+                          console.error("ORDERS UPSERT ERROR", err);
+                        } else if (tableName === 'notifications') {
+                          console.error("NOTIFICATION ERROR", err);
+                        }
+                        return onrejected ? onrejected(err) : Promise.reject(err);
+                      });
+                    };
+
+                    return promise;
+                  };
+                }
+                const value = qTarget[qProp as keyof typeof qTarget];
+                return typeof value === 'function' ? value.bind(qTarget) : value;
+              }
+            });
+          };
+        }
+        const value = target[prop as keyof typeof target];
+        return typeof value === 'function' ? value.bind(target) : value;
+      }
+    });
   }
   return supabaseInstance;
 }
@@ -139,9 +257,7 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
           sanitized.specialNotes = sanitized.notes;
         }
 
-        if (sanitized.venue && !sanitized.address) {
-          sanitized.address = sanitized.venue;
-        } else if (sanitized.address && !sanitized.venue) {
+        if (sanitized.address && !sanitized.venue) {
           sanitized.venue = sanitized.address;
         }
 
