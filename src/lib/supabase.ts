@@ -45,9 +45,7 @@ const tableWhitelists: Record<string, string[]> = {
     'totalEstimate', 'status', 'items', 'selectedItems', 'packageSelected',
     'packageDetails', 'pricingSlabs', 'matchedSlab', 'addonItems', 'selectedMenu',
     'notes', 'specialNotes', 'pricePerPlate', 'platformFee', 'venue',
-    'status_history', 'statusHistory', 'internal_notes', 'internalNotes',
-    'quotation', 'approved_at', 'approvedAt', 'rejected_at', 'rejectedAt',
-    'completed_at', 'completedAt'
+    'statusHistory', 'internalNotes', 'approvedAt', 'rejectedAt', 'completedAt'
   ],
   notifications: [
     'id', 'created_at', 'user_id', 'title', 'message', 'type', 'is_read', 'orderId', 'catererId', 'read'
@@ -218,6 +216,7 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
 
 // Synchronizes localized datasets to the Supabase Database if online
 export async function syncLocalTableToSupabase(tableName: string, localData: any[]) {
+  console.log(`[TRACE_LOG #11] syncLocalTableToSupabase entry for ${tableName}, count:`, localData?.length);
   const supabase = getSupabase();
   if (!supabase || !localData || localData.length === 0) return;
 
@@ -278,6 +277,8 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
       const { error } = await supabase
         .from(tableName)
         .upsert(sanitized, { onConflict: 'id' });
+      
+      console.log(`[TRACE_LOG #12] ${tableName} upsert response error:`, error);
       
       if (error) {
         console.warn(`Supabase upsert warning on table "${tableName}":`, error.message);

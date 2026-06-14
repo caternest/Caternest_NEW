@@ -185,7 +185,7 @@ export function storeNotification(
         };
         console.log("NOTIFICATION PAYLOAD", notificationPayload);
         try {
-          const { error } = await (supabase as any).from('notifications').insert([notificationPayload]);
+          const { error } = await (supabase as any).from('notifications').upsert(notificationPayload, { onConflict: 'id' });
           if (error) {
             console.error("[NOTIFICATION DB WRITE ERROR]", error.message);
             console.error("NOTIFICATION ERROR", error);

@@ -639,94 +639,112 @@ export default function OrderFlow() {
   });
   const navigate = useNavigate();
 
-  const handleBooking = (isQuote: boolean) => {
-      if (!user) {
-          setPendingAction(isQuote);
-          setShowLoginModal(true);
-          return;
-      }
+   const handleBooking = (isQuote: boolean) => {
+       console.log("[TRACE_LOG #2] handleBooking() entry, isQuote:", isQuote);
 
-      const currentOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-      const platformFee = appliedCoupon === 'NEW' ? 0 : (guests * platformFeePerPlate);
-      
-      let matchingSlab = selectedPackage?.pricingSlabs?.find((slab: any) => 
-           guests >= slab.minGuests && (slab.maxGuests === null || guests <= slab.maxGuests)
-      );
-      if (!matchingSlab && selectedPackage?.pricingSlabs && selectedPackage.pricingSlabs.length > 0) {
-          const sorted = [...selectedPackage.pricingSlabs].sort((a: any, b: any) => a.minGuests - b.minGuests);
-          if (guests < sorted[0].minGuests) matchingSlab = sorted[0];
-          else matchingSlab = sorted[sorted.length - 1];
-      }
+       console.log("[TRACE_LOG #3] user validation block, user:", user);
+       if (!user) {
+           console.log("[TRACE_LOG #3.1] User validation FAILED. Redirecting to loginmodal.");
+           setPendingAction(isQuote);
+           setShowLoginModal(true);
+           return;
+       }
+       console.log("[TRACE_LOG #3.2] User validation PASSED.");
 
-      const newOrder = {
-          id: Math.random().toString(36).substr(2, 9),
-          userId: user.id || '',
-          customerEmail: user.email || '',
-          catererId: caterer.id,
-          catererName: caterer.name,
-          customerName: user.name || orderForm.name || 'Guest User',
-          phone: user.phone || orderForm.phone || '',
-          customerPhone: user.phone || orderForm.phone || '',
-          eventDate: orderForm.date,
-          eventType: orderForm.type,
-          guests: guests,
-          guestCount: guests,
-          venue: orderForm.venue || '',
-          address: orderForm.venue || '',
-          specialNotes: orderForm.notes || '',
-          notes: orderForm.notes || '',
-          packageDetails: selectedPackage,
-          matchedSlab: matchingSlab,
-          selectedItems: Object.keys(selectedItems).filter((k: string)=>selectedItems[k]),
-          totalEstimate: (currentPerPlatePrice * guests) + platformFee,
-          pricePerPlate: currentPerPlatePrice,
-          platformFee: platformFee,
-          status: 'Submitted',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-      };
-      localStorage.setItem('orders', JSON.stringify([...currentOrders, newOrder]));
-      console.log("ORDER CREATED", newOrder);
+       console.log("[TRACE_LOG #4] selectedPackage validation, selectedPackage:", selectedPackage);
+       console.log("[TRACE_LOG #5] guest count validation, guests:", guests);
 
-      // Store notifications for Customer, Caterer, and Admin Real-time flows
-      try {
-          storeNotification(
-              newOrder.id,
-              "New Booking Submitted 📨",
-              `Your booking request for ${newOrder.catererName} on ${newOrder.eventDate} has been submitted successfully. Wait for review!`,
-              "customer",
-              newOrder.catererId
-          );
-      } catch (err) {
-          console.error("NOTIFICATION ERROR", err);
-      }
+       console.log("[TRACE_LOG #7] Before localStorage.getItem('orders')");
+       const currentOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+       console.log("[TRACE_LOG #7.1] currentOrders loaded, count:", currentOrders.length);
 
-      try {
-          storeNotification(
-              newOrder.id,
-              "New Order Received 🧑‍🍳",
-              `A new booking request has been received from ${newOrder.customerName} for ${newOrder.eventDate}.`,
-              "caterer",
-              newOrder.catererId
-          );
-      } catch (err) {
-          console.error("NOTIFICATION ERROR", err);
-      }
+       const platformFee = appliedCoupon === 'NEW' ? 0 : (guests * platformFeePerPlate);
+       
+       let matchingSlab = selectedPackage?.pricingSlabs?.find((slab: any) => 
+            guests >= slab.minGuests && (slab.maxGuests === null || guests <= slab.maxGuests)
+       );
+       if (!matchingSlab && selectedPackage?.pricingSlabs && selectedPackage.pricingSlabs.length > 0) {
+           const sorted = [...selectedPackage.pricingSlabs].sort((a: any, b: any) => a.minGuests - b.minGuests);
+           if (guests < sorted[0].minGuests) matchingSlab = sorted[0];
+           else matchingSlab = sorted[sorted.length - 1];
+       }
 
-      try {
-          storeNotification(
-              newOrder.id,
-              "New Order Created 🔔",
-              `Customer ${newOrder.customerName} submitted a new order request #${newOrder.id} for ${newOrder.catererName}.`,
-              "admin"
-          );
-      } catch (err) {
-          console.error("NOTIFICATION ERROR", err);
-      }
+       console.log("[TRACE_LOG #6] Before newOrder object creation");
+       const newOrder = {
+           id: Math.random().toString(36).substr(2, 9),
+           userId: user.id || '',
+           customerEmail: user.email || '',
+           catererId: caterer.id,
+           catererName: caterer.name,
+           customerName: user.name || orderForm.name || 'Guest User',
+           phone: user.phone || orderForm.phone || '',
+           customerPhone: user.phone || orderForm.phone || '',
+           eventDate: orderForm.date,
+           eventType: orderForm.type,
+           guests: guests,
+           guestCount: guests,
+           venue: orderForm.venue || '',
+           address: orderForm.venue || '',
+           specialNotes: orderForm.notes || '',
+           notes: orderForm.notes || '',
+           packageDetails: selectedPackage,
+           matchedSlab: matchingSlab,
+           selectedItems: Object.keys(selectedItems).filter((k: string)=>selectedItems[k]),
+           totalEstimate: (currentPerPlatePrice * guests) + platformFee,
+           pricePerPlate: currentPerPlatePrice,
+           platformFee: platformFee,
+           status: 'Submitted',
+           created_at: new Date().toISOString(),
+           updated_at: new Date().toISOString()
+       };
+       console.log("[TRACE_LOG #6.1] Created newOrder object:", newOrder);
 
-      toast(isQuote ? "Quotation requested successfully!" : "Booking requested successfully!", "success");
-      navigate('/orders');
-  };
+       console.log("[TRACE_LOG #8] Before localStorage.setItem('orders')");
+       localStorage.setItem('orders', JSON.stringify([...currentOrders, newOrder]));
+       console.log("[TRACE_LOG #8.1] After localStorage.setItem('orders')");
+
+       console.log("ORDER CREATED", newOrder);
+
+       // Store notifications for Customer, Caterer, and Admin Real-time flows
+       try {
+           storeNotification(
+               newOrder.id,
+               "New Booking Submitted 📨",
+               `Your booking request for ${newOrder.catererName} on ${newOrder.eventDate} has been submitted successfully. Wait for review!`,
+               "customer",
+               newOrder.catererId
+           );
+       } catch (err) {
+           console.error("NOTIFICATION ERROR", err);
+       }
+
+       try {
+           storeNotification(
+               newOrder.id,
+               "New Order Received 🧑‍🍳",
+               `A new booking request has been received from ${newOrder.customerName} for ${newOrder.eventDate}.`,
+               "caterer",
+               newOrder.catererId
+           );
+       } catch (err) {
+           console.error("NOTIFICATION ERROR", err);
+       }
+
+       try {
+           storeNotification(
+               newOrder.id,
+               "New Order Created 🔔",
+               `Customer ${newOrder.customerName} submitted a new order request #${newOrder.id} for ${newOrder.catererName}.`,
+               "admin"
+           );
+       } catch (err) {
+           console.error("NOTIFICATION ERROR", err);
+       }
+
+       console.log("[TRACE_LOG #9] Before navigate('/orders')");
+       toast(isQuote ? "Quotation requested successfully!" : "Booking requested successfully!", "success");
+       navigate('/orders');
+   };
 
   const handleProceedToLogin = () => {
       sessionStorage.setItem('orderFlowSession', JSON.stringify({
@@ -1773,8 +1791,8 @@ export default function OrderFlow() {
                     <span className="font-display font-bold text-brand-green-900 text-2xl text-right">₹{((currentPerPlatePrice * guests) + (appliedCoupon === 'NEW' ? 0 : 99)).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="space-y-3">
-                   <button onClick={() => handleBooking(false)} className="w-full bg-brand-green-900 hover:bg-brand-green-800 text-white py-4 rounded-xl font-bold shadow-lg shadow-brand-green-900/30 transition-all flex items-center justify-center gap-2">Confirm Booking</button>
-                   <button onClick={() => handleBooking(true)} className="w-full bg-white border-2 border-brand-gold-500 text-brand-gold-600 hover:bg-brand-gold-50 py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2">Request Quote</button>
+                   <button onClick={() => { console.log("[TRACE_LOG #1] Confirm Booking button clicked (isQuote = false)"); handleBooking(false); }} className="w-full bg-brand-green-900 hover:bg-brand-green-800 text-white py-4 rounded-xl font-bold shadow-lg shadow-brand-green-900/30 transition-all flex items-center justify-center gap-2">Confirm Booking</button>
+                   <button onClick={() => { console.log("[TRACE_LOG #1] Request Quote button clicked (isQuote = true)"); handleBooking(true); }} className="w-full bg-white border-2 border-brand-gold-500 text-brand-gold-600 hover:bg-brand-gold-50 py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2">Request Quote</button>
                 </div>
                 <p className="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-wider font-medium flex items-center justify-center gap-2"><Check size={12}/> Platform fee waived! No payment required today</p>
              </div>

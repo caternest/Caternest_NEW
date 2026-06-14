@@ -19,6 +19,7 @@ export function initializeSupabaseSync() {
 
     if (key === 'registrations' || key === 'orders' || key === 'auditLogs' || key === 'notifications') {
       try {
+        console.log(`[TRACE_LOG #10] supabaseSync.ts interception for key: ${key}`);
         const parsed = JSON.parse(value);
         if (Array.isArray(parsed)) {
           const tableName = key === 'registrations' 
