@@ -50,7 +50,7 @@ const tableWhitelists: Record<string, string[]> = {
     'completed_at', 'completedAt'
   ],
   notifications: [
-    'id', 'created_at', 'orderId', 'title', 'message', 'targetRole', 'catererId', 'read'
+    'id', 'created_at', 'user_id', 'title', 'message', 'type', 'is_read', 'orderId', 'catererId', 'read'
   ],
   audit_logs: [
     'id', 'created_at', 'timestamp', 'action', 'details', 'user_email', 'role'
@@ -71,6 +71,10 @@ export function sanitizePayload(tableName: string, payload: any): any {
     for (const key of Object.keys(obj)) {
       if (whitelist.includes(key)) {
         cleaned[key] = obj[key];
+        // Mirror read to is_read when whitelisted key is copied
+        if (tableName === 'notifications' && key === 'read') {
+          cleaned.is_read = obj.read;
+        }
       } else {
         // Safe mapping fallback logic
         if (tableName === 'orders' && key === 'address' && !obj.venue) {
@@ -78,6 +82,9 @@ export function sanitizePayload(tableName: string, payload: any): any {
         }
         if (tableName === 'caterer_registrations' && (key === 'additionalPhone' || key === 'additionalMobile') && !obj.alternatePhone) {
           cleaned.alternatePhone = obj[key];
+        }
+        if (tableName === 'notifications' && key === 'targetRole') {
+          cleaned.type = obj.targetRole;
         }
       }
     }

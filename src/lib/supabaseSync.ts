@@ -42,61 +42,39 @@ export function initializeSupabaseSync() {
   (async () => {
     try {
       // Sync Caterer Registrations
-      const localRegs = JSON.parse(localStorage.getItem('registrations') || '[]');
       const { data: remoteRegs, error: rError } = await supabase
         .from('caterer_registrations')
         .select('*');
 
-      if (!rError) {
-        if (remoteRegs && remoteRegs.length > 0) {
-          // Sync downstream to client
-          originalSetItem.call(localStorage, 'registrations', JSON.stringify(remoteRegs));
-        } else if (localRegs.length > 0) {
-          // Seed upstream to database
-          await syncLocalTableToSupabase('caterer_registrations', localRegs);
-        }
+      if (!rError && remoteRegs) {
+        originalSetItem.call(localStorage, 'registrations', JSON.stringify(remoteRegs));
       }
 
       // Sync Orders / Bookings
-      const localOrders = JSON.parse(localStorage.getItem('orders') || '[]');
       const { data: remoteOrders, error: oError } = await supabase
         .from('orders')
         .select('*');
 
-      if (!oError) {
-        if (remoteOrders && remoteOrders.length > 0) {
-          originalSetItem.call(localStorage, 'orders', JSON.stringify(remoteOrders));
-        } else if (localOrders.length > 0) {
-          await syncLocalTableToSupabase('orders', localOrders);
-        }
+      if (!oError && remoteOrders) {
+        originalSetItem.call(localStorage, 'orders', JSON.stringify(remoteOrders));
       }
 
       // Sync Audit Logs
-      const localLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
       const { data: remoteLogs, error: lError } = await supabase
         .from('audit_logs')
         .select('*');
 
-      if (!lError) {
-        if (remoteLogs && remoteLogs.length > 0) {
-          originalSetItem.call(localStorage, 'auditLogs', JSON.stringify(remoteLogs));
-        } else if (localLogs.length > 0) {
-          await syncLocalTableToSupabase('audit_logs', localLogs);
-        }
+      if (!lError && remoteLogs) {
+        originalSetItem.call(localStorage, 'auditLogs', JSON.stringify(remoteLogs));
       }
 
       // Sync Notifications
-      const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
       const { data: remoteNotifications, error: nError } = await supabase
         .from('notifications')
         .select('*');
 
-      if (!nError) {
-        if (remoteNotifications && remoteNotifications.length > 0) {
-          originalSetItem.call(localStorage, 'notifications', JSON.stringify(remoteNotifications));
-        } else if (localNotifications.length > 0) {
-          await syncLocalTableToSupabase('notifications', localNotifications);
-        }
+      if (!nError && remoteNotifications) {
+        originalSetItem.call(localStorage, 'notifications', JSON.stringify(remoteNotifications));
       }
 
     } catch (syncErr) {

@@ -660,6 +660,8 @@ export default function OrderFlow() {
 
       const newOrder = {
           id: Math.random().toString(36).substr(2, 9),
+          userId: user.id || '',
+          customerEmail: user.email || '',
           catererId: caterer.id,
           catererName: caterer.name,
           customerName: user.name || orderForm.name || 'Guest User',
