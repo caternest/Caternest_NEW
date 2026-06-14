@@ -164,6 +164,7 @@ export default function JoinCaterer() {
   
   const [menuPackages, setMenuPackages] = useState<any[]>([]);
   const [isParsing, setIsParsing] = useState(false);
+  const [isUsernameManual, setIsUsernameManual] = useState(false);
 
   const popularAreas = ['Kondapur', 'Gachibowli', 'Kukatpally', 'Madhapur', 'Banjara Hills', 'Jubilee Hills', 'Begumpet', 'Secunderabad'];
 
@@ -171,6 +172,7 @@ export default function JoinCaterer() {
     ownerName: '',
     mobile: '',
     alternateMobile: '',
+    additionalMobile: '',
     email: '',
     username: '',
     password: '',
@@ -215,15 +217,48 @@ export default function JoinCaterer() {
     setFormData({ ...formData, serviceAreas: filtered.join(', ') });
   };
 
+  const generateUsernameFromBusinessName = (name: string) => {
+    if (!name) return '';
+    const clean = name.toLowerCase().replace(/[^a-z]/g, '');
+    if (!clean) return '';
+    const base = clean.substring(0, 5);
+    
+    const raw = localStorage.getItem('registrations') || '[]';
+    let registrationsLocal = [];
+    try {
+      registrationsLocal = JSON.parse(raw);
+    } catch(e) {}
+    
+    let candidate = base;
+    let attempt = 1;
+    const usernameExists = (uname: string) => registrationsLocal.some((r: any) => (r.username || '').toLowerCase() === uname.toLowerCase());
+    
+    while (usernameExists(candidate)) {
+      const numStr = attempt < 10 ? `0${attempt}` : `${attempt}`;
+      candidate = `${base.substring(0, 5 - numStr.length)}${numStr}`;
+      attempt++;
+    }
+    return candidate;
+  };
+
+  React.useEffect(() => {
+    if (!isUsernameManual && formData.businessName) {
+      const generated = generateUsernameFromBusinessName(formData.businessName);
+      setFormData(prev => ({ ...prev, username: generated }));
+    }
+  }, [formData.businessName, isUsernameManual]);
+
   const handleCatererDetailsExtracted = (details: any) => {
       setFormData(prev => ({
           ...prev,
           businessName: prev.businessName || details.businessName || '',
           ownerName: prev.ownerName || details.ownerName || '',
-          mobile: prev.mobile || details.phone || '',
-          alternateMobile: prev.alternateMobile || details.alternatePhone || '',
+          mobile: prev.mobile || details.primaryWhatsApp || details.phone || '',
+          alternateMobile: prev.alternateMobile || details.secondaryPhone || details.alternatePhone || '',
+          additionalMobile: prev.additionalMobile || details.additionalPhone || '',
           location: prev.location || details.address || '',
-          city: prev.city || details.city || ''
+          city: prev.city || details.city || '',
+          catererLogo: prev.catererLogo || details.logoUrl || ''
       }));
   };
 
@@ -349,6 +384,7 @@ export default function JoinCaterer() {
       email: formData.email,
       phone: formData.mobile,
       alternatePhone: formData.alternateMobile,
+      additionalPhone: formData.additionalMobile,
       username: formData.username,
       password: formData.password,
       address: formData.location,
@@ -698,17 +734,19 @@ export default function JoinCaterer() {
                                   <input type="text" value={formData.ownerName} onChange={e => setFormData({ ...formData, ownerName: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="Enter owner's full legal name" />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Mobile Number <span className="text-red-500">*</span></label>
+                                  <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Mobile Number <span className="text-red-500">*</span> (Primary WhatsApp Number)</label>
                                   <input type="text" value={formData.mobile} onChange={e => setFormData({ ...formData, mobile: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. +91 98765 43210" />
                                 </div>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Alternate Number</label>
+                                  <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Line 2: Secondary Number</label>
                                   <input type="text" value={formData.alternateMobile || ''} onChange={e => setFormData({ ...formData, alternateMobile: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. Backup manager number" />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email Address <span className="text-red-500">*</span></label>
+                                  <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Line 3: Additional Number (Optional)</label>
+                                   <input type="text" value={formData.additionalMobile || ''} onChange={e => setFormData({ ...formData, additionalMobile: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all mb-4" placeholder="e.g. backup or landline" />
+                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email Address <span className="text-red-500">*</span></label>
                                   <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. delicious@caterer.com" />
                                 </div>
                            </div>
@@ -725,7 +763,7 @@ export default function JoinCaterer() {
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Choose Username <span className="text-red-500">*</span></label>
-                                  <input type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. gourmet_kitchens" />
+                                  <input type="text" value={formData.username} onChange={e => { setIsUsernameManual(true); setFormData({ ...formData, username: e.target.value }); }} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. gourmet_kitchens" />
                                 </div>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

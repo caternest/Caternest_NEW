@@ -211,26 +211,30 @@ const parseMenuHandler = async (req: any, res: any) => {
 You are an expert catering menu document parser. You must analyze the provided menu document(s) (which can be multiple pages or images) and comprehensively extract the data into structured JSON.
 
 Your tasks:
-1. Extract Caterer Details: Extract Caterer Name (businessName), Owner Name, Phone Number(s), Alternate Numbers, and Address/City from the document if they exist.
-2. Identify all PACKAGES. Ensure that you detect all packages across multiple pages (e.g. Basic, Classic, Silver, Gold, Platinum, Diamond, Veg, Non-Veg). If you see breakfast items (Idly, Vada, Dosa, Poori, Tea, Coffee), create a separate 'Breakfast' package.
-3. Connect Pricing Matrix / Slabs to Packages: Many menus contain pricing slabs based on minimum and maximum guest counts.
+1. Extract Caterer Details: Extract Caterer Name (businessName), Owner Name, Address/City from the document if they exist.
+2. Extract logo, brand name, and contact numbers:
+   - Identify if there is a logo or brand emblem physically present inside the document (set logoFound to true or false).
+   - If a logo is found, describe it or set a valid reference.
+   - Separate extracted contact numbers into exactly three lines:
+     - primaryWhatsApp: Line 1 (Primary WhatsApp Number, typically key contact mobile number, digits only e.g. "9441170159")
+     - secondaryPhone: Line 2 (Secondary Number, digits only)
+     - additionalPhone: Line 3 (Optional third number, digits only)
+3. Identify all PACKAGES. Detect all packages across multiple pages (Veg, Non-Veg, etc). If you see breakfast items, put them in a separate 'Breakfast' package.
+4. Connect Pricing Matrix / Slabs to Packages: Many menus contain pricing slabs based on minimum and maximum guest counts.
 Example:
 "100-199 Guests = ₹615 per plate" -> minGuests: 100, maxGuests: 199, price: 615
 "200-299 Guests = ₹500 per plate" -> minGuests: 200, maxGuests: 299, price: 500
-"1000+ Guests = ₹420 per plate" -> minGuests: 1000, maxGuests: null, price: 420
 You MUST extract these slabs and place them under the \`pricingSlabs\` array for each package.
-4. Link CATEGORIES to PACKAGES. Read the package composition pages and list the categories included in each package, along with the selection rule for each category (e.g. "Choose Any 1", "Choose Any 2", "Choose Any 3", "Included", "Fixed Items").
-5. Connect DISHES to CATEGORIES. Look at the detailed menu pages to find the actual list of items for each category and assign them to the respective categories inside the package. Every item under every category must be extracted.
-6. Extract ADD-ONS.
-7. Extract GENERAL INCLUDED ITEMS/TERMS (e.g., table essentials).
+5. Link CATEGORIES to PACKAGES. list the categories included in each package, along with the selection rule for each category (e.g. "Choose Any 1", "Choose Any 2", "Choose Any 3", "Included", "Fixed").
+6. Connect DISHES to CATEGORIES. Look at the detailed menu pages to find the actual list of items for each category and assign them to the respective categories inside the package. Every item under every category must be extracted.
+7. Extract ADD-ONS.
+8. Extract GENERAL INCLUDED ITEMS/TERMS.
 
 Strict Rules:
 - Return ONLY valid JSON. No markdown wrappers (\`\`\`json etc.).
 - EXTRACT ONLY WHAT IS EXACTLY WRITTEN IN THE TEXT. Do not invent, guess, or hallucinate dishes, categories, or packages.
-- CRITICAL: DO NOT create a category if there are no valid dishes found for it in the document. An empty category or a category with guessed placeholder items (like "Standard Ice Cream" or "Assorted Drinks") is STRICTLY FORBIDDEN.
+- CRITICAL: DO NOT create a category if there are no valid dishes found in the document.
 - Ignore empty categories entirely.
-- Do not copy categories from other packages unless explicitly shared in the document.
-- Only extract categories physically present in the uploaded menu. Extract only dishes physically present under those categories.
 - Ensure selection rules directly state limits (e.g. "Choose Any 1") to aid customer ordering flow.
 - Ensure pricing slabs are properly structured.
 - Output schema MUST follow EXACTLY:
@@ -238,10 +242,15 @@ Strict Rules:
   "catererDetails": {
     "businessName": "String | null",
     "ownerName": "String | null",
+    "primaryWhatsApp": "String | null",
+    "secondaryPhone": "String | null",
+    "additionalPhone": "String | null",
     "phone": "String | null",
     "alternatePhone": "String | null",
     "address": "String | null",
-    "city": "String | null"
+    "city": "String | null",
+    "logoFound": Boolean,
+    "logoUrl": "String | null"
   },
   "packages": [
     {
@@ -288,6 +297,23 @@ Strict Rules:
     }
     
     const data = JSON.parse(jsonStr.trim());
+
+    // Auto logo logic from menu upload
+    if (data.catererDetails) {
+      // Keep compatible with legacy fields
+      data.catererDetails.phone = data.catererDetails.primaryWhatsApp || data.catererDetails.phone;
+      data.catererDetails.alternatePhone = data.catererDetails.secondaryPhone || data.catererDetails.alternatePhone;
+
+      if (data.catererDetails.logoFound) {
+        if (urls && Array.isArray(urls) && urls.length > 0) {
+          data.catererDetails.logoUrl = urls[0];
+        } else {
+          data.catererDetails.logoUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(data.catererDetails.businessName || 'Caterer')}&backgroundColor=0b3d2e&textColor=d4a437`;
+        }
+      } else {
+        data.catererDetails.logoUrl = '';
+      }
+    }
 
     // Process newly scanned items to map food images automatically
     if (data.packages && Array.isArray(data.packages)) {
@@ -355,10 +381,15 @@ const saveMenuHandler = async (req: any, res: any) => {
       if (catererDetails) {
         if (catererDetails.businessName) updatePayload.businessName = catererDetails.businessName;
         if (catererDetails.ownerName) updatePayload.ownerName = catererDetails.ownerName;
-        if (catererDetails.phone) updatePayload.phone = catererDetails.phone;
-        if (catererDetails.alternatePhone) updatePayload.alternatePhone = catererDetails.alternatePhone;
+        if (catererDetails.phone || catererDetails.primaryWhatsApp) updatePayload.phone = catererDetails.primaryWhatsApp || catererDetails.phone;
+        if (catererDetails.alternatePhone || catererDetails.secondaryPhone) updatePayload.alternatePhone = catererDetails.secondaryPhone || catererDetails.alternatePhone;
+        if (catererDetails.additionalPhone) updatePayload.additionalPhone = catererDetails.additionalPhone;
         if (catererDetails.address) updatePayload.address = catererDetails.address;
         if (catererDetails.city) updatePayload.city = catererDetails.city;
+        if (catererDetails.logoUrl) {
+          updatePayload.logo = catererDetails.logoUrl;
+          updatePayload.catererLogo = catererDetails.logoUrl;
+        }
       }
 
       console.log(`Updating caterer ${catererId} menu options on Supabase...`);
