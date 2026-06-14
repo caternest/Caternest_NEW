@@ -1056,8 +1056,15 @@ export default function CatererDashboard() {
                                       <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors group">
                                           <td className="px-6 py-4 font-mono font-medium text-slate-700">{ord.id}</td>
                                           <td className="px-6 py-4 text-slate-500">{new Date(ord.created_at).toLocaleDateString()}<br/><span className="text-[10px]">{new Date(ord.created_at).toLocaleTimeString()}</span></td>
-                                          <td className="px-6 py-4 font-bold text-slate-800">{ord.customerName}</td>
-                                          <td className="px-6 py-4 text-slate-500">{ord.phone || 'N/A'}</td>
+                                          <td className="px-6 py-4">
+                                              <div className="font-bold text-slate-800 leading-tight">{ord.customerName || 'Test User'}</div>
+                                              {(ord.venue || ord.address) && (
+                                                  <div className="text-[11px] text-slate-500 font-medium whitespace-normal max-w-xs block mt-1">
+                                                      {ord.venue || ord.address}
+                                                  </div>
+                                              )}
+                                          </td>
+                                          <td className="px-6 py-4 text-slate-500">{ord.customerPhone || ord.phone || 'N/A'}</td>
                                           <td className="px-6 py-4 text-slate-600">{ord.packageDetails?.packageName || 'Custom'}</td>
                                           <td className="px-6 py-4 text-slate-600">{ord.guests}</td>
                                           <td className="px-6 py-4 font-bold text-brand-green-900">₹{ord.totalEstimate?.toLocaleString()}</td>
@@ -1363,10 +1370,10 @@ export default function CatererDashboard() {
                                <div>
                                    <h4 className="font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">Customer Details</h4>
                                    <div className="space-y-2 text-sm">
-                                       <p><span className="text-slate-500 w-20 inline-block font-medium">Name:</span> <span className="font-bold text-slate-700">{selectedOrder.customerName}</span></p>
-                                       <p><span className="text-slate-500 w-20 inline-block font-medium">Phone:</span> <span className="text-slate-700">{selectedOrder.phone || 'N/A'}</span></p>
+                                       <p><span className="text-slate-500 w-20 inline-block font-medium">Name:</span> <span className="font-bold text-slate-700">{selectedOrder.customerName || 'N/A'}</span></p>
+                                       <p><span className="text-slate-500 w-20 inline-block font-medium">Phone:</span> <span className="text-slate-700">{selectedOrder.customerPhone || selectedOrder.phone || 'N/A'}</span></p>
                                        <p><span className="text-slate-500 w-20 inline-block font-medium">Email:</span> <span className="text-slate-700">{selectedOrder.customerEmail || 'N/A'}</span></p>
-                                       <p><span className="text-slate-500 w-20 inline-block font-medium flex items-start gap-1"><MapPin size={14}/> Venue:</span> <span className="text-slate-700 block mt-1">{selectedOrder.address || 'N/A'}</span></p>
+                                       <p><span className="text-slate-500 w-20 inline-block font-medium flex items-start gap-1"><MapPin size={14}/> Venue:</span> <span className="text-slate-700 block mt-1">{selectedOrder.venue || selectedOrder.address || 'N/A'}</span></p>
                                    </div>
                                </div>
 
@@ -1389,10 +1396,10 @@ export default function CatererDashboard() {
                                        <li key={i} className="text-slate-600">{item}</li>
                                    ))}
                                </ul>
-                               {selectedOrder.specialNotes && (
+                               {(selectedOrder.specialNotes || selectedOrder.notes) && (
                                    <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg text-sm text-slate-700 mt-2">
-                                       <span className="font-bold text-amber-900 block mb-1">Special Notes:</span>
-                                       {selectedOrder.specialNotes}
+                                       <span className="font-bold text-amber-900 block mb-1">Special Requests:</span>
+                                       {selectedOrder.specialNotes || selectedOrder.notes}
                                    </div>
                                )}
 

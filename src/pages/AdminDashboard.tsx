@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw } from 'lucide-react';
+import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '../components/Toast';
-import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
+import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB } from '../lib/supabase';
 import { generateUUID } from '../lib/orderUtils';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings'>('overview');
   const [foodItemImages, setFoodItemImages] = useState<any[]>([]);
+  const [platformFeePerPlate, setPlatformFeePerPlate] = useState<number>(2);
+  const [savingFee, setSavingFee] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeImageFilter, setActiveImageFilter] = useState<'All' | 'Pending Admin Review' | 'Approved' | 'Rejected' | 'No Image'>('All');
   const [showAddMappingModal, setShowAddMappingModal] = useState(false);
@@ -45,6 +47,13 @@ export default function AdminDashboard() {
   };
 
   const fetchSupabaseData = async () => {
+    try {
+      const fee = await fetchPlatformFeePerPlate();
+      setPlatformFeePerPlate(fee);
+    } catch (err) {
+      console.warn("Failed fetching platform fee in fetchSupabaseData", err);
+    }
+
     const supabase = getSupabase() as any;
     if (supabase) {
       try {
@@ -87,6 +96,21 @@ export default function AdminDashboard() {
       } catch (err) {
         console.error("Error reading from Supabase in AdminDashboard:", err);
       }
+    }
+  };
+
+  const handleSavePlatformFee = async (fee: number) => {
+    setSavingFee(true);
+    try {
+      await updatePlatformFeePerPlateInDB(fee);
+      setPlatformFeePerPlate(fee);
+      await logAudit("Update Platform Fee", `Set fee per plate to ₹${fee}`);
+      toast(`Platform Fee Per Plate updated to ₹${fee} successfully!`, "success");
+    } catch (err) {
+      console.error(err);
+      toast("Failed to update Platform Fee", "error");
+    } finally {
+      setSavingFee(false);
     }
   };
 
@@ -745,6 +769,9 @@ export default function AdminDashboard() {
                     <button onClick={() => setActiveTab('audit')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm mt-1.5", activeTab === 'audit' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
                        <Clock size={18} /> Audit Log
                     </button>
+                    <button onClick={() => setActiveTab('settings')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm mt-1.5", activeTab === 'settings' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
+                       <Sliders size={18} /> Platform Settings
+                    </button>
                 </div>
              </nav>
          </div>
@@ -1210,6 +1237,72 @@ export default function AdminDashboard() {
                         </tbody>
                     </table>
                    </div>
+              </div>
+          )}
+
+          {activeTab === 'settings' && (
+              <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm max-w-2xl space-y-6">
+                  <div>
+                      <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                          <Sliders className="text-brand-gold-500" size={24} />
+                          Platform Settings
+                      </h2>
+                      <p className="text-slate-500 text-sm mt-1">
+                          Configure platform settings, fees structure, and administrative defaults. These values apply globally in real-time.
+                      </p>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-6 space-y-4">
+                      <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Platform Fee Per Plate (₹)</label>
+                          <p className="text-xs text-slate-400 mb-3">
+                              This fee is multiplied directly by the booking guest count to calculate the aggregate platform fee for all orders: <strong className="text-slate-600 font-bold">Aggregate Fee = Guest Count × Platform Fee Per Plate</strong>.
+                          </p>
+                          <div className="flex flex-wrap gap-2.5 mb-4">
+                              {[1, 2, 5, 10].map((preset) => (
+                                  <button
+                                      key={preset}
+                                      type="button"
+                                      onClick={() => setPlatformFeePerPlate(preset)}
+                                      className={cn(
+                                          "px-4 py-2 rounded-xl text-xs font-bold transition-all border",
+                                          platformFeePerPlate === preset
+                                              ? "bg-slate-900 border-slate-900 text-brand-gold-500 shadow-md scale-105"
+                                              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                                      )}
+                                  >
+                                      ₹{preset} Preset
+                                  </button>
+                              ))}
+                          </div>
+                          
+                          <div className="flex gap-3 items-center">
+                              <span className="text-slate-500 font-medium text-sm">Custom value:</span>
+                              <div className="relative rounded-xl shadow-sm w-44">
+                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                      <span className="text-slate-400 font-bold text-sm">₹</span>
+                                  </div>
+                                  <input
+                                      type="number"
+                                      min="0"
+                                      value={platformFeePerPlate}
+                                      onChange={(e) => setPlatformFeePerPlate(Math.max(0, parseInt(e.target.value) || 0))}
+                                      className="block w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-gold-500 text-sm font-bold text-slate-800"
+                                  />
+                              </div>
+                          </div>
+                      </div>
+
+                      <div className="pt-6 border-t border-slate-100 flex justify-end">
+                          <button
+                              onClick={() => handleSavePlatformFee(platformFeePerPlate)}
+                              disabled={savingFee}
+                              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm"
+                          >
+                              {savingFee ? 'Saving...' : 'Save Settings'}
+                          </button>
+                      </div>
+                  </div>
               </div>
           )}
 

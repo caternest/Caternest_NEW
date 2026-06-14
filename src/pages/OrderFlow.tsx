@@ -474,6 +474,17 @@ const renderVegNonVegBadge = (packageType: string = "") => {
     );
 };
 
+const getSelectionRuleLabel = (rule: string | undefined): string => {
+  if (!rule) return "Select Items From This Category";
+  const clean = rule.trim();
+  const match = clean.match(/(Select|Choose)\s+Any\s+(\d+)\s*(Items?)?/i);
+  if (match) {
+    const num = match[2];
+    return `Select Any ${num} Items From This Category`;
+  }
+  return clean;
+};
+
 export default function OrderFlow() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -483,8 +494,19 @@ export default function OrderFlow() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [foodImages, setFoodImages] = useState<Record<string, string>>({});
+  const [platformFeePerPlate, setPlatformFeePerPlate] = useState(() => {
+    return parseFloat(localStorage.getItem('platformFeePerPlate') || '1');
+  });
   
   const location = useLocation();
+
+  useEffect(() => {
+    import('../lib/supabase').then(({ fetchPlatformFeePerPlate }) => {
+      fetchPlatformFeePerPlate().then(fee => {
+        setPlatformFeePerPlate(fee);
+      });
+    });
+  }, []);
 
   useEffect(() => {
     fetch('/api/food-images')
@@ -625,7 +647,7 @@ export default function OrderFlow() {
       }
 
       const currentOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-      const platformFee = appliedCoupon === 'NEW' ? 0 : 99;
+      const platformFee = appliedCoupon === 'NEW' ? 0 : (guests * platformFeePerPlate);
       
       let matchingSlab = selectedPackage?.pricingSlabs?.find((slab: any) => 
            guests >= slab.minGuests && (slab.maxGuests === null || guests <= slab.maxGuests)
@@ -642,11 +664,15 @@ export default function OrderFlow() {
           catererName: caterer.name,
           customerName: user.name || orderForm.name || 'Guest User',
           phone: user.phone || orderForm.phone || '',
+          customerPhone: user.phone || orderForm.phone || '',
           eventDate: orderForm.date,
           eventType: orderForm.type,
           guests: guests,
-          venue: orderForm.venue,
-          specialNotes: orderForm.notes,
+          guestCount: guests,
+          venue: orderForm.venue || '',
+          address: orderForm.venue || '',
+          specialNotes: orderForm.notes || '',
+          notes: orderForm.notes || '',
           packageDetails: selectedPackage,
           matchedSlab: matchingSlab,
           selectedItems: Object.keys(selectedItems).filter((k: string)=>selectedItems[k]),
@@ -1187,6 +1213,41 @@ export default function OrderFlow() {
               {/* LEFT PANEL - Categories */}
               <div className="w-full lg:w-72 shrink-0">
                   <div className="bg-[#FAF9F6] rounded-[2rem] border border-slate-200/60 p-5 sticky top-36 shadow-sm max-h-[calc(100vh-180px)] overflow-y-auto">
+                      {/* Completed Categories progress indicator */}
+                      {(() => {
+                        const activeCats = menuCategories.filter((cat: string) => {
+                          const catItems = selectedPackage?.categories?.find((c: any) => c.categoryName === cat)?.items || [];
+                          return catItems.length > 0;
+                        });
+                        const totalCats = activeCats.length;
+                        const doneCats = activeCats.filter((cat: string) => {
+                          const catData = selectedPackage?.categories?.find((c: any) => c.categoryName === cat);
+                          if (!catData) return false;
+                          const match = catData.selectionRule?.match(/\d+/);
+                          const limit = match ? parseInt(match[0], 10) : 0;
+                          if (limit === 0) return true;
+                          const selectedCount = (catData.items || []).filter((i: string) => selectedItems[i]).length;
+                          return selectedCount >= limit;
+                        }).length;
+                        return (
+                          <div className="bg-white rounded-2xl border border-slate-200/65 p-4 mb-5 shadow-sm">
+                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 font-sans">Completed Categories</p>
+                              <div className="flex items-baseline justify-between select-none">
+                                  <span className="text-2xl font-black text-[#0B3D2E] font-display">{doneCats} / {totalCats}</span>
+                                  <span className="text-xs font-bold text-[#FF6A13] font-sans">
+                                      {Math.round((doneCats / (totalCats || 1)) * 100)}% Done
+                                  </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 mt-2.5 overflow-hidden">
+                                  <div 
+                                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                                      style={{ width: `${(doneCats / (totalCats || 1)) * 100}%` }}
+                                  ></div>
+                              </div>
+                          </div>
+                        );
+                      })()}
+
                       <h3 className="font-display font-black text-xl text-[#0B3D2E] mb-5 px-2">Categories</h3>
                       <div className="space-y-2">
                           {menuCategories.map((cat: string) => {
@@ -1205,55 +1266,57 @@ export default function OrderFlow() {
                                       key={cat}
                                       onClick={() => setActiveCategory(cat)}
                                       className={cn(
-                                          "w-full text-left px-4 py-3.5 rounded-2xl transition-all border text-[15px] font-black flex items-center justify-between mb-2 shadow-sm select-none gap-3 relative overflow-hidden",
+                                          "w-full text-left px-4 py-3 rounded-2xl transition-all border text-[15px] font-black flex flex-col mb-2 shadow-sm select-none gap-2 relative overflow-hidden",
                                           isActive 
                                              ? "bg-[#FF6A13] text-white border-[#FF6A13] shadow-[#FF6A13]/25 shadow-md" 
                                              : "bg-white text-slate-800 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                                       )}
                                   >
-                                      <div className="flex items-center gap-2.5 min-w-0">
-                                          <span className={cn("shrink-0", isActive ? "text-white" : "text-[#FF6A13]")}>
-                                              {getCategoryIcon(cat)}
-                                          </span>
-                                          <span className="truncate leading-none">{cat}</span>
-                                      </div>
-                                      
-                                      {catLimit > 0 ? (
-                                          isDone ? (
-                                              <span className={cn(
-                                                  "text-[10px] px-2.5 py-1 rounded-full font-black flex items-center gap-1 uppercase tracking-wider shrink-0 shadow-sm border",
-                                                  isActive 
-                                                      ? "bg-white/20 text-white border-transparent" 
-                                                      : "bg-[#E6F4EA] text-[#137333] border-[#CEEAD6]"
-                                              )}>
-                                                  <Check size={11} strokeWidth={3.5} /> DONE
+                                      <div className="w-full flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-2.5 min-w-0">
+                                              <span className={cn("shrink-0", isActive ? "text-white" : "text-[#FF6A13]")}>
+                                                  {getCategoryIcon(cat)}
                                               </span>
+                                              <span className="truncate leading-none">{cat}</span>
+                                          </div>
+                                          
+                                          {catLimit > 0 ? (
+                                              isDone ? (
+                                                  <span className={cn(
+                                                      "text-[10px] px-2.5 py-1 rounded-full font-black flex items-center gap-1 uppercase tracking-wider shrink-0 shadow-sm border",
+                                                      isActive 
+                                                          ? "bg-white text-[#FF6A13] border-transparent" 
+                                                          : "bg-emerald-100 text-emerald-800 border-emerald-200 text-xs gap-1 font-bold"
+                                                  )}>
+                                                      ✓ Completed
+                                                  </span>
+                                              ) : (
+                                                  <span className={cn(
+                                                      "text-[10px] px-2.5 py-1 rounded-full font-black tracking-wide shrink-0 border uppercase",
+                                                      isActive 
+                                                          ? "bg-white/20 text-white border-transparent" 
+                                                          : "bg-orange-100 text-orange-850 border-orange-200 text-xs font-bold"
+                                                  )}>
+                                                      {selectedCount}/{catLimit} Selected
+                                                  </span>
+                                              )
                                           ) : (
                                               <span className={cn(
-                                                  "text-[11px] px-3 py-1 rounded-full font-black tracking-wide shrink-0",
-                                                  isActive 
-                                                      ? "bg-white/25 text-white" 
-                                                      : "bg-[#FFF3EC] text-[#FF6A13] border border-[#FF6A13]/10"
+                                                  "text-[10px] px-2 rounded-full font-black shrink-0",
+                                                  isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
                                               )}>
-                                                  {selectedCount}/{catLimit}
+                                                  {selectedCount} Selected
                                               </span>
-                                          )
-                                      ) : selectedCount > 0 ? (
-                                          <span className={cn(
-                                              "text-[11px] px-3 py-1 rounded-full font-black tracking-wide shrink-0",
-                                              isActive 
-                                                  ? "bg-white/25 text-white" 
-                                                  : "bg-[#FF6A13]/15 text-[#FF6A13]"
+                                          )}
+                                      </div>
+
+                                      {catLimit > 0 && (
+                                          <div className={cn(
+                                              "text-[11px] font-bold text-left px-1.5 py-0.5 rounded-md w-fit capitalize",
+                                              isActive ? "text-white/80 bg-white/10" : "text-slate-500 bg-slate-100"
                                           )}>
-                                              {selectedCount}
-                                          </span>
-                                      ) : (
-                                          <span className={cn(
-                                              "text-[11px] px-3 py-1 rounded-full font-black tracking-wide shrink-0 opacity-40",
-                                              isActive ? "bg-white/10 text-white" : "bg-slate-100 text-slate-500"
-                                          )}>
-                                              0
-                                          </span>
+                                              {catLimit} Required
+                                          </div>
                                       )}
                                   </button>
                               )
@@ -1269,7 +1332,7 @@ export default function OrderFlow() {
                           <div>
                               <h2 className="text-3xl font-bold font-display text-[#0B3D2E] leading-tight">{activeCategory}</h2>
                               <p className="text-sm font-semibold text-[#FF6A13] mt-2 tracking-wide uppercase">
-                                  {selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.selectionRule || "Choose Any"}
+                                  {getSelectionRuleLabel(selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.selectionRule)}
                               </p>
                               {limitPerCategory > 0 && (
                                   <div className="mt-4">
@@ -1280,11 +1343,11 @@ export default function OrderFlow() {
                                           const isFull = selectedCount >= limitPerCategory;
                                           return isFull ? (
                                               <span className="inline-flex items-center gap-1.5 bg-[#E6F4EA] border border-[#CEEAD6] text-[#137333] font-black px-4.5 py-2 rounded-full text-[13px] shadow-sm uppercase tracking-wide">
-                                                  <Check size={14} className="text-[#137333]" strokeWidth={3.5} /> Selected {selectedCount}/{limitPerCategory} (Done)
+                                                  <Check size={14} className="text-[#137333]" strokeWidth={3.5} /> You Have Selected {selectedCount} Of {limitPerCategory} Required Items
                                               </span>
                                           ) : (
                                               <span className="inline-flex items-center gap-1.5 bg-[#FFF5EE] border border-[#FF6A13]/25 text-[#FF6A13] font-black px-4.5 py-2 rounded-full text-[13px] shadow-sm uppercase tracking-wide">
-                                                  Selected {selectedCount}/{limitPerCategory}
+                                                  You Have Selected {selectedCount} Of {limitPerCategory} Required Items
                                               </span>
                                           );
                                       })()}
@@ -1323,14 +1386,14 @@ export default function OrderFlow() {
                           const description = getFoodDescription(itemName);
                           
                           return (
-                              <div 
+                                                     <div 
                                   key={idx} 
                                   data-name={itemName}
                                   onClick={() => {
                                       if (!isDisabled) toggleItem(itemName, activeCategory);
                                   }}
                                   className={cn(
-                                      "dish-card-item relative bg-white border rounded-[1.25rem] flex flex-col justify-between overflow-hidden transition-all duration-300 shadow-sm cursor-pointer select-none",
+                                      "dish-card-item relative bg-white border rounded-2xl flex flex-col justify-between p-6 transition-all duration-300 shadow-sm cursor-pointer select-none",
                                       isSelected 
                                           ? "border-[#D4AF37] ring-1 ring-[#D4AF37]/50 bg-amber-50/10 -translate-y-0.5 shadow-md shadow-amber-500/5" 
                                           : isDisabled 
@@ -1338,66 +1401,47 @@ export default function OrderFlow() {
                                              : "border-slate-200/80 hover:border-[#D4AF37]/45 hover:shadow-md hover:-translate-y-0.5"
                                   )}
                               >
-                                  {/* Food Image Banner */}
-                                  <div className="w-full aspect-[16/9] bg-slate-100 relative overflow-hidden shrink-0">
-                                      <img 
-                                          src={foodImages[itemName.toLowerCase().trim()] || getFoodImage(itemName)} 
-                                          alt={itemName}
-                                          referrerPolicy="no-referrer"
-                                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                      />
-                                      {/* Top Premium Badge Overlay (like Screenshot 2) */}
-                                      {isPremium ? (
-                                          <div className="absolute top-3 left-3 bg-[#131615]/90 backdrop-blur-xs text-[#D4AF37] font-black text-[9px] px-2.5 py-1 rounded-md tracking-wider uppercase border border-amber-500/25 shadow-sm">
-                                              Premium Option
+                                  {/* Header Item Category & Type */}
+                                  <div className="flex justify-between items-start gap-4 mb-3">
+                                      {/* Veg / Non-Veg Indicator Badge */}
+                                      {isNonVeg ? (
+                                          <div className="flex items-center gap-1.5">
+                                              <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center p-[2px] shrink-0 rounded-[2px] bg-white">
+                                                  <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                                              </div>
+                                              <span className="text-[10px] font-black tracking-wider text-red-700 uppercase font-sans">
+                                                  Non-Veg
+                                              </span>
                                           </div>
                                       ) : (
-                                          <div className="absolute top-3 left-3 bg-[#0F3D2E]/90 backdrop-blur-xs text-[#E6F4EA] font-black text-[9px] px-2.5 py-1 rounded-md tracking-wider uppercase border border-emerald-500/25 shadow-sm">
-                                              Standard Package
+                                          <div className="flex items-center gap-1.5">
+                                              <div className="w-4 h-4 border-2 border-emerald-600 flex items-center justify-center p-[2px] shrink-0 rounded-[2px] bg-white">
+                                                  <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
+                                              </div>
+                                              <span className="text-[10px] font-black tracking-wider text-emerald-700 uppercase font-sans">
+                                                  Veg
+                                              </span>
                                           </div>
                                       )}
 
-                                      {/* Centered Check indicator overlay on image when selected (like Screenshot 2) */}
+                                      {/* Selection Indicator check bubble */}
                                       {isSelected && (
-                                          <div className="absolute inset-x-0 inset-y-0 bg-[#0F3D2E]/40 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-300">
-                                              <div className="w-11 h-11 rounded-full bg-[#D4AF37] text-white flex items-center justify-center shadow-lg border-2 border-white animate-scale-up">
-                                                  <Check size={22} strokeWidth={4} />
-                                              </div>
+                                          <div className="w-6 h-6 rounded-full bg-[#D4AF37] text-white flex items-center justify-center shadow-md shrink-0 border border-white">
+                                              <Check size={12} strokeWidth={4} />
                                           </div>
                                       )}
                                   </div>
 
-                                  {/* Content Area */}
-                                  <div className="p-5 flex-1 flex flex-col justify-between">
+                                  {/* Item metadata */}
+                                  <div className="flex-1 flex flex-col justify-between">
                                       <div>
-                                          {/* Veg / Non-Veg Indicator Badge */}
-                                          {isNonVeg ? (
-                                              <div className="flex items-center gap-1.5 mb-2.5">
-                                                  <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center p-0.5 shrink-0 rounded-[2px] bg-white">
-                                                      <div className="w-0 h-0 border-l-[3.5px] border-r-[3.5px] border-b-[7px] border-l-transparent border-r-transparent border-b-red-600"></div>
-                                                  </div>
-                                                  <span className="text-[10px] font-black tracking-wider text-red-700 uppercase font-sans">
-                                                      Non Veg Item
-                                                  </span>
-                                              </div>
-                                          ) : (
-                                              <div className="flex items-center gap-1.5 mb-2.5">
-                                                  <div className="w-4 h-4 border-2 border-emerald-600 flex items-center justify-center p-0.5 shrink-0 rounded-[2px] bg-white">
-                                                      <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
-                                                  </div>
-                                                  <span className="text-[10px] font-black tracking-wider text-emerald-700 uppercase font-sans">
-                                                      Veg Item
-                                                  </span>
-                                              </div>
-                                          )}
-
                                           {/* Item Name */}
                                           <h4 className="text-lg font-bold font-display text-slate-800 leading-snug">
                                               {itemName}
                                           </h4>
 
                                           {/* Short Description */}
-                                          <p className="text-slate-500 text-xs leading-relaxed mt-1.5 line-clamp-2 h-9 select-none">
+                                          <p className="text-slate-500 text-xs leading-relaxed mt-1.5 line-clamp-3 select-none">
                                               {description}
                                           </p>
                                       </div>
@@ -1407,14 +1451,13 @@ export default function OrderFlow() {
                                           {/* Left status tag */}
                                           {isPremium ? (
                                               <div className="flex flex-col">
-                                                  <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 w-fit">
-                                                      Premium Upgrade
+                                                  <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-fit">
+                                                      Premium Item
                                                   </span>
-                                                  <span className="text-[8px] font-bold text-amber-600/80 mt-1">Extra premium applies</span>
                                               </div>
                                           ) : (
-                                              <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 w-fit">
-                                                  Standard Included
+                                              <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 w-fit">
+                                                  Included
                                               </span>
                                           )}
 
@@ -1426,7 +1469,7 @@ export default function OrderFlow() {
                                                       e.stopPropagation();
                                                       if (!isDisabled) toggleItem(itemName, activeCategory);
                                                   }}
-                                                  className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs uppercase tracking-wider rounded-xl border border-rose-200 transition-colors shadow-none outline-none cursor-pointer"
+                                                  className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs uppercase tracking-wider rounded-lg border border-rose-200 transition-colors shadow-none outline-none cursor-pointer"
                                               >
                                                   Deselect
                                               </button>
@@ -1439,13 +1482,13 @@ export default function OrderFlow() {
                                                   }}
                                                   disabled={isDisabled}
                                                   className={cn(
-                                                      "px-4 py-2 font-extrabold text-[#FCFAF5] text-xs uppercase tracking-wide rounded-xl transition-all shadow-xs outline-none cursor-pointer",
+                                                      "px-3.5 py-1.5 font-extrabold text-white text-xs uppercase tracking-wide rounded-lg transition-all shadow-xs outline-none cursor-pointer",
                                                       isDisabled 
                                                           ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none" 
                                                           : "bg-[#0F3D2E] hover:bg-[#154D3C]"
                                                   )}
                                               >
-                                                  Add to Plater
+                                                  Add to Plate
                                               </button>
                                           )}
                                       </div>

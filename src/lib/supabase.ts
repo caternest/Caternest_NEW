@@ -139,6 +139,12 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
           sanitized.specialNotes = sanitized.notes;
         }
 
+        if (sanitized.venue && !sanitized.address) {
+          sanitized.address = sanitized.venue;
+        } else if (sanitized.address && !sanitized.venue) {
+          sanitized.venue = sanitized.address;
+        }
+
         if (sanitized.selectedItems && !sanitized.items) {
           sanitized.items = sanitized.selectedItems;
         } else if (sanitized.items && !sanitized.selectedItems) {
@@ -231,5 +237,54 @@ export async function saveWithSupabaseSync(tableName: string, localStorageKey: s
     await syncLocalTableToSupabase(tableName, dataArray);
   } catch (err) {
     console.error(`Error persisting upstream synced copy to "${tableName}":`, err);
+  }
+}
+
+export async function fetchPlatformFeePerPlate(): Promise<number> {
+  const localVal = localStorage.getItem('platformFeePerPlate');
+  let fee = localVal ? parseFloat(localVal) : 1;
+  const supabase = getSupabase();
+  if (!supabase) {
+    return fee;
+  }
+
+  try {
+    const { data, error } = await (supabase.from('platform_settings') as any).select('*');
+    if (error) {
+      throw error;
+    }
+    if (data && data.length > 0) {
+      const row = data[0] as any;
+      const dbFee = Number(row.platformFeePerPlate !== undefined ? row.platformFeePerPlate : (row.platform_fee_per_plate !== undefined ? row.platform_fee_per_plate : fee));
+      if (!isNaN(dbFee)) {
+        fee = dbFee;
+        localStorage.setItem('platformFeePerPlate', fee.toString());
+      }
+    } else {
+      // Seed default
+      await (supabase.from('platform_settings') as any).insert([{ id: 'default', platformFeePerPlate: fee }]);
+    }
+  } catch (err) {
+    console.warn("Failed to fetch platform fee from Supabase, using cache:", err);
+  }
+  return fee;
+}
+
+export async function updatePlatformFeePerPlateInDB(fee: number): Promise<void> {
+  localStorage.setItem('platformFeePerPlate', fee.toString());
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  try {
+    const payload = { id: 'default', platformFeePerPlate: fee, platform_fee_per_plate: fee };
+    const { error } = await (supabase.from('platform_settings') as any).upsert(payload, { onConflict: 'id' });
+    if (error) {
+      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ platformFeePerPlate: fee, platform_fee_per_plate: fee }).eq('id', 'default');
+      if (err2) {
+        console.warn("Could not sync platform fee to Supabase", err2);
+      }
+    }
+  } catch (err) {
+    console.warn("Error updating platform fee in Supabase", err);
   }
 }

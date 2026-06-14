@@ -869,26 +869,6 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
                       <div key={iIdx} className="flex flex-row items-center gap-3 py-1 group/item border-b border-dashed border-slate-100 last:border-0 hover:bg-slate-50/50 px-1.5 rounded-lg transition-all">
                         <div className="text-slate-300 group-hover/item:text-slate-500 cursor-grab px-1"><GripVertical size={14}/></div>
                         
-                        {/* Food Image Thumb with modal trigger */}
-                        <div 
-                          onClick={() => {
-                            setCatererEditingItem({ item_name: item, package_idx: pIdx, category_idx: cIdx, item_idx: iIdx });
-                            setCatererImgPreview(getBuilderItemImage(item));
-                          }}
-                          className="relative w-9 h-9 rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:border-brand-gold-500 transition-all shrink-0 group/img"
-                          title="Click to view, change or upload custom food image"
-                        >
-                          <img 
-                            src={getBuilderItemImage(item)} 
-                            alt={item}
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                            <UploadCloud size={12} className="text-white" />
-                          </div>
-                        </div>
-
                         <div className="flex-1 flex flex-col justify-center min-w-0">
                           <span className="text-sm font-bold text-slate-800 truncate">{item}</span>
                           <span className={cn(
@@ -1221,58 +1201,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {catererEditingItem && (
-            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <motion.div 
-                   initial={{ opacity: 0, scale: 0.95 }}
-                   animate={{ opacity: 1, scale: 1 }}
-                   exit={{ opacity: 0, scale: 0.95 }}
-                   className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative"
-                >
-                    <button onClick={() => setCatererEditingItem(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2"><X size={20}/></button>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">Change Food Image</h3>
-                    <p className="text-slate-550 text-xs mb-4 text-slate-500">
-                      Upload a custom photo for <span className="font-bold">"{catererEditingItem.item_name}"</span>. It will be sent to Admin for verification and goes live instantly.
-                    </p>
 
-                    <div className="space-y-4 mb-6">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Current Image / Live Preview</label>
-                            <div className="aspect-[16/9] w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                                <img 
-                                    src={catererImgPreview || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=420'} 
-                                    alt="Caterer Image Preview" 
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Upload Custom Photo</label>
-                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold-500 transition-colors relative">
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={handleCatererImageUpload}
-                                />
-                                <UploadCloud className="mx-auto text-slate-400 mb-1" size={24} />
-                                <span className="text-xs text-slate-500 font-bold block">Drag & Drop or Click to Select</span>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">Max size: 2MB</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                        <button onClick={() => setCatererEditingItem(null)} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm">Cancel</button>
-                        <button onClick={saveCatererCustomImage} className="flex-1 py-3 bg-brand-green-900 text-white font-bold rounded-xl shadow-lg hover:bg-brand-green-800 transition-colors text-sm">Submit For Review</button>
-                    </div>
-                </motion.div>
-            </div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
