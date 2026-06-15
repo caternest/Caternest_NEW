@@ -25,6 +25,8 @@ import EditCaterer from './pages/EditCaterer';
 
 import CatererDashboard from './pages/CatererDashboard';
 import CatererLogin from './pages/CatererLogin';
+import ProtectedRoute from './components/ProtectedRoute';
+import ChangePassword from './pages/ChangePassword';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -72,10 +74,11 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="caterer/:id" element={<CatererDetails />} />
             <Route path="join" element={<JoinCaterer />} />
-            <Route path="admin-dashboard" element={<AdminDashboard />} />
+            <Route path="admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             <Route path="explore" element={<Explore />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="orders" element={<Orders />} />
+            <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
             <Route path="about" element={<PlaceholderPage title="About Us" />} />
             <Route path="contact" element={<PlaceholderPage title="Contact Us" />} />
             <Route path="login" element={<AuthPage mode="login" />} />
@@ -83,13 +86,13 @@ export default function App() {
             <Route path="admin-login" element={<AdminLogin />} />
             <Route path="caterer-login" element={<CatererLogin />} />
             <Route path="partner-selection" element={<PartnerSelection />} />
-            <Route path="businesses" element={<MyBusinesses />} />
+            <Route path="businesses" element={<ProtectedRoute allowedRoles={['caterer', 'admin']}><MyBusinesses /></ProtectedRoute>} />
             <Route path="registration-success" element={<RegistrationSuccess />} />
-            <Route path="partner-dashboard/:id" element={<PartnerDashboard />} />
-            <Route path="caterer-dashboard" element={<CatererDashboard />} />
-            <Route path="edit-business/:id" element={<EditCaterer />} />
-            <Route path="admin/caterers/view/:id" element={<CatererDetails />} />
-            <Route path="admin/caterers/edit/:id" element={<AdminEditCaterer />} />
+            <Route path="partner-dashboard/:id" element={<ProtectedRoute allowedRoles={['caterer', 'admin']}><PartnerDashboard /></ProtectedRoute>} />
+            <Route path="caterer-dashboard" element={<ProtectedRoute allowedRoles={['caterer', 'admin']}><CatererDashboard /></ProtectedRoute>} />
+            <Route path="edit-business/:id" element={<ProtectedRoute allowedRoles={['caterer', 'admin']}><EditCaterer /></ProtectedRoute>} />
+            <Route path="admin/caterers/view/:id" element={<ProtectedRoute allowedRoles={['admin']}><CatererDetails /></ProtectedRoute>} />
+            <Route path="admin/caterers/edit/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminEditCaterer /></ProtectedRoute>} />
           </Route>
           {/* Order flow doesn't use the standard footer/header layout strictly */}
           <Route path="/order/:id" element={<OrderFlow />} />

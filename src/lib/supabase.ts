@@ -19,11 +19,11 @@ export const getEnvWord = (key: string): string => {
   }
 };
 
-const supabaseUrl = getEnvWord("VITE_SUPABASE_URL") || getEnvWord("SUPABASE_URL");
+const rawSupabaseUrl = getEnvWord("VITE_SUPABASE_URL") || getEnvWord("SUPABASE_URL");
+const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').trim();
 const supabaseAnonKey = getEnvWord("VITE_SUPABASE_ANON_KEY") || getEnvWord("SUPABASE_ANON_KEY");
-const supabaseServiceKey = getEnvWord("SUPABASE_SERVICE_ROLE_KEY");
 
-export const isSupabaseConfigured = !!(supabaseUrl && (supabaseAnonKey || supabaseServiceKey));
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
 let supabaseInstance: any = null;
 
@@ -100,8 +100,7 @@ export function getSupabase() {
     return null;
   }
   if (!supabaseInstance) {
-    const activeKey = supabaseServiceKey || supabaseAnonKey;
-    const rawClient = createClient(supabaseUrl, activeKey);
+    const rawClient = createClient(supabaseUrl, supabaseAnonKey);
 
     supabaseInstance = new Proxy(rawClient, {
       get(target, prop, receiver) {

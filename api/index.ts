@@ -15,7 +15,9 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Lazy initializer for Supabase Server Client
 const getSupabaseClient = () => {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const rawSupabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  if (!rawSupabaseUrl) return null;
+  const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').trim();
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseServiceKey) {
     console.warn("Supabase credentials not fully configured on server, operating in high-performance local fallback mode.");

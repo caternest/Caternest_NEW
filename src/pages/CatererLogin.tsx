@@ -1,113 +1,123 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Mail, Lock } from 'lucide-react';
+import { ChefHat, Mail, Lock, AlertCircle } from 'lucide-react';
 import { toast } from '../components/Toast';
+import { getSupabase } from '../lib/supabase';
 
 export default function CatererLogin() {
-  const { login } = useAuth();
+  const { signIn, logout } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const rawRegistrations = localStorage.getItem('registrations');
-    let approved = false;
-    let pending = false;
-    let rejected = false;
-    let wrongPassword = false;
-    let userFound = false;
-    let userName = 'Caterer Partner';
-    let catererId = '';
-    let userPhone = '';
+    setError('');
+    setLoading(true);
 
-    if (rawRegistrations) {
-        const registrations = JSON.parse(rawRegistrations);
-        
-        // Find all accounts matching email, phone, or username
-        const inputString = formData.email.trim().toLowerCase();
-        const matches = registrations.filter((r: any) => {
-            const e = (r.email || '').toLowerCase();
-            const p = (r.phone || '');
-            const u = (r.username || '').toLowerCase();
-            return e === inputString || p === formData.email.trim() || u === inputString;
-        });
-        
-        if (matches.length > 0) {
-            userFound = true;
-            
-            // Prefer Approved over others if multiple registrations exist with the same email
-            matches.sort((a: any, b: any) => {
-                const rank = (s: string) => s === 'Approved' ? 3 : s === 'Pending Approval' ? 2 : 1;
-                return rank(b.status) - rank(a.status);
-            });
+    try {
+      // 1. Sign in natively
+      const { data, error: signInErr } = await signIn(formData.email.trim(), formData.password);
+      if (signInErr) {
+        setError(signInErr.message || "Invalid email or password.");
+        setLoading(false);
+        return;
+      }
 
-            // Find the one where password matches
-            const validMatch = matches.find((m: any) => m.password === formData.password);
-            
-            if (!validMatch) {
-                wrongPassword = true;
-            } else {
-                if (validMatch.status === 'Suspended') {
-                    approved = false;
-                    toast('Your account is currently suspended. Please contact support.', 'error');
-                    return;
-                }
-                if (validMatch.status === 'Trashed' || validMatch.status === 'Deleted') {
-                    approved = false;
-                    toast('Your account has been deactivated.', 'error');
-                    return;
-                }
-                if (validMatch.status === 'Approved') {
-                    approved = true;
-                    userName = validMatch.owner || validMatch.businessName;
-                    catererId = validMatch.id;
-                    userPhone = validMatch.phone || '0000000000';
-                } else if (validMatch.status === 'Pending Approval') {
-                    pending = true;
-                } else if (validMatch.status === 'Rejected') {
-                    rejected = true;
-                }
-            }
+      if (!data.user) {
+        setError("User session could not be established.");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch their registration to verify status
+      const supabase = getSupabase();
+      if (supabase) {
+        const { data: registrations, error: regError } = await supabase
+          .from('caterer_registrations')
+          .select('*')
+          .or(`userId.eq.${data.user.id},email.eq.${data.user.email}`);
+
+        if (regError) {
+          console.error("Error checking caterer registration:", regError);
         }
-    }
 
-    if (!userFound || wrongPassword) {
-        setError("Invalid email or password.");
-        return;
-    }
+        // If user is also an Admin, they can view everything and bypass status checks
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .maybeSingle();
 
-    if (pending) {
-        setError("Your account is under review. Our team is verifying your profile.");
-        return;
-    }
+        const isAdmin = profile?.role === 'admin';
 
-    if (rejected) {
-        setError("Your account has been rejected. Please contact administrator.");
-        return;
-    }
+        if (!registrations || registrations.length === 0) {
+          if (isAdmin) {
+            toast("Authenticating Admin into Caterer Dashboard...", "success");
+            navigate('/caterer-dashboard');
+            return;
+          }
+          setError("No registered caterer profile found for this account. Go to the Join page to register.");
+          await logout();
+          setLoading(false);
+          return;
+        }
 
-    if (!approved) {
-        setError("Account not approved.");
-        return;
-    }
+        // Sort status priorities: Approved is preferred
+        const sortedRegs = [...registrations].sort((a: any, b: any) => {
+          const rank = (s: string) => (s || '').toLowerCase() === 'approved' ? 3 : (s || '').toLowerCase() === 'pending approval' ? 2 : 1;
+          return rank(b.status) - rank(a.status);
+        });
 
-    login({
-      id: catererId,
-      name: userName,
-      email: formData.email,
-      phone: userPhone,
-      roles: ['user', 'partner'],
-    });
-    
-    localStorage.setItem('catererDashboardId', catererId);
-    toast("Login successful! Welcome to your dashboard.", "success");
-    navigate('/caterer-dashboard');
+        const activeReg = sortedRegs[0];
+        const status = (activeReg.status || '').toLowerCase();
+
+        if (status === 'suspended') {
+          setError("Your account is currently suspended. Please contact coordinator support.");
+          await logout();
+          setLoading(false);
+          return;
+        }
+
+        if (status === 'trashed' || status === 'deleted') {
+          setError("Your account has been deactivated.");
+          await logout();
+          setLoading(false);
+          return;
+        }
+
+        if (status === 'rejected') {
+          setError("Your registration request was not approved.");
+          await logout();
+          setLoading(false);
+          return;
+        }
+
+        if (status === 'pending approval' || status === 'pending') {
+          setError("Your account is under review. Please wait for coordinates verification.");
+          await logout();
+          setLoading(false);
+          return;
+        }
+
+        // Save active caterer ID to local session
+        localStorage.setItem('catererDashboardId', activeReg.id);
+        toast("Login successful! Welcome to coordinates.", "success");
+        navigate('/caterer-dashboard');
+      } else {
+        setError("Database is temporarily unavailable.");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("An unexpected error occurred during check-in.");
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +131,7 @@ export default function CatererLogin() {
       <div className="absolute top-0 right-0 w-96 h-96 bg-brand-gold-500/10 blur-[100px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-green-500/20 blur-[100px] rounded-full pointer-events-none"></div>
       
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-md relative z-10 font-poppins">
         <div className="bg-brand-green-900 rounded-3xl p-8 sm:p-10 shadow-2xl border border-brand-green-800">
           
           <div className="flex flex-col items-center mb-8">
@@ -134,32 +144,33 @@ export default function CatererLogin() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-                <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm font-medium text-center">
-                    {error}
-                </div>
+              <div className="bg-red-500/10 border border-red-500/30 text-red-300 p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-red-400" />
+                <span>{error}</span>
+              </div>
             )}
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-brand-green-200 ml-1">Email, Phone, or Username</label>
+              <label className="text-sm font-medium text-brand-green-200 ml-1">Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-brand-green-400">
                   <Mail size={18} />
                 </div>
                 <input 
-                  type="text" 
+                  type="email" 
                   name="email"
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3.5 bg-brand-green-950/50 border border-brand-green-800 rounded-xl text-white placeholder:text-brand-green-700 focus:ring-2 focus:ring-brand-gold-500/50 focus:border-brand-gold-500 transition-all outline-none"
-                  placeholder="Enter registered email"
+                  className="w-full pl-11 pr-4 py-3.5 bg-brand-green-950 border border-brand-green-800 rounded-xl text-white placeholder:text-brand-green-700 focus:ring-2 focus:ring-brand-gold-500 focus:border-brand-gold-500 transition-all outline-none text-sm"
+                  placeholder="partner@example.com"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex justify-between items-center ml-1">
-                 <label className="text-sm font-medium text-brand-green-200">Password</label>
+                 <label className="text-sm font-medium text-brand-green-200 animate-pulse">Password</label>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-brand-green-400">
@@ -171,17 +182,18 @@ export default function CatererLogin() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full pl-11 pr-4 py-3.5 bg-brand-green-950/50 border border-brand-green-800 rounded-xl text-white placeholder:text-brand-green-700 focus:ring-2 focus:ring-brand-gold-500/50 focus:border-brand-gold-500 transition-all outline-none"
-                  placeholder="Enter password"
+                  className="w-full pl-11 pr-4 py-3.5 bg-brand-green-950 border border-brand-green-800 rounded-xl text-white placeholder:text-brand-green-700 focus:ring-2 focus:ring-brand-gold-500 focus:border-brand-gold-500 transition-all outline-none text-sm"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-brand-gold-500 hover:bg-brand-gold-400 text-brand-green-950 font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-brand-gold-500/20 mt-6"
+              disabled={loading}
+              className="w-full bg-brand-gold-500 hover:bg-brand-gold-400 text-brand-green-900 font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-brand-gold-500/20 mt-6 flex items-center justify-center gap-2 text-sm"
             >
-              Login to Dashboard
+              {loading ? 'Authenticating Partner...' : 'Caterer Check-In'}
             </button>
           </form>
 

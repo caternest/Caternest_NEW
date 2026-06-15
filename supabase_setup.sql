@@ -10,6 +10,17 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- 1. DATABASE TABLES
 -- ==========================================
 
+-- Profiles Table
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT,
+    role TEXT CHECK (role IN ('admin', 'caterer', 'customer')) DEFAULT 'customer',
+    must_change_password BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Caterer registrations table
 CREATE TABLE IF NOT EXISTS public.caterer_registrations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -142,6 +153,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- ==========================================
 -- 2. ENABLE ROW LEVEL SECURITY (RLS)
 -- ==========================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.caterer_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.food_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
@@ -155,6 +167,19 @@ ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 -- 3. CREATE POLICIES FOR TABLES
 -- ==========================================
 
+-- Profiles Policies
+DROP POLICY IF EXISTS "Allow public read of profiles" ON public.profiles;
+CREATE POLICY "Allow public read of profiles" ON public.profiles
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow users to update own profile" ON public.profiles;
+CREATE POLICY "Allow users to update own profile" ON public.profiles
+    FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Allow service role to manage profiles" ON public.profiles;
+CREATE POLICY "Allow service role to manage profiles" ON public.profiles
+    FOR ALL USING (true);
+
 -- Caterer Registrations Policies
 DROP POLICY IF EXISTS "Allow public read access to caterers" ON public.caterer_registrations;
 CREATE POLICY "Allow public read access to caterers" ON public.caterer_registrations
@@ -165,12 +190,22 @@ CREATE POLICY "Allow anyone to insert registrations (joining flow)" ON public.ca
     FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow user to update his/her own registration" ON public.caterer_registrations;
-CREATE POLICY "Allow user to update his/her own registration" ON public.caterer_registrations
-    FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authorized updates to caterer registrations" ON public.caterer_registrations;
+CREATE POLICY "Allow authorized updates to caterer registrations" ON public.caterer_registrations
+    FOR UPDATE USING (
+        (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) OR
+        ("userId" = auth.uid()::text) OR
+        (email = auth.jwt()->>'email')
+    );
 
 DROP POLICY IF EXISTS "Allow direct deletes for owners/admin" ON public.caterer_registrations;
-CREATE POLICY "Allow direct deletes for owners/admin" ON public.caterer_registrations
-    FOR DELETE USING (true);
+DROP POLICY IF EXISTS "Allow authorized deletes to caterer registrations" ON public.caterer_registrations;
+CREATE POLICY "Allow authorized deletes to caterer registrations" ON public.caterer_registrations
+    FOR DELETE USING (
+        (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) OR
+        ("userId" = auth.uid()::text) OR
+        (email = auth.jwt()->>'email')
+    );
 
 -- Food Images Policies
 DROP POLICY IF EXISTS "Allow public read to food image library" ON public.food_images;
@@ -178,31 +213,88 @@ CREATE POLICY "Allow public read to food image library" ON public.food_images
     FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow insert/update/delete for everyone/admin" ON public.food_images;
-CREATE POLICY "Allow insert/update/delete for everyone/admin" ON public.food_images
-    FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow admins to manage food images" ON public.food_images;
+CREATE POLICY "Allow admins to manage food images" ON public.food_images
+    FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 -- Orders Policies
 DROP POLICY IF EXISTS "Allow public select on orders" ON public.orders;
-CREATE POLICY "Allow public select on orders" ON public.orders
-    FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow authenticated select on orders" ON public.orders;
+CREATE POLICY "Allow authenticated select on orders" ON public.orders
+    FOR SELECT USING (
+        (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) OR
+        (auth.uid()::text = "userId") OR
+        (auth.jwt()->>'email' = "customerEmail") OR
+        (EXISTS (
+            SELECT 1 FROM public.caterer_registrations cr 
+            WHERE cr.id = public.orders."catererId" AND (cr."userId" = auth.uid()::text OR cr.email = auth.jwt()->>'email')
+        ))
+    );
 
 DROP POLICY IF EXISTS "Allow insertion on orders" ON public.orders;
 CREATE POLICY "Allow insertion on orders" ON public.orders
     FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow updates on orders" ON public.orders;
-CREATE POLICY "Allow updates on orders" ON public.orders
-    FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authorized updates on orders" ON public.orders;
+CREATE POLICY "Allow authorized updates on orders" ON public.orders
+    FOR UPDATE USING (
+        (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) OR
+        (auth.uid()::text = "userId") OR
+        (auth.jwt()->>'email' = "customerEmail") OR
+        (EXISTS (
+            SELECT 1 FROM public.caterer_registrations cr 
+            WHERE cr.id = public.orders."catererId" AND (cr."userId" = auth.uid()::text OR cr.email = auth.jwt()->>'email')
+        ))
+    );
 
 -- Audit Logs Policies
 DROP POLICY IF EXISTS "Allow insert/select on audit logs" ON public.audit_logs;
-CREATE POLICY "Allow insert/select on audit logs" ON public.audit_logs
-    FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anyone to insert audit logs" ON public.audit_logs;
+DROP POLICY IF EXISTS "Allow only admins to select audit logs" ON public.audit_logs;
+
+CREATE POLICY "Allow anyone to insert audit logs" ON public.audit_logs
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow only admins to select audit logs" ON public.audit_logs
+    FOR SELECT USING (
+        EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+    );
 
 -- Notifications Policies
 DROP POLICY IF EXISTS "Allow insert/select on notifications" ON public.notifications;
-CREATE POLICY "Allow insert/select on notifications" ON public.notifications
-    FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authorized select on notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow authenticated inserts on notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Allow authorized update of notifications" ON public.notifications;
+
+CREATE POLICY "Allow authorized select on notifications" ON public.notifications
+    FOR SELECT USING (
+        (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) OR
+        (EXISTS (
+            SELECT 1 FROM public.caterer_registrations cr 
+            WHERE cr.id = public.notifications."catererId" AND (cr."userId" = auth.uid()::text OR cr.email = auth.jwt()->>'email')
+        )) OR
+        (EXISTS (
+            SELECT 1 FROM public.orders o 
+            WHERE o.id = public.notifications."orderId" AND (o."userId" = auth.uid()::text OR o."customerEmail" = auth.jwt()->>'email')
+        ))
+    );
+
+CREATE POLICY "Allow authenticated inserts on notifications" ON public.notifications
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow authorized update of notifications" ON public.notifications
+    FOR UPDATE USING (
+        (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) OR
+        (EXISTS (
+            SELECT 1 FROM public.caterer_registrations cr 
+            WHERE cr.id = public.notifications."catererId" AND (cr."userId" = auth.uid()::text OR cr.email = auth.jwt()->>'email')
+        )) OR
+        (EXISTS (
+            SELECT 1 FROM public.orders o 
+            WHERE o.id = public.notifications."orderId" AND (o."userId" = auth.uid()::text OR o."customerEmail" = auth.jwt()->>'email')
+        ))
+    );
 
 -- ==========================================
 -- 4. STORAGE BUCKETS SETUP
@@ -278,6 +370,51 @@ DROP TRIGGER IF EXISTS tr_orders_updated ON public.orders;
 CREATE TRIGGER tr_orders_updated
     BEFORE UPDATE ON public.orders
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Function to handle creating user profile row automatically on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role, must_change_password)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'customer'),
+    TRUE
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to execute on signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Trigger to prevent client-side privilege escalation (role shifting) on profiles table
+CREATE OR REPLACE FUNCTION public.protect_profile_role()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.role IS DISTINCT FROM NEW.role THEN
+    IF auth.uid() IS NOT NULL THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = auth.uid() AND role = 'admin'
+      ) THEN
+         RAISE EXCEPTION 'Unauthorized: Only admin accounts can modify user roles.';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_protect_profile_role ON public.profiles;
+CREATE TRIGGER tr_protect_profile_role
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.protect_profile_role();
 
 -- ==========================================
 -- 6. SCHEMAS SYNC MIGRATIONS (FOR EXISTING TABLES)
