@@ -194,6 +194,27 @@ export default function AdminEditCaterer() {
       try {
         localStorage.setItem('registrations', JSON.stringify(updated));
 
+        // Persist full profile updates to Supabase caterer_registrations table securely
+        const supabase = getSupabase();
+        if (supabase) {
+          console.log("[ADMIN EDIT CATERER] Persisting updated profile parameters onto Supabase...", caterer);
+          const { error: dbError } = await supabase
+            .from('caterer_registrations')
+            .update({
+              ...caterer,
+              packages: menuPackages,
+              draftMenuPackages: menuPackages
+            })
+            .eq('id', id);
+
+          if (dbError) {
+            console.error("[ADMIN EDIT CATERER] Cloud database save warning:", dbError);
+            toast(`Profile cached locally. Warning: Cloud database update failed: ${dbError.message}`, 'error');
+          } else {
+            console.log("[ADMIN EDIT CATERER] Profile successfully updated in database.");
+          }
+        }
+
         // If the password changed, update it securely on the auth server tier
         if (isPasswordChanged && caterer.password) {
           try {
@@ -213,6 +234,17 @@ export default function AdminEditCaterer() {
             } else {
               console.log("Credentials synced successfully on auth tier:", data);
               setIsPasswordChanged(false);
+
+              // Update the local storage state with the newly synchronized userId if it returned one
+              if (data.userId) {
+                const refreshedRaw = localStorage.getItem('registrations');
+                if (refreshedRaw) {
+                  const refreshedAll = JSON.parse(refreshedRaw);
+                  const updatedWithUserId = refreshedAll.map((c: any) => c.id === id ? { ...c, userId: data.userId } : c);
+                  localStorage.setItem('registrations', JSON.stringify(updatedWithUserId));
+                  setCaterer((prev: any) => ({ ...prev, userId: data.userId }));
+                }
+              }
             }
           } catch (syncErr: any) {
             console.error("Credentials sync error:", syncErr);

@@ -586,6 +586,30 @@ export default function AdminDashboard() {
   };
 
   const handleAction = async (id: string, newStatus: string) => {
+    let finalRegs = registrations;
+    if (newStatus === 'Approved') {
+      try {
+        console.log("[ADMIN ACTION] Synchronizing caterer approval via backend API...");
+        const res = await fetch('/api/admin/approve-caterer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ catererId: id })
+        });
+        if (res.ok) {
+          const syncData = await res.json();
+          console.log("[ADMIN ACTION] Backend synchronized caterer credentials:", syncData);
+          if (syncData.userId) {
+            finalRegs = registrations.map(r => r.id === id ? { ...r, userId: syncData.userId } : r);
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.warn("[ADMIN ACTION] Backend sync failed or warned:", errData.error || res.statusText);
+        }
+      } catch (backendErr) {
+        console.error("[ADMIN ACTION] Error calling backend approve-caterer:", backendErr);
+      }
+    }
+
     const supabase = getSupabase() as any;
     if (supabase) {
       try {
@@ -595,7 +619,7 @@ export default function AdminDashboard() {
       }
     }
 
-    const updated = registrations.map(r => r.id === id ? { ...r, status: newStatus } : r);
+    const updated = finalRegs.map(r => r.id === id ? { ...r, status: newStatus } : r);
     setRegistrations(updated);
     localStorage.setItem('registrations', JSON.stringify(updated));
     toast(`Caterer marked as ${newStatus}`, 'success');

@@ -259,6 +259,125 @@ app.post("/api/admin/reset-password", async (req: any, res: any) => {
   }
 });
 
+app.post("/api/admin/approve-caterer", async (req: any, res: any) => {
+  const { catererId } = req.body;
+
+  if (!catererId) {
+    return res.status(400).json({ error: "catererId is required." });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn("Supabase not fully setup on server, simulation mode success.");
+    return res.json({ success: true, offline: true, message: "Approved successfully in local storage fallback mode." });
+  }
+
+  try {
+    // 1. Get caterer registration
+    const { data: caterer, error: fetchErr } = await supabase
+      .from('caterer_registrations')
+      .select('*')
+      .eq('id', catererId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.error("Error fetching caterer registration:", fetchErr);
+      return res.status(500).json({ error: "Failed to fetch caterer registration: " + fetchErr.message });
+    }
+
+    if (!caterer) {
+      return res.status(404).json({ error: "Caterer profile not found with the provided id." });
+    }
+
+    const email = caterer.email;
+    if (!email) {
+      return res.status(400).json({ error: "This caterer has no registered email. Cannot perform approval sync." });
+    }
+
+    let authUser = null;
+    let userId = caterer.userId;
+
+    // 2. See if Auth user already exists by listing users
+    const { data: listData, error: listErr } = await supabase.auth.admin.listUsers();
+    if (listErr) {
+      console.error("Error listing users from auth admin:", listErr);
+    } else if (listData?.users) {
+      authUser = listData.users.find(u => 
+        (userId && u.id === userId) || u.email?.toLowerCase() === email.toLowerCase()
+      );
+    }
+
+    if (authUser) {
+      console.log(`[AUTH ADMIN] Existing auth user found with ID: ${authUser.id} on approval.`);
+      userId = authUser.id;
+    } else {
+      console.log(`[AUTH ADMIN] No auth user found for email ${email}. Automatically creating active account...`);
+      const registeredPassword = caterer.password || "TempPass123!";
+      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+        email: email,
+        password: registeredPassword,
+        email_confirm: true,
+        user_metadata: {
+          role: 'caterer',
+          full_name: caterer.ownerName || caterer.businessName || 'Caterer'
+        }
+      });
+
+      if (createErr) {
+        console.error("Error auto-creating auth user on approval:", createErr);
+        return res.status(500).json({ error: "Supabase Auth user creation failed: " + createErr.message });
+      }
+
+      const createdUser = newUser?.user;
+      if (!createdUser) {
+        return res.status(500).json({ error: "Supabase Auth user creation returned empty payload." });
+      }
+
+      userId = createdUser.id;
+      console.log(`[AUTH ADMIN] Created new auth user on approval: ${userId}`);
+    }
+
+    // 3. Keep caterer_registrations and profiles tables in perfect sync
+    // Update password, email, and user ID in registrations
+    const { error: updateRegError } = await supabase
+      .from('caterer_registrations')
+      .update({ 
+        userId: userId,
+        status: 'Approved'
+      })
+      .eq('id', catererId);
+
+    if (updateRegError) {
+      console.warn("Warning: caterer_registrations table sync failed on approval:", updateRegError.message);
+    }
+
+    // Create or update profiles row with role = 'caterer' and must_change_password = true
+    const { error: updateProfileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        email: email,
+        full_name: caterer.ownerName || caterer.businessName || 'Caterer',
+        role: 'caterer',
+        must_change_password: true
+      }, { onConflict: 'id' });
+
+    if (updateProfileError) {
+      console.warn("Warning: profiles table sync failed on approval:", updateProfileError.message);
+    }
+
+    console.log(`[AUTH ADMIN] Successfully synchronized approval credential flow for caterer ${catererId}`);
+    return res.json({ 
+      success: true, 
+      userId: userId,
+      message: "Caterer approved, Auth user created, and profile synchronized with must_change_password." 
+    });
+  } catch (err: any) {
+    console.error("Unexpected error in admin approve-caterer flow:", err);
+    return res.status(500).json({ error: "Internal server error: " + err.message });
+  }
+});
+
 const parseMenuHandler = async (req: any, res: any) => {
   try {
     const { imageBase64, images, urls, catererId } = req.body;

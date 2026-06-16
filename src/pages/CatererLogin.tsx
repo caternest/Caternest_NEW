@@ -68,14 +68,58 @@ export default function CatererLogin() {
       }
 
       // 1. Sign in natively via Supabase
-      const { data, error: signInErr } = await signIn(resolvedEmail, formData.password);
+      let signInResult = await signIn(resolvedEmail, formData.password);
+      let authUser = signInResult?.data?.user;
+      let signInErr = signInResult?.error;
+
+      if (signInErr) {
+        console.warn("[CATERER LOGIN] Native sign-in failed. Searching registrations for matching email + password to trigger auto-sync provisioning...", signInErr);
+        // Let's check if there is an approved caterer registration with matching email and password
+        const { data: matchedCaterers, error: dbErr } = await supabase
+          .from('caterer_registrations')
+          .select('id, email, password, status')
+          .eq('email', resolvedEmail)
+          .eq('password', formData.password);
+
+        if (!dbErr && matchedCaterers && matchedCaterers.length > 0) {
+          const matchedCaterer = matchedCaterers[0];
+          console.log("[CATERER LOGIN] Found matching registration row. Auto-provisioning auth credentials via backend API...");
+          try {
+            const syncRes = await fetch('/api/admin/reset-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                catererId: matchedCaterer.id,
+                newPassword: formData.password
+              })
+            });
+            
+            if (syncRes.ok) {
+              console.log("[CATERER LOGIN] Backend auth sync completed successfully! Retrying native sign-in...");
+              const retryResult = await signIn(resolvedEmail, formData.password);
+              if (retryResult?.data?.user) {
+                authUser = retryResult.data.user;
+                signInErr = null;
+              } else {
+                signInErr = retryResult?.error || new Error("Failed to sign in after credentials sync.");
+              }
+            } else {
+              const syncErrData = await syncRes.json().catch(() => ({}));
+              console.error("[CATERER LOGIN] Backend sync failed:", syncErrData.error || syncRes.statusText);
+            }
+          } catch (syncExc) {
+            console.error("[CATERER LOGIN] Exception during backend credentials sync:", syncExc);
+          }
+        }
+      }
+
       if (signInErr) {
         setError(signInErr.message || "Invalid email or password.");
         setLoading(false);
         return;
       }
 
-      if (!data.user) {
+      if (!authUser) {
         setError("User session could not be established.");
         setLoading(false);
         return;
@@ -85,7 +129,7 @@ export default function CatererLogin() {
       const { data: registrations, error: regError } = await supabase
         .from('caterer_registrations')
         .select('*')
-        .or(`userId.eq.${data.user.id},email.eq.${data.user.email}`);
+        .or(`userId.eq.${authUser.id},email.eq.${resolvedEmail}`);
 
       if (regError) {
         console.error("Error checking caterer registration:", regError);
@@ -95,7 +139,7 @@ export default function CatererLogin() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', data.user.id)
+        .eq('id', authUser.id)
         .maybeSingle();
 
       const isAdmin = profile?.role === 'admin';
@@ -119,6 +163,29 @@ export default function CatererLogin() {
       });
 
       const activeReg = sortedRegs[0];
+
+      // Keep registration userId synchronized with authentic authUser id if it is misaligned or has demo value
+      if (activeReg && activeReg.userId !== authUser.id) {
+         console.log(`[CATERER LOGIN] Aligning register userId "${activeReg.userId}" to current secure session id "${authUser.id}"...`);
+         const { error: syncUserIdErr } = await supabase
+           .from('caterer_registrations')
+           .update({ userId: authUser.id })
+           .eq('id', activeReg.id);
+
+         if (syncUserIdErr) {
+           console.warn("[CATERER LOGIN] Failed to sync userId back to Cloud DB schema:", syncUserIdErr.message);
+         } else {
+           activeReg.userId = authUser.id;
+           // Keep localCache registrations in perfect local sync
+           const rawLocal = localStorage.getItem('registrations');
+           if (rawLocal) {
+              const allLocal = JSON.parse(rawLocal);
+              const updatedLocal = allLocal.map((r: any) => r.id === activeReg.id ? { ...r, userId: authUser.id } : r);
+              localStorage.setItem('registrations', JSON.stringify(updatedLocal));
+           }
+         }
+      }
+
       const status = (activeReg.status || '').toLowerCase();
 
       if (status === 'suspended') {
