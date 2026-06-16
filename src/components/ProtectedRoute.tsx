@@ -22,9 +22,9 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   }
 
   if (!user) {
-    // If accessing an admin route, redirect to admin-login
+    // If accessing an admin route, redirect to standard login page since custom page is deprecated
     if (location.pathname.startsWith('/admin') || location.pathname.includes('admin')) {
-      return <Navigate to="/admin-login" state={{ from: location }} replace />;
+      return <Navigate to="/login" state={{ from: location }} replace />;
     }
     // If accessing caterer dashboard, redirect to caterer-login
     if (location.pathname.startsWith('/caterer') || location.pathname.includes('caterer-dashboard')) {

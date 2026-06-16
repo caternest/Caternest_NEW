@@ -256,9 +256,6 @@ export default function Navbar() {
                   <Link to="/caterer-login" className="flex items-center gap-2 px-4 py-2 font-poppins font-medium text-sm text-brand-gold-700 bg-brand-gold-50 hover:bg-brand-gold-100 rounded-full transition-colors border border-brand-gold-100">
                     <ChefHat size={16} /> Caterer Login
                   </Link>
-                  <Link to="/admin-login" className="flex items-center gap-2 px-4 py-2 font-poppins font-medium text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors border border-indigo-100">
-                    <Settings size={16} /> Admin Login
-                  </Link>
                   <Link to="/login" className="px-4 py-2 font-poppins font-medium text-sm text-slate-700 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
                     Login
                   </Link>
@@ -473,13 +470,6 @@ export default function Navbar() {
                       className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-brand-gold-50 text-brand-gold-700 rounded-lg hover:bg-brand-gold-100 border border-brand-gold-100"
                     >
                       <ChefHat size={18} /> Caterer Login
-                    </Link>
-                    <Link 
-                      to="/admin-login"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 border border-indigo-100"
-                    >
-                      <Settings size={18} /> Admin Login
                     </Link>
                     <Link 
                       to="/login"

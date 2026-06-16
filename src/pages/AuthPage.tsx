@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChefHat, Mail, Phone, Lock, User as UserIcon, ChevronLeft, Eye, EyeOff } from 'lucide-react';
@@ -10,9 +10,30 @@ type AuthMode = 'login' | 'signup' | 'forgot';
 
 export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
   const [currentMode, setCurrentMode] = useState<AuthMode>(mode);
-  const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Automatic role-based redirect after login or if user session is already present
+  useEffect(() => {
+    if (user && !authLoading) {
+      if (user.must_change_password) {
+        navigate('/change-password', { replace: true });
+      } else if (user.role === 'admin') {
+        navigate('/admin-dashboard', { replace: true });
+      } else if (user.role === 'caterer') {
+        navigate('/caterer-dashboard', { replace: true });
+      } else {
+        const from = location.state?.from || '/';
+        // Prevent redirect loops
+        if (from === '/login' || from === '/signup' || from === '/admin-login') {
+          navigate('/', { replace: true });
+        } else {
+          navigate(from, { replace: true });
+        }
+      }
+    }
+  }, [user, authLoading, navigate, location.state?.from]);
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

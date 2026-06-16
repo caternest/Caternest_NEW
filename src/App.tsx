@@ -13,7 +13,6 @@ import Explore from './pages/Explore';
 import MyBusinesses from './pages/MyBusinesses';
 import RegistrationSuccess from './pages/RegistrationSuccess';
 import PartnerDashboard from './pages/PartnerDashboard';
-import AdminLogin from './pages/AdminLogin';
 import { AuthProvider } from './contexts/AuthContext';
 import { initializeSupabaseSync } from './lib/supabaseSync';
 
@@ -83,7 +82,6 @@ export default function App() {
             <Route path="contact" element={<PlaceholderPage title="Contact Us" />} />
             <Route path="login" element={<AuthPage mode="login" />} />
             <Route path="signup" element={<AuthPage mode="signup" />} />
-            <Route path="admin-login" element={<AdminLogin />} />
             <Route path="caterer-login" element={<CatererLogin />} />
             <Route path="partner-selection" element={<PartnerSelection />} />
             <Route path="businesses" element={<ProtectedRoute allowedRoles={['caterer', 'admin']}><MyBusinesses /></ProtectedRoute>} />
