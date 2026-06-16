@@ -202,6 +202,15 @@ export default function JoinCaterer() {
   });
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'sending' | 'sent' | 'verified' | 'expired' | 'error'>('none');
   const [verificationError, setVerificationError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
 
   const popularAreas = ['Kondapur', 'Gachibowli', 'Kukatpally', 'Madhapur', 'Banjara Hills', 'Jubilee Hills', 'Begumpet', 'Secunderabad'];
 
@@ -349,12 +358,20 @@ export default function JoinCaterer() {
       alert("Please enter a valid email address.");
       return;
     }
+
+    // Safely prevent parallel triggers/duplicate requests
+    if (verificationStatus === 'sending' || cooldown > 0) {
+      setVerificationError("Verification email already sent. Please wait before requesting another email.");
+      return;
+    }
+
     setVerificationError('');
     setVerificationStatus('sending');
 
     const supabase = getSupabase();
     if (supabase) {
       try {
+        console.log("[EMAIL VERIFICATION] Dispacthing signInWithOtp request for email:", formData.email.trim());
         const { data, error } = await supabase.auth.signInWithOtp({
           email: formData.email.trim(),
           options: {
@@ -363,16 +380,24 @@ export default function JoinCaterer() {
         });
 
         if (error) {
-          console.error("Supabase signInWithOtp error:", error);
+          console.error("Supabase signInWithOtp rate limit or other error response:", {
+            error,
+            message: error.message,
+            status: error.status,
+            name: error.name
+          });
           setVerificationError(error.message);
           setVerificationStatus('error');
           return;
         }
 
+        console.log("[EMAIL VERIFICATION] Supabase OTP sent successfully. Data:", data);
         setVerificationStatus('sent');
+        // Start 60-second cooldown timer to prevent rate limits
+        setCooldown(60);
         alert("Verification email sent successfully. Please check your inbox.");
       } catch (err: any) {
-        console.error("Failed to send OTP verification email:", err);
+        console.error("Failed to send OTP verification email. Unexpected error:", err);
         setVerificationError(err?.message || "Unexpected error sending verification code.");
         setVerificationStatus('error');
       }
@@ -950,7 +975,7 @@ export default function JoinCaterer() {
                                     <input 
                                       type="email" 
                                       value={formData.email} 
-                                      disabled={verificationStatus === 'sending'}
+                                      disabled={verificationStatus === 'sending' || cooldown > 0}
                                       onChange={e => {
                                         const val = e.target.value;
                                         setFormData({ 
@@ -961,12 +986,12 @@ export default function JoinCaterer() {
                                         setIsEmailVerified(false);
                                         setVerificationStatus('none');
                                       }} 
-                                      className="flex-1 bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all text-slate-900" 
+                                      className="flex-1 bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all text-slate-900 disabled:opacity-65 disabled:bg-slate-100" 
                                       placeholder="e.g. delicious@caterer.com" 
                                     />
                                     <button
                                       type="button"
-                                      disabled={!formData.email || isEmailVerified || verificationStatus === 'sending'}
+                                      disabled={!formData.email || isEmailVerified || verificationStatus === 'sending' || cooldown > 0}
                                       onClick={handleSendVerification}
                                       className={cn(
                                         "px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
@@ -975,12 +1000,21 @@ export default function JoinCaterer() {
                                           : "bg-[#00483C] text-white hover:bg-[#00362c] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                                       )}
                                     >
-                                      {verificationStatus === 'sending' ? 'Sending...' : isEmailVerified ? 'Verified' : 'Verify Email'}
+                                      {verificationStatus === 'sending' ? 'Sending...' : isEmailVerified ? 'Verified' : cooldown > 0 ? `Wait ${cooldown}s` : 'Verify Email'}
                                     </button>
                                   </div>
 
                                   {/* Verification Status Banner / Message */}
                                   <div className="mt-2.5">
+                                    {cooldown > 0 && (
+                                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 mb-2.5 font-poppins animate-pulse">
+                                        <span className="text-amber-500 text-base">⏳</span>
+                                        <div>
+                                          <p className="text-xs font-bold text-slate-950">Verification email already sent. Please wait before requesting another email.</p>
+                                          <p className="text-[11px] text-slate-600 mt-0.5">Please wait {cooldown} seconds before requesting another email.</p>
+                                        </div>
+                                      </div>
+                                    )}
                                     {isEmailVerified ? (
                                       <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
                                         <span className="text-emerald-600 text-base">✅</span>
@@ -1004,10 +1038,11 @@ export default function JoinCaterer() {
                                         <div className="flex items-center gap-2">
                                           <button
                                             type="button"
+                                            disabled={cooldown > 0 || verificationStatus === 'sending'}
                                             onClick={handleSendVerification}
-                                            className="text-[11px] font-bold text-[#DEAA38] hover:underline flex items-center gap-1 bg-transparent cursor-pointer"
+                                            className="text-[11px] font-bold text-[#DEAA38] hover:underline disabled:text-slate-400 disabled:no-underline flex items-center gap-1 bg-transparent cursor-pointer"
                                           >
-                                            🔄 Resend Verification Email
+                                            {cooldown > 0 ? `🔄 Resend Cooldown (${cooldown}s)` : '🔄 Resend Verification Email'}
                                           </button>
                                         </div>
                                       </div>
@@ -1022,10 +1057,11 @@ export default function JoinCaterer() {
                                         </div>
                                         <button
                                           type="button"
+                                          disabled={cooldown > 0 || verificationStatus === 'sending'}
                                           onClick={handleSendVerification}
-                                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                                          className="bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
                                         >
-                                          Resend Verification Email
+                                          {cooldown > 0 ? `Resend Cooldown (${cooldown}s)` : 'Resend Verification Email'}
                                         </button>
                                       </div>
                                     ) : (
