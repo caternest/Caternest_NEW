@@ -16,22 +16,35 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
 
   // Automatic role-based redirect after login or if user session is already present
   useEffect(() => {
+    console.log("[AUDIT LOG] AuthPage useEffect trigger. User state:", user, "authLoading:", authLoading);
     if (user && !authLoading) {
-      if (user.must_change_password) {
+      const targetRole = user.role;
+      const targetMustChange = user.must_change_password;
+      console.log("[AUDIT LOG] Redirect condition met! User role:", targetRole, "must_change_password:", targetMustChange);
+      
+      if (targetMustChange) {
+        console.log("[AUDIT LOG] Directing user to target: /change-password");
         navigate('/change-password', { replace: true });
-      } else if (user.role === 'admin') {
+      } else if (targetRole === 'admin') {
+        console.log("[AUDIT LOG] Directing user to target: /admin-dashboard");
         navigate('/admin-dashboard', { replace: true });
-      } else if (user.role === 'caterer') {
+      } else if (targetRole === 'caterer') {
+        console.log("[AUDIT LOG] Directing user to target: /caterer-dashboard");
         navigate('/caterer-dashboard', { replace: true });
       } else {
         const from = location.state?.from || '/';
+        console.log("[AUDIT LOG] Defaulting customer or standard user. State from:", from);
         // Prevent redirect loops
         if (from === '/login' || from === '/signup' || from === '/admin-login') {
+          console.log("[AUDIT LOG] Prevent redirect loop. Directing user to target: /");
           navigate('/', { replace: true });
         } else {
+          console.log("[AUDIT LOG] Directing user to target:", from);
           navigate(from, { replace: true });
         }
       }
+    } else {
+      console.log("[AUDIT LOG] Redirect condition NOT met. user is falsy or authLoading is true.");
     }
   }, [user, authLoading, navigate, location.state?.from]);
   
@@ -56,6 +69,7 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
     e.preventDefault();
     setError('');
     setLoading(true);
+    console.log("[AUDIT LOG] handleSubmit initiated. Mode:", currentMode, "Email:", formData.email.trim());
 
     try {
       if (currentMode === 'forgot') {
@@ -94,19 +108,25 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
         }
       } else {
         // Native email login
+        console.log("[AUDIT LOG] Calling signInWithPassword helper for email:", formData.email.trim());
         const { error: signInErr } = await signIn(formData.email.trim(), formData.password);
+        
         if (signInErr) {
+          console.error("[AUDIT LOG] signInWithPassword returned error:", signInErr.message, signInErr);
           setError(signInErr.message || "Invalid email or password.");
         } else {
+          console.log("[AUDIT LOG] signInWithPassword returned success! Triggering success toast...");
           toast("Logged in successfully!", "success");
           const from = location.state?.from || '/';
+          console.log("[AUDIT LOG] Navigating locally from login to target:", from);
           navigate(from, { replace: true });
         }
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("[AUDIT LOG] Exception caught during handleSubmit:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
+      console.log("[AUDIT LOG] handleSubmit finally block: setting state loading to false.");
       setLoading(false);
     }
   };

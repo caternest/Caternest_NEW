@@ -31,28 +31,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Helper to fetch/create database profiles
   const syncProfile = async (authUser: any): Promise<User | null> => {
+    console.log("[AUDIT LOG] syncProfile start for user ID:", authUser?.id, "Email:", authUser?.email);
     const supabase = getSupabase();
-    if (!supabase || !authUser) return null;
+    if (!supabase) {
+      console.error("[AUDIT LOG] syncProfile: Supabase client is not configured!");
+      return null;
+    }
+    if (!authUser) {
+      console.warn("[AUDIT LOG] syncProfile: authUser input is null or undefined!");
+      return null;
+    }
 
     try {
-      // 1. Fetch from profiles table
-      const { data: profile, error } = await supabase
+      // 1. Fetch from profiles table with query timeout protection to prevent hanging
+      console.log("[AUDIT LOG] Fetching profile from 'profiles' table for ID:", authUser.id);
+      
+      const fetchPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .maybeSingle();
 
+      // Race with a 3.5 second timeout to guarantee we never hang the UI/login flow
+      const fetchResult = await Promise.race([
+        fetchPromise,
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Database profile fetch timed out")), 3500))
+      ]).catch((err) => {
+        console.error("[AUDIT LOG] Profile fetch error or timeout:", err);
+        return { data: null, error: err };
+      });
+
+      const profile = fetchResult?.data;
+      const error = fetchResult?.error;
+
       if (error) {
-        console.error("Error fetching user profile:", error.message);
+        console.error("[AUDIT LOG] Error fetching user profile:", error.message || error, error);
+      } else {
+        console.log("[AUDIT LOG] Raw profile query successfully returned profile data:", profile);
+      }
+
+      if (profile === null || profile === undefined) {
+        console.log("[AUDIT LOG] Profile fetch returned null. Exact database response metadata fields - data:", profile, "error:", error);
       }
 
       let activeProfile = profile;
 
-      // 2. Fallback: Ifauthenticated but profile row hasn't been created yet, create it on the fly
+      // 2. Fallback: If authenticated but profile row hasn't been created yet, create it on the fly
       if (!activeProfile) {
-        console.log("No profile row found. Autoincrement/Upserting fallback profile...");
+        console.log("[AUDIT LOG] No profile row found in DB. Autoincrement/Upserting fallback profile...");
         const metaName = authUser.user_metadata?.full_name || authUser.user_metadata?.name || '';
         const metaRole = authUser.user_metadata?.role || 'customer';
+        console.log("[AUDIT LOG] Prepared fallback profile name:", metaName, "role:", metaRole);
         
         const newProfile = {
           id: authUser.id,
@@ -62,22 +91,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           must_change_password: false // Social logins shouldn't be forced to change password
         };
 
-        const { data: inserted, error: insertErr } = await supabase
-          .from('profiles')
-          .insert([newProfile])
-          .select()
-          .single();
+        console.log("[AUDIT LOG] Triggering upsert/insert of fallback profile row:", newProfile);
+        try {
+          const insertPromise = supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single();
 
-        if (insertErr) {
-          console.error("Fallback profile generation failed:", insertErr.message);
-          activeProfile = newProfile; // Use virtual representation to prevent crash
-        } else {
-          activeProfile = inserted;
+          const insertResult = await Promise.race([
+            insertPromise,
+            new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Database profile insert timed out")), 3500))
+          ]).catch((err) => {
+            console.error("[AUDIT LOG] Fallback profile generation database insert exception caught:", err);
+            return { data: null, error: err };
+          });
+
+          const inserted = insertResult?.data;
+          const insertErr = insertResult?.error;
+
+          if (insertErr) {
+            console.error("[AUDIT LOG] Fallback profile generation database insert returned error (likely RLS error):", insertErr.message || insertErr, insertErr);
+            activeProfile = newProfile; // Use virtual representation to prevent crash and complete login flow
+          } else {
+            console.log("[AUDIT LOG] Fallback profile generated in database. Result row:", inserted);
+            activeProfile = inserted || newProfile;
+          }
+        } catch (innerErr: any) {
+          console.error("[AUDIT LOG] Gracefully caught exception during fallback profile insertion (likely RLS error):", innerErr);
+          activeProfile = newProfile; // Handle gracefully inside the flow, do not throw
         }
       }
 
+      // Prevent activeProfile.role access when activeProfile is null by creating a safe fallback representation
+      if (!activeProfile) {
+        console.warn("[AUDIT LOG] activeProfile is still null after fetch and fallback checks. Constructing emergency virtual fallback profile to avoid crash.");
+        activeProfile = {
+          id: authUser.id,
+          email: authUser.email || '',
+          full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
+          role: authUser.user_metadata?.role || 'customer',
+          must_change_password: false
+        };
+      }
+
       // 3. Map role to backward compatible roles array
-      const roleStr = activeProfile.role as 'admin' | 'caterer' | 'customer';
+      const resolvedRole = activeProfile ? activeProfile.role : 'customer';
+      console.log("[AUDIT LOG] Resolved activeProfile role field:", resolvedRole);
+      const roleStr = (resolvedRole || 'customer') as 'admin' | 'caterer' | 'customer';
       let rolesArr: string[] = ['user'];
       if (roleStr === 'admin') {
         rolesArr = ['user', 'admin'];
@@ -85,35 +146,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         rolesArr = ['user', 'partner', 'caterer'];
       }
 
-      return {
+      const syncResult: User = {
         id: authUser.id,
-        name: activeProfile.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
+        name: (activeProfile && activeProfile.full_name) || authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
         email: authUser.email || '',
         phone: authUser.phone || authUser.user_metadata?.phone || '',
         role: roleStr,
         roles: rolesArr,
-        must_change_password: activeProfile.must_change_password
+        must_change_password: activeProfile ? !!activeProfile.must_change_password : false
       };
+
+      console.log("[AUDIT LOG] syncProfile final mapped user state:", syncResult);
+      return syncResult;
     } catch (err) {
-      console.error("Fatal error during profile sync:", err);
-      return null;
+      console.error("[AUDIT LOG] Exception caught during trace/sync of profile:", err);
+      // Emergency safe fallback to complete authentication flow if everything else exceptions out
+      try {
+        const fallbackUser: User = {
+          id: authUser.id,
+          name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
+          email: authUser.email || '',
+          phone: authUser.phone || authUser.user_metadata?.phone || '',
+          role: (authUser.user_metadata?.role || 'customer') as 'admin' | 'caterer' | 'customer',
+          roles: authUser.user_metadata?.role === 'admin' ? ['user', 'admin'] : authUser.user_metadata?.role === 'caterer' ? ['user', 'partner', 'caterer'] : ['user'],
+          must_change_password: false
+        };
+        console.log("[AUDIT LOG] Caught sync exception, recovering with fallback user definition:", fallbackUser);
+        return fallbackUser;
+      } catch (nestedErr) {
+        console.error("[AUDIT LOG] CRITICAL: Failed to construct even emergency fallback representation:", nestedErr);
+        return null;
+      }
     }
   };
 
   const refreshSession = async () => {
+    console.log("[AUDIT LOG] refreshSession invoked.");
     const supabase = getSupabase();
     if (!supabase) {
+      console.warn("[AUDIT LOG] refreshSession: Supabase client not configured.");
       setLoading(false);
       return;
     }
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const u = await syncProfile(session.user);
-      setUser(u);
-    } else {
-      setUser(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[AUDIT LOG] refreshSession: fetched session. User present:", !!session?.user);
+      if (session?.user) {
+        const u = await syncProfile(session.user);
+        console.log("[AUDIT LOG] refreshSession: Profile synced. User state set to:", u);
+        setUser(u);
+      } else {
+        setUser(null);
+      }
+    } catch (err) {
+      console.error("[AUDIT LOG] refreshSession check failed with exception:", err);
+    } finally {
+      setLoading(false);
+      console.log("[AUDIT LOG] refreshSession loading set to false.");
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -125,14 +215,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Subscribe to auth state updates
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[AUTH EVENT]: ${event}`);
-      if (session?.user) {
-        const mappedUser = await syncProfile(session.user);
-        setUser(mappedUser);
-      } else {
-        setUser(null);
+      console.log(`[AUTH EVENT]: ${event}`, "Session User ID:", session?.user?.id);
+      try {
+        if (session?.user) {
+          console.log("[AUDIT LOG] Auth state change with active user session. Syncing profile...");
+          const mappedUser = await syncProfile(session.user);
+          console.log("[AUDIT LOG] Auth state change profile mapping complete. setUser logic running with:", mappedUser);
+          setUser(mappedUser);
+        } else {
+          console.log("[AUDIT LOG] Auth state changed: No user session present. setUser(null)");
+          setUser(null);
+        }
+      } catch (evtErr) {
+        console.error("[AUDIT LOG] Auth state change callback crashed:", evtErr);
+      } finally {
+        setLoading(false);
+        console.log("[AUDIT LOG] Auth state change loading set to false.");
       }
-      setLoading(false);
     });
 
     // Initial load
