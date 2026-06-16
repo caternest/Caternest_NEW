@@ -9,7 +9,7 @@ export default function CatererLogin() {
   const { signIn, logout } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -20,9 +20,55 @@ export default function CatererLogin() {
     setError('');
     setLoading(true);
 
+    const inputId = formData.identifier.trim();
+    if (!inputId) {
+      setError("Please enter your email, username, or mobile number.");
+      setLoading(false);
+      return;
+    }
+
+    let resolvedEmail = '';
+
     try {
-      // 1. Sign in natively
-      const { data, error: signInErr } = await signIn(formData.email.trim(), formData.password);
+      const supabase = getSupabase();
+      if (!supabase) {
+        setError("Database is temporarily unavailable.");
+        setLoading(false);
+        return;
+      }
+
+      if (inputId.includes('@')) {
+        resolvedEmail = inputId;
+      } else {
+        // Resolve email using username or phone lookups
+        const { data: matchedRegs, error: lookupErr } = await supabase
+          .from('caterer_registrations')
+          .select('email, id, status, userId, username, phone')
+          .or(`phone.eq.${inputId},username.eq.${inputId},username.eq.${inputId.toLowerCase()}`);
+
+        if (lookupErr) {
+          console.error("Error looking up caterer account:", lookupErr);
+        }
+
+        if (!matchedRegs || matchedRegs.length === 0) {
+          setError("No caterer account found with the provided email, username, or mobile number.");
+          setLoading(false);
+          return;
+        }
+
+        // Retrieve registration containing a valid email Address
+        const resolvedRecord = matchedRegs.find(r => r.email) || matchedRegs[0];
+        if (!resolvedRecord || !resolvedRecord.email) {
+          setError("No caterer account found with the provided email, username, or mobile number.");
+          setLoading(false);
+          return;
+        }
+
+        resolvedEmail = resolvedRecord.email;
+      }
+
+      // 1. Sign in natively via Supabase
+      const { data, error: signInErr } = await signIn(resolvedEmail, formData.password);
       if (signInErr) {
         setError(signInErr.message || "Invalid email or password.");
         setLoading(false);
@@ -36,83 +82,77 @@ export default function CatererLogin() {
       }
 
       // 2. Fetch their registration to verify status
-      const supabase = getSupabase();
-      if (supabase) {
-        const { data: registrations, error: regError } = await supabase
-          .from('caterer_registrations')
-          .select('*')
-          .or(`userId.eq.${data.user.id},email.eq.${data.user.email}`);
+      const { data: registrations, error: regError } = await supabase
+        .from('caterer_registrations')
+        .select('*')
+        .or(`userId.eq.${data.user.id},email.eq.${data.user.email}`);
 
-        if (regError) {
-          console.error("Error checking caterer registration:", regError);
-        }
-
-        // If user is also an Admin, they can view everything and bypass status checks
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        const isAdmin = profile?.role === 'admin';
-
-        if (!registrations || registrations.length === 0) {
-          if (isAdmin) {
-            toast("Authenticating Admin into Caterer Dashboard...", "success");
-            navigate('/caterer-dashboard');
-            return;
-          }
-          setError("No registered caterer profile found for this account. Go to the Join page to register.");
-          await logout();
-          setLoading(false);
-          return;
-        }
-
-        // Sort status priorities: Approved is preferred
-        const sortedRegs = [...registrations].sort((a: any, b: any) => {
-          const rank = (s: string) => (s || '').toLowerCase() === 'approved' ? 3 : (s || '').toLowerCase() === 'pending approval' ? 2 : 1;
-          return rank(b.status) - rank(a.status);
-        });
-
-        const activeReg = sortedRegs[0];
-        const status = (activeReg.status || '').toLowerCase();
-
-        if (status === 'suspended') {
-          setError("Your account is currently suspended. Please contact coordinator support.");
-          await logout();
-          setLoading(false);
-          return;
-        }
-
-        if (status === 'trashed' || status === 'deleted') {
-          setError("Your account has been deactivated.");
-          await logout();
-          setLoading(false);
-          return;
-        }
-
-        if (status === 'rejected') {
-          setError("Your registration request was not approved.");
-          await logout();
-          setLoading(false);
-          return;
-        }
-
-        if (status === 'pending approval' || status === 'pending') {
-          setError("Your account is under review. Please wait for coordinates verification.");
-          await logout();
-          setLoading(false);
-          return;
-        }
-
-        // Save active caterer ID to local session
-        localStorage.setItem('catererDashboardId', activeReg.id);
-        toast("Login successful! Welcome to coordinates.", "success");
-        navigate('/caterer-dashboard');
-      } else {
-        setError("Database is temporarily unavailable.");
-        setLoading(false);
+      if (regError) {
+        console.error("Error checking caterer registration:", regError);
       }
+
+      // If user is also an Admin, they can view everything and bypass status checks
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      const isAdmin = profile?.role === 'admin';
+
+      if (!registrations || registrations.length === 0) {
+        if (isAdmin) {
+          toast("Authenticating Admin into Caterer Dashboard...", "success");
+          navigate('/caterer-dashboard');
+          return;
+        }
+        setError("No registered caterer profile found for this account. Go to the Join page to register.");
+        await logout();
+        setLoading(false);
+        return;
+      }
+
+      // Sort status priorities: Approved is preferred
+      const sortedRegs = [...registrations].sort((a: any, b: any) => {
+        const rank = (s: string) => (s || '').toLowerCase() === 'approved' ? 3 : (s || '').toLowerCase() === 'pending approval' ? 2 : 1;
+        return rank(b.status) - rank(a.status);
+      });
+
+      const activeReg = sortedRegs[0];
+      const status = (activeReg.status || '').toLowerCase();
+
+      if (status === 'suspended') {
+        setError("Your account is currently suspended. Please contact coordinator support.");
+        await logout();
+        setLoading(false);
+        return;
+      }
+
+      if (status === 'trashed' || status === 'deleted') {
+        setError("Your account has been deactivated.");
+        await logout();
+        setLoading(false);
+        return;
+      }
+
+      if (status === 'rejected') {
+        setError("Your registration request was not approved.");
+        await logout();
+        setLoading(false);
+        return;
+      }
+
+      if (status === 'pending approval' || status === 'pending') {
+        setError("Your account is under review. Please wait for coordinates verification.");
+        await logout();
+        setLoading(false);
+        return;
+      }
+
+      // Save active caterer ID to local session
+      localStorage.setItem('catererDashboardId', activeReg.id);
+      toast("Login successful! Welcome to coordinates.", "success");
+      navigate('/caterer-dashboard');
     } catch (err: any) {
       console.error(err);
       setError("An unexpected error occurred during check-in.");
@@ -151,19 +191,19 @@ export default function CatererLogin() {
             )}
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-brand-green-200 ml-1">Email Address</label>
+              <label className="text-sm font-medium text-brand-green-200 ml-1">Email, Username or Mobile Number</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-brand-green-400">
                   <Mail size={18} />
                 </div>
                 <input 
-                  type="email" 
-                  name="email"
+                  type="text" 
+                  name="identifier"
                   required
-                  value={formData.email}
+                  value={formData.identifier}
                   onChange={handleChange}
                   className="w-full pl-11 pr-4 py-3.5 bg-brand-green-950 border border-brand-green-800 rounded-xl text-white placeholder:text-brand-green-700 focus:ring-2 focus:ring-brand-gold-500 focus:border-brand-gold-500 transition-all outline-none text-sm"
-                  placeholder="partner@example.com"
+                  placeholder="Enter email, username or mobile number"
                 />
               </div>
             </div>
