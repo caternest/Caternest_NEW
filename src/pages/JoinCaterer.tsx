@@ -200,8 +200,7 @@ export default function JoinCaterer() {
     } catch (e) {}
     return false;
   });
-  const [verificationStatus, setVerificationStatus] = useState<'none' | 'sending' | 'sent' | 'verifying' | 'verified' | 'expired' | 'error'>('none');
-  const [otpToken, setOtpToken] = useState('');
+  const [verificationStatus, setVerificationStatus] = useState<'none' | 'sending' | 'sent' | 'verified' | 'expired' | 'error'>('none');
   const [verificationError, setVerificationError] = useState('');
 
   const popularAreas = ['Kondapur', 'Gachibowli', 'Kukatpally', 'Madhapur', 'Banjara Hills', 'Jubilee Hills', 'Begumpet', 'Secunderabad'];
@@ -266,17 +265,77 @@ export default function JoinCaterer() {
 
   // Auto-detect returning verification status from Supabase email link redirect
   React.useEffect(() => {
-    if (user?.email && formData.email) {
-      const uEmail = user.email.trim().toLowerCase();
-      const fEmail = formData.email.trim().toLowerCase();
-      if (uEmail === fEmail) {
-        console.log("[EMAIL VERIFICATION] Auto-detected verified active user:", user.email);
-        setIsEmailVerified(true);
-        setFormData(prev => ({ ...prev, email_verified: true }));
-        setVerificationStatus('verified');
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    let isMounted = true;
+
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        
+        if (session?.user) {
+          const authEmail = session.user.email || '';
+          const isConfirmed = !!session.user.email_confirmed_at;
+          
+          if (isConfirmed) {
+            console.log("[EMAIL VERIFICATION SUCCESS] Session confirmed email:", authEmail);
+            setIsEmailVerified(true);
+            setFormData(prev => {
+              const emailToUse = prev.email && prev.email.trim().toLowerCase() === authEmail.trim().toLowerCase()
+                ? prev.email
+                : authEmail;
+              return { 
+                ...prev, 
+                email: emailToUse,
+                email_verified: true 
+              };
+            });
+            setVerificationStatus('verified');
+          }
+        }
+      } catch (err) {
+        console.error("Error checking Supabase session:", err);
       }
-    }
-  }, [user, formData.email]);
+    };
+
+    // Run first eager check
+    checkSession();
+
+    // Subscribe to state change specifically for callback link landing
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      console.log("[EMAIL VERIFICATION CHECK] Auth event triggered:", event);
+      if (session?.user) {
+        const authEmail = session.user.email || '';
+        const isConfirmed = !!session.user.email_confirmed_at;
+        
+        if (isConfirmed) {
+          console.log("[EMAIL VERIFICATION SUCCESS] onAuthStateChange confirmed email:", authEmail);
+          setIsEmailVerified(true);
+          setFormData(prev => {
+            const emailToUse = prev.email && prev.email.trim().toLowerCase() === authEmail.trim().toLowerCase()
+              ? prev.email
+              : authEmail;
+            return { 
+              ...prev, 
+              email: emailToUse,
+              email_verified: true 
+            };
+          });
+          setVerificationStatus('verified');
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, []);
 
   // Clean up localStorage draft on successful submission
   React.useEffect(() => {
@@ -319,54 +378,12 @@ export default function JoinCaterer() {
       }
     } else {
       // Offline Simulation mode
-      console.warn("Supabase is not configured. Simulating OTP email send...");
-      setTimeout(() => {
-        setVerificationStatus('sent');
-        alert("[Simulation Mode] Verification email sent successfully. Use any 6-digit code (e.g., 123456) to verify.");
-      }, 800);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otpToken.length !== 6) {
-      alert("Please enter a 6-digit code.");
-      return;
-    }
-    setVerificationError('');
-    setVerificationStatus('verifying');
-
-    const supabase = getSupabase();
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.verifyOtp({
-          email: formData.email.trim(),
-          token: otpToken.trim(),
-          type: 'email'
-        });
-
-        if (error) {
-          console.error("Supabase verifyOtp error:", error);
-          setVerificationError(error.message);
-          setVerificationStatus('sent'); // Return to sent to allow typing code again
-          return;
-        }
-
-        setIsEmailVerified(true);
-        setFormData(prev => ({ ...prev, email_verified: true }));
-        setVerificationStatus('verified');
-        alert("Email verified successfully. You may continue registration.");
-      } catch (err: any) {
-        console.error("Failed to verify OTP token:", err);
-        setVerificationError(err?.message || "Unexpected error during verification.");
-        setVerificationStatus('sent');
-      }
-    } else {
-      // Offline Simulation mode
+      console.warn("Supabase is not configured. Simulating Magic Link email send...");
       setTimeout(() => {
         setIsEmailVerified(true);
         setFormData(prev => ({ ...prev, email_verified: true }));
         setVerificationStatus('verified');
-        alert("[Simulation Mode] Email verified successfully.");
+        alert("[Simulation Mode] Supabase is offline/not configured. Automatically verified email to unlock form progress.");
       }, 800);
     }
   };
@@ -933,26 +950,23 @@ export default function JoinCaterer() {
                                     <input 
                                       type="email" 
                                       value={formData.email} 
-                                      disabled={verificationStatus === 'sending' || verificationStatus === 'verifying'}
+                                      disabled={verificationStatus === 'sending'}
                                       onChange={e => {
                                         const val = e.target.value;
-                                        const updatedVerified = isEmailVerified && val.trim().toLowerCase() === user?.email?.trim().toLowerCase();
                                         setFormData({ 
                                           ...formData, 
                                           email: val,
-                                          email_verified: updatedVerified
+                                          email_verified: false
                                         });
-                                        if (!updatedVerified) {
-                                          setIsEmailVerified(false);
-                                          setVerificationStatus('none');
-                                        }
+                                        setIsEmailVerified(false);
+                                        setVerificationStatus('none');
                                       }} 
-                                      className="flex-1 bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" 
+                                      className="flex-1 bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all text-slate-900" 
                                       placeholder="e.g. delicious@caterer.com" 
                                     />
                                     <button
                                       type="button"
-                                      disabled={!formData.email || isEmailVerified || verificationStatus === 'sending' || verificationStatus === 'verifying'}
+                                      disabled={!formData.email || isEmailVerified || verificationStatus === 'sending'}
                                       onClick={handleSendVerification}
                                       className={cn(
                                         "px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
@@ -969,9 +983,9 @@ export default function JoinCaterer() {
                                   <div className="mt-2.5">
                                     {isEmailVerified ? (
                                       <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
-                                        <span className="text-emerald-600">🟢</span>
+                                        <span className="text-emerald-600 text-base">✅</span>
                                         <div>
-                                          <p className="text-xs font-bold text-slate-950 font-poppins">Email Verified</p>
+                                          <p className="text-xs font-bold text-slate-950 font-poppins">✅ Email Verified</p>
                                           <p className="text-[11px] text-slate-600 font-poppins">Email verified successfully. You may continue registration.</p>
                                         </div>
                                       </div>
@@ -982,30 +996,7 @@ export default function JoinCaterer() {
                                             <span className="text-amber-600">📨</span>
                                             <div>
                                               <p className="text-xs font-bold text-slate-950">Verification Email Sent</p>
-                                              <p className="text-[11px] text-slate-600">Verification email sent. Please check your inbox.</p>
-                                            </div>
-                                          </div>
-                                          
-                                          {/* OTP Input Form directly in the card */}
-                                          <div className="mt-3.5 pt-3 border-t border-amber-200/50">
-                                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Enter 6-Digit Code from Email</label>
-                                            <div className="flex gap-2">
-                                              <input 
-                                                type="text" 
-                                                maxLength={6}
-                                                value={otpToken} 
-                                                onChange={e => setOtpToken(e.target.value.replace(/\D/g, ''))}
-                                                className="w-32 bg-white border border-amber-300 focus:border-[#DEAA38]/80 rounded-lg px-3 py-1.5 text-center font-mono text-sm tracking-widest outline-none text-slate-950" 
-                                                placeholder="123456" 
-                                              />
-                                              <button
-                                                type="button"
-                                                disabled={otpToken.length !== 6 || verificationStatus === 'verifying'}
-                                                onClick={handleVerifyOTP}
-                                                className="bg-[#DEAA38] hover:bg-[#c28824] text-slate-950 px-4 py-1.5 rounded-lg text-xs font-bold transition-all disabled:bg-slate-100 disabled:text-slate-400 cursor-pointer"
-                                              >
-                                                {verificationStatus === 'verifying' ? 'Verifying...' : 'Submit Code'}
-                                              </button>
+                                              <p className="text-[11px] text-slate-600">We have sent a secure Magic Link to your email inbox. Please click the link to verify your email address automatically.</p>
                                             </div>
                                           </div>
                                         </div>
