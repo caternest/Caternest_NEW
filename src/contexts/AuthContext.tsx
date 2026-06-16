@@ -292,12 +292,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Logout natively
   const logout = async () => {
+    console.log("[AUDIT LOG] logout() initiated.");
     const supabase = getSupabase();
-    if (supabase) {
-      await supabase.auth.signOut();
+    try {
+      if (supabase) {
+        await supabase.auth.signOut();
+        console.log("[AUDIT LOG] supabase.auth.signOut() completed successfully.");
+      }
+    } catch (e: any) {
+      console.error("[AUDIT LOG] Error calling supabase.auth.signOut() inside logout flow:", e.message || e);
+    } finally {
+      setUser(null);
+      
+      // Explicitly clean up all Supabase auth tokens and cached fields from localStorage and sessionStorage
+      try {
+        console.log("[AUDIT LOG] Explicitly sweeping localStorage and sessionStorage auth tokens...");
+        // 1. Clear known caterer dashboard state
+        localStorage.removeItem('catererDashboardId');
+        
+        // 2. Clear Supabase local storage tokens to prevent session restore
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token')) {
+             localStorage.removeItem(key);
+             // Since removing changes length, adjust index to prevent skipping keys
+             i--; 
+          }
+        }
+        
+        // 3. Clear Supabase session storage tokens in case they are used
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token')) {
+             sessionStorage.removeItem(key);
+             i--;
+          }
+        }
+      } catch (storageErr) {
+        console.error("[AUDIT LOG] Error clearing storage tokens:", storageErr);
+      }
+      
+      console.log("[AUDIT LOG] logout() finalized. User state set to null.");
     }
-    setUser(null);
-    localStorage.removeItem('catererDashboardId');
   };
 
   // Reset Password instruction
