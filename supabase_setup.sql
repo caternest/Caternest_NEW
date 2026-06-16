@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS public.caterer_registrations (
     "gstUrl" TEXT,
     "otherDocsUrl" TEXT,
     "rating" NUMERIC DEFAULT 0,
-    "reviewCount" INTEGER DEFAULT 0
+    "reviewCount" INTEGER DEFAULT 0,
+    "email_verified" BOOLEAN DEFAULT FALSE
 );
 
 -- Food images library table

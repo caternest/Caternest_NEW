@@ -157,47 +157,219 @@ const ImageUploaderField: React.FC<ImageUploaderProps> = ({ label, value, onChan
 };
 
 export default function JoinCaterer() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('caterer_join_form_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.step === 'number') {
+          return parsed.step;
+        }
+      }
+    } catch (e) {}
+    return 1;
+  });
   const [status, setStatus] = useState<'form' | 'pending' | 'approved'>('form');
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  const [menuPackages, setMenuPackages] = useState<any[]>([]);
+  const [menuPackages, setMenuPackages] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('caterer_join_form_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.menuPackages)) {
+          return parsed.menuPackages;
+        }
+      }
+    } catch (e) {}
+    return [];
+  });
   const [isParsing, setIsParsing] = useState(false);
   const [isUsernameManual, setIsUsernameManual] = useState(false);
 
+  const [isEmailVerified, setIsEmailVerified] = useState(() => {
+    try {
+      const saved = localStorage.getItem('caterer_join_form_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.formData && parsed.formData.email_verified) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  });
+  const [verificationStatus, setVerificationStatus] = useState<'none' | 'sending' | 'sent' | 'verifying' | 'verified' | 'expired' | 'error'>('none');
+  const [otpToken, setOtpToken] = useState('');
+  const [verificationError, setVerificationError] = useState('');
+
   const popularAreas = ['Kondapur', 'Gachibowli', 'Kukatpally', 'Madhapur', 'Banjara Hills', 'Jubilee Hills', 'Begumpet', 'Secunderabad'];
 
-  const [formData, setFormData] = useState({
-    ownerName: '',
-    mobile: '',
-    alternateMobile: '',
-    additionalMobile: '',
-    email: '',
-    username: '',
-    password: '',
-    confirmPassword: '',
+  const [formData, setFormData] = useState(() => {
+    const defaultData = {
+      ownerName: '',
+      mobile: '',
+      alternateMobile: '',
+      additionalMobile: '',
+      email: '',
+      username: '',
+      password: '',
+      confirmPassword: '',
 
-    businessName: '',
-    experience: '',
-    location: '',
-    city: '',
-    serviceAreas: '',
-    description: '',
-    awards: '',
-    achievements: '',
-    galleryPhotos: [] as string[],
-    catererLogo: '',
-    coverBanner: '',
-    founderPhoto: '',
-    branchPhoto: '',
+      businessName: '',
+      experience: '',
+      location: '',
+      city: '',
+      serviceAreas: '',
+      description: '',
+      awards: '',
+      achievements: '',
+      galleryPhotos: [] as string[],
+      catererLogo: '',
+      coverBanner: '',
+      founderPhoto: '',
+      branchPhoto: '',
 
-    aadhaarFile: '',
-    panFile: '',
-    fssaiFile: '',
-    gstFile: '',
-    otherDocs: ''
+      aadhaarFile: '',
+      panFile: '',
+      fssaiFile: '',
+      gstFile: '',
+      otherDocs: '',
+      email_verified: false
+    };
+
+    try {
+      const saved = localStorage.getItem('caterer_join_form_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.formData) {
+          return { ...defaultData, ...parsed.formData };
+        }
+      }
+    } catch (e) {}
+    return defaultData;
   });
+
+  // Auto-save progress to localStorage draft caching
+  React.useEffect(() => {
+    const draftPayload = {
+      formData: {
+        ...formData,
+        email_verified: isEmailVerified
+      },
+      step,
+      menuPackages
+    };
+    localStorage.setItem('caterer_join_form_data', JSON.stringify(draftPayload));
+  }, [formData, step, menuPackages, isEmailVerified]);
+
+  // Auto-detect returning verification status from Supabase email link redirect
+  React.useEffect(() => {
+    if (user?.email && formData.email) {
+      const uEmail = user.email.trim().toLowerCase();
+      const fEmail = formData.email.trim().toLowerCase();
+      if (uEmail === fEmail) {
+        console.log("[EMAIL VERIFICATION] Auto-detected verified active user:", user.email);
+        setIsEmailVerified(true);
+        setFormData(prev => ({ ...prev, email_verified: true }));
+        setVerificationStatus('verified');
+      }
+    }
+  }, [user, formData.email]);
+
+  // Clean up localStorage draft on successful submission
+  React.useEffect(() => {
+    if (status === 'pending') {
+      localStorage.removeItem('caterer_join_form_data');
+    }
+  }, [status]);
+
+  const handleSendVerification = async () => {
+    if (!formData.email) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+    setVerificationError('');
+    setVerificationStatus('sending');
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.signInWithOtp({
+          email: formData.email.trim(),
+          options: {
+            emailRedirectTo: window.location.origin + '/join'
+          }
+        });
+
+        if (error) {
+          console.error("Supabase signInWithOtp error:", error);
+          setVerificationError(error.message);
+          setVerificationStatus('error');
+          return;
+        }
+
+        setVerificationStatus('sent');
+        alert("Verification email sent successfully. Please check your inbox.");
+      } catch (err: any) {
+        console.error("Failed to send OTP verification email:", err);
+        setVerificationError(err?.message || "Unexpected error sending verification code.");
+        setVerificationStatus('error');
+      }
+    } else {
+      // Offline Simulation mode
+      console.warn("Supabase is not configured. Simulating OTP email send...");
+      setTimeout(() => {
+        setVerificationStatus('sent');
+        alert("[Simulation Mode] Verification email sent successfully. Use any 6-digit code (e.g., 123456) to verify.");
+      }, 800);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otpToken.length !== 6) {
+      alert("Please enter a 6-digit code.");
+      return;
+    }
+    setVerificationError('');
+    setVerificationStatus('verifying');
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: formData.email.trim(),
+          token: otpToken.trim(),
+          type: 'email'
+        });
+
+        if (error) {
+          console.error("Supabase verifyOtp error:", error);
+          setVerificationError(error.message);
+          setVerificationStatus('sent'); // Return to sent to allow typing code again
+          return;
+        }
+
+        setIsEmailVerified(true);
+        setFormData(prev => ({ ...prev, email_verified: true }));
+        setVerificationStatus('verified');
+        alert("Email verified successfully. You may continue registration.");
+      } catch (err: any) {
+        console.error("Failed to verify OTP token:", err);
+        setVerificationError(err?.message || "Unexpected error during verification.");
+        setVerificationStatus('sent');
+      }
+    } else {
+      // Offline Simulation mode
+      setTimeout(() => {
+        setIsEmailVerified(true);
+        setFormData(prev => ({ ...prev, email_verified: true }));
+        setVerificationStatus('verified');
+        alert("[Simulation Mode] Email verified successfully.");
+      }, 800);
+    }
+  };
 
   const serviceAreaChips = formData.serviceAreas 
     ? formData.serviceAreas.split(',').map((x: string) => x.trim()).filter(Boolean) 
@@ -270,6 +442,10 @@ export default function JoinCaterer() {
           }
       }
     } else if (step === 2) {
+      if (!isEmailVerified && !formData.email_verified) {
+        alert("Please verify your email address before continuing.");
+        return;
+      }
       if (!formData.ownerName || !formData.mobile || !formData.email || !formData.username || !formData.password || !formData.confirmPassword) {
         alert("Please fill all basic details.");
         return;
@@ -374,6 +550,11 @@ export default function JoinCaterer() {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
+
+    if (!isEmailVerified && !formData.email_verified) {
+      alert("Registration failed: Email address must be verified successfully before completing registration.");
+      return;
+    }
     
     // Construct registration payload
     const newReg = {
@@ -398,7 +579,8 @@ export default function JoinCaterer() {
       galleryPhotos: formData.galleryPhotos,
       gallery: formData.galleryPhotos,
       packages: menuPackages,
-      draftMenuPackages: menuPackages
+      draftMenuPackages: menuPackages,
+      email_verified: true
     };
 
     console.log("Database write starting. Payload to be inserted into public.caterer_registrations:", newReg);
@@ -747,7 +929,127 @@ export default function JoinCaterer() {
                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Line 3: Additional Number (Optional)</label>
                                    <input type="text" value={formData.additionalMobile || ''} onChange={e => setFormData({ ...formData, additionalMobile: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all mb-4" placeholder="e.g. backup or landline" />
                                    <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email Address <span className="text-red-500">*</span></label>
-                                  <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. delicious@caterer.com" />
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="email" 
+                                      value={formData.email} 
+                                      disabled={verificationStatus === 'sending' || verificationStatus === 'verifying'}
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        const updatedVerified = isEmailVerified && val.trim().toLowerCase() === user?.email?.trim().toLowerCase();
+                                        setFormData({ 
+                                          ...formData, 
+                                          email: val,
+                                          email_verified: updatedVerified
+                                        });
+                                        if (!updatedVerified) {
+                                          setIsEmailVerified(false);
+                                          setVerificationStatus('none');
+                                        }
+                                      }} 
+                                      className="flex-1 bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" 
+                                      placeholder="e.g. delicious@caterer.com" 
+                                    />
+                                    <button
+                                      type="button"
+                                      disabled={!formData.email || isEmailVerified || verificationStatus === 'sending' || verificationStatus === 'verifying'}
+                                      onClick={handleSendVerification}
+                                      className={cn(
+                                        "px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
+                                        isEmailVerified 
+                                          ? "bg-emerald-600 text-white cursor-not-allowed" 
+                                          : "bg-[#00483C] text-white hover:bg-[#00362c] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                      )}
+                                    >
+                                      {verificationStatus === 'sending' ? 'Sending...' : isEmailVerified ? 'Verified' : 'Verify Email'}
+                                    </button>
+                                  </div>
+
+                                  {/* Verification Status Banner / Message */}
+                                  <div className="mt-2.5">
+                                    {isEmailVerified ? (
+                                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
+                                        <span className="text-emerald-600">🟢</span>
+                                        <div>
+                                          <p className="text-xs font-bold text-slate-950 font-poppins">Email Verified</p>
+                                          <p className="text-[11px] text-slate-600 font-poppins">Email verified successfully. You may continue registration.</p>
+                                        </div>
+                                      </div>
+                                    ) : verificationStatus === 'sent' || verificationStatus === 'sending' ? (
+                                      <div className="space-y-3 font-poppins">
+                                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-amber-600">📨</span>
+                                            <div>
+                                              <p className="text-xs font-bold text-slate-950">Verification Email Sent</p>
+                                              <p className="text-[11px] text-slate-600">Verification email sent. Please check your inbox.</p>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* OTP Input Form directly in the card */}
+                                          <div className="mt-3.5 pt-3 border-t border-amber-200/50">
+                                            <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Enter 6-Digit Code from Email</label>
+                                            <div className="flex gap-2">
+                                              <input 
+                                                type="text" 
+                                                maxLength={6}
+                                                value={otpToken} 
+                                                onChange={e => setOtpToken(e.target.value.replace(/\D/g, ''))}
+                                                className="w-32 bg-white border border-amber-300 focus:border-[#DEAA38]/80 rounded-lg px-3 py-1.5 text-center font-mono text-sm tracking-widest outline-none text-slate-950" 
+                                                placeholder="123456" 
+                                              />
+                                              <button
+                                                type="button"
+                                                disabled={otpToken.length !== 6 || verificationStatus === 'verifying'}
+                                                onClick={handleVerifyOTP}
+                                                className="bg-[#DEAA38] hover:bg-[#c28824] text-slate-950 px-4 py-1.5 rounded-lg text-xs font-bold transition-all disabled:bg-slate-100 disabled:text-slate-400 cursor-pointer"
+                                              >
+                                                {verificationStatus === 'verifying' ? 'Verifying...' : 'Submit Code'}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={handleSendVerification}
+                                            className="text-[11px] font-bold text-[#DEAA38] hover:underline flex items-center gap-1 bg-transparent cursor-pointer"
+                                          >
+                                            🔄 Resend Verification Email
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : verificationStatus === 'expired' ? (
+                                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-2 font-poppins">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-red-600">⚠️</span>
+                                          <div>
+                                            <p className="text-xs font-bold text-slate-950">Verification Link Expired</p>
+                                            <p className="text-[11px] text-slate-600">Verification link expired. Please resend verification email.</p>
+                                          </div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={handleSendVerification}
+                                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                                        >
+                                          Resend Verification Email
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 font-poppins">
+                                        <span className="text-red-600">🔴</span>
+                                        <div>
+                                          <p className="text-xs font-bold text-slate-950">Email Not Verified</p>
+                                          <p className="text-[11px] text-slate-600">Email not verified. Please verify your email to continue.</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {verificationError && (
+                                      <p className="text-xs text-red-500 font-semibold mt-1 font-poppins">{verificationError}</p>
+                                    )}
+                                  </div>
                                 </div>
                            </div>
                            
@@ -763,17 +1065,17 @@ export default function JoinCaterer() {
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Choose Username <span className="text-red-500">*</span></label>
-                                  <input type="text" value={formData.username} onChange={e => { setIsUsernameManual(true); setFormData({ ...formData, username: e.target.value }); }} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="e.g. gourmet_kitchens" />
+                                  <input type="text" value={formData.username} disabled={!isEmailVerified} onChange={e => { setIsUsernameManual(true); setFormData({ ...formData, username: e.target.value }); }} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all disabled:opacity-50 disabled:bg-slate-100 disabled:cursor-not-allowed text-slate-900" placeholder={isEmailVerified ? "e.g. gourmet_kitchens" : "Verify email first to choose username"} />
                                 </div>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Choose Password <span className="text-red-500">*</span></label>
-                                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="Choose a secure password" />
+                                  <input type="password" value={formData.password} disabled={!isEmailVerified} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all disabled:opacity-50 disabled:bg-slate-100 disabled:cursor-not-allowed text-slate-900" placeholder={isEmailVerified ? "Choose a secure password" : "Verify email first"} />
                                 </div>
                                 <div>
                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Confirm Password <span className="text-red-500">*</span></label>
-                                  <input type="password" value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all" placeholder="Retype password to confirm" />
+                                  <input type="password" value={formData.confirmPassword} disabled={!isEmailVerified} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all disabled:opacity-50 disabled:bg-slate-100 disabled:cursor-not-allowed text-slate-900" placeholder={isEmailVerified ? "Retype password to confirm" : "Verify email first"} />
                                 </div>
                            </div>
                          </div>
@@ -1162,8 +1464,8 @@ export default function JoinCaterer() {
                   {step < 5 ? (
                       <button 
                           onClick={handleNext}
-                          disabled={isParsing}
-                          className={cn("bg-[#00483C] text-white px-6 py-2.5 rounded-xl font-bold font-poppins text-xs uppercase tracking-wider flex items-center gap-1.5 hover:bg-brand-green-800 transition-colors shadow-lg shadow-brand-green-900/10 cursor-pointer", isParsing ? "opacity-50 cursor-not-allowed" : "")}
+                          disabled={isParsing || (step === 2 && !isEmailVerified)}
+                          className={cn("bg-[#00483C] text-white px-6 py-2.5 rounded-xl font-bold font-poppins text-xs uppercase tracking-wider flex items-center gap-1.5 hover:bg-brand-green-800 transition-colors shadow-lg shadow-brand-green-900/10 cursor-pointer", (isParsing || (step === 2 && !isEmailVerified)) ? "opacity-50 cursor-not-allowed" : "")}
                       >
                           Next Step <ChevronRight size={14} />
                       </button>
