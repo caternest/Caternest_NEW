@@ -164,6 +164,7 @@ export default function AdminEditCaterer() {
 
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [resetData, setResetData] = useState({ username: '', password: '' });
+  const [isPasswordChanged, setIsPasswordChanged] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('registrations');
@@ -185,13 +186,41 @@ export default function AdminEditCaterer() {
     setCaterer({ ...caterer, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const raw = localStorage.getItem('registrations');
     if (raw) {
       const all = JSON.parse(raw);
       const updated = all.map((c: any) => c.id === id ? { ...caterer, menuPackages } : c);
       try {
         localStorage.setItem('registrations', JSON.stringify(updated));
+
+        // If the password changed, update it securely on the auth server tier
+        if (isPasswordChanged && caterer.password) {
+          try {
+            const res = await fetch('/api/admin/reset-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                catererId: id,
+                newPassword: caterer.password
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              console.error("Backend credentials auth sync failed:", data.error);
+              toast(`Profile saved local. Warning: Auth server update failed: ${data.error}`, 'error');
+              return;
+            } else {
+              console.log("Credentials synced successfully on auth tier:", data);
+              setIsPasswordChanged(false);
+            }
+          } catch (syncErr: any) {
+            console.error("Credentials sync error:", syncErr);
+            toast('Profile saved, but Auth system update postponed.', 'error');
+            return;
+          }
+        }
+
         toast('Caterer profile successfully updated!', 'success');
       } catch (err) {
         console.error("Quota exceeded during save", err);
@@ -291,6 +320,9 @@ export default function AdminEditCaterer() {
          username: resetData.username || prev.username,
          password: resetData.password || prev.password
      }));
+     if (resetData.password) {
+         setIsPasswordChanged(true);
+     }
      setIsResetOpen(false);
      toast('Credentials updated in editor. Click Save All Changes to confirm.', 'success');
   };

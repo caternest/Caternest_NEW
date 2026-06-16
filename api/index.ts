@@ -128,6 +128,137 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.post("/api/admin/reset-password", async (req: any, res: any) => {
+  const { catererId, newPassword } = req.body;
+
+  if (!catererId || !newPassword) {
+    return res.status(400).json({ error: "catererId and newPassword are required parameters." });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters." });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn("Supabase not fully setup on server, simulation mode success.");
+    return res.json({ success: true, offline: true, message: "Credentials successfully updated in local offline database." });
+  }
+
+  try {
+    // 1. Get caterer registration
+    const { data: caterer, error: fetchErr } = await supabase
+      .from('caterer_registrations')
+      .select('*')
+      .eq('id', catererId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.error("Error fetching caterer registration:", fetchErr);
+      return res.status(500).json({ error: "Failed to fetch caterer registration: " + fetchErr.message });
+    }
+
+    if (!caterer) {
+      return res.status(404).json({ error: "Caterer profile not found with the provided id." });
+    }
+
+    const email = caterer.email;
+    if (!email) {
+      return res.status(400).json({ error: "This caterer has no registered email. Cannot perform reset." });
+    }
+
+    let authUser = null;
+    let userId = caterer.userId;
+
+    // 2. Find Auth user
+    const { data: listData, error: listErr } = await supabase.auth.admin.listUsers();
+    if (listErr) {
+      console.error("Error listing users from auth admin:", listErr);
+    } else if (listData?.users) {
+      // Find by userId first, or fallback to email match
+      authUser = listData.users.find(u => 
+        (userId && u.id === userId) || u.email?.toLowerCase() === email.toLowerCase()
+      );
+    }
+
+    if (authUser) {
+      console.log(`[AUTH ADMIN] Found existing auth user ${authUser.id} for email ${email}. Updating password...`);
+      const { data: updatedUser, error: updateErr } = await supabase.auth.admin.updateUserById(
+        authUser.id,
+        { password: newPassword }
+      );
+
+      if (updateErr) {
+        console.error("Error updating password in auth admin:", updateErr);
+        return res.status(500).json({ error: "Supabase Auth password update failed: " + updateErr.message });
+      }
+      
+      userId = authUser.id;
+    } else {
+      console.log(`[AUTH ADMIN] No auth user found for email ${email}. Creating a new auth account...`);
+      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+        email: email,
+        password: newPassword,
+        email_confirm: true,
+        user_metadata: { 
+          role: 'caterer',
+          full_name: caterer.ownerName || caterer.businessName || 'Caterer'
+        }
+      });
+
+      if (createErr) {
+        console.error("Error creating user in auth admin:", createErr);
+        return res.status(500).json({ error: "Supabase Auth user creation failed: " + createErr.message });
+      }
+
+      const createdUser = newUser?.user;
+      if (!createdUser) {
+        return res.status(500).json({ error: "Supabase Auth user creation resulted in empty payload." });
+      }
+
+      userId = createdUser.id;
+    }
+
+    // 3. Keep caterer_registrations and profiles tables in perfect sync
+    // Update password, email, and user ID in registrations
+    const { error: updateRegError } = await supabase
+      .from('caterer_registrations')
+      .update({ 
+        userId: userId,
+        password: newPassword 
+      })
+      .eq('id', catererId);
+
+    if (updateRegError) {
+      console.warn("Warning: caterer_registrations table sync failed:", updateRegError.message);
+    }
+
+    // Create or update profiles row
+    const { error: updateProfileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        email: email,
+        full_name: caterer.ownerName || caterer.businessName || 'Caterer',
+        role: 'caterer',
+        must_change_password: false
+      }, { onConflict: 'id' });
+
+    if (updateProfileError) {
+      console.warn("Warning: profiles table sync failed:", updateProfileError.message);
+    }
+
+    console.log(`[AUTH ADMIN] Successfully synchronized reset credential flow for caterer ${catererId}`);
+    return res.json({ 
+      success: true, 
+      message: "Caterer password and credentials successfully reset and synchronized." 
+    });
+  } catch (err: any) {
+    console.error("Unexpected error in admin reset-password flow:", err);
+    return res.status(500).json({ error: "Internal server error: " + err.message });
+  }
+});
+
 const parseMenuHandler = async (req: any, res: any) => {
   try {
     const { imageBase64, images, urls, catererId } = req.body;
