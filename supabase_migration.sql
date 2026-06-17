@@ -253,3 +253,22 @@ LIMIT 1;
 SELECT id, "timestamp", action, details, user_email, role, "by" 
 FROM public.audit_logs 
 LIMIT 1;
+
+-- ===================================================
+-- 7. Phase 1 Database Migration: New Caterer Details
+-- ===================================================
+ALTER TABLE public.caterer_registrations 
+  ADD COLUMN IF NOT EXISTS "experience" INTEGER,
+  ADD COLUMN IF NOT EXISTS "eventsCompleted" INTEGER,
+  ADD COLUMN IF NOT EXISTS "awards" TEXT,
+  ADD COLUMN IF NOT EXISTS "certifications" TEXT,
+  ADD COLUMN IF NOT EXISTS "brandName" TEXT,
+  ADD COLUMN IF NOT EXISTS "tagline" TEXT,
+  ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT,
+  ADD COLUMN IF NOT EXISTS "operatingHours" TEXT,
+  ADD COLUMN IF NOT EXISTS "branches" INTEGER,
+  ADD COLUMN IF NOT EXISTS "serviceAreas" TEXT,
+  ADD COLUMN IF NOT EXISTS "pendingUpdates" JSONB;
+
+NOTIFY pgrst, 'reload schema';
+

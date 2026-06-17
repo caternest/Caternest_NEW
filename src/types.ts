@@ -35,6 +35,17 @@ export interface Caterer {
   menus: PriceBasedMenu[];
   menuItems?: any;
   menuPackages?: any[];
+  experience?: number;
+  eventsCompleted?: number;
+  awards?: string;
+  certifications?: string;
+  brandName?: string;
+  tagline?: string;
+  whatsappNumber?: string;
+  operatingHours?: string;
+  branches?: number;
+  serviceAreas?: string;
+  pendingUpdates?: any;
 }
 
 export interface LocationOption {

@@ -427,6 +427,10 @@ export default function AdminEditCaterer() {
                                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Alternate Mobile</label>
                                       <input name="alternatePhone" value={caterer.alternatePhone || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
                                   </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">WhatsApp Mobile Connection</label>
+                                      <input name="whatsappNumber" value={caterer.whatsappNumber || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                                  </div>
                               </div>
                           </div>
 
@@ -472,6 +476,14 @@ export default function AdminEditCaterer() {
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Business Name</label>
                                   <input name="businessName" value={caterer.businessName || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
                               </div>
+                              <div>
+                                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Brand Display Name</label>
+                                  <input name="brandName" value={caterer.brandName || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                              </div>
+                              <div>
+                                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Brand Tagline</label>
+                                  <input name="tagline" value={caterer.tagline || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                              </div>
                               <div className="md:col-span-2">
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Business Description</label>
                                   <textarea name="description" value={caterer.description || ''} onChange={handleChange} rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
@@ -479,6 +491,10 @@ export default function AdminEditCaterer() {
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Years of Experience</label>
                                   <input name="experience" type="number" value={caterer.experience || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                              </div>
+                              <div>
+                                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Events Completed</label>
+                                  <input name="eventsCompleted" type="number" value={caterer.eventsCompleted || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
                               </div>
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Established Year</label>
@@ -501,8 +517,8 @@ export default function AdminEditCaterer() {
                                   <input name="awards" value={caterer.awards || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
                               </div>
                               <div>
-                                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Achievements (Optional)</label>
-                                  <input name="achievements" value={caterer.achievements || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Certifications (Optional)</label>
+                                  <input name="certifications" value={caterer.achievements || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
                               </div>
                           </div>
                       </div>

@@ -325,11 +325,12 @@ export default function CatererDetails() {
   }
 
   const specializations = caterer.specializations || ['Wedding Catering', 'Birthday Parties', 'Corporate Events', 'Housewarming', 'Live Counters'];
-  const achievementsList = caterer.achievements ? caterer.achievements.split(',').map((s: string) => s.trim()) : ['5000+ Successful Events', '1,00,000+ Happy Customers', 'Expert Team of 150+ Professionals', '10+ Years of Customer Trust'];
-  const awardsList = caterer.awards ? caterer.awards.split(',').map((s: string) => s.trim()) : ['Best Wedding Caterer', 'Excellence in Catering'];
-  const branchesList = caterer.branches ? caterer.branches.toString().split(',') : ['Head Office'];
-  const serviceAreasList = caterer.serviceAreas ? caterer.serviceAreas.split(',').map((s: string) => s.trim()) : [`${caterer.city || 'Hyderabad'} and surrounding areas.`];
-  const operatingHours = caterer.operatingHours || 'Monday - Sunday\n6:00 AM - 11:00 PM\n(Open on all holidays)';
+  const awardsList = caterer.awards ? caterer.awards.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+  const certificationsList = caterer.certifications ? caterer.certifications.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+  const branchesVal = caterer.branches ? parseInt(caterer.branches.toString()) : null;
+  const serviceAreasList = caterer.serviceAreas ? caterer.serviceAreas.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+  const operatingHours = caterer.operatingHours || null;
+  const experienceVal = caterer.experience ? parseInt(caterer.experience.toString()) : null;
 
   return (
     <div className="bg-[#FAF8F3] min-h-screen">
@@ -569,7 +570,7 @@ export default function CatererDetails() {
 
       <div className="max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 relative z-30">
           
-          <div className="grid grid-cols-1 lg:grid-cols-[72%_minmax(0,1fr)] gap-8 lg:gap-10 items-start my-8">
+          <div className="grid grid-cols-1 gap-8 items-start my-8">
               
               {/* LEFT COLUMN (72% width) */}
               <div className="flex flex-col gap-8 w-full">
@@ -626,169 +627,133 @@ export default function CatererDetails() {
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                       
                       {/* Branches Details */}
-                      <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                          <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
-                              <Building size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Branches Details
-                          </h3>
-                          
-                          <LuxuryDivider />
-                          
-                          <ul className="space-y-4 flex-1 mb-6">
-                              {branchesList.map((branch: string, i: number) => (
-                                  <li key={i} className="flex items-start gap-3 text-[16px] text-slate-800 font-medium">
-                                      <MapPin size={22} className="text-[#D4AF37] mt-0.5 shrink-0" strokeWidth={1.5} />
-                                      <span className="font-sans leading-relaxed">
-                                          {branch} {i === 0 && <span className="text-[10px] text-[#D4AF37] font-semibold bg-[#0F3D2E]/10 px-2.5 py-1 rounded-full border border-[#D4AF37]/30 ml-1.5 uppercase tracking-wider">Head Office</span>}
-                                      </span>
-                                  </li>
-                              ))}
-                          </ul>
-                          
-                          {/* Large elegant image preview */}
-                          <div className="h-44 bg-slate-50 rounded-2xl overflow-hidden relative flex items-center justify-center border-2 border-[#D4AF37]/20 shadow-inner group-hover:border-[#D4AF37]/45 transition-colors">
-                              <img 
-                                  src={caterer.branchPhoto || "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=600"} 
-                                  alt="Luxury Wedding Aesthetic" 
-                                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                                  referrerPolicy="no-referrer"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-[#0F3D2E]/40 via-transparent to-transparent"></div>
-                          </div>
-                      </div>
-
-                      {/* Service Areas */}
-                      <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                          <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
-                              <MapPin size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Service Areas
-                          </h3>
-                          
-                          <LuxuryDivider />
-                          
-                          <div className="flex flex-col flex-1 justify-between relative min-h-[220px]">
-                              <p className="text-[17px] text-slate-800 font-medium leading-relaxed mb-6 z-10 w-2/3 select-text font-sans mt-2">
-                                  {serviceAreasList.join(', ')}
-                              </p>
-                              
-                              {/* Large map illustration */}
-                              <div className="absolute right-0 bottom-0 top-0 w-1/2 opacity-85 pointer-events-none flex items-center justify-end group-hover:scale-105 transition-transform duration-500">
-                                  <svg viewBox="0 0 100 100" className="w-24 h-24 text-[#D4AF37]">
-                                      <path 
-                                          d="M10 20 L40 10 L70 25 L90 15 L90 80 L70 90 L40 75 L10 85 Z" 
-                                          fill="none" 
-                                          stroke="currentColor" 
-                                          strokeWidth="1.5" 
-                                          strokeLinecap="round" 
-                                          strokeLinejoin="round" 
-                                      />
-                                      <path 
-                                          d="M40 10 L40 75" 
-                                          fill="none" 
-                                          stroke="currentColor" 
-                                          strokeWidth="1.5" 
-                                          strokeDasharray="2 3" 
-                                      />
-                                      <path 
-                                          d="M70 25 L70 90" 
-                                          fill="none" 
-                                          stroke="currentColor" 
-                                          strokeWidth="1.5" 
-                                          strokeDasharray="2 3" 
-                                      />
-                                      <circle cx="55" cy="45" r="5" fill="#0F3D2E" stroke="currentColor" strokeWidth="1" />
-                                      <circle cx="55" cy="45" r="1.5" fill="currentColor" />
-                                  </svg>
+                      {branchesVal && branchesVal > 0 ? (
+                          <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                              <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                                  <Building size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Brand Branches
+                              </h3>
+                              <LuxuryDivider />
+                              <div className="flex-1 mb-6 flex flex-col justify-center">
+                                  <p className="text-[17px] text-[#1C1C1C] font-extrabold font-sans">
+                                      {branchesVal} Active Business Branches
+                                  </p>
+                                  <p className="text-sm text-slate-500 font-medium mt-1 font-sans">
+                                      Providing consistent premium quality operations and logistics across all catering venues.
+                                  </p>
                               </div>
-                          </div>
-                      </div>
-
-                      {/* Operating Hours */}
-                      <div className="md:col-span-12 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                          <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
-                              <Clock size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Operating Hours
-                          </h3>
-                          
-                          <LuxuryDivider />
-                          
-                          <div className="flex flex-col h-full justify-between flex-1 min-h-[220px]">
-                              <div className="space-y-4 font-sans mt-2">
-                                  <div className="flex flex-col">
-                                      <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Weekly Schedule</span>
-                                      <span className="text-[17px] font-bold text-[#0F3D2E] mt-0.5">Monday - Sunday</span>
+                              {caterer.branchPhoto && (
+                                  <div className="h-44 bg-slate-50 rounded-2xl overflow-hidden relative flex items-center justify-center border-2 border-[#D4AF37]/20 shadow-inner group-hover:border-[#D4AF37]/45 transition-colors mt-auto">
+                                      <img 
+                                          src={caterer.branchPhoto} 
+                                          alt="Branch Landscape" 
+                                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                                          referrerPolicy="no-referrer"
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-[#0F3D2E]/40 via-transparent to-transparent"></div>
                                   </div>
-                                  
-                                  <div className="flex flex-col">
-                                      <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-bold">Timings</span>
-                                      {/* Highlight timings in gold */}
-                                      <div className="inline-flex items-center gap-2 bg-[#FCFAF5] border border-[#D4AF37]/30 px-4 py-2 rounded-xl mt-1.5 w-fit">
-                                          <span className="text-[17px] font-extrabold text-[#D4AF37] tracking-wide">6:00 AM - 11:00 PM</span>
-                                      </div>
-                                  </div>
-                                  
-                                  <div className="text-sm font-semibold text-slate-500 italic mt-3">
-                                      (Open on all holidays)
-                                  </div>
-                              </div>
-                              
-                              {/* Large clock/calendar icon styled with gold color */}
-                              <div className="mt-4 flex justify-end text-[#D4AF37] opacity-80 group-hover:scale-110 transition-transform duration-500">
-                                  <CalendarDays size={52} className="stroke-[1.5]" />
-                              </div>
-                          </div>
-                      </div>
-
-                      {/* Achievements */}
-                      <div className="md:col-span-12 lg:col-span-5 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                          <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
-                              <Award size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Achievements
-                          </h3>
-                          
-                          <LuxuryDivider />
-                          
-                          {/* Large gold numbers & dark charcoal labels mapping */}
-                          <div className="space-y-5 flex-1 flex flex-col justify-center py-2">
-                              {achievementsList.slice(0, 4).map((ach: string, i: number) => {
-                                  const parts = getAchievementParts(ach);
-                                  return (
-                                      <div key={i} className="flex items-center gap-4 py-3 border-b border-[#D4AF37]/15 last:border-0">
-                                          <div className="flex-shrink-0 bg-[#0F3D2E]/5 border border-[#D4AF37]/30 rounded-full p-2 text-[#D4AF37] shadow-xs group-hover:bg-[#0F3D2E]/10 transition-colors">
-                                              <Check size={16} className="stroke-[3]" />
-                                          </div>
-                                          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
-                                              <span className="text-3xl sm:text-[32px] font-black text-[#D4AF37] leading-none tracking-tight font-sans">
-                                                  {parts.number}
-                                              </span>
-                                              <span className="text-[17px] text-[#1C1C1C] font-semibold tracking-wide font-sans leading-tight">
-                                                  {parts.label}
-                                              </span>
-                                          </div>
-                                      </div>
-                                  );
-                              })}
-                          </div>
-                      </div>
-
-                      {/* Awards / Certifications */}
-                      <div className="md:col-span-12 lg:col-span-7 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                          <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
-                              <Award size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Awards & Certs
-                          </h3>
-                          
-                          <LuxuryDivider />
-                          
-                          {/* Side-by-side or responsive grid for gold medal awards badges */}
-                          <div className="flex-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-6 py-2">
-                              {awardsList.slice(0, 4).map((award: string, i: number) => (
-                                  <div key={i} className="flex flex-col items-center">
-                                      <GoldMedalIcon title={award} />
-                                  </div>
-                              ))}
-                              {caterer.fssai && (
-                                   <div className="flex flex-col items-center">
-                                      <GoldMedalIcon title="FSSAI Certified" isShield={true} />
-                                   </div>
                               )}
                           </div>
-                      </div>
+                      ) : null}
+
+                      {/* Service Areas */}
+                      {serviceAreasList.length > 0 ? (
+                          <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                              <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                                  <MapPin size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Service Areas
+                              </h3>
+                              <LuxuryDivider />
+                              <div className="flex flex-col flex-1 justify-between relative min-h-[160px]">
+                                  <p className="text-[17px] text-slate-800 font-medium leading-relaxed mb-6 z-10 select-text font-sans mt-2">
+                                      {serviceAreasList.join(', ')}
+                                  </p>
+                                  <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-85 pointer-events-none flex items-center justify-end group-hover:scale-105 transition-transform duration-500">
+                                      <svg viewBox="0 0 100 100" className="w-16 h-16 text-[#D4AF37]">
+                                          <path d="M10 20 L40 10 L70 25 L90 15 L90 80 L70 90 L40 75 L10 85 Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                          <circle cx="55" cy="45" r="5" fill="#0F3D2E" stroke="currentColor" strokeWidth="1" />
+                                      </svg>
+                                  </div>
+                              </div>
+                          </div>
+                      ) : null}
+
+                      {/* Operating Hours */}
+                      {operatingHours ? (
+                          <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                              <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                                  <Clock size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Operating Hours
+                              </h3>
+                              <LuxuryDivider />
+                              <div className="flex flex-col h-full justify-between flex-1">
+                                  <div className="space-y-4 font-sans mt-2">
+                                      <div className="flex flex-col">
+                                          <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-bold">Timings</span>
+                                          <div className="inline-flex items-center gap-2 bg-[#FCFAF5] border border-[#D4AF37]/30 px-4 py-2 rounded-xl mt-1.5 w-fit">
+                                              <span className="text-[17px] font-extrabold text-[#D4AF37] tracking-wide whitespace-pre-wrap">{operatingHours}</span>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div className="mt-4 flex justify-end text-[#D4AF37] opacity-80 group-hover:scale-110 transition-transform duration-500 mt-auto">
+                                      <CalendarDays size={44} className="stroke-[1.5]" />
+                                  </div>
+                              </div>
+                          </div>
+                      ) : null}
+
+                      {/* Track Record (Experience & Events) */}
+                      {experienceVal || caterer.eventsCompleted ? (
+                          <div className="md:col-span-6 lg:col-span-5 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                              <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                                  <Briefcase size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Track Record
+                              </h3>
+                              <LuxuryDivider />
+                              <div className="space-y-5 flex-1 flex flex-col justify-center py-2">
+                                  {experienceVal && (
+                                      <div className="flex items-center gap-4 py-2 border-b border-[#D4AF37]/15">
+                                          <div className="flex-shrink-0 bg-[#0F3D2E]/5 border border-[#D4AF37]/30 rounded-full p-2 text-[#D4AF37] shadow-xs">
+                                              <Check size={16} className="stroke-[3]" />
+                                          </div>
+                                          <div className="flex flex-col">
+                                              <span className="text-2xl font-black text-[#D4AF37] font-sans leading-none">{experienceVal} Years</span>
+                                              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">Culinary Heritage & Experience</span>
+                                          </div>
+                                      </div>
+                                  )}
+                                  {caterer.eventsCompleted && (
+                                      <div className="flex items-center gap-4 py-2">
+                                          <div className="flex-shrink-0 bg-[#0F3D2E]/5 border border-[#D4AF37]/30 rounded-full p-2 text-[#D4AF37] shadow-xs">
+                                              <Check size={16} className="stroke-[3]" />
+                                          </div>
+                                          <div className="flex flex-col">
+                                              <span className="text-2xl font-black text-[#D4AF37] font-sans leading-none">{caterer.eventsCompleted}+ Events</span>
+                                              <span className="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">Banquets & Celebrations Hosted</span>
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      ) : null}
+
+                      {/* Awards / Certifications */}
+                      {(awardsList.length > 0 || certificationsList.length > 0) ? (
+                          <div className="md:col-span-12 lg:col-span-7 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                              <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                                  <Award size={22} className="text-[#D4AF37]" strokeWidth={1.5} /> Awards & Credentials
+                              </h3>
+                              <LuxuryDivider />
+                              <div className="flex-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-6 py-2">
+                                  {awardsList.map((award: string, i: number) => (
+                                      <div key={i} className="flex flex-col items-center">
+                                          <GoldMedalIcon title={award} />
+                                      </div>
+                                  ))}
+                                  {certificationsList.map((cert: string, i: number) => (
+                                      <div key={i} className="flex flex-col items-center">
+                                          <GoldMedalIcon title={cert} isShield={true} />
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      ) : null}
                   </div>
 
                   {/* SECTION 4: GALLERY OVERVIEW */}
@@ -985,53 +950,6 @@ export default function CatererDetails() {
                       </div>
                   </section>
 
-                  {/* SECTION 7: REVIEWS */}
-                  <section id="reviews-section" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-200/60 shadow-xs relative overflow-hidden w-full">
-                      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 pb-4 border-b border-slate-100">
-                          <div>
-                              <h2 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Customer Feedback</h2>
-                              <p className="text-slate-500 font-medium text-xs mt-1">Authentic ratings from wedding banquets and events.</p>
-                          </div>
-                          <div className="flex items-center gap-2 bg-[#FAF8F3] px-4 py-2 rounded-xl border border-[#D4A437]/35 shadow-xs shrink-0 self-start sm:self-auto">
-                              <Star className="text-[#D4A437] fill-[#D4A437]" size={16} />
-                              <span className="font-extrabold text-[#0B3D2E] text-sm leading-none">{caterer.rating || '4.9'}</span>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans">/ 5 Rating</span>
-                          </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full font-sans">
-                          {DEMO_REVIEWS.filter(r => r.rating >= 4).slice(0, 3).map((review: any, idx: number) => (
-                              <div key={idx} className="bg-[#FAF8F3]/40 p-5 rounded-2xl border border-slate-100/80 hover:border-[#D4A437]/30 hover:shadow-[0_8px_30px_rgba(212,164,55,0.06)] transition-all duration-300 flex flex-col justify-between h-full group">
-                                  <div>
-                                      <div className="flex items-center justify-between mb-3 font-sans">
-                                          <div className="flex items-center gap-3">
-                                              <div className="w-9 h-9 rounded-full bg-[#0B3D2E]/10 text-[#0B3D2E] font-black text-xs flex items-center justify-center border border-[#0B3D2E]/10">
-                                                  {review.userName ? review.userName[0] : 'U'}
-                                              </div>
-                                              <div className="text-left">
-                                                  <h4 className="font-extrabold text-slate-800 text-xs leading-tight">{review.userName || 'Premium Host'}</h4>
-                                                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{review.date || 'Recent Wedding'}</span>
-                                              </div>
-                                          </div>
-                                          <div className="flex gap-0.5 text-[#D4A437]">
-                                              {[...Array(5)].map((_, i) => (
-                                                  <Star key={i} size={10} className={cn("fill-current", i < Math.floor(review.rating || 5) ? "" : "opacity-30")} />
-                                              ))}
-                                          </div>
-                                      </div>
-                                      <p className="text-xs text-slate-600 italic leading-relaxed group-hover:text-slate-800 transition-colors font-sans">
-                                          "{review.comment || review.text || 'Wonderful service and delectable culinary layout. Exceptionally professional!'}"
-                                      </p>
-                                  </div>
-                                  <div className="mt-4 pt-2 border-t border-slate-100/50 flex items-center justify-between text-[9px] font-black tracking-wider uppercase">
-                                      <span className="bg-[#0B3D2E]/5 text-[#0B3D2E] px-2 py-0.5 rounded-md font-sans">Verified Order</span>
-                                      <span className="text-slate-400 font-bold font-sans">{review.eventType || 'Catering Banquet'}</span>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  </section>
-
                   {/* SECTION 5: CONTACT PROTECTION NOTICE */}
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-sm">
                       <div className="w-16 h-16 bg-amber-100 rounded-full flex flex-shrink-0 items-center justify-center text-amber-600">
@@ -1049,68 +967,6 @@ export default function CatererDetails() {
                               </div>
                           </div>
                       )}
-                  </div>
-              </div>
-
-              {/* RIGHT COLUMN (28% width) */}
-              <div className="flex flex-col gap-8 w-full lg:mt-6 lg:pl-3">
-                  
-                  {/* SECTION 8: TRUST BADGES */}
-                  <div className="bg-white rounded-[2rem] p-6 border border-slate-200/60 shadow-xs">
-                      <h3 className="uppercase tracking-widest text-[#0B3D2E] font-bold mb-5 flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span className="text-[#D4A437]">✦</span> Why Trust Our Food?
-                      </h3>
-                      <div className="space-y-4">
-                          <div className="flex items-center gap-4 animate-fade-in">
-                              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100/50">
-                                  <ShieldCheck size={22} className="stroke-[2.5]" />
-                              </div>
-                              <div className="text-left font-sans">
-                                  <h4 className="text-slate-800 font-extrabold text-sm leading-tight">Hygienic Food Standards</h4>
-                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 animate-pulse">FSSAI Certified Kitchens</p>
-                              </div>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-amber-50 text-[#D4A437] flex items-center justify-center shrink-0 border border-amber-100/50">
-                                  <Award size={22} />
-                              </div>
-                              <div className="text-left font-sans">
-                                  <h4 className="text-slate-800 font-extrabold text-sm leading-tight">Fresh Ingredients</h4>
-                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">100% Quality Assurance</p>
-                              </div>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#0B3D2E] flex items-center justify-center shrink-0 border border-emerald-100/50">
-                                  <ChefHat size={22} />
-                              </div>
-                              <div className="text-left font-sans">
-                                  <h4 className="text-slate-800 font-extrabold text-sm leading-tight">Experienced Chefs</h4>
-                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">5-Star Culinary Expertise</p>
-                              </div>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100/50">
-                                  <Clock size={22} />
-                              </div>
-                              <div className="text-left font-sans">
-                                  <h4 className="text-slate-800 font-extrabold text-sm leading-tight">On-Time Delivery</h4>
-                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Hot & Fresh On Time</p>
-                              </div>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#0B3D2E] flex items-center justify-center shrink-0 border border-emerald-100/50">
-                                  <CheckCircle2 size={22} />
-                              </div>
-                              <div className="text-left font-sans">
-                                  <h4 className="text-slate-800 font-extrabold text-sm leading-tight">Trusted by Customers</h4>
-                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Loved by 20,000+ Guests</p>
-                              </div>
-                          </div>
-                      </div>
                   </div>
               </div>
 

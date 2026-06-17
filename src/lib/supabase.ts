@@ -36,7 +36,9 @@ const tableWhitelists: Record<string, string[]> = {
     'logo', 'coverBanner', 'founderImageUrl', 'gallery', 'packages', 'addOns',
     'includedItems', 'username', 'password', 'owner', 'ownerPhoto', 'branchPhoto',
     'galleryPhotos', 'draftMenuPackages', 'aadhaarUrl', 'panUrl', 'fssaiUrl',
-    'gstUrl', 'otherDocsUrl', 'rating', 'reviewCount', 'email_verified'
+    'gstUrl', 'otherDocsUrl', 'rating', 'reviewCount', 'email_verified',
+    'experience', 'eventsCompleted', 'awards', 'certifications', 'brandName',
+    'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas', 'pendingUpdates'
   ],
   orders: [
     'id', 'created_at', 'updated_at', 'userId', 'catererId', 'catererName',

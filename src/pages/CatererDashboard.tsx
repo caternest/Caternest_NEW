@@ -264,7 +264,17 @@ export default function CatererDashboard() {
               logo: cat.logo || '',
               coverBanner: cat.coverBanner || '',
               ownerPhoto: cat.ownerPhoto || cat.founderImageUrl || '',
-              branchPhoto: cat.branchPhoto || ''
+              branchPhoto: cat.branchPhoto || '',
+              experience: cat.experience || '',
+              eventsCompleted: cat.eventsCompleted || '',
+              awards: cat.awards || '',
+              certifications: cat.certifications || '',
+              brandName: cat.brandName || '',
+              tagline: cat.tagline || '',
+              whatsappNumber: cat.whatsappNumber || '',
+              operatingHours: cat.operatingHours || '',
+              branches: cat.branches || '',
+              serviceAreas: cat.serviceAreas || ''
           });
           setIsProfilePending(!!cat.pendingUpdates);
           
@@ -301,7 +311,17 @@ export default function CatererDashboard() {
                    logo: found.logo || '',
                    coverBanner: found.coverBanner || '',
                    ownerPhoto: found.ownerPhoto || found.founderImageUrl || '',
-                   branchPhoto: found.branchPhoto || ''
+                   branchPhoto: found.branchPhoto || '',
+                   experience: found.experience || '',
+                   eventsCompleted: found.eventsCompleted || '',
+                   awards: found.awards || '',
+                   certifications: found.certifications || '',
+                   brandName: found.brandName || '',
+                   tagline: found.tagline || '',
+                   whatsappNumber: found.whatsappNumber || '',
+                   operatingHours: found.operatingHours || '',
+                   branches: found.branches || '',
+                   serviceAreas: found.serviceAreas || ''
                });
                setIsProfilePending(!!found.pendingUpdates);
             }
@@ -642,12 +662,60 @@ export default function CatererDashboard() {
       if (!cid && user) cid = user.id;
       if (!cid || !caterer) return;
 
+      const sensitivePayload = {
+          ownerName: profileFormData.ownerName || '',
+          businessName: profileFormData.businessName || '',
+          mobile: profileFormData.mobile || '',
+          alternateMobile: profileFormData.alternateMobile || '',
+          email: profileFormData.email || '',
+          fssai: profileFormData.fssai || '',
+          gst: profileFormData.gst || '',
+          pan: profileFormData.pan || '',
+          logo: profileFormData.logo || '',
+          coverBanner: profileFormData.coverBanner || '',
+          ownerPhoto: profileFormData.ownerPhoto || '',
+          branchPhoto: profileFormData.branchPhoto || ''
+      };
+
+      const hasSensitiveChanges = 
+          sensitivePayload.ownerName !== (caterer.owner || caterer.ownerName || '') ||
+          sensitivePayload.businessName !== (caterer.businessName || '') ||
+          sensitivePayload.mobile !== (caterer.phone || '') ||
+          sensitivePayload.alternateMobile !== (caterer.alternatePhone || '') ||
+          sensitivePayload.email !== (caterer.email || '') ||
+          sensitivePayload.fssai !== (caterer.fssaiNumber || caterer.fssai || '') ||
+          sensitivePayload.gst !== (caterer.gstNumber || caterer.gst || '') ||
+          sensitivePayload.pan !== (caterer.panNumber || caterer.pan || '') ||
+          sensitivePayload.logo !== (caterer.logo || '') ||
+          sensitivePayload.coverBanner !== (caterer.coverBanner || '') ||
+          sensitivePayload.ownerPhoto !== (caterer.ownerPhoto || caterer.founderImageUrl || '') ||
+          sensitivePayload.branchPhoto !== (caterer.branchPhoto || '');
+
+      const finalPendingUpdates = hasSensitiveChanges ? sensitivePayload : (caterer.pendingUpdates || null);
+
+      const directPayload = {
+          brandName: profileFormData.brandName || null,
+          tagline: profileFormData.tagline || null,
+          description: profileFormData.description || null,
+          experience: profileFormData.experience ? parseInt(profileFormData.experience) : null,
+          eventsCompleted: profileFormData.eventsCompleted ? parseInt(profileFormData.eventsCompleted) : null,
+          awards: profileFormData.awards || null,
+          certifications: profileFormData.certifications || null,
+          operatingHours: profileFormData.operatingHours || null,
+          branches: profileFormData.branches ? parseInt(profileFormData.branches) : null,
+          serviceAreas: profileFormData.serviceAreas || null,
+          whatsappNumber: profileFormData.whatsappNumber || null,
+          address: profileFormData.location || null,
+          city: profileFormData.city || null,
+          pendingUpdates: finalPendingUpdates
+      };
+
       const supabase = getSupabase() as any;
       if (supabase) {
         try {
           const { error } = await supabase
             .from('caterer_registrations')
-            .update({ pendingUpdates: profileFormData })
+            .update(directPayload)
             .eq('id', caterer.id);
           if (error) throw error;
         } catch (err: any) {
@@ -662,14 +730,21 @@ export default function CatererDashboard() {
               if (c.id === caterer.id) {
                   return {
                       ...c,
-                      pendingUpdates: { ...profileFormData }
+                      ...directPayload,
+                      address: profileFormData.location || c.address,
+                      location: profileFormData.location || c.location,
+                      pendingUpdates: finalPendingUpdates
                   };
               }
               return c;
           });
           try {
               localStorage.setItem('registrations', JSON.stringify(updated));
-              toast('Profile update requested. Pending Admin Approval.', 'success');
+              if (hasSensitiveChanges) {
+                  toast('Sensitive changes require Admin Review. Profile update requested.', 'success');
+              } else {
+                  toast('Profile saved successfully!', 'success');
+              }
               refreshData();
           } catch (err) {
               console.error("Quota exceeded during save", err);
@@ -1208,6 +1283,52 @@ export default function CatererDashboard() {
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Base City</label>
                                   <input type="text" value={profileFormData.city} onChange={(e) => setProfileFormData({...profileFormData, city: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
+                              </div>
+                          </div>
+
+                          <div className="pt-6 border-t border-slate-100">
+                              <h3 className="font-bold text-slate-800 mb-4">Professional & Operational Details</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Brand Name</label>
+                                      <input type="text" value={profileFormData.brandName || ''} onChange={(e) => setProfileFormData({...profileFormData, brandName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. Royal Caterers Premium" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Tagline</label>
+                                      <input type="text" value={profileFormData.tagline || ''} onChange={(e) => setProfileFormData({...profileFormData, tagline: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. Exquisite flavors for unrepeatable moments" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">WhatsApp Mobile Connection</label>
+                                      <input type="tel" value={profileFormData.whatsappNumber || ''} onChange={(e) => setProfileFormData({...profileFormData, whatsappNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. +91 98765 43210" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Years of Experience</label>
+                                      <input type="number" value={profileFormData.experience || ''} onChange={(e) => setProfileFormData({...profileFormData, experience: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. 10" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Events Completed</label>
+                                      <input type="number" value={profileFormData.eventsCompleted || ''} onChange={(e) => setProfileFormData({...profileFormData, eventsCompleted: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. 350" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Number of Branches</label>
+                                      <input type="number" value={profileFormData.branches || ''} onChange={(e) => setProfileFormData({...profileFormData, branches: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. 3" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Operating Hours</label>
+                                      <input type="text" value={profileFormData.operatingHours || ''} onChange={(e) => setProfileFormData({...profileFormData, operatingHours: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. 6:00 AM - 11:00 PM" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Service Areas (comma separated)</label>
+                                      <input type="text" value={profileFormData.serviceAreas || ''} onChange={(e) => setProfileFormData({...profileFormData, serviceAreas: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. Banjara Hills, Jubilee Hills, Gachibowli" />
+                                  </div>
+                                  <div className="col-span-1 md:col-span-2">
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Awards (comma separated)</label>
+                                      <input type="text" value={profileFormData.awards || ''} onChange={(e) => setProfileFormData({...profileFormData, awards: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. Times Food Award 2024, Best Deccani Caterer 2023" />
+                                  </div>
+                                  <div className="col-span-1 md:col-span-2">
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Certifications (comma separated)</label>
+                                      <input type="text" value={profileFormData.certifications || ''} onChange={(e) => setProfileFormData({...profileFormData, certifications: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. ISO 22000 Certified, Culinary Institute of India" />
+                                  </div>
                               </div>
                           </div>
 
