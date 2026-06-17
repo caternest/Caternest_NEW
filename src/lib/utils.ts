@@ -5,6 +5,24 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove non-word chars
+    .replace(/[\s_-]+/g, "-") // Replace spaces/underscores with -
+    .replace(/^-+|-+$/g, ""); // Trim leading/trailing dashes
+};
+
+export const getCatererSlug = (c: any): string => {
+  if (!c) return "";
+  const nameToUse = c.brandName || c.businessName || c.name || "";
+  if (nameToUse) {
+    return generateSlug(nameToUse);
+  }
+  return c.id || "";
+};
+
 export function compressImageFile(file: File, maxWidth = 800, maxHeight = 800, quality = 0.7): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

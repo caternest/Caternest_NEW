@@ -25,6 +25,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+let isSupabaseOffline = false;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,12 +36,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("[AUDIT LOG] syncProfile start for user ID:", authUser?.id, "Email:", authUser?.email);
     const supabase = getSupabase();
     if (!supabase) {
-      console.error("[AUDIT LOG] syncProfile: Supabase client is not configured!");
+      console.warn("[AUDIT LOG] syncProfile: Supabase client is not configured!");
       return null;
     }
     if (!authUser) {
       console.warn("[AUDIT LOG] syncProfile: authUser input is null or undefined!");
       return null;
+    }
+
+    if (isSupabaseOffline) {
+      console.log("[AUDIT LOG] syncProfile: Supabase is marked offline. Using fast local cache/metadata fallback instead of querying.");
+      const metaName = authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User';
+      const metaRole = authUser.user_metadata?.role || 'customer';
+      const roleStr = metaRole as 'admin' | 'caterer' | 'customer';
+      let rolesArr: string[] = ['user'];
+      if (roleStr === 'admin') {
+        rolesArr = ['user', 'admin'];
+      } else if (roleStr === 'caterer') {
+        rolesArr = ['user', 'partner', 'caterer'];
+      }
+      return {
+        id: authUser.id,
+        name: metaName,
+        email: authUser.email || '',
+        phone: authUser.phone || authUser.user_metadata?.phone || '',
+        role: roleStr,
+        roles: rolesArr,
+        must_change_password: false
+      };
     }
 
     try {
@@ -57,7 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchPromise,
         new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Database profile fetch timed out")), 3500))
       ]).catch((err) => {
-        console.error("[AUDIT LOG] Profile fetch error or timeout:", err);
+        console.warn("[AUDIT LOG] Profile fetch error or timeout:", err);
+        isSupabaseOffline = true; // Mark offline for fast-path next time
         return { data: null, error: err };
       });
 
@@ -65,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const error = fetchResult?.error;
 
       if (error) {
-        console.error("[AUDIT LOG] Error fetching user profile:", error.message || error, error);
+        console.warn("[AUDIT LOG] Error fetching user profile:", error.message || error, error);
       } else {
         console.log("[AUDIT LOG] Raw profile query successfully returned profile data:", profile);
       }
@@ -103,7 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             insertPromise,
             new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Database profile insert timed out")), 3500))
           ]).catch((err) => {
-            console.error("[AUDIT LOG] Fallback profile generation database insert exception caught:", err);
+            console.warn("[AUDIT LOG] Fallback profile generation database insert exception caught:", err);
+            isSupabaseOffline = true; // Mark offline for fast-path next time
             return { data: null, error: err };
           });
 
@@ -111,14 +137,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const insertErr = insertResult?.error;
 
           if (insertErr) {
-            console.error("[AUDIT LOG] Fallback profile generation database insert returned error (likely RLS error):", insertErr.message || insertErr, insertErr);
+            console.warn("[AUDIT LOG] Fallback profile generation database insert returned error (likely RLS error):", insertErr.message || insertErr, insertErr);
             activeProfile = newProfile; // Use virtual representation to prevent crash and complete login flow
           } else {
             console.log("[AUDIT LOG] Fallback profile generated in database. Result row:", inserted);
             activeProfile = inserted || newProfile;
           }
         } catch (innerErr: any) {
-          console.error("[AUDIT LOG] Gracefully caught exception during fallback profile insertion (likely RLS error):", innerErr);
+          console.warn("[AUDIT LOG] Gracefully caught exception during fallback profile insertion (likely RLS error):", innerErr);
           activeProfile = newProfile; // Handle gracefully inside the flow, do not throw
         }
       }
@@ -159,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AUDIT LOG] syncProfile final mapped user state:", syncResult);
       return syncResult;
     } catch (err) {
-      console.error("[AUDIT LOG] Exception caught during trace/sync of profile:", err);
+      console.warn("[AUDIT LOG] Exception caught during trace/sync of profile:", err);
       // Emergency safe fallback to complete authentication flow if everything else exceptions out
       try {
         const fallbackUser: User = {
@@ -174,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[AUDIT LOG] Caught sync exception, recovering with fallback user definition:", fallbackUser);
         return fallbackUser;
       } catch (nestedErr) {
-        console.error("[AUDIT LOG] CRITICAL: Failed to construct even emergency fallback representation:", nestedErr);
+        console.warn("[AUDIT LOG] CRITICAL: Failed to construct even emergency fallback representation:", nestedErr);
         return null;
       }
     }
