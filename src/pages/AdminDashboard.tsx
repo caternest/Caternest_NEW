@@ -1030,17 +1030,40 @@ export default function AdminDashboard() {
                                          
                                          if (String(oldValue) === String(newValue) || (!oldValue && !newValue)) return null;
 
+                                          const isImageKey = ['logo', 'coverBanner', 'ownerPhoto', 'branchPhoto'].includes(key);
+
                                          return (
-                                             <div key={key} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                             <div key={key} className={`bg-slate-50 p-4 rounded-xl border border-slate-100 ${isImageKey ? 'md:col-span-2 lg:col-span-3' : ''}`}>
                                                  <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                                                 <div className="space-y-2">
-                                                     <div className="text-sm">
-                                                         <span className="text-red-500 font-bold line-through mr-2 bg-red-50 px-1 rounded">{oldValue || 'None'}</span>
+                                                 {isImageKey ? (
+                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                                         <div className="border border-red-200 bg-red-50/20 p-3 rounded-xl flex flex-col items-center">
+                                                             <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2 font-mono">Current Image</span>
+                                                             {oldValue ? (
+                                                                 <img src={oldValue} alt="Current" className="h-32 max-h-32 w-auto max-w-full object-contain rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm" referrerPolicy="no-referrer" />
+                                                             ) : (
+                                                                 <div className="h-32 w-full bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs italic font-medium border border-dashed border-slate-200">No image uploaded</div>
+                                                             )}
+                                                         </div>
+                                                         <div className="border border-brand-green-400 bg-brand-green-50/20 p-3 rounded-xl flex flex-col items-center">
+                                                             <span className="text-[10px] font-bold text-brand-green-800 uppercase tracking-widest mb-2 font-mono">Proposed Image</span>
+                                                             {newValue ? (
+                                                                 <img src={newValue} alt="Proposed" className="h-32 max-h-32 w-auto max-w-full object-contain rounded-xl border border-brand-green-200 bg-white p-1.5 shadow-md" referrerPolicy="no-referrer" />
+                                                             ) : (
+                                                                 <div className="h-32 w-full bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs italic font-medium border border-dashed border-slate-200">No image specified</div>
+                                                             )}
+                                                         </div>
                                                      </div>
-                                                     <div className="text-sm">
-                                                         <span className="text-brand-green-700 font-bold bg-brand-green-50 px-1 rounded">{newValue || 'None'}</span>
+                                                 ) : (
+                                                     <div className="space-y-2">
+                                                         <div className="text-sm">
+                                                             <span className="text-red-500 font-bold line-through mr-2 bg-red-50 px-1 rounded">{oldValue || 'None'}</span>
+                                                         </div>
+                                                         <div className="text-sm">
+                                                             <span className="text-brand-green-700 font-bold bg-brand-green-50 px-1 rounded">{newValue || 'None'}</span>
+                                                         </div>
                                                      </div>
-                                                 </div>
+                                                 )}
                                              </div>
                                          );
                                      })}
