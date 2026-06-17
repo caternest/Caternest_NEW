@@ -375,6 +375,37 @@ const GoldMedalIcon = ({
   </div>
 );
 
+const DEFAULT_HIGHLIGHTS = [
+  { title: "100% Customer", subtitle: "Satisfaction" },
+  { title: "Hygienic", subtitle: "Food" },
+  { title: "On-time", subtitle: "Service" }
+];
+
+const SUGGESTED_HIGHLIGHTS = [
+  { title: "Hygienic", subtitle: "Food" },
+  { title: "On-time", subtitle: "Service" },
+  { title: "Wedding", subtitle: "Specialist" },
+  { title: "Corporate", subtitle: "Events" },
+  { title: "Live", subtitle: "Counters" },
+  { title: "FSSAI", subtitle: "Certified" },
+  { title: "Premium", subtitle: "Catering" },
+  { title: "Outdoor", subtitle: "Events" },
+  { title: "Luxury", subtitle: "Catering" },
+  { title: "Multi", subtitle: "Cuisine" }
+];
+
+const getHighlightIcon = (title: string, subtitle: string) => {
+  const text = `${title} ${subtitle}`.toLowerCase();
+  if (text.includes("experience") || text.includes("year")) return Award;
+  if (text.includes("event") || text.includes("completed") || text.includes("guest") || text.includes("served")) return Users;
+  if (text.includes("hygienic") || text.includes("hygiene") || text.includes("clean") || text.includes("food") || text.includes("cuisine") || text.includes("chef") || text.includes("veg")) return ChefHat;
+  if (text.includes("time") || text.includes("service") || text.includes("delivery") || text.includes("clock")) return Clock;
+  if (text.includes("satisfaction") || text.includes("customer") || text.includes("rating") || text.includes("love") || text.includes("wedding") || text.includes("specialist")) return Heart;
+  if (text.includes("fssai") || text.includes("certified") || text.includes("cert") || text.includes("licens")) return ShieldCheck;
+  if (text.includes("corporate") || text.includes("business") || text.includes("office")) return Briefcase;
+  return CheckCircle2;
+};
+
 export default function CatererDetails() {
   const { user } = useAuth();
   const { id } = useParams();
@@ -382,6 +413,111 @@ export default function CatererDetails() {
   const [caterer, setCaterer] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCaterer, setEditedCaterer] = useState<any>(null);
+
+  // Dynamic Profile Highlights States
+  const [highlightModalOpen, setHighlightModalOpen] = useState(false);
+  const [editingHighlightIndex, setEditingHighlightIndex] = useState<number | 'experience' | 'eventsCompleted' | null>(null);
+  const [highlightForm, setHighlightForm] = useState({ title: "", subtitle: "" });
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  const openEditHighlightModal = (type: number | 'experience' | 'eventsCompleted' | null) => {
+    setEditingHighlightIndex(type);
+    setShowCustomInput(false);
+    if (type === 'experience') {
+      const expVal = editedCaterer?.experience !== undefined && editedCaterer?.experience !== null ? editedCaterer.experience : (caterer?.experience || "");
+      setHighlightForm({
+        title: expVal.toString(),
+        subtitle: "Experience"
+      });
+      setShowCustomInput(true);
+    } else if (type === 'eventsCompleted') {
+      const evVal = editedCaterer?.eventsCompleted !== undefined && editedCaterer?.eventsCompleted !== null ? editedCaterer.eventsCompleted : (caterer?.eventsCompleted || "");
+      setHighlightForm({
+        title: evVal.toString(),
+        subtitle: "Completed"
+      });
+      setShowCustomInput(true);
+    } else if (typeof type === 'number') {
+      const hList = editedCaterer?.highlights || caterer?.highlights || DEFAULT_HIGHLIGHTS;
+      const item = hList[type];
+      setHighlightForm({
+        title: item?.title || "",
+        subtitle: item?.subtitle || ""
+      });
+      setShowCustomInput(true);
+    } else {
+      // Adding new
+      setHighlightForm({ title: "", subtitle: "" });
+    }
+    setHighlightModalOpen(true);
+  };
+
+  const handleSaveHighlight = () => {
+    let updatedCaterer = { ...editedCaterer };
+    if (!updatedCaterer.highlights) {
+      updatedCaterer.highlights = [...(caterer?.highlights || DEFAULT_HIGHLIGHTS)];
+    }
+
+    if (editingHighlightIndex === 'experience') {
+      const val = parseInt(highlightForm.title);
+      updatedCaterer.experience = isNaN(val) ? null : val;
+    } else if (editingHighlightIndex === 'eventsCompleted') {
+      const val = parseInt(highlightForm.title);
+      updatedCaterer.eventsCompleted = isNaN(val) ? null : val;
+    } else if (typeof editingHighlightIndex === 'number' && editingHighlightIndex >= 0) {
+      const hList = [...updatedCaterer.highlights];
+      hList[editingHighlightIndex] = {
+        title: highlightForm.title.trim(),
+        subtitle: highlightForm.subtitle.trim()
+      };
+      updatedCaterer.highlights = hList;
+    } else {
+      // Adding new highlight
+      const hList = [...updatedCaterer.highlights];
+      hList.push({
+        title: highlightForm.title.trim(),
+        subtitle: highlightForm.subtitle.trim()
+      });
+      updatedCaterer.highlights = hList;
+    }
+
+    setEditedCaterer(updatedCaterer);
+    setHighlightModalOpen(false);
+    setEditingHighlightIndex(null);
+    toast("Highlight updated successfully (Save changes to publish)", "success");
+  };
+
+  const handleDeleteHighlight = (type: number | 'experience' | 'eventsCompleted') => {
+    let updatedCaterer = { ...editedCaterer };
+    if (!updatedCaterer.highlights) {
+      updatedCaterer.highlights = [...(caterer?.highlights || DEFAULT_HIGHLIGHTS)];
+    }
+
+    if (type === 'experience') {
+      updatedCaterer.experience = null;
+    } else if (type === 'eventsCompleted') {
+      updatedCaterer.eventsCompleted = null;
+    } else if (typeof type === 'number') {
+      const hList = [...updatedCaterer.highlights];
+      hList.splice(type, 1);
+      updatedCaterer.highlights = hList;
+    }
+
+    setEditedCaterer(updatedCaterer);
+    toast("Highlight deleted (Save changes to publish)", "success");
+  };
+
+  useEffect(() => {
+    if (isEditing && editedCaterer && !editedCaterer.highlights) {
+      setEditedCaterer((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          highlights: prev.highlights || caterer?.highlights || DEFAULT_HIGHLIGHTS
+        };
+      });
+    }
+  }, [isEditing, editedCaterer, caterer]);
 
   const handleShare = async () => {
     if (!caterer) return;
@@ -487,6 +623,7 @@ export default function CatererDetails() {
       "branches",
       "specializations",
       "galleryPhotos",
+      "highlights",
     ];
 
     const changes: any = {};
@@ -659,6 +796,7 @@ export default function CatererDetails() {
           galleryPhotos: r.galleryPhotos || [],
           achievements: r.achievements,
           awards: r.awards,
+          highlights: r.highlights || null,
           teamPhotos: r.teamPhotos || [],
           kitchenPhotos: r.kitchenPhotos || [],
           specializations: r.specializations || (r.serviceAreas ? [] : null),
@@ -932,6 +1070,133 @@ export default function CatererDetails() {
 
   return (
     <div className="bg-[#FAF8F3] min-h-screen">
+      {/* Dynamic Highlight Edit Modal */}
+      <AnimatePresence>
+        {highlightModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#052118] border border-[#D4A437]/40 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.6)] w-full max-w-xl p-6 text-white overflow-hidden relative"
+            >
+              <button
+                type="button"
+                onClick={() => setHighlightModalOpen(false)}
+                className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              <h3 className="text-lg font-black uppercase text-[#D4A437] tracking-wider mb-2 font-sans">
+                {editingHighlightIndex === null 
+                  ? "Add Highlight Card" 
+                  : editingHighlightIndex === 'experience' || editingHighlightIndex === 'eventsCompleted'
+                    ? "Edit Core Stat"
+                    : "Edit Highlight Card"}
+              </h3>
+              <p className="text-white/70 text-xs mb-5">
+                {editingHighlightIndex === null 
+                  ? "Create a premium highlight for your profile. Select one of the recommended features below or write your own custom stat." 
+                  : "Update your profile highlight. You can customize the title and subtitle levels below."}
+              </p>
+
+              {/* Suggested Highlights (Only on Addition or if editing is dynamic) */}
+              {editingHighlightIndex === null && (
+                <div className="mb-6">
+                  <span className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest block mb-2.5 font-mono">
+                    Suggested Highlights
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 max-h-[170px] overflow-y-auto pr-1 no-scrollbar">
+                    {SUGGESTED_HIGHLIGHTS.map((sh, sIdx) => (
+                      <button
+                        type="button"
+                        key={sIdx}
+                        onClick={() => {
+                          setHighlightForm({ title: sh.title, subtitle: sh.subtitle });
+                          setShowCustomInput(true);
+                        }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/15 border border-white/5 hover:border-[#D4A437]/45 rounded-xl px-3 py-2 text-left text-xs transition active:scale-98 cursor-pointer"
+                      >
+                        <div className="text-[#D4A437]/85">
+                          <CheckCircle2 size={13} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-white leading-none mb-0.5">{sh.title}</div>
+                          <div className="text-[9px] text-[#D4A437]/70 font-sans leading-none">{sh.subtitle}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Input Form */}
+              <div className="space-y-4 border-t border-white/10 pt-4">
+                <span className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest block font-mono">
+                  Highlight Content
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-white/60 font-bold uppercase tracking-wider font-mono">
+                      {editingHighlightIndex === 'experience' 
+                        ? "Years of Experience" 
+                        : editingHighlightIndex === 'eventsCompleted' 
+                          ? "Events Completed Number" 
+                          : "Title / value (e.g. 100% or Hygienic)"}
+                    </label>
+                    <input
+                      type={editingHighlightIndex === 'experience' || editingHighlightIndex === 'eventsCompleted' ? "number" : "text"}
+                      value={highlightForm.title}
+                      onChange={(e) => setHighlightForm({ ...highlightForm, title: e.target.value })}
+                      placeholder={editingHighlightIndex === 'experience' ? "e.g. 15" : editingHighlightIndex === 'eventsCompleted' ? "e.g. 500" : "e.g. Multi"}
+                      className="bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white text-xs outline-none focus:border-[#D4A437]"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] text-white/60 font-bold uppercase tracking-wider font-mono">
+                      Subtitle
+                    </label>
+                    <input
+                      type="text"
+                      value={highlightForm.subtitle}
+                      disabled={editingHighlightIndex === 'experience' || editingHighlightIndex === 'eventsCompleted'}
+                      onChange={(e) => setHighlightForm({ ...highlightForm, subtitle: e.target.value })}
+                      placeholder={editingHighlightIndex === 'experience' ? "Experience" : editingHighlightIndex === 'eventsCompleted' ? "Completed" : "e.g. Cuisine"}
+                      className="bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white/80 text-xs outline-none focus:border-[#D4A437] disabled:opacity-50"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex justify-end gap-3 mt-6 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setHighlightModalOpen(false)}
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/85 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveHighlight}
+                  disabled={!highlightForm.title.trim()}
+                  className="px-4 py-2 bg-[#D4A437] hover:bg-[#E0B84C] text-white rounded-xl text-xs font-bold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
+                >
+                  Save Highlight
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Lightbox */}
       <AnimatePresence>
         {lightboxOpen && (
@@ -1124,9 +1389,7 @@ export default function CatererDetails() {
               >
                 Share
               </button>
-              <button className="flex items-center justify-center w-8 h-8 bg-white/10 hover:bg-white/20 backdrop-blur-md text-red-500 rounded-full transition-all border border-white/10 shadow-sm cursor-pointer hover:scale-105 active:scale-95">
-                <Heart size={16} className="fill-red-500 stroke-red-500" />
-              </button>
+
             </div>
           </div>
           {/* Identity Row */}
@@ -1426,80 +1689,169 @@ export default function CatererDetails() {
           </div>
 
           {/* Premium Statistics Strip */}
-          {caterer.experience ||
-          caterer.eventsCompleted ||
-          caterer.whatsappNumber ? (
-            <div className="w-full mt-10">
-              <div className="bg-[#0B3D2E]/95 backdrop-blur-md rounded-3xl lg:rounded-full border border-[#D4A437]/30 shadow-[0_12px_40px_rgba(11,61,46,0.35),_0_0_15px_rgba(212,164,55,0.15)] px-6 py-5 lg:py-4 lg:px-10 flex flex-wrap lg:flex-nowrap items-center justify-around text-white gap-4 lg:gap-2">
-                {caterer.experience && (
-                  <div className="flex items-center gap-3 w-[45%] lg:w-auto">
-                    <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[#D4A437]">
-                      <Award size={18} className="stroke-[2.5]" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-extrabold text-sm lg:text-base text-white leading-tight">
-                        {caterer.experience} Years
-                      </div>
-                      <div className="text-[10px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans">
-                        Experience
-                      </div>
-                    </div>
-                  </div>
-                )}
+          {(() => {
+            const displayObj = isEditing ? (editedCaterer || caterer) : caterer;
+            if (!displayObj) return null;
 
-                {caterer.experience && caterer.eventsCompleted && (
-                  <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
-                )}
+            // Consolidate the highlights to display
+            const activeHighlightsList: Array<{
+              type: "experience" | "eventsCompleted" | "dynamic";
+              index?: number;
+              title: string;
+              subtitle: string;
+              icon: React.ComponentType<any>;
+            }> = [];
 
-                {caterer.eventsCompleted && (
-                  <div className="flex items-center gap-3 w-[45%] lg:w-auto">
-                    <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[#D4A437]">
-                      <Users size={18} />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-extrabold text-sm lg:text-base text-white leading-tight">
-                        {caterer.eventsCompleted}+ Events
-                      </div>
-                      <div className="text-[10px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans font-sans">
-                        Completed
-                      </div>
-                    </div>
-                  </div>
-                )}
+            // 1. Years of Experience
+            if (displayObj.experience !== undefined && displayObj.experience !== null && displayObj.experience !== "") {
+              activeHighlightsList.push({
+                type: "experience",
+                title: `${displayObj.experience}+ Years`,
+                subtitle: "Experience",
+                icon: Award
+              });
+            } else if (isEditing) {
+              activeHighlightsList.push({
+                type: "experience",
+                title: "Years Experience",
+                subtitle: "Not configured",
+                icon: Award
+              });
+            }
 
-                {caterer.eventsCompleted && caterer.whatsappNumber && (
-                  <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
-                )}
+            // 2. Events Completed
+            if (displayObj.eventsCompleted !== undefined && displayObj.eventsCompleted !== null && displayObj.eventsCompleted !== "") {
+              activeHighlightsList.push({
+                type: "eventsCompleted",
+                title: `${displayObj.eventsCompleted}+ Events`,
+                subtitle: "Completed",
+                icon: Users
+              });
+            } else if (isEditing) {
+              activeHighlightsList.push({
+                type: "eventsCompleted",
+                title: "Events Completed",
+                subtitle: "Not configured",
+                icon: Users
+              });
+            }
 
-                {caterer.whatsappNumber && (
-                  <div className="flex items-center gap-3 w-[45%] lg:w-auto">
-                    <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[#D4A437]">
-                      <MessageCircle size={18} />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-extrabold text-sm lg:text-base text-white leading-tight">
-                        Interactive
+            // 3. Dynamic custom highlights
+            const hList = displayObj.highlights !== undefined && displayObj.highlights !== null
+              ? displayObj.highlights
+              : DEFAULT_HIGHLIGHTS; // Default fallback
+
+            if (Array.isArray(hList)) {
+              hList.forEach((hl: any, idx: number) => {
+                if (hl && (hl.title || hl.subtitle)) {
+                  activeHighlightsList.push({
+                    type: "dynamic",
+                    index: idx,
+                    title: hl.title || "",
+                    subtitle: hl.subtitle || "",
+                    icon: getHighlightIcon(hl.title, hl.subtitle)
+                  });
+                }
+              });
+            }
+
+            const hasAnyVisibleHighlights = activeHighlightsList.length > 0 || displayObj.whatsappNumber;
+
+            if (!hasAnyVisibleHighlights && !isEditing) return null;
+
+            return (
+              <div className="w-full mt-10">
+                <div className="bg-[#0B3D2E]/95 backdrop-blur-md rounded-3xl border border-[#D4A437]/30 shadow-[0_12px_40px_rgba(11,61,46,0.35),_0_0_15px_rgba(212,164,55,0.15)] px-6 py-5 lg:py-4 lg:px-10 flex flex-wrap items-center justify-around text-white gap-6">
+                  
+                  {activeHighlightsList.map((hl, listIdx) => {
+                    const IconComp = hl.icon;
+                    const isConfigured = !(hl.title === "Years Experience" && hl.subtitle === "Not configured") && 
+                                         !(hl.title === "Events Completed" && hl.subtitle === "Not configured");
+
+                    return (
+                      <React.Fragment key={`${hl.type}-${hl.index ?? listIdx}`}>
+                        {listIdx > 0 && (
+                          <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
+                        )}
+                        <div className="flex items-center gap-3 min-w-[140px] md:min-w-0 relative group">
+                          <div className={`p-2.5 rounded-xl border border-white/5 text-[#D4A437] transition-all duration-300 ${isConfigured ? 'bg-white/10' : 'bg-white/5 opacity-40 border-dashed border-white/20'}`}>
+                            <IconComp size={18} />
+                          </div>
+                          <div className="text-left pr-6">
+                            <div className={`font-extrabold text-sm lg:text-base leading-tight ${isConfigured ? 'text-white' : 'text-white/40 italic'}`}>
+                              {hl.title}
+                            </div>
+                            <div className={`text-[10px] uppercase tracking-wider font-extrabold font-sans ${isConfigured ? 'text-[#D4A437]' : 'text-[#D4A437]/45'}`}>
+                              {hl.subtitle}
+                            </div>
+                          </div>
+
+                          {/* Hover Overlay for Edit & Delete inside edit mode */}
+                          {isOwnerOrAdmin && isEditing && (
+                            <div className="absolute top-1/2 -translate-y-1/2 -right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-black/80 p-1.5 rounded-lg border border-white/15 shadow-xl z-20">
+                              <button
+                                type="button"
+                                title="Edit highlight"
+                                onClick={() => openEditHighlightModal(hl.type === 'dynamic' ? hl.index! : hl.type as any)}
+                                className="p-1 hover:bg-white/10 rounded text-amber-400 transition cursor-pointer"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete highlight"
+                                onClick={() => handleDeleteHighlight(hl.type === 'dynamic' ? hl.index! : hl.type as any)}
+                                className="p-1 hover:bg-red-500/20 rounded text-red-500 transition cursor-pointer"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Standard WhatsApp dynamic booking block */}
+                  {displayObj.whatsappNumber && (
+                    <>
+                      {activeHighlightsList.length > 0 && (
+                        <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
+                      )}
+                      <div className="flex items-center gap-3 min-w-[140px] md:min-w-0">
+                        <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[#D4A437]">
+                          <MessageCircle size={18} />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-extrabold text-sm lg:text-base text-white leading-tight">
+                            Interactive
+                          </div>
+                          <div className="text-[10px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans font-sans">
+                            WhatsApp Booking
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans">
-                        WhatsApp Booking
-                      </div>
+                    </>
+                  )}
+
+                  {/* "+" Add Highlight button in edit mode */}
+                  {isOwnerOrAdmin && isEditing && (
+                    <div className="flex items-center justify-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEditHighlightModal(null)}
+                        className="flex items-center gap-1.5 bg-[#D4A437]/25 hover:bg-[#D4A437]/45 text-[#D4A437] font-black tracking-wider uppercase px-4 py-2 rounded-full border border-[#D4A437]/40 text-[10px] transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                      >
+                        <Plus size={13} className="stroke-[3]" />
+                        Add Highlight
+                      </button>
                     </div>
-                  </div>
-                )}
+                  )}
+
+                </div>
               </div>
-            </div>
-          ) : isOwnerOrAdmin ? (
-            <div className="w-full mt-10">
-              <div className="bg-[#0B3D2E]/95 backdrop-blur-md rounded-3xl border border-[#D4A437]/30 shadow-md py-4 px-6 text-center text-white/70 text-xs">
-                ✦ Press{" "}
-                <span className="text-[#D4A437] font-bold font-sans">
-                  "Edit Profile"
-                </span>{" "}
-                to configure experience years and completed events. Fake
-                statistics strips are hidden by default. ✦
-              </div>
-            </div>
-          ) : null}
+            );
+          })()}
         </div>
       </div>
 
