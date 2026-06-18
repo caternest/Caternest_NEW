@@ -772,9 +772,9 @@ export default function AdminDashboard() {
                 <button onClick={() => setActiveTab('orders')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <CreditCard size={18} /> All Orders
                 </button>
-                <button onClick={() => setActiveTab('images')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'images' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                {false && <button onClick={() => setActiveTab('images')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'images' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <Image size={18} /> Food Image Library
-                </button>
+                </button>}
                 <button onClick={() => setActiveTab('users')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'users' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <Users size={18} /> Users & Accounts
                 </button>
@@ -1297,52 +1297,65 @@ export default function AdminDashboard() {
                           Platform Settings
                       </h2>
                       <p className="text-slate-500 text-sm mt-1">
-                          Configure platform settings, fees structure, and administrative defaults. These values apply globally in real-time.
+                          Configure platform settings, administrative defaults, and features. These values apply globally in real-time.
                       </p>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-6 space-y-4">
-                      <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-2">Platform Fee Per Plate (₹)</label>
-                          <p className="text-xs text-slate-400 mb-3">
-                              This fee is multiplied directly by the booking guest count to calculate the aggregate platform fee for all orders: <strong className="text-slate-600 font-bold">Aggregate Fee = Guest Count × Platform Fee Per Plate</strong>.
-                          </p>
-                          <div className="flex flex-wrap gap-2.5 mb-4">
-                              {[1, 2, 5, 10].map((preset) => (
-                                  <button
-                                      key={preset}
-                                      type="button"
-                                      onClick={() => setPlatformFeePerPlate(preset)}
-                                      className={cn(
-                                          "px-4 py-2 rounded-xl text-xs font-bold transition-all border",
-                                          platformFeePerPlate === preset
-                                              ? "bg-slate-900 border-slate-900 text-brand-gold-500 shadow-md scale-105"
-                                              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                                      )}
-                                  >
-                                      ₹{preset} Preset
-                                  </button>
-                              ))}
+                  <div className="border-t border-slate-100 pt-6 space-y-6">
+                      {/* Platform Fee Management Subsection */}
+                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 shadow-sm space-y-4">
+                          <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+                              <CreditCard className="text-brand-green-900" size={20} />
+                              <h3 className="text-base font-bold text-slate-800">Platform Fee Management</h3>
                           </div>
                           
-                          <div className="flex gap-3 items-center">
-                              <span className="text-slate-500 font-medium text-sm">Custom value:</span>
-                              <div className="relative rounded-xl shadow-sm w-44">
-                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <span className="text-slate-400 font-bold text-sm">₹</span>
+                          <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">Platform Fee Per Plate (₹)</label>
+                              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                                  This fee is multiplied directly by the booking guest count to calculate the aggregate platform fee for all orders: 
+                                  <strong className="block mt-2 p-2 bg-white rounded-lg border border-slate-200/60 text-slate-800 font-mono text-center font-bold">
+                                      Payable Platform Fee = Guest Count × Platform Fee Per Plate
+                                  </strong>
+                              </p>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                  {[1, 2, 5, 10].map((preset) => (
+                                      <button
+                                          key={preset}
+                                          type="button"
+                                          onClick={() => setPlatformFeePerPlate(preset)}
+                                          className={cn(
+                                              "px-4 py-2 rounded-xl text-xs font-bold transition-all border",
+                                              platformFeePerPlate === preset
+                                                  ? "bg-slate-900 border-slate-900 text-brand-gold-500 shadow-sm scale-102"
+                                                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                                          )}
+                                      >
+                                          ₹{preset} Preset
+                                      </button>
+                                  ))}
+                              </div>
+                              
+                              <div className="flex gap-3 items-center">
+                                  <span className="text-slate-500 font-medium text-xs uppercase tracking-wider">Custom Plate Fee:</span>
+                                  <div className="relative rounded-xl shadow-sm w-44">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <span className="text-slate-400 font-bold text-sm">₹</span>
+                                      </div>
+                                      <input
+                                          type="number"
+                                          min="0"
+                                          value={platformFeePerPlate}
+                                          onChange={(e) => setPlatformFeePerPlate(Math.max(0, parseInt(e.target.value) || 0))}
+                                          className="block w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-brand-gold-500 text-sm font-bold text-slate-800"
+                                      />
                                   </div>
-                                  <input
-                                      type="number"
-                                      min="0"
-                                      value={platformFeePerPlate}
-                                      onChange={(e) => setPlatformFeePerPlate(Math.max(0, parseInt(e.target.value) || 0))}
-                                      className="block w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-gold-500 text-sm font-bold text-slate-800"
-                                  />
                               </div>
                           </div>
                       </div>
 
-                      <div className="pt-6 border-t border-slate-100 flex justify-end">
+                      {/* We keep space to introduce addition of future settings here */}
+
+                      <div className="pt-4 border-t border-slate-100 flex justify-end">
                           <button
                               onClick={() => handleSavePlatformFee(platformFeePerPlate)}
                               disabled={savingFee}
@@ -1875,7 +1888,7 @@ export default function AdminDashboard() {
                                   <span className="font-bold text-slate-800">₹{((selectedAdminOrder.pricePerPlate || 0) * (selectedAdminOrder.guests || 0)).toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between items-center text-xs border-b border-dashed border-slate-200 pb-2">
-                                  <span className="text-slate-600">Admin Platform Fee</span>
+                                  <span className="text-slate-600">Admin Platform Fee (₹{selectedAdminOrder.platformFeePerPlate !== undefined ? selectedAdminOrder.platformFeePerPlate : (selectedAdminOrder.guests ? Math.round(Number(selectedAdminOrder.platformFee) / Number(selectedAdminOrder.guests)) : 2)}/plate)</span>
                                   <span className="font-bold text-slate-800">₹{(selectedAdminOrder.platformFee || 0).toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between items-center text-sm font-bold text-slate-900 pt-1">

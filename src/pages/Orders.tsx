@@ -690,7 +690,7 @@ export default function Orders() {
                                    <span>₹{((o.pricePerPlate || 0) * (o.guests || 0)).toLocaleString()}</span>
                                </div>
                                <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-500 mb-3 font-medium">
-                                   <span>Platform Fee</span>
+                                   <span>Platform Fee (₹{o.platformFeePerPlate !== undefined ? o.platformFeePerPlate : (o.guests ? Math.round(Number(o.platformFee) / Number(o.guests)) : 2)}/plate)</span>
                                    <span>₹{o.platformFee || 0}</span>
                                </div>
                                

@@ -46,7 +46,7 @@ const tableWhitelists: Record<string, string[]> = {
     'eventTime', 'eventType', 'guestCount', 'guests', 'totalAmount',
     'totalEstimate', 'status', 'items', 'selectedItems', 'packageSelected',
     'packageDetails', 'pricingSlabs', 'matchedSlab', 'addonItems', 'selectedMenu',
-    'notes', 'specialNotes', 'pricePerPlate', 'platformFee', 'venue',
+    'notes', 'specialNotes', 'pricePerPlate', 'platformFee', 'platformFeePerPlate', 'venue',
     'statusHistory', 'internalNotes', 'approvedAt', 'rejectedAt', 'completedAt'
   ],
   notifications: [

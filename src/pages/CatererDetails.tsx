@@ -34,6 +34,7 @@ import {
   Trash2,
   Plus,
   Pencil,
+  Sparkles,
 } from "lucide-react";
 import { DEMO_REVIEWS, DEMO_CATERERS } from "../data";
 import { cn, compressImageFile, getCatererSlug } from "../lib/utils";
@@ -820,6 +821,8 @@ export default function CatererDetails() {
   const [activeGalleryTab, setActiveGalleryTab] = useState("All");
   const [guestCount, setGuestCount] = useState(100);
   const [activeTab, setActiveTab] = useState("Overview");
+  const [builderTab, setBuilderTab] = useState<"branding" | "about" | "highlights" | "location" | "gallery">("branding");
+  const [mobileEditorView, setMobileEditorView] = useState<"editor" | "preview">("editor");
 
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
@@ -1068,6 +1071,616 @@ export default function CatererDetails() {
     ? parseInt(targetCatererObj.experience.toString())
     : null;
 
+  const renderEditSettingsModal = () => {
+    return null;
+    if (!isEditing || !editedCaterer) return null;
+
+    return (
+      <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto font-sans">
+        <div className="bg-[#051410] border border-[#DEAA38]/45 w-full max-w-3xl rounded-[2rem] shadow-[0_24px_64px_rgba(0,0,0,0.6)] text-white overflow-hidden flex flex-col my-8 h-auto max-h-[85vh]">
+          {/* Sidebar Header */}
+        <div className="p-5 border-b border-[#DEAA38]/20 flex items-center justify-between bg-[#0B3D2E]">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-[#DEAA38]" />
+            <span className="font-display font-medium text-sm tracking-widest text-[#DEAA38] uppercase">
+              Brand Builder
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 font-sans">
+            <span className="bg-[#DEAA38]/10 text-[#DEAA38] border border-[#DEAA38]/25 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider font-mono">
+              DESIGN MODE
+            </span>
+          </div>
+        </div>
+        
+        {/* Tab Selectors */}
+        <div className="grid grid-cols-5 bg-[#03110D] border-b border-[#DEAA38]/15 text-[10px] uppercase font-bold tracking-wider relative shrink-0">
+          <button 
+            type="button"
+            onClick={() => setBuilderTab("branding")}
+            className={cn(
+              "py-3.5 flex flex-col items-center gap-1 transition-all border-b-2 hover:bg-[#0B3D2E]/20 cursor-pointer", 
+              builderTab === "branding" ? "text-[#DEAA38] border-[#DEAA38] bg-[#0B3D2E]/10 font-bold" : "text-white/40 border-transparent"
+            )}
+            title="Branding & Contact Info"
+          >
+            <ImageIcon size={15} />
+            <span className="text-[8px] tracking-tight mt-0.5">Branding</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setBuilderTab("about")}
+            className={cn(
+              "py-3.5 flex flex-col items-center gap-1 transition-all border-b-2 hover:bg-[#0B3D2E]/20 cursor-pointer", 
+              builderTab === "about" ? "text-[#DEAA38] border-[#DEAA38] bg-[#0B3D2E]/10 font-bold" : "text-white/40 border-transparent"
+            )}
+            title="Founder & Team Story"
+          >
+            <User size={15} />
+            <span className="text-[8px] tracking-tight mt-0.5">Founder</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setBuilderTab("highlights")}
+            className={cn(
+              "py-3.5 flex flex-col items-center gap-1 transition-all border-b-2 hover:bg-[#0B3D2E]/20 cursor-pointer", 
+              builderTab === "highlights" ? "text-[#DEAA38] border-[#DEAA38] bg-[#0B3D2E]/10 font-bold" : "text-white/40 border-transparent"
+            )}
+            title="Custom Highlights & Impact stats"
+          >
+            <Sparkles size={15} />
+            <span className="text-[8px] tracking-tight mt-0.5">Highlights</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setBuilderTab("location")}
+            className={cn(
+              "py-3.5 flex flex-col items-center gap-1 transition-all border-b-2 hover:bg-[#0B3D2E]/20 cursor-pointer", 
+              builderTab === "location" ? "text-[#DEAA38] border-[#DEAA38] bg-[#0B3D2E]/10 font-bold" : "text-white/40 border-transparent"
+            )}
+            title="Branches, Areas & Hours"
+          >
+            <MapPin size={15} />
+            <span className="text-[8px] tracking-tight mt-0.5">Logistics</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setBuilderTab("gallery")}
+            className={cn(
+              "py-3.5 flex flex-col items-center gap-1 transition-all border-b-2 hover:bg-[#0B3D2E]/20 cursor-pointer", 
+              builderTab === "gallery" ? "text-[#DEAA38] border-[#DEAA38] bg-[#0B3D2E]/10 font-bold" : "text-white/40 border-transparent"
+            )}
+            title="Awards & Image Gallery"
+          >
+            <LayoutGrid size={15} />
+            <span className="text-[8px] tracking-tight mt-0.5">Portfolio</span>
+          </button>
+        </div>
+
+        {/* Scrollable inputs Container with gorgeous styling */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 bg-gradient-to-b from-[#051410] to-[#020b08] scrollbar-thin scrollbar-thumb-emerald-800 scrollbar-track-transparent">
+          {builderTab === "branding" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pb-1.5 font-mono">Brand Identity</h4>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Brand Public Name</label>
+                <input
+                  type="text"
+                  value={editedCaterer.brandName || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, brandName: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] focus:ring-1 focus:ring-[#DEAA38] transition font-sans"
+                  placeholder="e.g. Royal Wedding Feasts"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 flex items-center gap-1">Legal Business Name <ShieldCheck size={12} className="text-[#DEAA38]/70 font-sans" /></label>
+                <input
+                  type="text"
+                  value={editedCaterer.businessName || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, businessName: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] focus:ring-1 focus:ring-[#DEAA38] transition font-sans"
+                  placeholder="e.g. Royal Banquet Services Private Limited"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Brand Tagline</label>
+                <textarea
+                  value={editedCaterer.tagline || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, tagline: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] h-20 resize-none transition font-sans"
+                  placeholder="e.g. Crafting Curated Culinary Journeys"
+                />
+              </div>
+
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Contact & Location</h4>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Official HQ Address</label>
+                <input
+                  type="text"
+                  value={editedCaterer.address || editedCaterer.location || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, address: e.target.value, location: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. Jubilee Hills, Hyderabad"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 flex items-center gap-1">Official Mobile <Phone size={12} className="text-[#DEAA38]/70" /></label>
+                <input
+                  type="text"
+                  value={editedCaterer.phone || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, phone: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. +91 98765 43210"
+                />
+              </div>
+
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Brand Media Assets</h4>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Brand Logo Shield</label>
+                <div className="flex items-center gap-4 bg-black/30 p-3 rounded-xl border border-emerald-950/20">
+                  {editedCaterer.logo ? (
+                    <img src={editedCaterer.logo} className="w-14 h-14 object-cover rounded-full border border-[#DEAA38]" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-emerald-950/40 flex items-center justify-center text-[#DEAA38] border border-[#DEAA38]/20">
+                      <User size={20} />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <label className="cursor-pointer bg-emerald-900/60 border border-emerald-500/20 hover:bg-emerald-800 text-white font-bold text-[10px] px-3 py-2 rounded-lg flex items-center gap-1.5 justify-center transition w-fit shadow-xs">
+                      <ImageIcon size={12} /> Choose Image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            setEditedCaterer({ ...editedCaterer, logo: base64 });
+                          }
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      value={editedCaterer.logo || ""}
+                      onChange={(e) => setEditedCaterer({ ...editedCaterer, logo: e.target.value })}
+                      placeholder="Or paste Logo Image URL"
+                      className="bg-black/50 border border-emerald-950/80 rounded-lg px-2.5 py-1 text-[10px] w-full text-white/80 select-all font-sans"
+                    />
+                  </div>
+                </div>
+
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 block pt-3">Cover Banner Backdrop</label>
+                <div className="space-y-2 bg-black/30 p-3 rounded-xl border border-emerald-950/20">
+                  <div className="h-20 w-full overflow-hidden rounded-lg bg-black/40 border border-emerald-900/20 relative">
+                    {editedCaterer.coverBanner ? (
+                      <img src={editedCaterer.coverBanner} className="w-full h-full object-cover opacity-70" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/20 text-xs font-sans text-center">No Cover Banner</div>
+                    )}
+                  </div>
+                  <div className="flex gap-2.5">
+                    <label className="cursor-pointer bg-emerald-900/60 border border-emerald-500/20 hover:bg-emerald-800 text-white font-bold text-[10px] px-3 py-2 rounded-lg flex items-center gap-1.5 justify-center transition shadow-xs flex-1">
+                      <ImageIcon size={12} /> Upload Banner
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            setEditedCaterer({ ...editedCaterer, coverBanner: base64 });
+                          }
+                        }}
+                      />
+                    </label>
+                    {editedCaterer.coverBanner && (
+                      <button
+                        type="button"
+                        onClick={() => setEditedCaterer({ ...editedCaterer, coverBanner: "" })}
+                        className="text-red-400 hover:text-red-300 text-[10px] font-bold font-sans cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={editedCaterer.coverBanner || ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, coverBanner: e.target.value })}
+                    placeholder="Or enter Cover Photo URL"
+                    className="bg-black/50 border border-emerald-950/80 rounded-lg px-2.5 py-1 text-[10px] w-full text-white/80 font-sans"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {builderTab === "about" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pb-1.5 font-mono">Founder Bio Story</h4>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 animate-pulse">Founder/Owner Name</label>
+                <input
+                  type="text"
+                  value={editedCaterer.founderName || editedCaterer.ownerName || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, founderName: e.target.value, ownerName: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="Founder Name"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Founder Personal Quote / Bio</label>
+                <textarea
+                  value={editedCaterer.founderDescription || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, founderDescription: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] h-24 resize-none transition font-sans"
+                  placeholder="Describe your credentials, passion, and culinary philosophy."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 block">Founder Portrait Photo</label>
+                <div className="flex items-center gap-4 bg-black/30 p-3 rounded-xl border border-emerald-950/20">
+                  {editedCaterer.ownerPhoto ? (
+                    <img src={editedCaterer.ownerPhoto} className="w-14 h-14 object-cover rounded-full border border-[#DEAA38]" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-emerald-950/40 flex items-center justify-center text-[#DEAA38] border border-[#DEAA38]/20">
+                      <User size={20} />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <label className="cursor-pointer bg-emerald-900/60 border border-emerald-500/20 hover:bg-emerald-800 text-white font-bold text-[10px] px-3 py-2 rounded-lg flex items-center gap-1.5 justify-center transition w-fit shadow-xs">
+                      <ImageIcon size={12} /> Upload Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            setEditedCaterer({ ...editedCaterer, ownerPhoto: base64 });
+                          }
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      value={editedCaterer.ownerPhoto || ""}
+                      onChange={(e) => setEditedCaterer({ ...editedCaterer, ownerPhoto: e.target.value })}
+                      placeholder="Photo URL"
+                      className="bg-black/50 border border-emerald-950/80 rounded-lg px-2.5 py-1 text-[10px] w-full text-white/80 font-sans"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Our Specialties</h4>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Services Specializations</label>
+                <input
+                  type="text"
+                  value={
+                    Array.isArray(editedCaterer.specializations)
+                      ? editedCaterer.specializations.join(", ")
+                      : typeof editedCaterer.specializations === "string"
+                        ? editedCaterer.specializations
+                        : ""
+                  }
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, specializations: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. Weddings, Birthdays, Corporate Galas"
+                />
+                <span className="text-[9px] text-[#DEAA38]/60 font-mono italic">Separate specialties with commas</span>
+              </div>
+            </div>
+          )}
+
+          {builderTab === "highlights" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pb-1.5 font-mono">Performance Numbers</h4>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Experience (Years)</label>
+                  <input
+                    type="number"
+                    value={editedCaterer.experience !== undefined && editedCaterer.experience !== null ? editedCaterer.experience : ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, experience: e.target.value })}
+                    className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 outline-none focus:border-[#DEAA38] transition font-sans"
+                    placeholder="e.g. 15"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Events Completed</label>
+                  <input
+                    type="number"
+                    value={editedCaterer.eventsCompleted !== undefined && editedCaterer.eventsCompleted !== null ? editedCaterer.eventsCompleted : ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, eventsCompleted: e.target.value })}
+                    className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 outline-none focus:border-[#DEAA38] transition font-sans"
+                    placeholder="e.g. 2500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 pt-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Interactive WhatsApp Link</label>
+                <input
+                  type="text"
+                  value={editedCaterer.whatsappNumber || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, whatsappNumber: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. +919876543210"
+                />
+              </div>
+
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Custom Highlight Cards</h4>
+              
+              <div className="space-y-2.5">
+                {/* Custom Highlights List */}
+                {editedCaterer.highlights && editedCaterer.highlights.map((hl: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-emerald-950/20 border border-emerald-900/30 rounded-xl font-sans">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded bg-[#DEAA38]/10 text-[#DEAA38] flex items-center justify-center">
+                        <Sparkles size={14} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white max-w-[170px] truncate">{hl.title}</div>
+                        <div className="text-[9px] text-[#DEAA38] uppercase tracking-widest">{hl.subtitle}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingHighlightIndex(idx);
+                          setHighlightForm({ title: hl.title, subtitle: hl.subtitle, iconName: hl.iconName });
+                          setHighlightModalOpen(true);
+                        }}
+                        className="p-1.5 hover:bg-emerald-900/50 rounded-lg text-white/70 hover:text-white transition duration-300 cursor-pointer"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHighlight(idx)}
+                        className="p-1.5 hover:bg-red-950/40 rounded-lg text-rose-400 hover:text-rose-355 transition duration-300 border border-red-500/10 cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingHighlightIndex(null);
+                    setHighlightForm({ title: "", subtitle: "", iconName: "Users" });
+                    setHighlightModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-[#DEAA38]/30 hover:border-[#DEAA38] rounded-xl text-[10px] text-white/80 hover:text-white uppercase font-bold tracking-widest transition duration-300 hover:bg-[#DEAA38]/5 cursor-pointer font-sans"
+                >
+                  <Plus size={12} /> Add Highlight
+                </button>
+              </div>
+            </div>
+          )}
+
+          {builderTab === "location" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pb-1.5 font-mono">Branches & Service Area</h4>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Number of Branches</label>
+                <input
+                  type="number"
+                  value={editedCaterer.branches !== undefined && editedCaterer.branches !== null ? editedCaterer.branches : ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, branches: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. 3"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Operating Timings Info</label>
+                <input
+                  type="text"
+                  value={editedCaterer.operatingHours || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, operatingHours: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/10 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. Mon-Sat: 9:00 AM - 10:00 PM"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Operational Service Areas</label>
+                <textarea
+                  value={editedCaterer.serviceAreas || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, serviceAreas: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/10 outline-none focus:border-[#DEAA38] h-20 resize-none transition font-sans"
+                  placeholder="e.g. Jubilee Hills, Banjara Hills (Comma separated)"
+                />
+              </div>
+
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Branch Landmark Photo</h4>
+              
+              <div className="space-y-2 bg-black/30 p-3 rounded-xl border border-emerald-955/20">
+                <div className="h-20 w-full overflow-hidden rounded-lg bg-black/40 border border-emerald-900/20 relative">
+                  {editedCaterer.branchPhoto ? (
+                    <img src={editedCaterer.branchPhoto} className="w-full h-full object-cover opacity-70" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/20 text-xs font-sans text-center">No Photo Selected</div>
+                  )}
+                </div>
+                <div className="flex gap-2.5">
+                  <label className="cursor-pointer bg-emerald-900/60 border border-emerald-500/20 hover:bg-emerald-800 text-white font-bold text-[10px] px-3 py-2 rounded-lg flex items-center gap-1.5 justify-center transition shadow-xs flex-1">
+                    <ImageIcon size={12} /> Upload Branch Photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const base64 = await convertFileToBase64(file);
+                          setEditedCaterer({ ...editedCaterer, branchPhoto: base64 });
+                        }
+                      }}
+                    />
+                  </label>
+                  {editedCaterer.branchPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setEditedCaterer({ ...editedCaterer, branchPhoto: "" })}
+                      className="text-[#DEAA38] hover:text-white text-[10px] font-bold font-sans cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {builderTab === "gallery" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pb-1.5 font-mono">Awards & Honors</h4>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Awards Won</label>
+                <input
+                  type="text"
+                  value={
+                    Array.isArray(editedCaterer.awards)
+                      ? editedCaterer.awards.join(", ")
+                      : typeof editedCaterer.awards === "string"
+                        ? editedCaterer.awards
+                        : ""
+                  }
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, awards: e.target.value })}
+                  className="bg-black/40 border border-[#D4AF37]/20 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/25 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. Best Caterer 2024, Times Hospitality Award"
+                />
+                <span className="text-[9px] text-[#DEAA38]/60 font-mono italic">Comma separated list</span>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Official Certifications</label>
+                <input
+                  type="text"
+                  value={
+                    Array.isArray(editedCaterer.certifications)
+                      ? editedCaterer.certifications.join(", ")
+                      : typeof editedCaterer.certifications === "string"
+                        ? editedCaterer.certifications
+                        : ""
+                  }
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, certifications: e.target.value })}
+                  className="bg-black/40 border border-[#D4AF37]/20 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/25 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="e.g. ISO 22000, HACCP Verified"
+                />
+                <span className="text-[9px] text-[#DEAA38]/60 font-mono italic">Comma separated list</span>
+              </div>
+
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Curated Gallery Portfolio</h4>
+              
+              <div className="space-y-3 font-sans">
+                <label className="cursor-pointer w-full bg-emerald-990/40 hover:bg-emerald-900 border border-dashed border-emerald-500/30 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 transition shadow-xs mb-3">
+                  <Plus size={14} className="text-[#DEAA38]" /> Add Portfolio Photos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={async (e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        const newImages: string[] = [];
+                        for (let i = 0; i < files.length; i++) {
+                          const file = files[i];
+                          const base64 = await convertFileToBase64(file);
+                          newImages.push(base64);
+                        }
+                        const currentGallery = Array.isArray(editedCaterer.gallery) ? editedCaterer.gallery : [];
+                        setEditedCaterer({
+                          ...editedCaterer,
+                          gallery: [...currentGallery, ...newImages]
+                        });
+                        toast(`Loaded ${files.length} images! Press Save in builder footer to publish.`, "success");
+                      }
+                    }}
+                  />
+                </label>
+
+                {/* Portfolio Grid display */}
+                <div className="grid grid-cols-4 gap-2 border border-emerald-900/20 bg-black/10 p-2 rounded-xl max-h-[180px] overflow-y-auto no-scrollbar">
+                  {editedCaterer.gallery && Array.isArray(editedCaterer.gallery) ? (
+                    editedCaterer.gallery.map((imgUrl: string, gIdx: number) => (
+                      <div key={gIdx} className="relative aspect-square group rounded-lg overflow-hidden bg-black border border-emerald-950">
+                        <img src={imgUrl} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newGallery = [...editedCaterer.gallery];
+                            newGallery.splice(gIdx, 1);
+                            setEditedCaterer({
+                              ...editedCaterer,
+                              gallery: newGallery
+                            });
+                          }}
+                          className="absolute inset-0 bg-red-950/70 opacity-0 hover:opacity-100 flex items-center justify-center transition duration-300 text-rose-300 text-xs cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-white/30 text-[10px] col-span-4 text-center py-4">Gallery is empty</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons footer */}
+        <div className="p-4 border-t border-[#DEAA38]/20 bg-[#0B3D2E] flex items-center justify-between gap-3 shrink-0 font-sans">
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditing(false);
+              setEditedCaterer({ ...caterer });
+            }}
+            className="px-4 py-2 bg-black/20 hover:bg-black/35 text-white/90 hover:text-white rounded-xl text-xs font-bold transition duration-300 border border-[#DEAA38]/30 grow text-center uppercase tracking-widest cursor-pointer"
+          >
+            Cancel Draft
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveChanges}
+            className="px-5 py-2.5 bg-gradient-to-r from-[#DEAA38] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white rounded-xl text-xs font-bold transition-all duration-300 shadow-[0_4px_15px_rgba(222,170,56,0.25)] hover:shadow-[0_8px_25px_rgba(222,170,56,0.38)] grow text-center uppercase tracking-widest cursor-pointer"
+          >
+            Deploy Live
+          </button>
+        </div>
+      </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-[#FAF8F3] min-h-screen">
       {/* Dynamic Highlight Edit Modal */}
@@ -1244,7 +1857,13 @@ export default function CatererDetails() {
         )}
       </AnimatePresence>
 
-      {/* SECTION 1: HERO CONTAINER WITH INTEGRATED COVER BANNER */}
+      {/* RESTORED CLEAN CATERER DETAILS PAGE LAYOUT */}
+      {isEditing && renderEditSettingsModal()}
+
+      {/* Live profile display panel */}
+      <div className="w-full bg-[#FAF8F3] relative overflow-x-hidden">
+
+          {/* SECTION 1: HERO CONTAINER WITH INTEGRATED COVER BANNER */}
       <div className="relative w-full bg-[#0B3D2E] text-white pt-6 pb-12 mt-[72px] rounded-b-[3.5rem] border-b-4 border-[#D4A437]/25 shadow-[0_15px_40px_rgba(11,61,46,0.15)] overflow-hidden">
         {/* Background Cover Banner - Lighter 80% opacity to remain vibrant and visible */}
         <div className="absolute inset-0 z-0">
@@ -1280,82 +1899,45 @@ export default function CatererDetails() {
             }}
           />
 
-          {isEditing && (
-            <div className="absolute inset-0 bg-black/60 z-30 flex flex-col items-center justify-center p-4">
-              <div className="bg-[#FAF8F3]/95 backdrop-blur-md border-2 border-[#D4A437] p-6 rounded-3xl max-w-sm w-full shadow-2xl text-slate-900 text-center animate-in scale-in duration-200">
-                <h3 className="font-display font-bold text-sm text-[#0B3D2E] uppercase tracking-wide flex items-center justify-center gap-2 mb-1.5 font-sans">
-                  <ImageIcon size={16} className="text-[#D4A437]" /> Change
-                  Cover Banner 🔒
-                </h3>
-                <p className="text-[10px] text-slate-500 mb-3 font-medium">
-                  Select a local image file, or enter an image URL.
-                </p>
-                <input
-                  type="text"
-                  value={editedCaterer.coverBanner || ""}
-                  onChange={(e) =>
-                    setEditedCaterer({
-                      ...editedCaterer,
-                      coverBanner: e.target.value,
-                    })
-                  }
-                  placeholder="Paste cover banner image URL"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-[#D4A437] mb-2 text-slate-800"
-                />
-                <div className="flex gap-2">
-                  <label className="cursor-pointer bg-[#0B3D2E] text-white hover:bg-[#124f3c] font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 justify-center transition shadow-sm flex-1">
-                    <ImageIcon size={12} /> Upload File
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const base64 = await convertFileToBase64(file);
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            coverBanner: base64,
-                          });
-                        }
-                      }}
-                    />
-                  </label>
-                  {editedCaterer.coverBanner && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditedCaterer({ ...editedCaterer, coverBanner: "" })
-                      }
-                      className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold border border-red-200 text-xs rounded-xl"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="relative z-10 max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-between">
           {/* Top Row: Navigation buttons */}
           <div className="flex justify-between items-center w-full mb-8">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95"
-            >
-              <ChevronLeft size={16} /> Back to Caterers
-            </button>
-            <div className="flex gap-2.5 items-center">
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95"
+              >
+                <ChevronLeft size={16} /> Back to Caterers
+              </button>
               {isOwnerOrAdmin && isEditing && (
-                <div className="flex gap-2">
+                <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95 font-sans">
+                  Change Cover 🔒
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const base64 = await convertFileToBase64(file);
+                        setEditedCaterer({ ...editedCaterer, coverBanner: base64 });
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="flex gap-3.5 items-center font-sans">
+              {isOwnerOrAdmin && isEditing && (
+                <>
                   <button
                     type="button"
                     onClick={handleSaveChanges}
-                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-full font-black tracking-wider uppercase transition-all border border-emerald-500/35 shadow-md text-xs cursor-pointer hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 bg-[#01A378] hover:bg-[#028b67] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-xs cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
                   >
-                    Save Changes
+                    SAVE CHANGES
                   </button>
                   <button
                     type="button"
@@ -1363,11 +1945,11 @@ export default function CatererDetails() {
                       setIsEditing(false);
                       setEditedCaterer({ ...caterer });
                     }}
-                    className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-full font-black tracking-wider uppercase transition-all border border-rose-500/35 shadow-md text-xs cursor-pointer hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 bg-[#D11A2A] hover:bg-[#b01421] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-xs cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
                   >
-                    Cancel
+                    CANCEL
                   </button>
-                </div>
+                </>
               )}
               {isOwnerOrAdmin && !isEditing && (
                 <button
@@ -1378,18 +1960,17 @@ export default function CatererDetails() {
                       setEditedCaterer({ ...caterer });
                     }
                   }}
-                  className="flex items-center gap-1.5 bg-[#D4A437] hover:bg-[#E0B84C] text-white px-4 py-2 rounded-full font-black tracking-wider uppercase transition-all border border-[#D5A435]/35 shadow-md text-xs cursor-pointer hover:scale-105 active:scale-95"
+                  className="flex items-center gap-2 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] hover:shadow-[0_8px_25px_rgba(222,170,56,0.38)] text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
                 >
                   Edit Profile
                 </button>
               )}
               <button 
                 onClick={handleShare}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95"
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/25 backdrop-blur-md text-white px-5 py-2.5 rounded-full font-bold transition-all duration-300 w-fit border border-white/20 shadow-sm text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
               >
                 Share
               </button>
-
             </div>
           </div>
           {/* Identity Row */}
@@ -1406,19 +1987,34 @@ export default function CatererDetails() {
               {/* Round Logo card without wreath ornaments (flawless premium design) */}
               <div className="shrink-0 select-none relative group">
                 {/* White logo rounded card background */}
-                <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-white rounded-full p-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.25),_0_0_15px_rgba(212,164,55,0.15)] border-4 border-[#D4A437] flex items-center justify-center overflow-hidden hover:scale-105 transition-transform duration-300">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-white rounded-full p-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.25),_0_0_15px_rgba(212,164,55,0.15)] border-4 border-[#D4A437] flex items-center justify-center overflow-hidden hover:scale-105 transition-transform duration-300 relative">
                   {editedCaterer && isEditing ? (
-                    editedCaterer.logo ? (
-                      <img
-                        src={editedCaterer.logo}
-                        alt="Logo"
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    ) : (
-                      <span className="font-display font-medium text-[#0B3D2E] text-4xl uppercase tracking-wider">
-                        {editedCaterer.brandName?.substring(0, 2) || "BU"}
-                      </span>
-                    )
+                    <>
+                      {editedCaterer.logo ? (
+                        <img
+                          src={editedCaterer.logo}
+                          alt="Logo"
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : (
+                        <div className="text-[#0B3D2E] text-xs font-bold font-sans uppercase">No Logo</div>
+                      )}
+                      <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-[10px] font-bold uppercase cursor-pointer text-center p-1 font-sans transition-opacity opacity-0 group-hover:opacity-100">
+                        <span>Upload 🔒</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const base64 = await convertFileToBase64(file);
+                              setEditedCaterer({ ...editedCaterer, logo: base64 });
+                            }
+                          }}
+                        />
+                      </label>
+                    </>
                   ) : caterer.logo ? (
                     <img
                       src={caterer.logo}
@@ -1431,236 +2027,127 @@ export default function CatererDetails() {
                     </span>
                   )}
                 </div>
-
-                {isEditing && (
-                  <div className="absolute inset-0 bg-slate-950/85 rounded-full flex flex-col items-center justify-center p-2 text-center text-white cursor-pointer z-40 border-2 border-[#D4A437]">
-                    <label className="cursor-pointer flex flex-col items-center gap-1">
-                      <ImageIcon
-                        size={16}
-                        className="text-[#D4A437]"
-                        strokeWidth={1.5}
-                      />
-                      <span className="text-[8px] font-bold uppercase tracking-wider">
-                        Logo 🔒
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const base64 = await convertFileToBase64(file);
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              logo: base64,
-                            });
-                          }
-                        }}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = prompt("Enter logo URL:");
-                        if (url !== null) {
-                          setEditedCaterer({ ...editedCaterer, logo: url });
-                        }
-                      }}
-                      className="text-[8px] text-[#D4A437] hover:underline font-bold mt-1"
-                    >
-                      Paste URL
-                    </button>
-                    {editedCaterer.logo && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditedCaterer({ ...editedCaterer, logo: "" })
-                        }
-                        className="text-[7.5px] text-red-400 hover:underline font-bold mt-0.5"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Premium Typography & Details Stack with natural wrapping */}
               <div className="flex-1 text-left w-full">
                 {isEditing ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 w-full">
-                    <div className="flex flex-col">
-                      <label className="text-[9px] uppercase font-bold text-[#D4A437] tracking-wider mb-1 font-mono">
-                        Public Brand Name (Non-sensitive)
-                      </label>
+                  <div className="space-y-3 font-sans w-full max-w-xl text-white">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Brand Public Name (Non-Sensitive)
+                      </span>
                       <input
                         type="text"
                         value={editedCaterer.brandName || ""}
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            brandName: e.target.value,
-                          })
-                        }
-                        className="bg-black/30 border border-[#D4A437]/35 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-[#D4A437]"
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, brandName: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Public Brand Name"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="text-[9px] uppercase font-bold text-[#D4A437] tracking-wider mb-1 font-mono">
-                        Legal Business Name (Sensitive 🔒)
-                      </label>
+                    
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono flex items-center gap-1">
+                        Legal Business Name (Sensitive 🔒) <ShieldCheck size={11} className="text-[#DEAA38]" />
+                      </span>
                       <input
                         type="text"
-                        value={
-                          editedCaterer.businessName || editedCaterer.name || ""
-                        }
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            businessName: e.target.value,
-                          })
-                        }
-                        className="bg-black/30 border border-[#D4A437]/35 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-[#D4A437]"
+                        value={editedCaterer.businessName || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, businessName: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Legal Business Name"
                       />
                     </div>
-                    <div className="flex flex-col col-span-1 md:col-span-2">
-                      <label className="text-[9px] uppercase font-bold text-[#D4A437] tracking-wider mb-1 font-mono">
-                        Tagline / Motto (Non-sensitive)
-                      </label>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Brand Tagline (Non-Sensitive)
+                      </span>
                       <input
                         type="text"
-                        placeholder="e.g. Masterful Culinary Orchestrators"
                         value={editedCaterer.tagline || ""}
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            tagline: e.target.value,
-                          })
-                        }
-                        className="bg-black/30 border border-[#D4A437]/35 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-[#D4A437]"
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, tagline: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Brand Tagline"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="text-[9px] uppercase font-bold text-[#D4A437] tracking-wider mb-1 font-mono">
-                        Service Address (Non-sensitive)
-                      </label>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Official HQ Address (Non-Sensitive)
+                      </span>
                       <input
                         type="text"
-                        value={
-                          editedCaterer.address || editedCaterer.location || ""
-                        }
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            address: e.target.value,
-                            location: e.target.value,
-                          })
-                        }
-                        className="bg-black/30 border border-[#D4A437]/35 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-[#D4A437]"
+                        value={editedCaterer.address || editedCaterer.location || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, address: e.target.value, location: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="HQ Address / Area"
                       />
                     </div>
-                    <div className="flex flex-col">
-                      <label className="text-[9px] uppercase font-bold text-[#D4A437] tracking-wider mb-1 font-mono">
-                        Official Phone Number (Sensitive 🔒)
-                      </label>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Contact Phone (Non-Sensitive)
+                      </span>
                       <input
                         type="text"
                         value={editedCaterer.phone || ""}
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            phone: e.target.value,
-                          })
-                        }
-                        className="bg-black/30 border border-[#D4A437]/35 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-[#D4A437]"
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, phone: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Phone or Mobile Number"
                       />
-                    </div>
-                    {/* Public Profile URL Display with Copy Link and Open Profile buttons */}
-                    <div className="flex flex-col col-span-1 md:col-span-2 bg-[#052118]/80 border border-[#D4A437]/25 rounded-xl p-3.5 mt-2 shadow-inner">
-                      <span className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest mb-1.5 font-mono">
-                        Public Profile URL
-                      </span>
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-black/50 border border-white/5 rounded-lg p-2.5">
-                        <span className="text-white text-xs select-all break-all font-mono py-1">
-                          {window.location.origin}/caterer/{getCatererSlug(editedCaterer || caterer)}
-                        </span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const url = `${window.location.origin}/caterer/${getCatererSlug(editedCaterer || caterer)}`;
-                              navigator.clipboard.writeText(url);
-                              toast("Profile link copied successfully", "success");
-                            }}
-                            className="flex items-center justify-center gap-1.5 bg-[#D4A437] hover:bg-[#E0B84C] text-white px-3 py-1.5 rounded-lg font-bold text-xs cursor-pointer shadow-sm transition-all active:scale-95 whitespace-nowrap"
-                          >
-                            Copy Link
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const url = `${window.location.origin}/caterer/${getCatererSlug(editedCaterer || caterer)}`;
-                              window.open(url, "_blank");
-                            }}
-                            className="flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-bold text-xs cursor-pointer transition-all border border-white/10 whitespace-nowrap"
-                          >
-                            Open Profile
-                          </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <h1 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-display font-bold text-white tracking-wide uppercase drop-shadow-md leading-tight max-w-xl select-text">
-                      {caterer.brandName || caterer.name}{" "}
-                      {caterer.status === "Approved" && (
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-white tracking-wider uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-none max-w-2xl select-text flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {targetCatererObj.brandName || targetCatererObj.name || targetCatererObj.businessName}{" "}
+                      {targetCatererObj.status === "Approved" && (
                         <span
-                          className="inline-flex items-center align-middle bg-[#10B981] text-white rounded-full p-1 shadow-lg shrink-0 border border-white/15 select-none w-5 h-5 ml-1.5"
+                          className="inline-flex items-center justify-center align-middle bg-[#10B981] text-white rounded-full p-1 shadow-lg shrink-0 border border-white/20 select-none w-6 h-6 ml-1.5"
                           title="Verified Caterer"
                         >
-                          <Check size={11} className="text-white stroke-[4]" />
+                          <Check size={13} className="text-white stroke-[4]" />
                         </span>
                       )}
                     </h1>
-                    {caterer.tagline && (
-                      <p className="text-[#D4A437] text-xs sm:text-xs font-semibold tracking-widest uppercase mt-1.5 font-sans">
-                        ✦ {caterer.tagline}
+                    {targetCatererObj.tagline && (
+                      <p className="text-[#DEAA38] text-xs sm:text-sm font-bold tracking-[0.25em] uppercase mt-3.5 font-sans">
+                        ✦ {targetCatererObj.tagline} ✦
                       </p>
                     )}
 
                     {/* Location & Details Area */}
                     <div className="flex items-center gap-1.5 text-slate-100/95 hover:text-white font-medium text-xs sm:text-sm mt-3 transition-colors">
                       <MapPin size={14} className="text-[#D4A437]" />
-                      <span>{caterer.address || caterer.location}</span>
+                      <span>{targetCatererObj.address || targetCatererObj.location}</span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-slate-200 text-xs sm:text-sm font-semibold mt-2">
-                      {caterer.rating && (
+                      {targetCatererObj.rating && (
                         <div className="flex items-center gap-1.5">
                           <Star
                             size={14}
                             className="fill-[#D4A437] stroke-[#D4A437]"
                           />
                           <span className="font-extrabold text-[#D4A437]">
-                            {caterer.rating}
+                            {targetCatererObj.rating}
                           </span>
-                          {caterer.reviewCount && (
+                          {targetCatererObj.reviewCount && (
                             <span className="text-slate-300 font-medium">
-                              ({caterer.reviewCount} Reviews)
+                              ({targetCatererObj.reviewCount} Reviews)
                             </span>
                           )}
                         </div>
                       )}
-                      {caterer.rating && caterer.eventsCompleted && (
+                      {targetCatererObj.rating && targetCatererObj.eventsCompleted && (
                         <span className="text-white/20 hidden sm:inline">
                           |
                         </span>
                       )}
-                      {caterer.eventsCompleted && (
-                        <span className="text-slate-200">
-                          {caterer.eventsCompleted}+ Events Completed
+                      {targetCatererObj.eventsCompleted && (
+                        <span className="text-slate-200 font-sans font-semibold">
+                          {targetCatererObj.eventsCompleted}+ Events Completed
                         </span>
                       )}
                     </div>
@@ -1931,191 +2418,145 @@ export default function CatererDetails() {
               className="bg-white rounded-3xl p-6 shadow-sm border border-[#D4A437]/20 flex flex-col xl:flex-row items-center gap-8 overflow-hidden relative z-10 hover:shadow-md transition-shadow"
             >
               {/* Founder Mini Info */}
-              {caterer.ownerName || caterer.founderName || isEditing ? (
+              {isEditing ? (
+                <div
+                  id="founder-info"
+                  className="flex flex-col gap-2 shrink-0 pr-8 xl:border-r border-slate-200 w-full xl:w-96 text-left font-sans"
+                >
+                  <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                    Founder Detail (Sensitive 🔒)
+                  </span>
+                  <div className="flex items-center gap-3 mb-1">
+                    {editedCaterer.ownerPhoto ? (
+                      <img
+                        src={editedCaterer.ownerPhoto}
+                        alt="Founder"
+                        className="w-12 h-12 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <User size={16} />
+                      </div>
+                    )}
+                    <label className="bg-[#FAF8F3] hover:bg-[#FAF6EC] border border-[#D4AF37]/35 text-[#0F3D2E] font-bold text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-lg cursor-pointer transition">
+                      Upload Portrait 🔒
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            setEditedCaterer({ ...editedCaterer, ownerPhoto: base64 });
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={editedCaterer.founderName || editedCaterer.ownerName || ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, founderName: e.target.value, ownerName: e.target.value })}
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs outline-none w-full"
+                    placeholder="Founder Name"
+                  />
+                  <textarea
+                    value={editedCaterer.founderDescription || ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, founderDescription: e.target.value })}
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs h-14 resize-none outline-none w-full"
+                    placeholder="Brief founder bio/story"
+                  />
+                </div>
+              ) : targetCatererObj.ownerName || targetCatererObj.founderName ? (
                 <div
                   id="founder-info"
                   className="flex items-center gap-4 shrink-0 pr-8 xl:border-r border-slate-200 w-full xl:w-auto"
                 >
-                  {isEditing ? (
-                    <div className="flex flex-col gap-2 p-3 bg-amber-50/40 rounded-2xl border border-[#D4A437]/20 select-text max-w-sm w-full">
-                      <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider block font-mono flex items-center gap-1">
-                        Founder Photo (Sensitive 🔒)
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {editedCaterer && editedCaterer.ownerPhoto ? (
-                          <img
-                            src={editedCaterer.ownerPhoto}
-                            alt="Founder"
-                            className="w-10 h-10 rounded-full object-cover border border-[#D4A437]/40"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                            <User size={16} />
-                          </div>
-                        )}
-                        <label className="cursor-pointer bg-white border border-slate-200 text-[#0B3D2E] text-[10px] font-bold px-2 py-1 rounded-lg hover:bg-slate-50 transition">
-                          Upload 🔒
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const base64 = await convertFileToBase64(file);
-                                setEditedCaterer({
-                                  ...editedCaterer,
-                                  ownerPhoto: base64,
-                                });
-                              }
-                            }}
-                          />
-                        </label>
-                        {editedCaterer && editedCaterer.ownerPhoto && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditedCaterer({
-                                ...editedCaterer,
-                                ownerPhoto: "",
-                              })
-                            }
-                            className="text-red-500 font-bold text-[10px] hover:underline"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                          Founder Name (Sensitive 🔒)
-                        </span>
-                        <input
-                          type="text"
-                          value={
-                            (editedCaterer &&
-                              (editedCaterer.ownerName ||
-                                editedCaterer.founderName)) ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              ownerName: e.target.value,
-                              founderName: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none text-slate-800"
-                          placeholder="e.g. Chef Kapoor"
-                        />
-                      </div>
-
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                          Founder Description (Non-sensitive)
-                        </span>
-                        <textarea
-                          value={
-                            (editedCaterer &&
-                              editedCaterer.founderDescription) ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              founderDescription: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none text-slate-800 h-11 resize-none"
-                          placeholder="Brief culinary history of founder..."
-                        />
-                      </div>
-                    </div>
+                  {targetCatererObj.ownerPhoto ? (
+                    <img
+                      src={targetCatererObj.ownerPhoto}
+                      alt="Founder"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                    />
                   ) : (
-                    <>
-                      {caterer.ownerPhoto ? (
-                        <img
-                          src={caterer.ownerPhoto}
-                          alt="Founder"
-                          className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
-                          <User size={24} className="text-slate-400" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-xs font-bold text-[#D4A437] uppercase tracking-widest">
-                          Founder
-                        </p>
-                        <p className="font-bold text-slate-900 text-lg">
-                          {caterer.founderName || caterer.ownerName}
-                        </p>
-                        <p className="text-xs text-slate-500 max-w-[180px] line-clamp-2 mt-0.5">
-                          {caterer.founderDescription ||
-                            "Passionate about serving delicious food."}
-                        </p>
-                      </div>
-                    </>
+                    <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
+                      <User size={24} className="text-slate-400" />
+                    </div>
                   )}
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-[#D4A437] uppercase tracking-widest">
+                      Founder
+                    </p>
+                    <p className="font-bold text-slate-900 text-lg">
+                      {targetCatererObj.founderName || targetCatererObj.ownerName}
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-[180px] line-clamp-2 mt-0.5">
+                      {targetCatererObj.founderDescription ||
+                        "Passionate about serving delicious food."}
+                    </p>
+                  </div>
                 </div>
               ) : null}
 
               {/* Specializations / Services Icons */}
-              <div className="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-x-8 gap-y-4 px-4 w-full">
-                {isEditing ? (
-                  <div className="flex flex-col w-full max-w-sm text-left">
-                    <label className="text-[9px] uppercase font-bold text-[#D4A437] tracking-wider mb-1 font-mono">
-                      Event Types / Specializations (Non-sensitive)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Wedding, Corporate, Birthday (Comma separated)"
-                      value={
-                        editedCaterer &&
-                        Array.isArray(editedCaterer.specializations)
-                          ? editedCaterer.specializations.join(", ")
-                          : (editedCaterer && editedCaterer.specializations) ||
-                            ""
-                      }
-                      onChange={(e) =>
-                        setEditedCaterer({
-                          ...editedCaterer,
-                          specializations: e.target.value
-                            .split(",")
-                            .map((s) => s.trim()),
-                        })
-                      }
-                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 text-xs outline-none focus:border-[#D4A437]"
-                    />
-                  </div>
-                ) : (
-                  specializations.slice(0, 5).map((spec: string, i: number) => {
-                    // Map some generic icons
-                    const GenericIcon = spec.toLowerCase().includes("wedding")
-                      ? Briefcase
-                      : spec.toLowerCase().includes("corporate")
-                        ? Building
-                        : spec.toLowerCase().includes("birthday")
-                          ? GiftIcon
-                          : ChefHat;
-                    return (
-                      <div
-                        key={i}
-                        className="flex flex-col items-center gap-2 text-center max-w-[80px]"
-                      >
-                        <div className="text-[#D4A437] bg-amber-50 p-3 rounded-xl">
-                          <GenericIcon size={24} strokeWidth={1.5} />
+              {isEditing ? (
+                <div className="flex-1 flex flex-col gap-1 px-4 w-full text-left font-sans h-full justify-center">
+                  <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                    Specializations & Cuisines (Non-Sensitive)
+                  </span>
+                  <input
+                    type="text"
+                    value={
+                      Array.isArray(editedCaterer.specializations)
+                        ? editedCaterer.specializations.join(", ")
+                        : typeof editedCaterer.specializations === "string"
+                          ? editedCaterer.specializations
+                          : ""
+                    }
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, specializations: e.target.value })}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-xs outline-none w-full"
+                    placeholder="e.g. Wedding, Corporate, Birthday, North Indian (Comma separated)"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Split multiple specializations using commas</p>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-x-8 gap-y-4 px-4 w-full">
+                  {(() => {
+                    const currentSpecList = targetCatererObj.specializations
+                      ? typeof targetCatererObj.specializations === "string"
+                        ? targetCatererObj.specializations.split(",").map((s: string) => s.trim()).filter(Boolean)
+                        : Array.isArray(targetCatererObj.specializations)
+                          ? targetCatererObj.specializations
+                          : []
+                      : [];
+
+                    return currentSpecList.slice(0, 5).map((spec: string, i: number) => {
+                      // Map some generic icons
+                      const GenericIcon = spec.toLowerCase().includes("wedding")
+                        ? Briefcase
+                        : spec.toLowerCase().includes("corporate")
+                          ? Building
+                          : spec.toLowerCase().includes("birthday")
+                            ? GiftIcon
+                            : ChefHat;
+                      return (
+                        <div
+                          key={i}
+                          className="flex flex-col items-center gap-2 text-center max-w-[80px]"
+                        >
+                          <div className="text-[#D4A437] bg-amber-50 p-3 rounded-xl">
+                            <GenericIcon size={24} strokeWidth={1.5} />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-700 leading-tight">
+                            {spec}
+                          </span>
                         </div>
-                        <span className="text-[11px] font-bold text-slate-700 leading-tight">
-                          {spec}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
 
               {/* Menu Explore Button */}
               <div className="shrink-0 w-full xl:w-auto mt-4 xl:mt-0">
@@ -2162,47 +2603,32 @@ export default function CatererDetails() {
                   </div>
                   <LuxuryDivider />
                   {isEditing ? (
-                    <div className="flex-1 mb-4 flex flex-col gap-3">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4AF37] uppercase tracking-wider font-mono">
-                          Active Branches Count (Non-sensitive)
+                    <div className="flex flex-col gap-3.5 py-2 flex-1 justify-between font-sans">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Active Branches Count (Non-Sensitive)
                         </span>
                         <input
                           type="number"
-                          value={
-                            (editedCaterer && editedCaterer.branches) !==
-                              undefined &&
-                            (editedCaterer && editedCaterer.branches) !== null
-                              ? editedCaterer.branches
-                              : ""
-                          }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              branches: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none text-[#1C1C1C] md:w-full"
+                          value={editedCaterer.branches !== undefined && editedCaterer.branches !== null ? editedCaterer.branches : ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, branches: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
                           placeholder="Count of active branches"
                         />
                       </div>
-                      <div className="flex flex-col gap-1.5 mt-2">
-                        <span className="text-[9px] font-bold text-[#D4AF37] uppercase tracking-wider font-mono flex items-center gap-1">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
                           Branch Photo (Sensitive 🔒)
                         </span>
-                        <div className="flex items-center gap-2">
-                          {editedCaterer && editedCaterer.branchPhoto ? (
-                            <img
-                              src={editedCaterer.branchPhoto}
-                              alt="Branch Landscape"
-                              className="w-10 h-10 rounded-lg object-cover border border-[#D4A437]/40"
-                            />
+                        <div className="flex items-center gap-3">
+                          {editedCaterer.branchPhoto ? (
+                            <img src={editedCaterer.branchPhoto} className="w-12 h-12 object-cover rounded-lg border border-[#D4AF37]/35" />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                              <ImageIcon size={16} />
+                            <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 border border-dashed border-slate-300">
+                              <Building size={16} />
                             </div>
                           )}
-                          <label className="cursor-pointer bg-white border border-slate-200 text-[#0B3D2E] text-[10px] font-bold px-2 py-1 rounded-lg hover:bg-slate-50 transition">
+                          <label className="bg-[#FAF8F3] hover:bg-[#FAF6EC] border border-[#D4AF37]/35 text-[#0F3D2E] font-bold text-[10px] tracking-wider uppercase px-3 py-2 rounded-lg cursor-pointer transition">
                             Upload 🔒
                             <input
                               type="file"
@@ -2211,37 +2637,28 @@ export default function CatererDetails() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  const base64 =
-                                    await convertFileToBase64(file);
-                                  setEditedCaterer({
-                                    ...editedCaterer,
-                                    branchPhoto: base64,
-                                  });
+                                  const base64 = await convertFileToBase64(file);
+                                  setEditedCaterer({ ...editedCaterer, branchPhoto: base64 });
                                 }
                               }}
                             />
                           </label>
-                          {editedCaterer && editedCaterer.branchPhoto && (
+                          {editedCaterer.branchPhoto && (
                             <button
                               type="button"
-                              onClick={() =>
-                                setEditedCaterer({
-                                  ...editedCaterer,
-                                  branchPhoto: "",
-                                })
-                              }
-                              className="text-red-500 font-bold text-[10px] hover:underline"
+                              onClick={() => setEditedCaterer({ ...editedCaterer, branchPhoto: "" })}
+                              className="text-[10.5px] text-rose-550 hover:text-rose-600 font-bold underline cursor-pointer"
                             >
                               Remove
                             </button>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2.5 mt-2">
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
                         <button
                           type="button"
                           onClick={handleSaveChanges}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition"
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
                         >
                           Save
                         </button>
@@ -2251,7 +2668,7 @@ export default function CatererDetails() {
                             setIsEditing(false);
                             setEditedCaterer({ ...caterer });
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -2269,26 +2686,12 @@ export default function CatererDetails() {
                       
                       {branchesVal && branchesVal > 0 ? (
                         <div className="mb-4 flex flex-col font-sans">
-                          <p className="text-[15px] text-[#1C1C1C] font-extrabold">
-                            {branchesVal} Active Branches
+                          <p className="text-[15px] text-[#1C1C1C] font-extrabold font-display">
+                            {branchesVal} Active Region Branches
                           </p>
                           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                            Serving the region with multiple branch locations.
+                            Orchestrating bespoke culinary events across multiple localized branches.
                           </p>
-                        </div>
-                      ) : isOwnerOrAdmin ? (
-                        <div className="mb-4 border border-dashed border-[#D4AF37]/20 p-3 rounded-xl bg-amber-50/10 text-center">
-                          <p className="text-xs text-slate-400 font-sans">No additional branches configured</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditing(true);
-                              setEditedCaterer({ ...caterer });
-                            }}
-                            className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-wider mt-1 hover:underline"
-                          >
-                            + Configure Branches
-                          </button>
                         </div>
                       ) : null}
 
@@ -2301,21 +2704,6 @@ export default function CatererDetails() {
                             referrerPolicy="no-referrer"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-[#0F3D2E]/40 via-transparent to-transparent"></div>
-                        </div>
-                      ) : isOwnerOrAdmin ? (
-                        <div className="h-44 flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-[#D4AF37]/25 rounded-2xl bg-[#FCFAF5]/50 group-hover:border-[#D4AF37]/45 transition-colors mt-auto">
-                          <ImageIcon size={24} className="text-[#D4AF37]/60 mb-2" />
-                          <p className="text-xs font-bold text-slate-600">No Branch Photo Uploaded</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditing(true);
-                              setEditedCaterer({ ...caterer });
-                            }}
-                            className="bg-white border border-[#D4AF37]/35 text-[#0F3D2E] text-[10px] font-bold px-3 py-1 rounded-lg mt-2 shadow-xs hover:bg-[#FDFBF7] transition"
-                          >
-                            Upload Photo 📸
-                          </button>
                         </div>
                       ) : (
                         <div className="h-44 flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 rounded-2xl bg-[#FCFAF5]/30 mt-auto">
@@ -2355,28 +2743,23 @@ export default function CatererDetails() {
                   </div>
                   <LuxuryDivider />
                   {isEditing ? (
-                    <div className="flex flex-col gap-2 p-1 flex-1">
-                      <span className="text-[9px] font-bold text-[#D4AF37] uppercase tracking-wider font-mono">
-                        Service Areas (Non-sensitive)
-                      </span>
-                      <textarea
-                        value={
-                          (editedCaterer && editedCaterer.serviceAreas) || ""
-                        }
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            serviceAreas: e.target.value,
-                          })
-                        }
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none text-[#1C1C1C] h-24 resize-none"
-                        placeholder="e.g. Jubilee Hills, Banjara Hills, Gachibowli (Comma separated)"
-                      />
-                      <div className="flex gap-2.5 mt-2">
+                    <div className="flex flex-col gap-3.5 py-2 flex-1 justify-between font-sans">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Service Areas (Non-Sensitive)
+                        </span>
+                        <textarea
+                          value={editedCaterer.serviceAreas || ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, serviceAreas: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-3 text-slate-800 text-xs h-28 outline-none transition resize-none"
+                          placeholder="e.g. Jubilee Hills, Banjara Hills, Gachibowli (Comma separated)"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
                         <button
                           type="button"
                           onClick={handleSaveChanges}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition"
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
                         >
                           Save
                         </button>
@@ -2386,68 +2769,59 @@ export default function CatererDetails() {
                             setIsEditing(false);
                             setEditedCaterer({ ...caterer });
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
                         >
                           Cancel
                         </button>
                       </div>
                     </div>
-                  ) : targetCatererObj.serviceAreas ? (
-                    <div className="flex flex-col flex-1 justify-between relative min-h-[160px]">
-                      <p className="text-[17px] text-slate-800 font-medium leading-relaxed mb-6 z-10 select-text font-sans mt-2">
-                        {targetCatererObj.serviceAreas}
-                      </p>
-                      <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-85 pointer-events-none flex items-center justify-end group-hover:scale-105 transition-transform duration-500">
-                        <svg
-                          viewBox="0 0 100 100"
-                          className="w-16 h-16 text-[#D4AF37]"
-                        >
-                          <path
-                            d="M10 20 L40 10 L70 25 L90 15 L90 80 L70 90 L40 75 L10 85 Z"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <circle
-                            cx="55"
-                            cy="45"
-                            r="5"
-                            fill="#0F3D2E"
-                            stroke="currentColor"
-                            strokeWidth="1"
-                          />
-                        </svg>
-                      </div>
-                    </div>
                   ) : (
-                    <div className="flex-1 flex flex-col justify-center items-center text-center py-6 border border-dashed border-[#D4AF37]/35 rounded-2xl bg-[#FCFAF5]/50 mb-4 font-sans h-full min-h-[160px]">
-                      <MapPin
-                        size={28}
-                        className="text-[#D4AF37] mb-2"
-                        strokeWidth={1.5}
-                      />
-                      <p className="text-xs font-bold text-slate-700">
-                        No Service Areas Configured
-                      </p>
-                      {isOwnerOrAdmin ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsEditing(true);
-                            setEditedCaterer({ ...caterer });
-                          }}
-                          className="bg-white border border-[#D4AF37]/35 text-[#0F3D2E] text-[10px] font-bold px-3 py-1 rounded-lg mt-2 shadow-xs hover:bg-[#FDFBF7] transition"
-                        >
-                          Configure Service Areas
-                        </button>
+                    <>
+                      {targetCatererObj.serviceAreas ? (
+                        <div className="flex flex-col flex-1 justify-between relative min-h-[160px]">
+                          <p className="text-[17px] text-[#1C1C1C] font-display font-medium leading-relaxed mb-6 z-10 select-text mt-2">
+                            {targetCatererObj.serviceAreas}
+                          </p>
+                          <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-85 pointer-events-none flex items-center justify-end group-hover:scale-105 transition-transform duration-500">
+                            <svg
+                              viewBox="0 0 100 100"
+                              className="w-16 h-16 text-[#D4AF37]"
+                            >
+                              <path
+                                d="M10 20 L40 10 L70 25 L90 15 L90 80 L70 90 L40 75 L10 85 Z"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <circle
+                                cx="55"
+                                cy="45"
+                                r="5"
+                                fill="#0F3D2E"
+                                stroke="currentColor"
+                                strokeWidth="1"
+                              />
+                            </svg>
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
-                          Cities and regional operational locations are not specified.
-                        </p>
+                        <div className="flex-1 flex flex-col justify-center items-center text-center py-6 border border-dashed border-[#D4AF37]/35 rounded-2xl bg-[#FCFAF5]/50 mb-4 font-sans h-full min-h-[160px]">
+                          <MapPin
+                            size={28}
+                            className="text-[#D4AF37] mb-2"
+                            strokeWidth={1.5}
+                          />
+                          <p className="text-xs font-bold text-slate-700">
+                            No Service Areas Configured
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+                            Cities and regional operational locations are not specified.
+                          </p>
+                        </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               ) : null}
@@ -2479,29 +2853,24 @@ export default function CatererDetails() {
                   </div>
                   <LuxuryDivider />
                   {isEditing ? (
-                    <div className="flex flex-col gap-2 p-1 flex-1">
-                      <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                        Operating Hours (Non-sensitive)
-                      </span>
-                      <input
-                        type="text"
-                        value={
-                          (editedCaterer && editedCaterer.operatingHours) || ""
-                        }
-                        onChange={(e) =>
-                          setEditedCaterer({
-                            ...editedCaterer,
-                            operatingHours: e.target.value,
-                          })
-                        }
-                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none text-[#1C1C1C]"
-                        placeholder="e.g. Mon-Sat: 9:00 AM - 9:00 PM"
-                      />
-                      <div className="flex gap-2.5 mt-2">
+                    <div className="flex flex-col gap-3.5 py-2 flex-1 justify-between font-sans">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Operating Hours Schedule (Non-Sensitive)
+                        </span>
+                        <input
+                          type="text"
+                          value={editedCaterer.operatingHours || ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, operatingHours: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition animate-in fade-in"
+                          placeholder="e.g. Mon-Sun: 9:00 AM - 10:50 PM"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
                         <button
                           type="button"
                           onClick={handleSaveChanges}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition"
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
                         >
                           Save
                         </button>
@@ -2511,68 +2880,59 @@ export default function CatererDetails() {
                             setIsEditing(false);
                             setEditedCaterer({ ...caterer });
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] uppercase font-bold px-3 py-1.5 rounded-lg transition"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
                         >
                           Cancel
                         </button>
                       </div>
                     </div>
-                  ) : targetCatererObj.operatingHours ? (
-                    <div className="flex flex-col h-full justify-between flex-1 min-h-[160px]">
-                      <div className="space-y-4 font-sans mt-2">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
-                            WEEKLY SCHEDULE
-                          </span>
-                          <span className="text-[17px] font-extrabold text-[#0F3D2E] mt-1">
-                            Monday - Sunday
-                          </span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
-                            TIMINGS
-                          </span>
-                          <div className="inline-flex items-center gap-2 bg-[#FCFAF5] border border-[#D4AF37]/30 px-4 py-2 rounded-xl mt-1.5 w-fit">
-                            <span className="text-[15px] font-extrabold text-[#D4AF37] tracking-wider whitespace-pre-wrap">
-                              {targetCatererObj.operatingHours}
-                            </span>
+                  ) : (
+                    <>
+                      {targetCatererObj.operatingHours ? (
+                        <div className="flex flex-col h-full justify-between flex-1 min-h-[160px]">
+                          <div className="space-y-4 font-sans mt-2">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
+                                WEEKLY SCHEDULE
+                              </span>
+                              <span className="text-[17px] font-extrabold text-[#0F3D2E] mt-1">
+                                Monday - Sunday
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
+                                TIMINGS
+                              </span>
+                              <div className="inline-flex items-center gap-2 bg-[#FCFAF5] border border-[#D4AF37]/30 px-4 py-2 rounded-xl mt-1.5 w-fit">
+                                <span className="text-[15px] font-extrabold text-[#D4AF37] tracking-wider whitespace-pre-wrap">
+                                  {targetCatererObj.operatingHours}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-slate-400 italic font-medium mt-1">
+                              (Open on all holidays)
+                            </p>
+                          </div>
+                          <div className="mt-4 flex justify-end text-[#D4AF37] opacity-80 group-hover:scale-110 transition-transform duration-500 mt-auto">
+                            <CalendarDays size={44} className="stroke-[1.5]" />
                           </div>
                         </div>
-                        <p className="text-[11px] text-slate-400 italic font-medium mt-1">
-                          (Open on all holidays)
-                        </p>
-                      </div>
-                      <div className="mt-4 flex justify-end text-[#D4AF37] opacity-80 group-hover:scale-110 transition-transform duration-500 mt-auto">
-                        <CalendarDays size={44} className="stroke-[1.5]" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex flex-col justify-center items-center text-center py-6 border border-dashed border-[#D4AF37]/35 rounded-2xl bg-[#FCFAF5]/50 mb-4 font-sans h-full min-h-[160px]">
-                      <Clock
-                        size={28}
-                        className="text-[#D4AF37] mb-2"
-                        strokeWidth={1.5}
-                      />
-                      <p className="text-xs font-bold text-slate-700">
-                        No Timings Configured
-                      </p>
-                      {isOwnerOrAdmin ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsEditing(true);
-                            setEditedCaterer({ ...caterer });
-                          }}
-                          className="bg-white border border-[#D4AF37]/35 text-[#0F3D2E] text-[10px] font-bold px-3 py-1 rounded-lg mt-2 shadow-xs hover:bg-[#FDFBF7] transition"
-                        >
-                          Configure Timings
-                        </button>
                       ) : (
-                        <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
-                          Operational hours and timings schedules are not configured.
-                        </p>
+                        <div className="flex-1 flex flex-col justify-center items-center text-center py-6 border border-dashed border-[#D4AF37]/35 rounded-2xl bg-[#FCFAF5]/50 mb-4 font-sans h-full min-h-[160px]">
+                          <Clock
+                            size={28}
+                            className="text-[#D4AF37] mb-2"
+                            strokeWidth={1.5}
+                          />
+                          <p className="text-xs font-bold text-slate-700">
+                            No Timings Configured
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+                            Operational hours and timings schedules are not configured.
+                          </p>
+                        </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               ) : null}
@@ -2590,73 +2950,49 @@ export default function CatererDetails() {
                   </h3>
                   <LuxuryDivider />
                   {isEditing ? (
-                    <div className="flex flex-col gap-3 py-1">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4AF37] uppercase tracking-wider font-mono">
-                          Years of Experience (Non-sensitive)
+                    <div className="space-y-4 flex-1 flex flex-col justify-center py-2 font-sans select-text">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Successful Events Completed (Non-Sensitive)
                         </span>
                         <input
                           type="number"
-                          value={
-                            (editedCaterer && editedCaterer.experience) !==
-                              undefined &&
-                            (editedCaterer && editedCaterer.experience) !== null
-                              ? editedCaterer.experience
-                              : ""
-                          }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              experience: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none text-slate-800"
-                          placeholder="e.g. 15"
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                          Events Completed (Non-sensitive)
-                        </span>
-                        <input
-                          type="number"
-                          value={
-                            (editedCaterer && editedCaterer.eventsCompleted) !==
-                              undefined &&
-                            (editedCaterer && editedCaterer.eventsCompleted) !==
-                              null
-                              ? editedCaterer.eventsCompleted
-                              : ""
-                          }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              eventsCompleted: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none text-slate-800"
+                          value={editedCaterer.eventsCompleted !== undefined && editedCaterer.eventsCompleted !== null ? editedCaterer.eventsCompleted : ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, eventsCompleted: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
                           placeholder="e.g. 1500"
                         />
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                          Interactive WhatsApp Number (Non-sensitive)
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Years of Trust / Experience (Non-Sensitive)
                         </span>
                         <input
-                          type="text"
-                          placeholder="e.g. +919875411220"
-                          value={
-                            (editedCaterer && editedCaterer.whatsappNumber) ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              whatsappNumber: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none text-slate-800"
+                          type="number"
+                          value={editedCaterer.experience !== undefined && editedCaterer.experience !== null ? editedCaterer.experience : ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, experience: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. 12"
                         />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -2683,12 +3019,12 @@ export default function CatererDetails() {
                           lbl: "Years of Trust"
                         }
                       ].map((ach, idx) => (
-                        <div key={idx} className="flex items-center gap-4 py-1.5 border-b border-[#D4AF37]/10 last:border-0">
+                        <div key={idx} className="flex items-center gap-4 py-1.5 border-b border-[#D4AF37]/10 last:border-0 font-sans">
                           <div className="flex-shrink-0 bg-amber-50/65 border border-[#D4AF37]/45 rounded-full p-1.5 text-[#D4AF37] shadow-xs">
                             <Check size={14} className="stroke-[3]" />
                           </div>
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-xl font-black text-[#D4AF37] tracking-tight leading-none">
+                            <span className="text-xl font-black text-[#D4AF37] tracking-tight leading-none font-display">
                               {ach.val}
                             </span>
                             <span className="text-[13px] font-medium text-slate-700">
@@ -2715,61 +3051,85 @@ export default function CatererDetails() {
                   </h3>
                   <LuxuryDivider />
                   {isEditing ? (
-                    <div className="flex flex-col gap-3 py-1 text-left">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                          Awards Won (Non-sensitive)
+                    <div className="space-y-4 flex-1 flex flex-col justify-center py-2 font-sans select-text">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Awards (Non-Sensitive)
                         </span>
-                        <textarea
-                          value={(editedCaterer && editedCaterer.awards) || ""}
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              awards: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none text-slate-800 h-16 resize-none"
-                          placeholder="e.g. Best Wedding Caterer 2024, Times Food Award (Comma separated)"
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-[#D4A437] uppercase tracking-wider font-mono">
-                          Certifications (Non-sensitive)
-                        </span>
-                        <textarea
+                        <input
+                          type="text"
                           value={
-                            (editedCaterer && editedCaterer.certifications) ||
-                            ""
+                            Array.isArray(editedCaterer.awards)
+                              ? editedCaterer.awards.join(", ")
+                              : typeof editedCaterer.awards === "string"
+                                ? editedCaterer.awards
+                                : ""
                           }
-                          onChange={(e) =>
-                            setEditedCaterer({
-                              ...editedCaterer,
-                              certifications: e.target.value,
-                            })
-                          }
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none text-slate-800 h-16 resize-none"
-                          placeholder="e.g. ISO 22000, HACCP certified, FSSAI Elite (Comma separated)"
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, awards: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. Best Wedding Caterer, Excellence in Hospitality"
                         />
                       </div>
-                    </div>
-                  ) : awardsList.length > 0 || certificationsList.length > 0 ? (
-                    <div className="flex-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-6 py-2">
-                       {awardsList.map((award: string, i: number) => (
-                        <div key={i} className="flex flex-col items-center">
-                          <GoldMedalIcon title={award} />
-                        </div>
-                      ))}
-                      {certificationsList.map((cert: string, i: number) => (
-                        <div key={i} className="flex flex-col items-center">
-                          <GoldMedalIcon title={cert} isShield={true} />
-                        </div>
-                      ))}
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Certifications (Non-Sensitive)
+                        </span>
+                        <input
+                          type="text"
+                          value={
+                            Array.isArray(editedCaterer.certifications)
+                              ? editedCaterer.certifications.join(", ")
+                              : typeof editedCaterer.certifications === "string"
+                                ? editedCaterer.certifications
+                                : ""
+                          }
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, certifications: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. FSSAI Certified, Hazard Analysis Critical Control Point (HACCP)"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex-1 flex flex-wrap items-center justify-center gap-x-12 gap-y-6 py-2 select-text font-sans">
-                      <GoldMedalIcon title="Best Wedding Caterer" />
-                      <GoldMedalIcon title="Excellence in Catering" isShield={true} />
-                    </div>
+                    <>
+                      {awardsList.length > 0 || certificationsList.length > 0 ? (
+                        <div className="flex-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-6 py-2">
+                           {awardsList.map((award: string, i: number) => (
+                            <div key={i} className="flex flex-col items-center">
+                              <GoldMedalIcon title={award} />
+                            </div>
+                          ))}
+                          {certificationsList.map((cert: string, i: number) => (
+                            <div key={i} className="flex flex-col items-center">
+                              <GoldMedalIcon title={cert} isShield={true} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-wrap items-center justify-center gap-x-12 gap-y-6 py-2 select-text font-sans">
+                          <GoldMedalIcon title="Best Wedding Caterer" />
+                          <GoldMedalIcon title="Excellence in Catering" isShield={true} />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ) : null}
@@ -3145,6 +3505,7 @@ export default function CatererDetails() {
             </div>
           </div>
         </div>
+        </div> {/* closes live preview panel */}
       </div>
     </div>
   );

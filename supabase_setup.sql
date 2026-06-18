@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     "specialNotes" TEXT,
     "pricePerPlate" NUMERIC,
     "platformFee" NUMERIC,
+    "platformFeePerPlate" NUMERIC,
     "venue" TEXT,
     "status_history" JSONB DEFAULT '[]'::jsonb,
     "statusHistory" JSONB DEFAULT '[]'::jsonb,
@@ -439,5 +440,6 @@ CREATE TRIGGER tr_protect_profile_role
 -- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMPTZ;
 -- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "rejectedAt" TIMESTAMPTZ;
 -- ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMPTZ;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS "platformFeePerPlate" NUMERIC;
 -- NOTIFY pgrst, 'reload schema';
 

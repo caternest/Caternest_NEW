@@ -41,6 +41,21 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
   const [catererImgPreview, setCatererImgPreview] = useState<string>('');
 
   React.useEffect(() => {
+    // Reset scanner states on mount to ensure fresh state upon load/user switch/page reload
+    try {
+      setIsParsing(false);
+    } catch (e) {
+      console.warn("Could not reset parsing state in parent:", e);
+    }
+    setUploadProgress(0);
+    setScanProgress(0);
+    setScanStatus('');
+    setScanError('');
+    setTimeRemaining(0);
+    setLastFiles(null);
+  }, []);
+
+  React.useEffect(() => {
     fetch('/api/food-images')
       .then(res => res.json())
       .then(data => {

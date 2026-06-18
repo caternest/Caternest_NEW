@@ -691,6 +691,7 @@ export default function OrderFlow() {
            matchedSlab: matchingSlab,
            selectedItems: Object.keys(selectedItems).filter((k: string)=>selectedItems[k]),
            totalEstimate: (currentPerPlatePrice * guests) + platformFee,
+            platformFeePerPlate: platformFeePerPlate,
            pricePerPlate: currentPerPlatePrice,
            platformFee: platformFee,
            status: 'Submitted',
@@ -1741,8 +1742,8 @@ export default function OrderFlow() {
                 {/* Platform Fee & Offers */}
                 <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
                     <div className="flex justify-between items-center text-sm mb-3">
-                        <span className="text-slate-600 font-medium">Platform Fee</span>
-                        <span className={cn("font-bold", appliedCoupon === 'NEW' ? "text-slate-400 line-through" : "text-slate-800")}>₹99</span>
+                        <span className="text-slate-600 font-medium">Platform Fee <span className="text-[10px] text-slate-400 font-normal">(₹{platformFeePerPlate}/plate)</span></span>
+                        <span className={cn("font-bold", appliedCoupon === 'NEW' ? "text-slate-400 line-through" : "text-slate-800")}>₹{(guests * platformFeePerPlate).toLocaleString()}</span>
                     </div>
 
                     {appliedCoupon !== 'NEW' ? (
@@ -1773,7 +1774,7 @@ export default function OrderFlow() {
                             <div className="flex justify-between items-center text-sm text-green-700 bg-green-100/50 px-3 py-2 rounded-lg">
                                 <span className="font-bold flex items-center gap-1.5"><Check size={14} className="text-green-600"/> Code 'NEW' Applied</span>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-bold">-₹99</span>
+                                    <span className="font-bold">-₹{(guests * platformFeePerPlate).toLocaleString()}</span>
                                     <button onClick={() => { setAppliedCoupon(''); setCouponCode(''); }} className="text-slate-400 hover:text-red-500 ml-1"><X size={14}/></button>
                                 </div>
                             </div>
@@ -1782,13 +1783,13 @@ export default function OrderFlow() {
 
                     <div className="flex justify-between items-center text-sm mt-4 pt-3 border-t border-slate-200">
                         <span className="text-slate-800 font-bold">Payable Platform Fee</span>
-                        <span className="font-bold text-brand-green-900">₹{appliedCoupon === 'NEW' ? '0' : '99'}</span>
+                        <span className="font-bold text-brand-green-900">₹{appliedCoupon === 'NEW' ? '0' : (guests * platformFeePerPlate).toLocaleString()}</span>
                     </div>
                 </div>
 
                 <div className="flex justify-between items-end mb-6 text-xl">
                     <span className="font-bold text-slate-800">Total Estimate</span>
-                    <span className="font-display font-bold text-brand-green-900 text-2xl text-right">₹{((currentPerPlatePrice * guests) + (appliedCoupon === 'NEW' ? 0 : 99)).toLocaleString('en-IN')}</span>
+                    <span className="font-display font-bold text-brand-green-900 text-2xl text-right">₹{((currentPerPlatePrice * guests) + (appliedCoupon === 'NEW' ? 0 : (guests * platformFeePerPlate))).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="space-y-3">
                    <button onClick={() => { console.log("[TRACE_LOG #1] Confirm Booking button clicked (isQuote = false)"); handleBooking(false); }} className="w-full bg-brand-green-900 hover:bg-brand-green-800 text-white py-4 rounded-xl font-bold shadow-lg shadow-brand-green-900/30 transition-all flex items-center justify-center gap-2">Confirm Booking</button>

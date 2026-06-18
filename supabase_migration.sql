@@ -270,5 +270,8 @@ ALTER TABLE public.caterer_registrations
   ADD COLUMN IF NOT EXISTS "serviceAreas" TEXT,
   ADD COLUMN IF NOT EXISTS "pendingUpdates" JSONB;
 
+ALTER TABLE public.orders 
+  ADD COLUMN IF NOT EXISTS "platformFeePerPlate" NUMERIC;
+
 NOTIFY pgrst, 'reload schema';
 

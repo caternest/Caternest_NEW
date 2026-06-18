@@ -1502,7 +1502,7 @@ export default function CatererDashboard() {
                                    <h4 className="font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">Financials</h4>
                                    <div className="space-y-2 text-sm bg-green-50 p-4 rounded-xl border border-green-100">
                                        <div className="flex justify-between"><span className="text-slate-600 font-medium">Food Cost ({selectedOrder.pricePerPlate} × {selectedOrder.guests})</span> <span className="text-slate-800 font-bold">₹{((selectedOrder.pricePerPlate||0) * (selectedOrder.guests||0)).toLocaleString()}</span></div>
-                                       <div className="flex justify-between"><span className="text-slate-600 font-medium">Platform Fee</span> <span className="text-slate-800 font-bold">₹{selectedOrder.platformFee || 0}</span></div>
+                                       <div className="flex justify-between"><span className="text-slate-600 font-medium">Platform Fee (₹{selectedOrder.platformFeePerPlate !== undefined ? selectedOrder.platformFeePerPlate : (selectedOrder.guests ? Math.round(Number(selectedOrder.platformFee) / Number(selectedOrder.guests)) : 2)}/plate)</span> <span className="text-slate-800 font-bold">₹{selectedOrder.platformFee || 0}</span></div>
                                        <div className="flex justify-between pt-2 border-t border-green-200/50 mt-2"><span className="text-green-800 font-bold">Customer Total</span> <span className="text-brand-green-900 font-display text-xl font-bold leading-none">₹{selectedOrder.totalEstimate?.toLocaleString()}</span></div>
                                    </div>
                                </div>

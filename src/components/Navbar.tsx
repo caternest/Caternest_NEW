@@ -20,6 +20,48 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const [registrations, setRegistrations] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('registrations');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const fetchRegistrations = async () => {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('caterer_registrations')
+          .select('*');
+        if (!error && data) {
+          setRegistrations(data);
+          localStorage.setItem('registrations', JSON.stringify(data));
+        }
+      } catch (err) {
+        console.error("Failed to fetch registrations in Navbar:", err);
+      }
+    }
+  };
+
+  const hasCatererBusinesses = React.useMemo(() => {
+    if (!user) return false;
+    return registrations.some((r: any) => 
+      (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) 
+      && r.status !== 'Deleted'
+    );
+  }, [user, registrations]);
+
+  const hasApprovedCatererBusiness = React.useMemo(() => {
+    if (!user) return false;
+    return registrations.some((r: any) => 
+      (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) 
+      && r.status === 'Approved'
+    );
+  }, [user, registrations]);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -50,9 +92,9 @@ export default function Navbar() {
           let filtered = data;
           if (user.roles.includes('admin')) {
             filtered = data.filter((n: any) => n.targetRole === 'admin');
-          } else if (user.roles.includes('partner')) {
-            const myCatererIds = JSON.parse(localStorage.getItem('registrations') || '[]')
-              .filter((r: any) => r.userId === user.id)
+          } else if (user.roles.includes('partner') || hasCatererBusinesses) {
+            const myCatererIds = registrations
+              .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
               .map((r: any) => r.id);
             filtered = data.filter((n: any) => n.targetRole === 'caterer' && (myCatererIds.includes(n.catererId) || !n.catererId));
           } else {
@@ -76,9 +118,9 @@ export default function Navbar() {
       let filtered = parsed;
       if (user.roles.includes('admin')) {
         filtered = parsed.filter((n: any) => n.targetRole === 'admin');
-      } else if (user.roles.includes('partner')) {
-        const myCatererIds = JSON.parse(localStorage.getItem('registrations') || '[]')
-          .filter((r: any) => r.userId === user.id)
+      } else if (user.roles.includes('partner') || hasCatererBusinesses) {
+        const myCatererIds = registrations
+          .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
           .map((r: any) => r.id);
         filtered = parsed.filter((n: any) => n.targetRole === 'caterer' && (myCatererIds.includes(n.catererId) || !n.catererId));
       } else {
@@ -93,6 +135,7 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchNavbarNotifications();
+    fetchRegistrations();
 
     const supabase = getSupabase();
     if (supabase && user) {
@@ -375,21 +418,50 @@ export default function Navbar() {
                                     <Settings size={16} /> Admin Profile
                                   </Link>
                                 </>
-                            ) : user.roles.includes('partner') ? (
+                            ) : (user.roles.includes('partner') || hasCatererBusinesses) ? (
                                 <>
-                                  <Link to="/caterer-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
-                                    <Settings size={16} /> My Dashboard
-                                  </Link>
-                                  <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                  {(user.roles.includes('partner') || hasApprovedCatererBusiness) && (
+                                    <Link 
+                                      to="/caterer-dashboard" 
+                                      onClick={() => {
+                                        if (!localStorage.getItem('catererDashboardId') && user) {
+                                          try {
+                                            const raw = localStorage.getItem('registrations');
+                                            if (raw) {
+                                              const allRegs = JSON.parse(raw);
+                                              const firstApproved = allRegs.find((r: any) => (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) && r.status === 'Approved');
+                                              if (firstApproved) {
+                                                localStorage.setItem('catererDashboardId', firstApproved.id);
+                                              } else {
+                                                const firstAny = allRegs.find((r: any) => (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) && r.status !== 'Deleted');
+                                                if (firstAny) {
+                                                  localStorage.setItem('catererDashboardId', firstAny.id);
+                                                }
+                                              }
+                                            }
+                                          } catch (err) {
+                                            console.error(err);
+                                          }
+                                        }
+                                        setIsProfileDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors"
+                                    >
+                                      <Settings size={16} /> My Dashboard
+                                    </Link>
+                                  )}
+                                  <Link to="/orders" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <ShoppingBag size={16} /> My Orders
                                   </Link>
-                                  <Link to="/businesses" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                  <Link to="/businesses" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <Building size={16} /> My Business
                                   </Link>
-                                  <Link to="/businesses" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
-                                    <Package size={16} /> My Packages
-                                  </Link>
-                                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                  {(user.roles.includes('partner') || hasApprovedCatererBusiness) && (
+                                    <Link to="/businesses" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                      <Package size={16} /> My Packages
+                                    </Link>
+                                  )}
+                                  <Link to="/profile" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <Settings size={16} /> Settings
                                   </Link>
                                 </>

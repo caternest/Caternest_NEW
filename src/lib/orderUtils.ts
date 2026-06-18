@@ -313,7 +313,7 @@ export async function performOrderStatusUpdate(
     'guestCount', 'totalAmount', 'status', 'items', 'packageSelected',
     'pricingSlabs', 'addonItems', 'selectedMenu', 'notes', 'phone',
     'eventType', 'guests', 'totalEstimate', 'selectedItems', 'packageDetails',
-    'matchedSlab', 'pricePerPlate', 'platformFee', 'specialNotes', 'venue',
+    'matchedSlab', 'pricePerPlate', 'platformFee', 'platformFeePerPlate', 'specialNotes', 'venue',
     'internalNotes', 'statusHistory', 'approvedAt', 'rejectedAt', 'completedAt'
   ];
 

@@ -38,12 +38,37 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     return <Navigate to="/change-password" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    console.warn(`Denied access for user "${user.email}" (Role: ${user.role}) trying to reach ${location.pathname}`);
+  // Fallback: Check if user has registered a business in local storage (even if profile role of 'caterer' isn't set yet)
+  const hasLocalBusiness = React.useMemo(() => {
+    if (!user) return false;
+    try {
+      const raw = localStorage.getItem('registrations');
+      if (raw) {
+        const allRegs = JSON.parse(raw);
+        return allRegs.some((r: any) => 
+          (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) 
+          && r.status !== 'Deleted'
+        );
+      }
+    } catch (e) {
+      console.error("[PROTECTED ROUTE] Error reading registrations:", e);
+    }
+    return false;
+  }, [user]);
+
+  const isAuthorized = React.useMemo(() => {
+    if (!allowedRoles) return true;
+    if (allowedRoles.includes(user.role)) return true;
+    if (allowedRoles.includes('caterer') && hasLocalBusiness) return true;
+    return false;
+  }, [allowedRoles, user.role, hasLocalBusiness]);
+
+  if (!isAuthorized) {
+    console.warn(`Denied access for user "${user.email}" (Role: ${user.role}, Has Business: ${hasLocalBusiness}) trying to reach ${location.pathname}`);
     // Unauthorized access: redirect based on roles
     if (user.role === 'admin') {
       return <Navigate to="/admin-dashboard" replace />;
-    } else if (user.role === 'caterer') {
+    } else if (user.role === 'caterer' || hasLocalBusiness) {
       return <Navigate to="/caterer-dashboard" replace />;
     } else {
       return <Navigate to="/" replace />;

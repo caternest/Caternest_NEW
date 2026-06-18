@@ -332,28 +332,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Explicitly clean up all Supabase auth tokens and cached fields from localStorage and sessionStorage
       try {
-        console.log("[AUDIT LOG] Explicitly sweeping localStorage and sessionStorage auth tokens...");
-        // 1. Clear known caterer dashboard state
-        localStorage.removeItem('catererDashboardId');
+        console.log("[AUDIT LOG] Explicitly sweeping localStorage and sessionStorage auth tokens and user caches...");
         
-        // 2. Clear Supabase local storage tokens to prevent session restore
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token')) {
-             localStorage.removeItem(key);
-             // Since removing changes length, adjust index to prevent skipping keys
-             i--; 
-          }
-        }
+        // 1. Clear known user-specific / business-specific cached state keys statically
+        const userCacheKeys = [
+          'registrations',
+          'orders',
+          'notifications',
+          'auditLogs',
+          'caterer_join_form_data',
+          'catererDashboardId'
+        ];
         
-        // 3. Clear Supabase session storage tokens in case they are used
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token')) {
-             sessionStorage.removeItem(key);
-             i--;
+        userCacheKeys.forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        
+        // 2. Clear Supabase local storage tokens statically using collected keys to avoid mutating during iteration
+        const localKeys = Object.keys(localStorage);
+        localKeys.forEach(key => {
+          if ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token') {
+            localStorage.removeItem(key);
           }
-        }
+        });
+        
+        // 3. Clear Supabase session storage tokens statically using collected keys
+        const sessionKeys = Object.keys(sessionStorage);
+        sessionKeys.forEach(key => {
+          if ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token') {
+            sessionStorage.removeItem(key);
+          }
+        });
       } catch (storageErr) {
         console.error("[AUDIT LOG] Error clearing storage tokens:", storageErr);
       }

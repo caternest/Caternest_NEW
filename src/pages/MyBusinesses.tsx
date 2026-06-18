@@ -15,7 +15,10 @@ export default function MyBusinesses() {
     if (raw) {
       const allRegs = JSON.parse(raw);
       // Filter out deleted logic if needed, but for now show user's active/pending items
-      setBusinesses(allRegs.filter((r: any) => r.userId === user?.id && r.status !== 'Deleted'));
+      setBusinesses(allRegs.filter((r: any) => 
+        (r.userId === user?.id || (r.email && r.email.toLowerCase() === user?.email?.toLowerCase())) 
+        && r.status !== 'Deleted'
+      ));
     }
   }, [user]);
 
@@ -121,7 +124,7 @@ export default function MyBusinesses() {
                                      const raw = JSON.parse(localStorage.getItem('registrations') || '[]');
                                      const updated = raw.filter((x:any) => x.id !== b.id);
                                      localStorage.setItem('registrations', JSON.stringify(updated));
-                                     setBusinesses(updated.filter((r: any) => r.userId === user?.id && r.status !== 'Deleted'));
+                                     setBusinesses(updated.filter((r: any) => (r.userId === user?.id || (r.email && r.email.toLowerCase() === user?.email?.toLowerCase())) && r.status !== 'Deleted'));
                                  }
                              }} className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1">
                                 <XCircle size={14} />
