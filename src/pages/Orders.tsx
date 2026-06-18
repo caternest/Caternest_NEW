@@ -134,8 +134,12 @@ export default function Orders() {
              // Admin sees all
           } else if (user.roles.includes('partner')) {
              const myRegs = JSON.parse(localStorage.getItem('registrations') || '[]')
-               .filter((r: any) => r.userId === user.id)
+               .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
                .map((r: any) => r.id);
+             const catererDashboardId = localStorage.getItem('catererDashboardId');
+             if (catererDashboardId && !myRegs.includes(catererDashboardId)) {
+               myRegs.push(catererDashboardId);
+             }
              filtered = data.filter((o: any) => myRegs.includes(o.catererId) || o.customerName === user.name);
           } else {
              // Customer matching userId or email or name
@@ -164,7 +168,13 @@ export default function Orders() {
            if (user.roles.includes('admin')) {
                // Admin sees all
            } else if (user.roles.includes('partner')) {
-               const myRegs = JSON.parse(localStorage.getItem('registrations') || '[]').filter((r: any) => r.userId === user.id).map((r: any) => r.id);
+               const myRegs = JSON.parse(localStorage.getItem('registrations') || '[]')
+                .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
+                .map((r: any) => r.id);
+              const catererDashboardId = localStorage.getItem('catererDashboardId');
+              if (catererDashboardId && !myRegs.includes(catererDashboardId)) {
+                myRegs.push(catererDashboardId);
+              }
                allOrders = allOrders.filter((o: any) => myRegs.includes(o.catererId) || o.customerName === user.name);
            } else {
                allOrders = allOrders.filter((o: any) => 
