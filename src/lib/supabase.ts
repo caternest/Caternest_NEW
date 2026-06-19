@@ -275,14 +275,41 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
         }
       }
 
-      const { error } = await supabase
-        .from(tableName)
-        .upsert(sanitized, { onConflict: 'id' });
+      let errorResponse: any = null;
+      let attemptPayload = sanitizePayload(tableName, sanitized);
+      let success = false;
       
-      console.log(`[TRACE_LOG #12] ${tableName} upsert response error:`, error);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { error } = await supabase
+          .from(tableName)
+          .upsert(attemptPayload, { onConflict: 'id' });
+          
+        if (!error) {
+          success = true;
+          break;
+        }
+        
+        errorResponse = error;
+        // Check for PGRST204 column missing error
+        if (error.code === 'PGRST204') {
+          const match = error.message?.match(/Could not find (?:the )?['"]?([a-zA-Z0-9_]+)['"]? column/i) || 
+                        error.message?.match(/column:? ['"]?([a-zA-Z0-9_]+)['"]?/i) ||
+                        error.message?.match(/Could not find column ['"]?([a-zA-Z0-9_]+)['"]?/i);
+                        
+          const missingColumn = match ? match[1] : null;
+          if (missingColumn && attemptPayload[missingColumn] !== undefined) {
+            console.warn(`[SYNC WARNING] Column "${missingColumn}" does not exist in "${tableName}" on Supabase. Removing from payload and retrying...`);
+            delete attemptPayload[missingColumn];
+            continue;
+          }
+        }
+        break;
+      }
       
-      if (error) {
-        console.warn(`Supabase upsert warning on table "${tableName}":`, error.message);
+      if (!success && errorResponse) {
+        console.error(`[SYNC ERROR] Upsert failed for table "${tableName}" on item:`, errorResponse);
+      } else {
+        console.log(`[SYNC SUCCESS] Synchronized item successfully to "${tableName}".`);
       }
     }
   } catch (err) {
@@ -380,7 +407,7 @@ export async function fetchPlatformFeePerPlate(): Promise<number> {
     }
     if (data && data.length > 0) {
       const row = data[0] as any;
-      const dbFee = Number(row.platformFeePerPlate !== undefined ? row.platformFeePerPlate : (row.platform_fee_per_plate !== undefined ? row.platform_fee_per_plate : fee));
+      const dbFee = Number(row.platformFeePerPlate !== undefined ? row.platformFeePerPlate : fee);
       if (!isNaN(dbFee)) {
         fee = dbFee;
         localStorage.setItem('platformFeePerPlate', fee.toString());
@@ -401,10 +428,10 @@ export async function updatePlatformFeePerPlateInDB(fee: number): Promise<void> 
   if (!supabase) return;
 
   try {
-    const payload = { id: 'default', platformFeePerPlate: fee, platform_fee_per_plate: fee };
+    const payload = { id: 'default', platformFeePerPlate: fee };
     const { error } = await (supabase.from('platform_settings') as any).upsert(payload, { onConflict: 'id' });
     if (error) {
-      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ platformFeePerPlate: fee, platform_fee_per_plate: fee }).eq('id', 'default');
+      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ platformFeePerPlate: fee }).eq('id', 'default');
       if (err2) {
         console.warn("Could not sync platform fee to Supabase", err2);
       }
