@@ -195,97 +195,74 @@ export default function CatererDashboard() {
   const [profileFormData, setProfileFormData] = useState<any>({});
   const [isProfilePending, setIsProfilePending] = useState(false);
 
-  const [resolvedCatererId, setResolvedCatererId] = useState<string | null>(null);
-  const [isResolvingId, setIsResolvingId] = useState(true);
+  const [resolvedCatererId, setResolvedCatererId] = useState<string | null>(() => localStorage.getItem('catererDashboardId'));
+  const [isResolvingCaterer, setIsResolvingCaterer] = useState(false);
 
+  // Resolution effect for the business record
   useEffect(() => {
-    async function resolveCatererId() {
-      setIsResolvingId(true);
-      const cachedId = localStorage.getItem('catererDashboardId');
-      if (cachedId) {
-        console.log("[CatererDashboard ID Resolution] Found cached catererDashboardId in localStorage:", cachedId);
-        setResolvedCatererId(cachedId);
-        setIsResolvingId(false);
-        return;
-      }
-
-      if (!user) {
-        setIsResolvingId(false);
-        return;
-      }
-
-      console.log("[CatererDashboard ID Resolution] catererDashboardId is missing. Attempting to resolve business record for user:", user.id, user.email);
-
-      // 1. Try Supabase first
+    async function resolveCaterer() {
+      if (resolvedCatererId) return;
+      if (!user) return;
+      
+      setIsResolvingCaterer(true);
+      console.log("[CATERER RESOLVE] Attempting to resolve business registration ID for user:", user.email, "uid:", user.id);
+      
       const supabase = getSupabase();
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('caterer_registrations')
-            .select('id, userId, email, status')
-            .or(`userId.eq.${user.id},email.ieq.${user.email}`);
-
-          if (!error && data && data.length > 0) {
-            // Filter out deleted registrations and prefer Approved ones, then any
-            const nonDeleted = data.filter((r: any) => r.status !== 'Deleted');
-            if (nonDeleted.length > 0) {
-              const firstApproved = nonDeleted.find((r: any) => r.status === 'Approved');
-              const targetReg = firstApproved || nonDeleted[0];
-              console.log("[CatererDashboard ID Resolution] Found business record in Supabase:", targetReg);
-              localStorage.setItem('catererDashboardId', targetReg.id);
-              setResolvedCatererId(targetReg.id);
-              setIsResolvingId(false);
-              return;
-            }
-          } else if (error) {
-            console.error("[CatererDashboard ID Resolution] Supabase lookup error:", error);
-          }
-        } catch (err) {
-          console.error("[CatererDashboard ID Resolution] Supabase lookup exception:", err);
-        }
+      if (!supabase) {
+        setIsResolvingCaterer(false);
+        return;
       }
 
-      // 2. Fallback to Local Storage registrations cache
       try {
-        const rawRegs = localStorage.getItem('registrations');
-        if (rawRegs) {
-          const allRegs = JSON.parse(rawRegs);
-          const matched = allRegs.filter((r: any) => 
-            (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) && r.status !== 'Deleted'
-          );
-          if (matched.length > 0) {
-            const firstApproved = matched.find((r: any) => r.status === 'Approved');
-            const targetReg = firstApproved || matched[0];
-            console.log("[CatererDashboard ID Resolution] Found business record in localStorage registrations cache:", targetReg);
-            localStorage.setItem('catererDashboardId', targetReg.id);
-            setResolvedCatererId(targetReg.id);
-            setIsResolvingId(false);
-            return;
+        const { data, error } = await supabase
+          .from('caterer_registrations')
+          .select('id')
+          .or(`userId.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (error) {
+          console.error("[CATERER RESOLVE] Error querying registration:", error);
+        } else if (data) {
+          console.log("[CATERER RESOLVE] Resolved registration successfully:", data);
+          localStorage.setItem('catererDashboardId', data.id);
+          setResolvedCatererId(data.id);
+        } else {
+          // Fallback search in local storage registration copy
+          const rawRegs = localStorage.getItem('registrations');
+          if (rawRegs) {
+            const parsed = JSON.parse(rawRegs);
+            const locallyFound = parsed.find((r: any) => 
+              r.userId === user.id || 
+              (r.email && r.email.toLowerCase() === user.email.toLowerCase())
+            );
+            if (locallyFound) {
+              console.log("[CATERER RESOLVE] Resolved from local registrations cache:", locallyFound);
+              localStorage.setItem('catererDashboardId', locallyFound.id);
+              setResolvedCatererId(locallyFound.id);
+            }
           }
         }
       } catch (err) {
-        console.error("[CatererDashboard ID Resolution] localStorage lookup exception:", err);
+        console.error("[CATERER RESOLVE] Exception during resolution:", err);
+      } finally {
+        setIsResolvingCaterer(false);
       }
-
-      console.warn("[CatererDashboard ID Resolution] No business registration found for this user/email!");
-      setIsResolvingId(false);
     }
 
-    resolveCatererId();
-  }, [user]);
+    resolveCaterer();
+  }, [user, resolvedCatererId]);
 
+  // Main data fetching and realtime subscription effect
   useEffect(() => {
     if (!resolvedCatererId) {
-      console.log("[REALTIME] Delaying subscription, waiting for resolvedCatererId...");
+      console.log("[CATERER DASHBOARD] Delaying loading/subscription until registration ID is resolved.");
       return;
     }
 
-    console.log("[REALTIME] Setting up subscription, resolvedCatererId:", resolvedCatererId);
-    refreshData(resolvedCatererId);
+    refreshData();
 
     const supabase = getSupabase();
     if (supabase) {
-      // Subscribe to order modifications for this caterer using resolvedCatererId
       const channel = supabase
         .channel(`caterer-orders-realtime-${resolvedCatererId}`)
         .on(
@@ -293,7 +270,7 @@ export default function CatererDashboard() {
           { event: '*', schema: 'public', table: 'orders', filter: `catererId=eq.${resolvedCatererId}` },
           (payload) => {
             console.log("[REALTIME] Order update received on Caterer Dashboard:", payload);
-            refreshData(resolvedCatererId);
+            refreshData();
             reloadNotifications();
           }
         )
@@ -303,12 +280,13 @@ export default function CatererDashboard() {
         supabase.removeChannel(channel);
       };
     }
-  }, [resolvedCatererId]);
+  }, [user, resolvedCatererId]);
 
-  const refreshData = async (forcedId?: string) => {
-    const cid = forcedId || resolvedCatererId;
+  const refreshData = async () => {
+    // Fetch Caterer Details
+    const cid = resolvedCatererId || localStorage.getItem('catererDashboardId');
     if (!cid) {
-      console.warn("[CatererDashboard refreshData] Aborting, no resolved ID available.");
+      console.log("[CATERER DASHBOARD] refreshData canceled: cid is missing.");
       return;
     }
 
@@ -665,7 +643,7 @@ export default function CatererDashboard() {
   };
 
   const handleSaveDraft = async () => {
-      const cid = resolvedCatererId;
+      const cid = resolvedCatererId || localStorage.getItem('catererDashboardId');
       if (!cid || !caterer) return;
 
       const supabase = getSupabase() as any;
@@ -698,7 +676,7 @@ export default function CatererDashboard() {
   };
 
   const handlePublishMenu = async () => {
-      const cid = resolvedCatererId;
+      const cid = resolvedCatererId || localStorage.getItem('catererDashboardId');
       if (!cid || !caterer) return;
 
       const supabase = getSupabase() as any;
@@ -736,7 +714,7 @@ export default function CatererDashboard() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      const cid = resolvedCatererId;
+      const cid = resolvedCatererId || localStorage.getItem('catererDashboardId');
       if (!cid || !caterer) return;
 
       const sensitivePayload = {
@@ -940,48 +918,6 @@ export default function CatererDashboard() {
       { id: 'packages', label: 'Menu Packages', icon: Package },
       { id: 'settings', label: 'Settings', icon: Settings },
   ];
-
-  if (isResolvingId) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-20 font-poppins">
-        <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-100 max-w-sm">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-gold-500 mx-auto mb-4"></div>
-          <h3 className="text-lg font-bold text-slate-800">Resolving Portal Identity...</h3>
-          <p className="text-xs text-slate-500 mt-2">Checking your caterer business registration records.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!resolvedCatererId) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-20 font-poppins">
-        <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-100 max-w-md animate-in fade-in duration-300">
-          <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
-            <ChefHat size={24} />
-          </div>
-          <h3 className="text-xl font-bold text-slate-800">No Business Registered</h3>
-          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-            No active business registration was found for your account ({user?.email || 'N/A'}). Please register your catering business to access the portal.
-          </p>
-          <div className="mt-6 flex gap-4 justify-center">
-            <button 
-              onClick={() => window.location.href = '/join'}
-              className="px-4 py-2.5 bg-[#00483C] text-white hover:bg-[#00362c] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Register Business
-            </button>
-            <button 
-              onClick={() => window.location.href = '/'}
-              className="px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Back to Home
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 pt-20">

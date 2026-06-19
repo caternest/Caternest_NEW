@@ -129,30 +129,47 @@ export default function Orders() {
           .order('created_at', { ascending: false });
 
         if (!error && data) {
-          let filtered = data;
+          // Merge remote orders with existing local orders that contain unsynced local-only orders.
+          // This avoids the common race condition where a newly submitted order hasn't finished
+          // uploading via the non-blocking sync bridge before the page loads.
+          const localOrdersRaw = localStorage.getItem('orders');
+          const localOrders = localOrdersRaw ? JSON.parse(localOrdersRaw) : [];
+          
+          const remoteIds = new Set(data.map((o: any) => o.id));
+          const unsyncedLocal = localOrders.filter((o: any) => o && o.id && !remoteIds.has(o.id));
+          
+          const combinedOrders = [...unsyncedLocal, ...data];
+          
+          // Sort merged list newest to oldest
+          combinedOrders.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+          let filtered = combinedOrders;
           if (user.roles.includes('admin')) {
              // Admin sees all
           } else if (user.roles.includes('partner')) {
              const myRegs = JSON.parse(localStorage.getItem('registrations') || '[]')
-               .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
+               .filter((r: any) => r.userId === user.id)
                .map((r: any) => r.id);
-             const catererDashboardId = localStorage.getItem('catererDashboardId');
-             if (catererDashboardId && !myRegs.includes(catererDashboardId)) {
-               myRegs.push(catererDashboardId);
-             }
-             filtered = data.filter((o: any) => myRegs.includes(o.catererId) || o.customerName === user.name);
+             filtered = combinedOrders.filter((o: any) => 
+               myRegs.includes(o.catererId) || 
+               o.customerName === user.name ||
+               o.userId === user.id ||
+               (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase())
+             );
           } else {
-             // Customer matching userId or email or name
-             filtered = data.filter((o: any) => 
+             // Customer matching userId or email or name or phone
+             filtered = combinedOrders.filter((o: any) => 
                o.userId === user.id || 
                (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
-               o.customerName === user.name ||
+               (o.customerName && o.customerName === user.name) ||
+               (o.phone && o.phone === user.phone) ||
+               (o.customerPhone && o.customerPhone === user.phone) ||
                o.customerName === 'Guest User'
              );
           }
           setOrders(filtered);
-          // Sync cache
-          localStorage.setItem('orders', JSON.stringify(data));
+          // Sync unified cache back to localStorage
+          localStorage.setItem('orders', JSON.stringify(combinedOrders));
           return;
         }
       } catch (err) {
@@ -163,28 +180,30 @@ export default function Orders() {
     // fallback to local storage
     const rawOrders = localStorage.getItem('orders');
     if (rawOrders) {
-        let allOrders = JSON.parse(rawOrders);
+        let allOrders = rawOrders ? JSON.parse(rawOrders) : [];
         if (user) {
            if (user.roles.includes('admin')) {
                // Admin sees all
            } else if (user.roles.includes('partner')) {
-               const myRegs = JSON.parse(localStorage.getItem('registrations') || '[]')
-                .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
-                .map((r: any) => r.id);
-              const catererDashboardId = localStorage.getItem('catererDashboardId');
-              if (catererDashboardId && !myRegs.includes(catererDashboardId)) {
-                myRegs.push(catererDashboardId);
-              }
-               allOrders = allOrders.filter((o: any) => myRegs.includes(o.catererId) || o.customerName === user.name);
+               const myRegs = JSON.parse(localStorage.getItem('registrations') || '[]').filter((r: any) => r.userId === user.id).map((r: any) => r.id);
+               allOrders = allOrders.filter((o: any) => 
+                 myRegs.includes(o.catererId) || 
+                 o.customerName === user.name ||
+                 o.userId === user.id ||
+                 (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase())
+               );
            } else {
                allOrders = allOrders.filter((o: any) => 
                  o.userId === user.id || 
                  (o.customerEmail && o.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
                  o.customerName === user.name ||
+                 (o.phone && o.phone === user.phone) ||
+                 (o.customerPhone && o.customerPhone === user.phone) ||
                  o.customerName === 'Guest User'
                );
            }
         }
+        allOrders.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setOrders(allOrders);
     }
   };
