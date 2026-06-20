@@ -594,6 +594,7 @@ export default function OrderFlow() {
   const [guests, setGuests] = useState(100);
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
   const [hoveredCardIdx, setHoveredCardIdx] = useState<number | null>(null);
+  const [mobileCartExpanded, setMobileCartExpanded] = useState(false);
 
   // Restore session state on load
   useEffect(() => {
@@ -814,6 +815,7 @@ export default function OrderFlow() {
   };
   
   const allCategoriesComplete = menuCategories.length > 0 && menuCategories.every(isCategoryComplete);
+  const selectedItemsCount = Object.keys(selectedItems).filter(k => selectedItems[k]).length;
 
   const currentPerPlatePrice = (() => {
       if (selectedPackage && selectedPackage.pricingSlabs && selectedPackage.pricingSlabs.length > 0) {
@@ -1307,8 +1309,119 @@ export default function OrderFlow() {
       <div className="flex-1 max-w-full lg:max-w-full xl:max-w-[1380px] 2xl:max-w-[1550px] mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-4.5 xl:gap-5">
               
-              {/* LEFT PANEL - Categories */}
-              <div className="w-full lg:w-[185px] xl:w-[200px] shrink-0">
+              {/* MOBILE ONLY - Progress & Categories Horizontal Scroll */}
+              {(() => {
+                  const activeCats = menuCategories.filter((cat: string) => {
+                      const catItems = selectedPackage?.categories?.find((c: any) => c.categoryName === cat)?.items || [];
+                      return catItems.length > 0;
+                  });
+                  const totalCats = activeCats.length;
+                  const doneCats = activeCats.filter((cat: string) => {
+                      const catData = selectedPackage?.categories?.find((c: any) => c.categoryName === cat);
+                      if (!catData) return false;
+                      const match = catData.selectionRule?.match(/\d+/);
+                      const limit = match ? parseInt(match[0], 10) : 0;
+                      if (limit === 0) return true;
+                      const selectedCount = (catData.items || []).filter((i: string) => selectedItems[i]).length;
+                      return selectedCount >= limit;
+                  }).length;
+                  const pctDone = Math.round((doneCats / (totalCats || 1)) * 100);
+
+                  return (
+                      <div className="block lg:hidden w-full space-y-3.5 mb-2">
+                          {/* Progress Card */}
+                          <div className="bg-[#FDFBF6] rounded-2xl border border-[#D5A859]/22 p-3.5 shadow-[0_6px_20px_rgba(120,90,40,0.03)]">
+                              <div className="flex items-center justify-between gap-3 select-none">
+                                  <div className="flex items-center gap-2.5">
+                                      <div className="w-7 h-7 rounded-full bg-[#FFF8EC] flex items-center justify-center border border-[#D5A859]/25 shadow-sm text-xs shrink-0">
+                                          👑
+                                      </div>
+                                      <div>
+                                          <span className="text-[9px] font-semibold text-[#7A7369] block leading-none mb-0.5">Catering Selection Progress</span>
+                                          <span className="text-[12px] font-bold font-display text-[#123326] leading-none block">Perfect Wedding Feast</span>
+                                      </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-[11px] font-bold font-sans text-[#2A2A2A]">
+                                          {doneCats}/{totalCats} Completed
+                                      </span>
+                                      <span className="text-[10px] font-medium text-[#7A7369]">({pctDone}%)</span>
+                                  </div>
+                              </div>
+                              <div className="w-full bg-[#F5EFE1] h-[5px] rounded-full overflow-hidden mt-3">
+                                  <div 
+                                      className="bg-gradient-to-r from-[#FCE6A9] via-[#D5A859] to-[#9E7730] h-full rounded-full transition-all duration-500" 
+                                      style={{ width: `${pctDone}%` }}
+                                  />
+                              </div>
+                          </div>
+
+                          {/* Horizontal Chips */}
+                          <div className="w-full relative">
+                              <div className="flex overflow-x-auto gap-2 pb-2.5 no-scrollbar scroll-smooth -mx-1 px-1">
+                                  {menuCategories.map((cat: string) => {
+                                      const catData = selectedPackage.categories?.find((c: any) => c.categoryName === cat);
+                                      const catItems = catData?.items || [];
+                                      if (catItems.length === 0) return null;
+                                      const selectedCount = catItems.filter((i: string) => selectedItems[i]).length;
+                                      
+                                      const match = catData.selectionRule?.match(/\d+/);
+                                      const catLimit = match ? parseInt(match[0], 10) : 0;
+                                      const isDone = selectedCount >= catLimit;
+                                      const isActive = activeCategory === cat;
+
+                                      return (
+                                          <button
+                                              key={cat}
+                                              onClick={() => setActiveCategory(cat)}
+                                              className={cn(
+                                                  "px-3.5 py-2.5 rounded-full transition-all border text-[11px] font-bold flex items-center gap-1.5 shrink-0 select-none relative cursor-pointer leading-none",
+                                                  isActive 
+                                                     ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_4px_12px_rgba(11,31,23,0.15)]" 
+                                                     : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 shadow-[0_1px_4px_rgba(120,90,40,0.02)]"
+                                              )}
+                                          >
+                                              <span className={cn("text-xs transition-transform duration-300", isActive ? "text-[#E6C77D]" : "text-[#123326]")}>
+                                                  {getCategoryIcon(cat)}
+                                              </span>
+                                              <span className="font-sans font-bold tracking-tight">{cat}</span>
+                                              
+                                              {catLimit > 0 ? (
+                                                  isDone ? (
+                                                      <span className={cn(
+                                                          "text-[8px] px-1 rounded-full font-black text-center shrink-0 min-w-[14px]",
+                                                          isActive ? "bg-white/15 text-[#E6C77D]" : "bg-[#27AE60]/12 text-[#1E8E5A]"
+                                                      )}>
+                                                          ✓
+                                                      </span>
+                                                  ) : (
+                                                      <span className={cn(
+                                                          "text-[8px] px-1.5 py-0.5 rounded-full font-black shrink-0",
+                                                          isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
+                                                      )}>
+                                                          {selectedCount}/{catLimit}
+                                                      </span>
+                                                  )
+                                              ) : (
+                                                  <span className={cn(
+                                                      "text-[8px] px-1.5 py-0.5 rounded-full font-black shrink-0",
+                                                      isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
+                                                  )}>
+                                                      {selectedCount}
+                                                  </span>
+                                              )}
+                                          </button>
+                                      );
+                                  })}
+                              </div>
+                          </div>
+                      </div>
+                  );
+              })()}
+
+              {/* LEFT PANEL - Categories (Desktop) */}
+              <div className="hidden lg:block lg:w-[185px] xl:w-[200px] shrink-0">
                   <div className="bg-[#FDFBF6] rounded-[1.5rem] border border-[#D5A859]/22 p-3.5 sticky top-28 shadow-[0_10px_30px_rgba(120,90,40,0.04)] max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar">
                       {/* Completed Categories Circular Progress Indicator */}
                       {(() => {
@@ -1463,21 +1576,19 @@ export default function OrderFlow() {
 
               {/* MIDDLE PANEL - Available Dishes */}
               <div 
-                  className="flex-1 min-w-0 flex flex-col overflow-hidden mb-6"
+                  className="flex-1 min-w-0 flex flex-col lg:overflow-hidden mb-24 lg:mb-6 rounded-[24px] lg:rounded-[28px] min-h-[400px] lg:min-h-[650px]"
                   style={{
                       backgroundColor: "#FDFBF6",
                       border: "1px solid rgba(212,175,55,0.35)",
-                      borderRadius: "28px",
                       boxShadow: "0 15px 30px rgba(120,90,40,0.06), inset 0 0 0 1px rgba(255,240,200,0.3)",
-                      minHeight: "650px"
                   }}
               >
                   {/* Category Header Area */}
-                  <div className="p-6 md:p-8 pb-5 md:pb-6 border-b border-[#D5A859]/15 bg-transparent">
-                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                  <div className="p-4 md:p-8 pb-4 md:pb-6 border-b border-[#D5A859]/15 bg-transparent">
+                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 md:gap-6">
                           <div>
                               <h2 
-                                  className="text-[34px] sm:text-[38px] lg:text-[42px] xl:text-[46px] font-bold font-serif font-display text-[#0B1F17] leading-none tracking-tight mb-2.5 max-w-[90%]"
+                                  className="text-[28px] sm:text-[38px] lg:text-[42px] xl:text-[46px] font-bold font-serif font-display text-[#0B1F17] leading-none tracking-tight mb-2 max-w-[90%]"
                                   style={{
                                       whiteSpace: 'normal',
                                       wordBreak: 'keep-all',
@@ -1487,26 +1598,26 @@ export default function OrderFlow() {
                                   {activeCategory}
                               </h2>
                               
-                              <div className="flex items-center gap-3.5 mt-2.5">
-                                  <span className="text-[11.5px] font-black tracking-[0.22em] text-[#D5A859] uppercase font-sans">
+                              <div className="flex items-center gap-3 mt-1.5">
+                                  <span className="text-[10px] sm:text-[11.5px] font-black tracking-[0.22em] text-[#D5A859] uppercase font-sans">
                                       {getSelectionRuleLabel(selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.selectionRule)}
                                   </span>
                                   <div className="h-[1px] bg-[#D5A859]/25 flex-1 w-20"></div>
                               </div>
 
                               {limitPerCategory > 0 && (
-                                  <div className="mt-5 flex items-center gap-2">
+                                  <div className="mt-4 flex items-center gap-2">
                                       {(() => {
                                           const catData = selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory);
                                           const itemsInCat = catData?.items || [];
                                           const selectedCount = itemsInCat.filter((i: string) => selectedItems[i]).length;
                                           const isFull = selectedCount >= limitPerCategory;
                                           return isFull ? (
-                                              <span className="inline-flex items-center gap-2 bg-[#1E8E5A]/8 border border-[#1E8E5A]/25 text-[#1E8E5A] font-extrabold px-3.5 py-1.5 rounded-full text-[11px] tracking-wide uppercase">
-                                                  <Check size={12} strokeWidth={3.5} className="text-[#1E8E5A]" /> Completed selection ({selectedCount}/{limitPerCategory})
+                                              <span className="inline-flex items-center gap-1.5 bg-[#1E8E5A]/8 border border-[#1E8E5A]/25 text-[#1E8E5A] font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
+                                                  <Check size={11} strokeWidth={3.5} className="text-[#1E8E5A]" /> Completed selection ({selectedCount}/{limitPerCategory})
                                               </span>
                                           ) : (
-                                              <span className="inline-flex items-center gap-2 bg-[#FFF8EC] border border-[#D5A859]/30 text-amber-850 font-extrabold px-3.5 py-1.5 rounded-full text-[11px] tracking-wide uppercase">
+                                              <span className="inline-flex items-center gap-1.5 bg-[#FFF8EC] border border-[#D5A859]/30 text-amber-850 font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
                                                   Requires any {limitPerCategory} ({selectedCount} selected)
                                               </span>
                                           );
@@ -1535,7 +1646,7 @@ export default function OrderFlow() {
                   </div>
                   
                   {/* Grid layout - Highly spacious & elevated matching Screenshot 1 */}
-                  <div className="p-3 sm:p-4 lg:p-4.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-3 sm:gap-3.5 xl:gap-4 auto-rows-max overflow-y-auto h-full max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/15 pb-16">
+                  <div className="p-3 sm:p-4 lg:p-4.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-3 sm:gap-3.5 xl:gap-4 auto-rows-max overflow-y-visible lg:overflow-y-auto h-auto lg:h-full max-h-none lg:max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/15 pb-20 lg:pb-16">
                       {(selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.items || []).map((itemName: string, idx: number) => {
                           const isSelected = selectedItems[itemName];
                           const itemsInCat = selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.items || [];
@@ -1686,7 +1797,7 @@ export default function OrderFlow() {
               </div>
 
               {/* RIGHT PANEL - Live Order Summary */}
-              <div className="w-full lg:w-[290px] xl:w-[310px] shrink-0">
+              <div className="hidden lg:block lg:w-[290px] xl:w-[310px] shrink-0">
                   <div className="rounded-[2rem] p-5 pb-6 sticky top-28 overflow-hidden relative flex flex-col h-[calc(100vh-140px)] border border-[#D4AF37]/28" style={{ background: "linear-gradient(135deg, #04140D 0%, #010604 100%)", boxShadow: "0 24px 75px rgba(5,20,13,0.45), 0 0 40px rgba(212,175,55,0.04), inset 0 0 0 1px rgba(255,240,200,0.07)" }}>
                       {/* Inner champagne-gold gilded luxury border double-line */}
                       <div className="absolute inset-2 md:inset-2.5 rounded-[1.6rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
@@ -1911,8 +2022,195 @@ export default function OrderFlow() {
                   </div>
               </div>
           </div>
-      </div>
-      )}
+
+       {/* Mobile Sticky Drawer / Bottom Sheet */}
+       <div className="block lg:hidden">
+           {/* Backdrop overlay */}
+           {mobileCartExpanded && (
+               <div 
+                   className="fixed inset-0 bg-black/75 z-40 transition-opacity duration-300"
+                   onClick={() => setMobileCartExpanded(false)}
+               />
+           )}
+           
+           {/* Bottom Sheet Card */}
+           <div 
+               className={cn(
+                   "fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out rounded-t-[2.5rem] border-t border-[#D4AF37]/50 flex flex-col overflow-hidden",
+                   mobileCartExpanded ? "h-[85vh]" : "h-[74px] shadow-[0_-8px_30px_rgba(5,20,13,0.35)]"
+               )}
+               style={{ 
+                   background: "linear-gradient(135deg, #04140D 0%, #010604 100%)",
+               }}
+           >
+               {/* Champagne double-line gilded border - inside container */}
+               <div className="absolute inset-2.5 rounded-t-[2rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
+               {/* Glow spots */}
+               <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#D5A859]/12 rounded-full pointer-events-none blur-3xl"></div>
+
+               {/* DRAG HANDLE OR EXPANDER TRIGGER */}
+               <div 
+                   className="w-full text-center py-3 relative z-10 cursor-pointer select-none border-b border-white/5"
+                   onClick={() => setMobileCartExpanded(!mobileCartExpanded)}
+               >
+                   {/* Drag handle pill */}
+                   <div className="w-12 h-1.5 bg-[#D4AF37]/45 hover:bg-[#D4AF37]/75 rounded-full mx-auto mb-1 transition-colors"></div>
+                   {!mobileCartExpanded && (
+                       /* Collapsed view internal content */
+                       <div className="flex items-center justify-between px-6 pt-1">
+                           <div className="flex items-center gap-2.5 select-none">
+                               <span className="text-lg">🛒</span>
+                               <div className="text-left leading-none">
+                                   <span className="text-[12px] font-black text-[#FDFBFA] tracking-tight block">
+                                       Your Order ({selectedItemsCount} {selectedItemsCount === 1 ? 'Item' : 'Items'})
+                                   </span>
+                                   <span className="text-[9px] font-bold text-[#D5A859] tracking-wider uppercase block mt-1">
+                                       {guests} Guests Selected
+                                   </span>
+                               </div>
+                           </div>
+                           <div className="flex items-center gap-3">
+                               <span className="text-[16px] font-black font-display text-[#E5C37A]">
+                                   ₹{(currentPerPlatePrice * guests).toLocaleString('en-IN')}
+                               </span>
+                               <span className="text-[10px] bg-[#D4AF37]/20 border border-[#D4AF37]/45 text-[#E6C77D] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
+                                   Expand ⬆
+                               </span>
+                           </div>
+                       </div>
+                   )}
+               </div>
+
+               {mobileCartExpanded && (
+                   /* Expanded bottom sheet view */
+                   <div className="flex-1 flex flex-col relative z-10 overflow-hidden px-5.5 py-4 pt-1.5 pb-24">
+                       {/* Top Bar inside sheet */}
+                       <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4 shrink-0">
+                           <div>
+                               <h3 className="font-display font-black text-2.5xl tracking-tight text-[#FDFBFA]">Your Curated Feast</h3>
+                               <p className="text-[10px] font-black text-[#D5A859] tracking-wider uppercase mt-1">
+                                   {guests} Guests • Base Price: ₹{currentPerPlatePrice} / P
+                               </p>
+                           </div>
+                           <div className="flex items-center gap-2">
+                               <button 
+                                   onClick={() => {
+                                       if (confirm("Are you sure you want to clear your entire selection?")) {
+                                           setSelectedItems({});
+                                       }
+                                   }}
+                                   className="w-9 h-9 rounded-xl bg-white/5 border border-[#D5A859]/25 hover:border-red-900 flex items-center justify-center text-white/55 hover:text-red-300 transition-all cursor-pointer"
+                                   title="Clear all"
+                               >
+                                   <X size={15} />
+                               </button>
+                               <button 
+                                   onClick={() => setMobileCartExpanded(false)}
+                                   className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-[#FDFBFA]"
+                               >
+                                   ✕
+                               </button>
+                           </div>
+                       </div>
+
+                       {/* Scrollable middle list */}
+                       <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                           {menuCategories.map((cat: string) => {
+                               const itemsInCat = (selectedPackage.categories?.find((c: any) => c.categoryName === cat)?.items || []).filter((i: string) => selectedItems[i]);
+                               if (itemsInCat.length === 0) return null;
+                               return (
+                                   <div key={cat} className="space-y-2 mb-3">
+                                       <h4 className="text-[10px] font-black text-[#D5A859] uppercase tracking-wider pl-1">
+                                           {cat}
+                                       </h4>
+                                       <ul className="space-y-1.5">
+                                           {itemsInCat.map((item: string, idx: number) => (
+                                               <li 
+                                                   key={idx} 
+                                                   className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs flex items-center justify-between font-bold text-white/90"
+                                               >
+                                                   <div className="flex items-center gap-1.5 truncate">
+                                                       <span className="text-[#D5A859] text-[9px] shrink-0">◆</span>
+                                                       <span className="truncate leading-none font-sans text-sm">{item}</span>
+                                                   </div>
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => toggleItem(item, cat)}
+                                                       className="w-5.5 h-5.5 rounded-full bg-white/5 hover:bg-rose-900/40 text-white/40 hover:text-white flex items-center justify-center cursor-pointer shrink-0"
+                                                   >
+                                                       <X size={10} />
+                                                   </button>
+                                               </li>
+                                           ))}
+                                       </ul>
+                                   </div>
+                               );
+                           })}
+
+                           {selectedItemsCount === 0 && (
+                               <div className="text-center py-10 text-white/30 text-xs flex flex-col justify-center items-center">
+                                   <span className="text-2xl mb-2">🍽️</span>
+                                   <p className="font-extrabold uppercase text-[#FCE6A9]/80 tracking-widest text-[11px]">Your luxury menu is empty</p>
+                                   <p className="text-white/40 mt-1 max-w-[80%] font-sans text-[11px]">Tap items below to custom design your banquet</p>
+                               </div>
+                           )}
+                       </div>
+
+                       {/* Calculations & Proceed Footer */}
+                       <div className="pt-3 border-t border-white/10 mt-auto shrink-0 space-y-3.5 bg-transparent pb-4">
+                           {/* Estimate row */}
+                           <div className="bg-white/[0.05] border border-[#D5A859]/30 rounded-2xl p-4 flex items-center justify-between select-all">
+                               <div>
+                                   <span className="text-[9px] font-semibold text-[#FFF8EC]/60 block leading-none uppercase mb-1">Total Estimated Investment</span>
+                                   <p className="text-xl font-black font-display text-[#E5C37A] leading-none mb-0.5">
+                                       ₹{(currentPerPlatePrice * guests).toLocaleString('en-IN')}
+                                   </p>
+                               </div>
+                               <span className="text-[10px] text-slate-400 font-sans tracking-wide">
+                                   ₹{currentPerPlatePrice} x {guests} guests
+                               </span>
+                           </div>
+
+                           {/* CTA button */}
+                           <div>
+                               <button 
+                                   onClick={() => {
+                                       if (allCategoriesComplete) {
+                                           setMobileCartExpanded(false);
+                                           setViewMode('checkout');
+                                           window.scrollTo({ top: 0, behavior: 'smooth' });
+                                       } else {
+                                           setMobileCartExpanded(false);
+                                           // Soft scroll indicator
+                                           const catProgress = document.getElementById('completed-categories-box') || document.querySelector('.progress-header');
+                                           if (catProgress) {
+                                               catProgress.scrollIntoView({ behavior: 'smooth' });
+                                           }
+                                       }
+                                   }}
+                                   className="w-full py-4 rounded-xl font-extrabold shadow-lg flex items-center justify-between px-5 uppercase tracking-wider text-[11px] relative duration-300 text-[#0B1F17]"
+                                   style={{
+                                       background: "linear-gradient(135deg, #F4E2B6, #D4AF37, #B8872B)",
+                                       boxShadow: "0 6px 18px rgba(212, 168, 89, 0.3)"
+                                   }}
+                               >
+                                   <span className="font-extrabold tracking-widest">Proceed to Order</span>
+                                   <ChevronRight size={15} strokeWidth={2.5} />
+                               </button>
+
+                               {!allCategoriesComplete && (
+                                   <div className="mt-2 bg-white/[0.04] text-[#FCE6A9]/90 border border-[#D5A859]/15 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-center">
+                                       ℹ️ Please complete all categories to proceed.
+                                   </div>
+                               )}
+                            </div>
+                        </div>
+                    </div>
+               )}
+           </div>
+       </div>
+       </div>
+       )}
 
       {viewMode === 'checkout' && (
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 flex flex-col lg:flex-row gap-8">
