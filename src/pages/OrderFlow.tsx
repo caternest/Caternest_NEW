@@ -1304,12 +1304,12 @@ export default function OrderFlow() {
        )}
 
        {viewMode === 'custom' && selectedPackage && (
-      <div className="flex-1 max-w-[1550px] mx-auto w-full px-4 sm:px-6 lg:px-10 py-8">
-          <div className="flex flex-col lg:flex-row gap-8 xl:gap-[42px] 2xl:gap-[52px]">
+      <div className="flex-1 max-w-full lg:max-w-full xl:max-w-[1380px] 2xl:max-w-[1550px] mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-4.5 xl:gap-5">
               
               {/* LEFT PANEL - Categories */}
-              <div className="w-full lg:w-[260px] xl:w-[260px] shrink-0">
-                  <div className="bg-[#FDFBF6] rounded-[2rem] border border-[#D5A859]/22 p-5 sticky top-28 shadow-[0_12px_40px_rgba(120,90,40,0.05)] max-h-[calc(100vh-140px)] overflow-y-auto">
+              <div className="w-full lg:w-[185px] xl:w-[200px] shrink-0">
+                  <div className="bg-[#FDFBF6] rounded-[1.5rem] border border-[#D5A859]/22 p-3.5 sticky top-28 shadow-[0_10px_30px_rgba(120,90,40,0.04)] max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar">
                       {/* Completed Categories Circular Progress Indicator */}
                       {(() => {
                         const activeCats = menuCategories.filter((cat: string) => {
@@ -1328,31 +1328,31 @@ export default function OrderFlow() {
                         }).length;
                         const pctDone = Math.round((doneCats / (totalCats || 1)) * 100);
                         return (
-                          <div className="mb-4.5">
-                              <p className="text-[10px] font-bold text-[#7A7369] uppercase tracking-widest mb-2.5 font-sans leading-none">Completed Categories</p>
+                          <div className="mb-3.5">
+                              <p className="text-[9px] font-bold text-[#7A7369] uppercase tracking-widest mb-1.5 font-sans leading-none">Completed Categories</p>
                               
-                              <div className="flex items-center gap-3.5 mb-3 select-none">
-                                  <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                              <div className="flex items-center gap-2.5 mb-2 select-none">
+                                  <div className="relative w-11 h-11 shrink-0 flex items-center justify-center">
                                       {/* SVG Circular Progress circle with gold stroke */}
-                                      <svg className="w-14 h-14 transform -rotate-90">
-                                          <circle cx="28" cy="28" r="23" className="stroke-[#F5EFE1]" strokeWidth="3" fill="transparent" />
-                                          <circle cx="28" cy="28" r="23" strokeWidth="3.5" fill="transparent"
-                                              strokeDasharray="144.5"
-                                              strokeDashoffset={144.5 - (144.5 * (doneCats / (totalCats || 1)))}
+                                      <svg className="w-11 h-11 transform -rotate-90">
+                                          <circle cx="22" cy="22" r="18" className="stroke-[#F5EFE1]" strokeWidth="2.5" fill="transparent" />
+                                          <circle cx="22" cy="22" r="18" strokeWidth="3" fill="transparent"
+                                              strokeDasharray="113"
+                                              strokeDashoffset={113 - (113 * (doneCats / (totalCats || 1)))}
                                               strokeLinecap="round"
                                               className="stroke-[#D5A859] transition-all duration-500"
                                           />
                                       </svg>
-                                      <span className="absolute text-xs font-bold font-sans text-[#2A2A2A]">
+                                      <span className="absolute text-[10px] font-bold font-sans text-[#2A2A2A]">
                                           {doneCats}/{totalCats}
                                       </span>
                                   </div>
                                   <div>
-                                      <span className="text-[11px] font-semibold text-[#7A7369] block leading-tight">Progress towards</span>
-                                      <span className="text-base font-bold font-display text-[#123326]">perfect dinner</span>
+                                      <span className="text-[10px] font-semibold text-[#7A7369] block leading-tight">Progress towards</span>
+                                      <span className="text-xs font-bold font-display text-[#123326]">perfect dinner</span>
                                   </div>
                               </div>
-                              <div className="w-full bg-[#F5EFE1] h-[5px] rounded-full overflow-hidden">
+                              <div className="w-full bg-[#F5EFE1] h-[4px] rounded-full overflow-hidden">
                                   <div 
                                       className="bg-gradient-to-r from-[#FCE6A9] via-[#D5A859] to-[#9E7730] h-full rounded-full transition-all duration-500" 
                                       style={{ width: `${pctDone}%` }}
@@ -1362,10 +1362,10 @@ export default function OrderFlow() {
                         );
                       })()}
 
-                      <div className="w-full my-4 border-t-2 border-[#D5A859]/35"></div>
+                      <div className="w-full my-3 border-t border-[#D5A859]/20"></div>
 
-                      <h3 className="font-sans font-bold text-[10px] uppercase tracking-widest text-[#7A7369] mb-3 px-1">Categories</h3>
-                      <div className="space-y-2.5 px-0.5">
+                      <h3 className="font-sans font-bold text-[9px] uppercase tracking-widest text-[#7A7369] mb-2 px-0.5">Categories</h3>
+                      <div className="space-y-1.5 px-0.5">
                           {menuCategories.map((cat: string) => {
                               const catData = selectedPackage.categories?.find((c: any) => c.categoryName === cat);
                               const catItems = catData?.items || [];
@@ -1382,13 +1382,13 @@ export default function OrderFlow() {
                                       key={cat}
                                       onClick={() => setActiveCategory(cat)}
                                       className={cn(
-                                          "w-full text-left px-4.5 py-3.5 rounded-2xl transition-all border-2 text-[13.5px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
+                                          "w-full text-left px-3.5 py-2.5 rounded-xl transition-all border text-[12px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
                                           isActive 
-                                             ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_8px_25px_rgba(11,31,23,0.18)]" 
-                                             : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/25 hover:border-[#D4AF37]/50 hover:bg-[#FAF4E5] shadow-[0_3px_10px_rgba(120,90,40,0.04)]"
+                                             ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_6px_18px_rgba(11,31,23,0.15)]" 
+                                             : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 hover:border-[#D4AF37]/40 hover:bg-[#FAF4E5] shadow-[0_2px_6px_rgba(120,90,40,0.02)]"
                                       )}
                                   >
-                                      <div className="flex items-center gap-3.5 min-w-0">
+                                      <div className="flex items-center gap-2.5 min-w-0">
                                           <span className={cn("shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-[#E6C77D]" : "text-[#123326] transition-colors group-hover:text-[#D5A859]")}>
                                               {getCategoryIcon(cat)}
                                           </span>
@@ -1399,7 +1399,7 @@ export default function OrderFlow() {
                                           {catLimit > 0 ? (
                                               isDone ? (
                                                   <span className={cn(
-                                                      "text-[9.5px] px-2.5 py-0.5 rounded-full font-black flex items-center gap-0.5 uppercase tracking-wide shrink-0 border",
+                                                      "text-[8.5px] px-1.5 py-0.5 rounded-full font-black flex items-center gap-0.5 uppercase tracking-wide shrink-0 border",
                                                       isActive 
                                                           ? "bg-white/10 text-[#E6C77D] border-transparent" 
                                                           : "bg-[#27AE60]/15 text-[#1E8E5A] border-transparent"
@@ -1408,7 +1408,7 @@ export default function OrderFlow() {
                                                   </span>
                                               ) : (
                                                   <span className={cn(
-                                                      "text-[9.5px] px-2.5 py-0.5 rounded-full font-black tracking-wide shrink-0 border uppercase",
+                                                      "text-[8.5px] px-1.5 py-0.5 rounded-full font-black tracking-wide shrink-0 border uppercase",
                                                       isActive 
                                                           ? "bg-white/15 text-white border-transparent" 
                                                           : "bg-slate-50 text-slate-500 border-slate-200/85"
@@ -1418,7 +1418,7 @@ export default function OrderFlow() {
                                               )
                                           ) : (
                                               <span className={cn(
-                                                  "text-[9.5px] px-2.5 py-0.5 rounded-full font-black shrink-0 border",
+                                                  "text-[8.5px] px-1.5 py-0.5 rounded-full font-black shrink-0 border",
                                                   isActive 
                                                      ? "bg-white/15 text-white border-transparent" 
                                                      : "bg-slate-50 text-slate-500 border-slate-100"
@@ -1429,11 +1429,11 @@ export default function OrderFlow() {
 
                                           {isActive ? (
                                               <span className="text-[#E6C77D] translate-x-0.5 transition-transform">
-                                                  <ChevronRight size={15} strokeWidth={3} />
+                                                  <ChevronRight size={11} strokeWidth={3} />
                                               </span>
                                           ) : (
                                               <span className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#D5A859]/70">
-                                                  <ChevronRight size={14} strokeWidth={2} />
+                                                  <ChevronRight size={11} strokeWidth={2} />
                                               </span>
                                           )}
                                       </div>
@@ -1443,16 +1443,16 @@ export default function OrderFlow() {
                       </div>
 
                       {/* Great Choice Paragraph message Card - Premium style matching Screenshot 1 */}
-                      <div className="mt-8 bg-[#FFFDF9] border border-[#D5A859]/30 rounded-2xl p-5 relative overflow-hidden select-none shadow-[inset_0_1px_5px_rgba(213,168,89,0.05),0_8px_24px_rgba(213,168,89,0.04)]">
+                      <div className="mt-5 bg-[#FFFDF9] border border-[#D5A859]/30 rounded-xl p-3.5 relative overflow-hidden select-none shadow-[inset_0_1px_5px_rgba(213,168,89,0.05),0_8px_24px_rgba(213,168,89,0.04)]">
                           {/* Rich vertical highlight border tag */}
-                          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#E6C77D] via-[#D5A859] to-[#9E7730] opacity-90"></div>
-                          <div className="flex gap-3.5 items-start pl-1.5">
-                              <div className="w-8 h-8 rounded-full bg-[#FFF8EC] flex items-center justify-center border border-[#D5A859]/25 shadow-sm text-sm shrink-0">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#E6C77D] via-[#D5A859] to-[#9E7730] opacity-90"></div>
+                          <div className="flex gap-2.5 items-start pl-0.5">
+                              <div className="w-6.5 h-6.5 rounded-full bg-[#FFF8EC] flex items-center justify-center border border-[#D5A859]/25 shadow-sm text-xs shrink-0">
                                   👑
                               </div>
                               <div>
-                                  <p className="text-[11px] font-bold text-[#123326] tracking-wider mb-1 font-sans uppercase">Great choice!</p>
-                                  <p className="text-[12.5px] text-[#554F46] font-medium leading-relaxed">
+                                  <p className="text-[10px] font-bold text-[#123326] tracking-wider mb-0.5 font-sans uppercase">Great choice!</p>
+                                  <p className="text-[11px] text-[#554F46] font-medium leading-normal">
                                       You are building a delicious menu
                                   </p>
                               </div>
@@ -1467,13 +1467,13 @@ export default function OrderFlow() {
                   style={{
                       backgroundColor: "#FDFBF6",
                       border: "1px solid rgba(212,175,55,0.35)",
-                      borderRadius: "32px",
-                      boxShadow: "0 20px 40px rgba(120,90,40,0.08), inset 0 0 0 1px rgba(255,240,200,0.4)",
-                      minHeight: "700px"
+                      borderRadius: "28px",
+                      boxShadow: "0 15px 30px rgba(120,90,40,0.06), inset 0 0 0 1px rgba(255,240,200,0.3)",
+                      minHeight: "650px"
                   }}
               >
                   {/* Category Header Area */}
-                  <div className="p-10 pb-8 border-b border-[#D5A859]/15 bg-transparent">
+                  <div className="p-6 md:p-8 pb-5 md:pb-6 border-b border-[#D5A859]/15 bg-transparent">
                       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                           <div>
                               <h2 
@@ -1535,7 +1535,7 @@ export default function OrderFlow() {
                   </div>
                   
                   {/* Grid layout - Highly spacious & elevated matching Screenshot 1 */}
-                  <div className="p-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6 auto-rows-max overflow-y-auto h-full max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/15 pb-16">
+                  <div className="p-3 sm:p-4 lg:p-4.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-3 sm:gap-3.5 xl:gap-4 auto-rows-max overflow-y-auto h-full max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/15 pb-16">
                       {(selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.items || []).map((itemName: string, idx: number) => {
                           const isSelected = selectedItems[itemName];
                           const itemsInCat = selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.items || [];
@@ -1554,8 +1554,9 @@ export default function OrderFlow() {
                                       if (!isDisabled) toggleItem(itemName, activeCategory);
                                   }}
                                   onMouseEnter={() => setHoveredCardIdx(idx)}
-                                                                    className={cn(
-                                      "dish-card-item relative bg-[#FFFDF9] rounded-[18px] flex flex-col justify-between p-4 pt-5.5 pb-3.5 transition-all duration-300 cursor-pointer select-none min-h-[148px] xl:min-h-[158px]",
+                                  onMouseLeave={() => setHoveredCardIdx(null)}
+                                  className={cn(
+                                      "dish-card-item relative bg-[#FFFDF9] rounded-[16px] flex flex-col justify-between p-3.5 pt-4.5 pb-3 transition-all duration-300 cursor-pointer select-none min-h-[135px] xl:min-h-[145px]",
                                       isSelected 
                                           ? "bg-[#FFF8EC]/60" 
                                           : isDisabled 
@@ -1620,14 +1621,14 @@ export default function OrderFlow() {
                                   </div>
 
                                   {/* Item Name - Beautiful Playfair display serif, scaled up */}
-                                  <div className="flex-1 flex flex-col justify-center my-2 px-1 min-h-[50px] xl:min-h-[58px]">
+                                  <div className="flex-1 flex flex-col justify-center my-1.5 px-0.5 min-h-[44px] xl:min-h-[48px]">
                                       <h4 
-                                          className="text-[18px] sm:text-[20px] lg:text-[21px] xl:text-[22px] font-bold font-display text-[#0B1F17] leading-snug text-center line-clamp-2 select-all"
+                                          className="text-[15.5px] sm:text-[16.5px] lg:text-[17px] xl:text-[17.5px] font-bold font-display text-[#0B1F17] leading-snug text-center line-clamp-2 select-all"
                                           style={{
                                               fontFamily: '"Playfair Display", Georgia, serif',
                                               whiteSpace: 'normal',
                                               wordBreak: 'keep-all',
-                                              overflowWrap: 'normal'
+                                              overflowWrap: 'break-word'
                                           }}
                                       >
                                           {itemName}
@@ -1685,10 +1686,10 @@ export default function OrderFlow() {
               </div>
 
               {/* RIGHT PANEL - Live Order Summary */}
-              <div className="w-full lg:w-[380px] xl:w-[410px] shrink-0">
-                  <div className="rounded-[2.5rem] p-7 pb-8 sticky top-28 overflow-hidden relative flex flex-col h-[calc(100vh-140px)] border border-[#D4AF37]/28" style={{ background: "linear-gradient(135deg, #04140D 0%, #010604 100%)", boxShadow: "0 24px 75px rgba(5,20,13,0.45), 0 0 40px rgba(212,175,55,0.04), inset 0 0 0 1px rgba(255,240,200,0.07)" }}>
+              <div className="w-full lg:w-[290px] xl:w-[310px] shrink-0">
+                  <div className="rounded-[2rem] p-5 pb-6 sticky top-28 overflow-hidden relative flex flex-col h-[calc(100vh-140px)] border border-[#D4AF37]/28" style={{ background: "linear-gradient(135deg, #04140D 0%, #010604 100%)", boxShadow: "0 24px 75px rgba(5,20,13,0.45), 0 0 40px rgba(212,175,55,0.04), inset 0 0 0 1px rgba(255,240,200,0.07)" }}>
                       {/* Inner champagne-gold gilded luxury border double-line */}
-                      <div className="absolute inset-3 rounded-[2rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
+                      <div className="absolute inset-2 md:inset-2.5 rounded-[1.6rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
                       {/* Ambient background luxury glows */}
                       <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#D5A859]/12 rounded-full pointer-events-none blur-3xl"></div>
                       <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-[#FCE6A9]/6 rounded-full pointer-events-none blur-3xl"></div>

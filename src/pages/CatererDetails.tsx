@@ -1864,7 +1864,7 @@ export default function CatererDetails() {
       <div className="w-full bg-[#FAF8F3] relative overflow-x-hidden">
 
           {/* SECTION 1: HERO CONTAINER WITH INTEGRATED COVER BANNER */}
-      <div className="relative w-full bg-[#0B3D2E] text-white pt-6 pb-12 mt-[72px] rounded-b-[3.5rem] border-b-4 border-[#D4A437]/25 shadow-[0_15px_40px_rgba(11,61,46,0.15)] overflow-hidden">
+      <div className="relative w-full bg-[#0B3D2E] text-white pt-4 pb-8 mt-[64px] rounded-b-[2.5rem] border-b-[3px] border-[#D4A437]/25 shadow-[0_10px_30px_rgba(11,61,46,0.12)] overflow-hidden">
         {/* Background Cover Banner - Lighter 80% opacity to remain vibrant and visible */}
         <div className="absolute inset-0 z-0">
           {editedCaterer && isEditing ? (
@@ -1901,18 +1901,18 @@ export default function CatererDetails() {
 
         </div>
 
-        <div className="relative z-10 max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-between">
+        <div className="relative z-10 max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-between">
           {/* Top Row: Navigation buttons */}
-          <div className="flex justify-between items-center w-full mb-8">
-            <div className="flex gap-2.5">
+          <div className="flex justify-between items-center w-full mb-5">
+            <div className="flex gap-2">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95"
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-[11px] cursor-pointer hover:scale-105 active:scale-95"
               >
-                <ChevronLeft size={16} /> Back to Caterers
+                <ChevronLeft size={14} /> Back to Caterers
               </button>
               {isOwnerOrAdmin && isEditing && (
-                <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95 font-sans">
+                <label className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-[11px] cursor-pointer hover:scale-105 active:scale-95 font-sans font-medium">
                   Change Cover 🔒
                   <input
                     type="file"
@@ -1929,13 +1929,13 @@ export default function CatererDetails() {
                 </label>
               )}
             </div>
-            <div className="flex gap-3.5 items-center font-sans">
+            <div className="flex gap-2.5 items-center font-sans">
               {isOwnerOrAdmin && isEditing && (
                 <>
                   <button
                     type="button"
                     onClick={handleSaveChanges}
-                    className="flex items-center gap-2 bg-[#01A378] hover:bg-[#028b67] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-xs cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
+                    className="flex items-center gap-1.5 bg-[#01A378] hover:bg-[#028b67] text-white px-4 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[11px] cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
                   >
                     SAVE CHANGES
                   </button>
@@ -1945,7 +1945,7 @@ export default function CatererDetails() {
                       setIsEditing(false);
                       setEditedCaterer({ ...caterer });
                     }}
-                    className="flex items-center gap-2 bg-[#D11A2A] hover:bg-[#b01421] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-xs cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
+                    className="flex items-center gap-1.5 bg-[#D11A2A] hover:bg-[#b01421] text-white px-4 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[11px] cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
                   >
                     CANCEL
                   </button>
@@ -1960,24 +1960,24 @@ export default function CatererDetails() {
                       setEditedCaterer({ ...caterer });
                     }
                   }}
-                  className="flex items-center gap-2 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] hover:shadow-[0_8px_25px_rgba(222,170,56,0.38)] text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-4.5 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] hover:shadow-[0_8px_25px_rgba(222,170,56,0.38)] text-[11px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
                 >
                   Edit Profile
                 </button>
               )}
               <button 
                 onClick={handleShare}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/25 backdrop-blur-md text-white px-5 py-2.5 rounded-full font-bold transition-all duration-300 w-fit border border-white/20 shadow-sm text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/25 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all duration-300 w-fit border border-white/20 shadow-sm text-[11px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
               >
                 Share
               </button>
             </div>
           </div>
           {/* Identity Row */}
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mt-4 mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mt-3 mb-3">
             {/* Left Section: Glassmorphism Dark Blur Panel */}
             <div
-              className="flex flex-col md:flex-row items-center gap-6 md:gap-8 p-6 md:py-6 md:px-8 rounded-[20px] border border-[#D4A437]/25 w-full lg:max-w-[85%] xl:max-w-[80%] shadow-[0_12px_42px_rgba(0,0,0,0.35)] text-center md:text-left"
+              className="flex flex-col md:flex-row items-center gap-5 md:gap-6 p-5 md:py-4 md:px-6 rounded-2xl border border-[#D4A437]/20 w-full lg:max-w-[85%] xl:max-w-[80%] shadow-[0_10px_30px_rgba(0,0,0,0.3)] text-center md:text-left"
               style={{
                 background: "rgba(0,0,0,0.45)",
                 backdropFilter: "blur(12px)",
@@ -1987,7 +1987,7 @@ export default function CatererDetails() {
               {/* Round Logo card without wreath ornaments (flawless premium design) */}
               <div className="shrink-0 select-none relative group">
                 {/* White logo rounded card background */}
-                <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-white rounded-full p-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.25),_0_0_15px_rgba(212,164,55,0.15)] border-4 border-[#D4A437] flex items-center justify-center overflow-hidden hover:scale-105 transition-transform duration-300 relative">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-white rounded-full p-2 shadow-[0_10px_30px_rgba(0,0,0,0.2),_0_0_12px_rgba(212,164,55,0.12)] border-[3px] border-[#D4A437] flex items-center justify-center overflow-hidden hover:scale-105 transition-transform duration-300 relative">
                   {editedCaterer && isEditing ? (
                     <>
                       {editedCaterer.logo ? (
@@ -2022,7 +2022,7 @@ export default function CatererDetails() {
                       className="w-full h-full object-cover rounded-full"
                     />
                   ) : (
-                    <span className="font-display font-medium text-[#0B3D2E] text-4xl uppercase tracking-wider">
+                    <span className="font-display font-medium text-[#0B3D2E] text-3xl uppercase tracking-wider">
                       {caterer.name.substring(0, 2)}
                     </span>
                   )}
@@ -2100,7 +2100,7 @@ export default function CatererDetails() {
                   </div>
                 ) : (
                   <>
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-white tracking-wider uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-none max-w-2xl select-text flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-extrabold text-white tracking-wider uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-none max-w-2xl select-text flex flex-wrap items-center gap-x-3 gap-y-1">
                       {targetCatererObj.brandName || targetCatererObj.name || targetCatererObj.businessName}{" "}
                       {targetCatererObj.status === "Approved" && (
                         <span
@@ -2112,29 +2112,29 @@ export default function CatererDetails() {
                       )}
                     </h1>
                     {targetCatererObj.tagline && (
-                      <p className="text-[#DEAA38] text-xs sm:text-sm font-bold tracking-[0.25em] uppercase mt-3.5 font-sans">
+                      <p className="text-[#DEAA38] text-xs sm:text-xs font-bold tracking-[0.2em] uppercase mt-2.5 font-sans">
                         ✦ {targetCatererObj.tagline} ✦
                       </p>
                     )}
 
                     {/* Location & Details Area */}
-                    <div className="flex items-center gap-1.5 text-slate-100/95 hover:text-white font-medium text-xs sm:text-sm mt-3 transition-colors">
-                      <MapPin size={14} className="text-[#D4A437]" />
+                    <div className="flex items-center gap-1.5 text-slate-100/95 hover:text-white font-medium text-[11px] sm:text-xs mt-2.5 transition-colors">
+                      <MapPin size={13} className="text-[#D4A437]" />
                       <span>{targetCatererObj.address || targetCatererObj.location}</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-slate-200 text-xs sm:text-sm font-semibold mt-2">
+                    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-slate-200 text-[11px] sm:text-xs font-semibold mt-2">
                       {targetCatererObj.rating && (
                         <div className="flex items-center gap-1.5">
                           <Star
-                            size={14}
+                            size={13}
                             className="fill-[#D4A437] stroke-[#D4A437]"
                           />
                           <span className="font-extrabold text-[#D4A437]">
                             {targetCatererObj.rating}
                           </span>
                           {targetCatererObj.reviewCount && (
-                            <span className="text-slate-300 font-medium">
+                            <span className="text-slate-350 font-medium font-sans">
                               ({targetCatererObj.reviewCount} Reviews)
                             </span>
                           )}
@@ -2157,17 +2157,17 @@ export default function CatererDetails() {
             </div>
 
             {/* Right Section: Explore Menu button */}
-            <div className="w-full lg:w-auto shrink-0 flex justify-center mt-4 lg:mt-0 pb-1 lg:pb-0">
+            <div className="w-full lg:w-auto shrink-0 flex justify-center mt-3 lg:mt-0 pb-1 lg:pb-0">
               <button
                 onClick={() => {
                   document
                     .getElementById("menu-packages")
                     ?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="w-full sm:w-auto px-10 py-4 bg-[#D4A437] hover:bg-[#E0B84C] text-white font-black tracking-widest text-xs uppercase rounded-2xl border border-[rgba(212,164,55,0.4)] shadow-[0_4px_20px_rgba(212,164,55,0.35),0_10px_25px_rgba(212,164,55,0.2)] flex items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-[2px] active:scale-95 group/btn cursor-pointer font-sans"
+                className="w-full sm:w-auto px-7 py-3 bg-[#D4A437] hover:bg-[#E0B84C] text-white font-black tracking-widest text-[11px] uppercase rounded-xl border border-[rgba(212,164,55,0.4)] shadow-[0_3px_12px_rgba(212,164,55,0.22)] flex items-center justify-center gap-2.5 transition-all duration-300 hover:-translate-y-[2px] active:scale-95 group/btn cursor-pointer font-sans"
               >
                 <BookOpen
-                  size={16}
+                  size={14}
                   className="text-white group-hover/btn:scale-110 transition-transform"
                 />
                 BOOK NOW
@@ -2247,8 +2247,8 @@ export default function CatererDetails() {
             if (!hasAnyVisibleHighlights && !isEditing) return null;
 
             return (
-              <div className="w-full mt-10">
-                <div className="bg-[#0B3D2E]/95 backdrop-blur-md rounded-3xl border border-[#D4A437]/30 shadow-[0_12px_40px_rgba(11,61,46,0.35),_0_0_15px_rgba(212,164,55,0.15)] px-6 py-5 lg:py-4 lg:px-10 flex flex-wrap items-center justify-around text-white gap-6">
+              <div className="w-full mt-6">
+                <div className="bg-[#0B3D2E]/95 backdrop-blur-md rounded-2xl border border-[#D4A437]/25 shadow-[0_10px_30px_rgba(11,61,46,0.25),_0_0_12px_rgba(212,164,55,0.1)] px-5 py-3 lg:py-2.5 lg:px-7 flex flex-wrap items-center justify-around text-white gap-4 lg:gap-5">
                   
                   {activeHighlightsList.map((hl, listIdx) => {
                     const IconComp = hl.icon;
@@ -2258,17 +2258,17 @@ export default function CatererDetails() {
                     return (
                       <React.Fragment key={`${hl.type}-${hl.index ?? listIdx}`}>
                         {listIdx > 0 && (
-                          <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
+                          <div className="hidden lg:block w-px h-6 bg-[#D4A437]/20"></div>
                         )}
-                        <div className="flex items-center gap-3 min-w-[140px] md:min-w-0 relative group">
-                          <div className={`p-2.5 rounded-xl border border-white/5 text-[#D4A437] transition-all duration-300 ${isConfigured ? 'bg-white/10' : 'bg-white/5 opacity-40 border-dashed border-white/20'}`}>
-                            <IconComp size={18} />
+                        <div className="flex items-center gap-2.5 min-w-[130px] md:min-w-0 relative group">
+                          <div className={`p-1.5 rounded-lg border border-white/5 text-[#D4A437] transition-all duration-300 ${isConfigured ? 'bg-white/10' : 'bg-white/5 opacity-40 border-dashed border-white/20'}`}>
+                            <IconComp size={15} />
                           </div>
-                          <div className="text-left pr-6">
-                            <div className={`font-extrabold text-sm lg:text-base leading-tight ${isConfigured ? 'text-white' : 'text-white/40 italic'}`}>
+                          <div className="text-left pr-4">
+                            <div className={`font-extrabold text-xs lg:text-[13px] leading-tight ${isConfigured ? 'text-white' : 'text-white/40 italic'}`}>
                               {hl.title}
                             </div>
-                            <div className={`text-[10px] uppercase tracking-wider font-extrabold font-sans ${isConfigured ? 'text-[#D4A437]' : 'text-[#D4A437]/45'}`}>
+                            <div className={`text-[8.5px] uppercase tracking-wider font-extrabold font-sans ${isConfigured ? 'text-[#D4A437]' : 'text-[#D4A437]/45'}`}>
                               {hl.subtitle}
                             </div>
                           </div>
@@ -2282,7 +2282,7 @@ export default function CatererDetails() {
                                 onClick={() => openEditHighlightModal(hl.type === 'dynamic' ? hl.index! : hl.type as any)}
                                 className="p-1 hover:bg-white/10 rounded text-amber-400 transition cursor-pointer"
                               >
-                                <Pencil size={11} />
+                                <Pencil size={10} />
                               </button>
                               <button
                                 type="button"
@@ -2290,7 +2290,7 @@ export default function CatererDetails() {
                                 onClick={() => handleDeleteHighlight(hl.type === 'dynamic' ? hl.index! : hl.type as any)}
                                 className="p-1 hover:bg-red-500/20 rounded text-red-500 transition cursor-pointer"
                               >
-                                <Trash2 size={11} />
+                                <Trash2 size={10} />
                               </button>
                             </div>
                           )}
@@ -2303,17 +2303,17 @@ export default function CatererDetails() {
                   {displayObj.whatsappNumber && (
                     <>
                       {activeHighlightsList.length > 0 && (
-                        <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
+                        <div className="hidden lg:block w-px h-6 bg-[#D4A437]/20"></div>
                       )}
-                      <div className="flex items-center gap-3 min-w-[140px] md:min-w-0">
-                        <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[#D4A437]">
-                          <MessageCircle size={18} />
+                      <div className="flex items-center gap-2.5 min-w-[130px] md:min-w-0">
+                        <div className="bg-white/10 p-1.5 rounded-lg border border-white/5 text-[#D4A437]">
+                          <MessageCircle size={15} />
                         </div>
                         <div className="text-left">
-                          <div className="font-extrabold text-sm lg:text-base text-white leading-tight">
+                          <div className="font-extrabold text-xs lg:text-[13px] text-white leading-tight">
                             Interactive
                           </div>
-                          <div className="text-[10px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans font-sans">
+                          <div className="text-[8.5px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans">
                             WhatsApp Booking
                           </div>
                         </div>
@@ -2327,9 +2327,9 @@ export default function CatererDetails() {
                       <button
                         type="button"
                         onClick={() => openEditHighlightModal(null)}
-                        className="flex items-center gap-1.5 bg-[#D4A437]/25 hover:bg-[#D4A437]/45 text-[#D4A437] font-black tracking-wider uppercase px-4 py-2 rounded-full border border-[#D4A437]/40 text-[10px] transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                        className="flex items-center gap-1 bg-[#D4A437]/25 hover:bg-[#D4A437]/45 text-[#D4A437] font-black tracking-wider uppercase px-3.5 py-1.5 rounded-full border border-[#D4A437]/40 text-[9px] transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
                       >
-                        <Plus size={13} className="stroke-[3]" />
+                        <Plus size={12} className="stroke-[3]" />
                         Add Highlight
                       </button>
                     </div>
@@ -2343,8 +2343,8 @@ export default function CatererDetails() {
       </div>
 
       {/* SECTION 1.5: TABS BAR SYSTEM (Cream Palette) */}
-      <div className="max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mt-6 mb-10 relative z-30">
-        <div className="bg-white p-2 rounded-3xl md:rounded-full border-2 border-[#D4A437]/45 flex flex-wrap md:flex-nowrap gap-1.5 md:gap-2.5 shadow-[0_8px_32px_rgba(212,164,55,0.12)] overflow-x-auto no-scrollbar justify-center md:justify-start w-full md:w-max">
+      <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-7 relative z-30">
+        <div className="bg-white p-1.5 rounded-2xl md:rounded-full border border-[#D4A437]/40 flex flex-wrap md:flex-nowrap gap-1 md:gap-2 shadow-[0_6px_24px_rgba(212,164,55,0.08)] overflow-x-auto no-scrollbar justify-center md:justify-start w-full md:w-max">
           {[
             "Overview",
             "Packages",
@@ -2359,45 +2359,45 @@ export default function CatererDetails() {
                 key={tab}
                 onClick={() => handleTabClick(tab)}
                 className={cn(
-                  "px-5 py-2.5 rounded-full font-extrabold text-xs tracking-wider uppercase whitespace-nowrap transition-all duration-300 flex items-center gap-2 cursor-pointer border-2",
+                  "px-4 py-2 rounded-full font-extrabold text-[11px] tracking-wide uppercase whitespace-nowrap transition-all duration-300 flex items-center gap-1.5 cursor-pointer border-[1.5px]",
                   isActive
-                    ? "bg-[#0B3D2E] text-white border-[#D4A437] shadow-[0_4px_14px_rgba(11,61,46,0.25)] scale-[1.03]"
+                    ? "bg-[#0B3D2E] text-white border-[#D4A437] shadow-[0_3px_10px_rgba(11,61,46,0.2)] scale-[1.02]"
                     : "bg-transparent text-slate-800 hover:text-[#0B3D2E] hover:bg-[#0B3D2E]/5 border-transparent",
                 )}
               >
                 {tab === "Overview" && (
                   <LayoutGrid
-                    size={13}
+                    size={11}
                     className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
                   />
                 )}
                 {tab === "Packages" && (
                   <Package
-                    size={13}
+                    size={11}
                     className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
                   />
                 )}
                 {tab === "Menu" && (
                   <MenuSquare
-                    size={13}
+                    size={11}
                     className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
                   />
                 )}
                 {tab === "Gallery" && (
                   <ImageIcon
-                    size={13}
+                    size={11}
                     className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
                   />
                 )}
                 {tab === "Reviews" && (
                   <Star
-                    size={13}
+                    size={11}
                     className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
                   />
                 )}
                 {tab === "About Us" && (
                   <User
-                    size={13}
+                    size={11}
                     className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
                   />
                 )}
@@ -2408,14 +2408,14 @@ export default function CatererDetails() {
         </div>
       </div>
 
-      <div className="max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 relative z-30">
-        <div className="grid grid-cols-1 gap-8 items-start my-8">
+      <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 relative z-30">
+        <div className="grid grid-cols-1 gap-6 items-start my-6">
           {/* LEFT COLUMN (72% width) */}
-          <div className="flex flex-col gap-8 w-full">
+          <div className="flex flex-col gap-6 w-full">
             {/* SECTION 2: SERVICES DESK & MENU EXPLORE - Horizontal bar */}
             <div
               id="overview-section"
-              className="bg-white rounded-3xl p-6 shadow-sm border border-[#D4A437]/20 flex flex-col xl:flex-row items-center gap-8 overflow-hidden relative z-10 hover:shadow-md transition-shadow"
+              className="bg-white rounded-2xl p-5 shadow-sm border border-[#D4A437]/15 flex flex-col xl:flex-row items-center gap-6 overflow-hidden relative z-10 hover:shadow-md transition-shadow"
             >
               {/* Founder Mini Info */}
               {isEditing ? (
@@ -2471,27 +2471,27 @@ export default function CatererDetails() {
               ) : targetCatererObj.ownerName || targetCatererObj.founderName ? (
                 <div
                   id="founder-info"
-                  className="flex items-center gap-4 shrink-0 pr-8 xl:border-r border-slate-200 w-full xl:w-auto"
+                  className="flex items-center gap-3.5 shrink-0 pr-6 xl:border-r border-slate-200 w-full xl:w-auto"
                 >
                   {targetCatererObj.ownerPhoto ? (
                     <img
                       src={targetCatererObj.ownerPhoto}
                       alt="Founder"
-                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                      className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
-                      <User size={24} className="text-slate-400" />
+                    <div className="w-14 h-14 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
+                      <User size={20} className="text-slate-400" />
                     </div>
                   )}
                   <div className="text-left">
-                    <p className="text-xs font-bold text-[#D4A437] uppercase tracking-widest">
+                    <p className="text-[10px] font-bold text-[#D4A437] uppercase tracking-widest">
                       Founder
                     </p>
-                    <p className="font-bold text-slate-900 text-lg">
+                    <p className="font-bold text-slate-900 text-base">
                       {targetCatererObj.founderName || targetCatererObj.ownerName}
                     </p>
-                    <p className="text-xs text-slate-500 max-w-[180px] line-clamp-2 mt-0.5">
+                    <p className="text-[11px] text-slate-500 max-w-[170px] line-clamp-2 mt-0.5">
                       {targetCatererObj.founderDescription ||
                         "Passionate about serving delicious food."}
                     </p>
@@ -2515,13 +2515,13 @@ export default function CatererDetails() {
                           : ""
                     }
                     onChange={(e) => setEditedCaterer({ ...editedCaterer, specializations: e.target.value })}
-                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-xs outline-none w-full"
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs outline-none w-full"
                     placeholder="e.g. Wedding, Corporate, Birthday, North Indian (Comma separated)"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Split multiple specializations using commas</p>
+                  <p className="text-[10px] text-slate-400 mt-1 pb-1">Split multiple specializations using commas</p>
                 </div>
               ) : (
-                <div className="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-x-8 gap-y-4 px-4 w-full">
+                <div className="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-x-6 gap-y-3 px-3 w-full">
                   {(() => {
                     const currentSpecList = targetCatererObj.specializations
                       ? typeof targetCatererObj.specializations === "string"
@@ -2543,12 +2543,12 @@ export default function CatererDetails() {
                       return (
                         <div
                           key={i}
-                          className="flex flex-col items-center gap-2 text-center max-w-[80px]"
+                          className="flex flex-col items-center gap-1.5 text-center max-w-[70px]"
                         >
-                          <div className="text-[#D4A437] bg-amber-50 p-3 rounded-xl">
-                            <GenericIcon size={24} strokeWidth={1.5} />
+                          <div className="text-[#D4A437] bg-amber-50 p-2.5 rounded-lg">
+                            <GenericIcon size={20} strokeWidth={1.5} />
                           </div>
-                          <span className="text-[11px] font-bold text-slate-700 leading-tight">
+                          <span className="text-[10px] font-bold text-slate-700 leading-tight">
                             {spec}
                           </span>
                         </div>
@@ -2559,30 +2559,30 @@ export default function CatererDetails() {
               )}
 
               {/* Menu Explore Button */}
-              <div className="shrink-0 w-full xl:w-auto mt-4 xl:mt-0">
+              <div className="shrink-0 w-full xl:w-auto mt-3 xl:mt-0">
                 <button
                   onClick={() => {
                     document
                       .getElementById("menu-packages")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="w-full xl:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-[#0B3D2E] text-white font-bold rounded-xl shadow-lg hover:bg-[#124f3c] transition-colors uppercase tracking-widest text-sm relative overflow-hidden group"
+                  className="w-full xl:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#0B3D2E] text-white font-bold rounded-lg shadow-md hover:bg-[#124f3c] transition-colors uppercase tracking-widest text-xs relative overflow-hidden group"
                 >
                   <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 w-1/3 skew-x-12"></div>
-                  <BookOpen size={20} /> MENU EXPLORE
+                  <BookOpen size={16} /> MENU EXPLORE
                 </button>
               </div>
             </div>
 
             {/* SECTION 3: BUSINESS INFORMATION CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               {/* Branches Details */}
               {true ? (
-                <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[20px] p-5 border border-[#D4AF37]/25 shadow-[0_8px_30px_rgba(212,175,55,0.04)] hover:shadow-[0_15px_40px_rgba(212,175,55,0.12)] hover:border-[#D4AF37]/40 transition-[box-shadow,border-color,transform] duration-500 flex flex-col h-full group">
                   <div className="flex justify-between items-center w-full">
-                    <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                    <h3 className="font-display font-bold text-[#0F3D2E] text-base flex items-center gap-2 uppercase tracking-wide">
                       <Building
-                        size={22}
+                        size={18}
                         className="text-[#D4AF37]"
                         strokeWidth={1.5}
                       />{" "}
@@ -2597,7 +2597,7 @@ export default function CatererDetails() {
                         }}
                         className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
                       >
-                        <Pencil size={12} /> Edit
+                        <Pencil size={11} /> Edit
                       </button>
                     )}
                   </div>
@@ -2718,11 +2718,11 @@ export default function CatererDetails() {
 
               {/* Service Areas */}
               {true ? (
-                <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[20px] p-5 border border-[#D4AF37]/25 shadow-[0_8px_30px_rgba(212,175,55,0.04)] hover:shadow-[0_15px_40px_rgba(212,175,55,0.12)] hover:border-[#D4AF37]/40 transition-[box-shadow,border-color,transform] duration-500 flex flex-col h-full group">
                   <div className="flex justify-between items-center w-full">
-                    <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                    <h3 className="font-display font-bold text-[#0F3D2E] text-base flex items-center gap-2 uppercase tracking-wide">
                       <MapPin
-                        size={22}
+                        size={18}
                         className="text-[#D4AF37]"
                         strokeWidth={1.5}
                       />{" "}
@@ -2737,7 +2737,7 @@ export default function CatererDetails() {
                         }}
                         className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
                       >
-                        <Pencil size={12} /> Edit
+                        <Pencil size={11} /> Edit
                       </button>
                     )}
                   </div>
@@ -2828,11 +2828,11 @@ export default function CatererDetails() {
 
               {/* Operating Hours */}
               {true ? (
-                <div className="md:col-span-12 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                <div className="md:col-span-12 lg:col-span-4 bg-white/95 rounded-[20px] p-5 border border-[#D4AF37]/25 shadow-[0_8px_30px_rgba(212,175,55,0.04)] hover:shadow-[0_15px_40px_rgba(212,175,55,0.12)] hover:border-[#D4AF37]/40 transition-[box-shadow,border-color,transform] duration-500 flex flex-col h-full group">
                   <div className="flex justify-between items-center w-full">
-                    <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                    <h3 className="font-display font-bold text-[#0F3D2E] text-base flex items-center gap-2 uppercase tracking-wide">
                       <Clock
-                        size={22}
+                        size={18}
                         className="text-[#D4AF37]"
                         strokeWidth={1.5}
                       />{" "}
@@ -2847,7 +2847,7 @@ export default function CatererDetails() {
                         }}
                         className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
                       >
-                        <Pencil size={12} /> Edit
+                        <Pencil size={11} /> Edit
                       </button>
                     )}
                   </div>
@@ -2939,10 +2939,10 @@ export default function CatererDetails() {
 
               {/* Track Record (Experience & Events) changed to Achievements */}
               {true ? (
-                <div className="md:col-span-6 lg:col-span-5 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                  <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                <div className="md:col-span-6 lg:col-span-5 bg-white/95 rounded-[20px] p-5 border border-[#D4AF37]/25 shadow-[0_8px_30px_rgba(212,175,55,0.04)] hover:shadow-[0_15px_40px_rgba(212,175,55,0.12)] hover:border-[#D4AF37]/40 transition-[box-shadow,border-color,transform] duration-500 flex flex-col h-full group">
+                  <h3 className="font-display font-bold text-[#0F3D2E] text-base flex items-center gap-2 uppercase tracking-wide">
                     <Award
-                      size={22}
+                      size={18}
                       className="text-[#D4AF37]"
                       strokeWidth={1.5}
                     />{" "}
@@ -3040,10 +3040,10 @@ export default function CatererDetails() {
 
               {/* Awards / Certifications */}
               {true ? (
-                <div className="md:col-span-12 lg:col-span-7 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
-                  <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                <div className="md:col-span-12 lg:col-span-7 bg-white/95 rounded-[20px] p-5 border border-[#D4AF37]/25 shadow-[0_8px_30px_rgba(212,175,55,0.04)] hover:shadow-[0_15px_40px_rgba(212,175,55,0.12)] hover:border-[#D4AF37]/40 transition-[box-shadow,border-color,transform] duration-500 flex flex-col h-full group">
+                  <h3 className="font-display font-bold text-[#0F3D2E] text-base flex items-center gap-2 uppercase tracking-wide">
                     <Award
-                      size={22}
+                      size={18}
                       className="text-[#D4AF37]"
                       strokeWidth={1.5}
                     />{" "}
@@ -3138,10 +3138,10 @@ export default function CatererDetails() {
             {/* SECTION 4: GALLERY OVERVIEW */}
             <div
               id="gallery-section"
-              className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100"
+              className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="uppercase tracking-widest text-[#0B3D2E] font-bold flex items-center gap-1.5">
+                <h3 className="uppercase tracking-widest text-[#0B3D2E] font-bold flex items-center gap-1.5 text-sm">
                   <span className="text-[#D4A437]">✦</span> Gallery
                 </h3>
                 {isEditing && (
@@ -3263,41 +3263,41 @@ export default function CatererDetails() {
             {/* SECTION 6: MENU PACKAGES */}
             <section
               id="menu-packages"
-              className="bg-[#FCFAF5] rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-amber-200/30 relative overflow-hidden select-none"
+              className="bg-[#FCFAF5] rounded-[1.75rem] p-5 md:p-6 shadow-sm border border-amber-200/25 relative overflow-hidden select-none"
             >
-              <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-amber-100/15 to-transparent rounded-bl-full pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-85 h-85 bg-gradient-to-bl from-amber-100/15 to-transparent rounded-bl-full pointer-events-none"></div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-6 mb-8 pb-6 border-b border-amber-200/40">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 pb-4 border-b border-amber-200/30">
                 <div className="text-center sm:text-left select-none">
-                  <h2 className="text-2xl font-display font-black text-[#051410] tracking-tight relative inline-block">
+                  <h2 className="text-xl font-display font-black text-[#051410] tracking-tight relative inline-block">
                     Choose Your Package
                   </h2>
-                  <div className="flex items-center justify-center sm:justify-start gap-1 text-[#DEAA38] mt-1 text-xs font-serif">
+                  <div className="flex items-center justify-center sm:justify-start gap-1 text-[#DEAA38] mt-0.5 text-[11px] font-serif">
                     <span className="opacity-40">⏤⊰</span>
-                    <span className="text-xs">❃</span>
-                    <span className="font-bold uppercase tracking-wider text-[9px] text-[#D4A437] font-sans mx-1">
+                    <span className="text-[11px]">❃</span>
+                    <span className="font-bold uppercase tracking-wider text-[8px] text-[#D4A437] font-sans mx-1">
                       Premium Selections
                     </span>
-                    <span className="text-xs">❃</span>
+                    <span className="text-[11px]">❃</span>
                     <span className="opacity-40">⊱⏤</span>
                   </div>
                 </div>
 
                 {/* Guest Selector Counter */}
-                <div className="bg-gradient-to-r from-stone-50 to-[#FFFDF5] border border-amber-200/60 rounded-xl p-1.5 px-3 flex items-center gap-3 shadow-[0_4px_12px_rgba(222,170,56,0.06)]">
+                <div className="bg-gradient-to-r from-stone-50 to-[#FFFDF5] border border-amber-200/50 rounded-lg p-1 px-2.5 flex items-center gap-2.5 shadow-[0_3px_10px_rgba(222,170,56,0.04)]">
                   <button
                     onClick={() =>
                       setGuestCount((prev) => Math.max(10, prev - 10))
                     }
-                    className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-base select-none cursor-pointer"
+                    className="w-6 h-6 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-sm select-none cursor-pointer"
                   >
                     −
                   </button>
-                  <div className="text-center min-w-[55px] select-none">
-                    <span className="block text-sm font-black text-slate-800 leading-none">
+                  <div className="text-center min-w-[50px] select-none">
+                    <span className="block text-xs font-black text-slate-800 leading-none">
                       {guestCount}
                     </span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">
+                    <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">
                       Guests
                     </span>
                   </div>
@@ -3305,7 +3305,7 @@ export default function CatererDetails() {
                     onClick={() =>
                       setGuestCount((prev) => Math.min(3000, prev + 10))
                     }
-                    className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-base select-none cursor-pointer"
+                    className="w-6 h-6 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-sm select-none cursor-pointer"
                   >
                     +
                   </button>
