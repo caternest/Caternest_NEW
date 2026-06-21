@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB } from '../lib/supabase';
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
           .order('created_at', { ascending: false });
         if (!regError && regData) {
           setRegistrations(regData);
-          localStorage.setItem('registrations', JSON.stringify(regData));
+          safeSaveRegistrations(regData);
         }
 
         // Fetch orders
@@ -545,7 +545,7 @@ export default function AdminDashboard() {
 
       const updated = registrations.map(x => x.id === id ? { ...x, ...updatePayload } : x);
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       logAudit('Moved to Trash', r?.businessName || id);
       setDeleteConfirm(null);
       toast('Caterer moved to Trash', 'success');
@@ -570,7 +570,7 @@ export default function AdminDashboard() {
 
       const updated = registrations.map(x => x.id === id ? { ...x, ...updatePayload } : x);
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       logAudit('Restored from Trash', r?.businessName || id);
       toast('Caterer restored and moved to Pending Review.', 'success');
   };
@@ -589,7 +589,7 @@ export default function AdminDashboard() {
 
       const updated = registrations.filter(x => x.id !== id);
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       logAudit('Permanently Deleted', r?.businessName || id);
       setPermanentDeleteConfirm(null);
       toast('Caterer permanently deleted', 'success');
@@ -631,7 +631,7 @@ export default function AdminDashboard() {
 
     const updated = finalRegs.map(r => r.id === id ? { ...r, status: newStatus } : r);
     setRegistrations(updated);
-    localStorage.setItem('registrations', JSON.stringify(updated));
+    safeSaveRegistrations(updated);
     toast(`Caterer marked as ${newStatus}`, 'success');
   };
 
@@ -720,7 +720,7 @@ export default function AdminDashboard() {
           // Sync local react state first
           const updated = registrations.map(r => r.id === id ? { ...r, ...mergedPayload } : r);
           setRegistrations(updated);
-          localStorage.setItem('registrations', JSON.stringify(updated));
+          safeSaveRegistrations(updated);
 
           // Log to audit log
           await logAudit(
@@ -764,7 +764,7 @@ export default function AdminDashboard() {
           return r;
       });
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       toast('Profile updates approved!', 'success');
   };
 
@@ -789,7 +789,7 @@ export default function AdminDashboard() {
           return r;
       });
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       if (item && item.pendingUpdates) {
           await logAudit(
               "Reject Profile Update", 

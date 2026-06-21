@@ -862,6 +862,62 @@ export default function CatererDetails() {
       finalLocalCatererState["pendingUpdates"] = finalPendingUpdates;
     }
 
+    // ADDED DEBUG LOGS
+    console.log("=== CATERNEST DATA SYNCHRONIZATION AUDIT LOGS ===");
+    const directKeys = [
+        { name: "Brand Public Name", field: "brandName", col: "includedItems._fallback_brandName" },
+        { name: "Brand Tagline", field: "tagline", col: "includedItems._fallback_tagline" },
+        { name: "Description", field: "description", col: "includedItems._fallback_description" },
+        { name: "Experience Years", field: "experience", col: "includedItems._fallback_experience" },
+        { name: "Events Completed", field: "eventsCompleted", col: "includedItems._fallback_eventsCompleted" },
+        { name: "Awards", field: "awards", col: "includedItems._fallback_awards" },
+        { name: "Certifications", field: "certifications", col: "includedItems._fallback_certifications" },
+        { name: "Operating Hours", field: "operatingHours", col: "includedItems._fallback_operatingHours" },
+        { name: "Branch Count", field: "branches", col: "includedItems._fallback_branches" },
+        { name: "Service Areas", field: "serviceAreas", col: "includedItems._fallback_serviceAreas" },
+        { name: "WhatsApp Number", field: "whatsappNumber", col: "includedItems._fallback_whatsappNumber" },
+        { name: "HQ Address", field: "address", col: "address" },
+        { name: "City", field: "city", col: "city" },
+        { name: "Services", field: "services", col: "includedItems._fallback_services" },
+        { name: "Achievements", field: "achievements", col: "includedItems._fallback_achievements" },
+        { name: "Highlights", field: "highlights", col: "includedItems._fallback_highlights" },
+        { name: "Specializations", field: "specializations", col: "includedItems._fallback_specializations" }
+    ];
+    directKeys.forEach(({ name, field, col }) => {
+        const oldVal = (caterer as any)[field];
+        const newVal = tableUpdatePayload[field];
+        if (oldVal !== newVal && newVal !== undefined) {
+            console.log(`[SYNC DEBUG] Field: "${name}", Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "${col}"`);
+        }
+    });
+
+    const sensitiveKeysMapping = [
+        { name: "Founder Name", field: "ownerName", col: "owner" },
+        { name: "Legal Business Name", field: "businessName", col: "businessName" },
+        { name: "Phone/Mobile", field: "phone", col: "phone" },
+        { name: "Alternate Phone", field: "alternatePhone", col: "alternatePhone" },
+        { name: "Email", field: "email", col: "email" },
+        { name: "FSSAI", field: "fssai", col: "fssaiNumber" },
+        { name: "GST", field: "gst", col: "gstNumber" },
+        { name: "PAN", field: "pan", col: "panNumber" },
+        { name: "Logo", field: "logo", col: "logo" },
+        { name: "Cover Banner", field: "coverBanner", col: "coverBanner" },
+        { name: "Founder Photo", field: "ownerPhoto", col: "ownerPhoto" },
+        { name: "Branch Photo", field: "branchPhoto", col: "branchPhoto" }
+    ];
+    sensitiveKeysMapping.forEach(({ name, field, col }) => {
+        const oldVal = (caterer as any)[field];
+        const newVal = editedCaterer[field];
+        if (oldVal !== newVal && newVal !== undefined) {
+             if (isAdmin) {
+                 console.log(`[SYNC DEBUG] Field: "${name}" (SENSITIVE - Admin Direct Save), Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "${col}"`);
+             } else {
+                 console.log(`[SYNC DEBUG] Field: "${name}" (SENSITIVE), Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "pendingUpdates.${field} (Admin review required)"`);
+             }
+        }
+    });
+    console.log("================================================");
+
     // 1. Update in Supabase
     const supabase = getSupabase() as any;
     if (supabase) {
@@ -903,7 +959,36 @@ export default function CatererDetails() {
           }
           return c;
         });
-        localStorage.setItem("registrations", JSON.stringify(updated));
+
+        try {
+          localStorage.setItem("registrations", JSON.stringify(updated));
+        } catch (error: any) {
+          if (error.name === "QuotaExceededError" || error.message?.includes("quota") || error.message?.includes("exceeded")) {
+            console.warn("[QuotaExceededError] localStorage quota exceeded in Details. Cleaning large datasets inside cache.");
+            const cleaned = updated.map((c: any) => {
+              const copy = { ...c };
+              delete copy.galleryPhotos;
+              delete copy.menuPackages;
+              delete copy.packages;
+              delete copy.draftMenuPackages;
+              delete copy.images;
+              if (copy.includedItems && typeof copy.includedItems === "object") {
+                const incCopy = { ...copy.includedItems };
+                delete incCopy._fallback_galleryPhotos;
+                delete incCopy._fallback_menuPackages;
+                delete incCopy._fallback_packages;
+                delete incCopy._fallback_draftMenuPackages;
+                delete incCopy._fallback_images;
+                copy.includedItems = incCopy;
+              }
+              return copy;
+            });
+            localStorage.setItem("registrations", JSON.stringify(cleaned));
+            console.log("[QuotaExceededError Resolved] Successfully saved cleaned registrations cache inside Details.");
+          } else {
+            throw error;
+          }
+        }
       } catch (e) {
         console.error("Failed to update localStorage:", e);
       }
@@ -2725,6 +2810,7 @@ export default function CatererDetails() {
                     achievementsList={achievementsList}
                     user={user}
                     CrownOrnament={CrownOrnament}
+                    experienceVal={experienceVal}
                   />
 
                   <ServicesOfferCard

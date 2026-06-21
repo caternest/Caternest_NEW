@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import { ChefHat, Menu, X, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabase } from '../lib/supabase';
@@ -38,7 +38,7 @@ export default function Navbar() {
           .select('*');
         if (!error && data) {
           setRegistrations(data);
-          localStorage.setItem('registrations', JSON.stringify(data));
+          safeSaveRegistrations(data);
         }
       } catch (err) {
         console.error("Failed to fetch registrations in Navbar:", err);

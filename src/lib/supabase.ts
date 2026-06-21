@@ -29,7 +29,7 @@ let supabaseInstance: any = null;
 
 const tableWhitelists: Record<string, string[]> = {
   caterer_registrations: [
-    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'ownerName',
+    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'ownerName', 'name',
     'phone', 'alternatePhone', 'email', 'address', 'city', 'cuisine',
     'categories', 'minGuests', 'pricePerPlate', 'status', 'verificationStatus',
     'menuUploaded', 'panNumber', 'aadhaarNumber', 'fssaiNumber', 'gstNumber',
@@ -38,7 +38,8 @@ const tableWhitelists: Record<string, string[]> = {
     'galleryPhotos', 'draftMenuPackages', 'aadhaarUrl', 'panUrl', 'fssaiUrl',
     'gstUrl', 'otherDocsUrl', 'rating', 'reviewCount', 'email_verified',
     'experience', 'eventsCompleted', 'awards', 'certifications', 'brandName',
-    'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas', 'pendingUpdates'
+    'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas', 'pendingUpdates',
+    'description', 'services', 'achievements', 'highlights', 'specializations'
   ],
   orders: [
     'id', 'created_at', 'updated_at', 'userId', 'catererId', 'catererName',
@@ -136,7 +137,7 @@ export function getSupabase() {
                                 const fallbackKeys = [
                                   'experience', 'eventsCompleted', 'awards', 'certifications',
                                   'brandName', 'tagline', 'whatsappNumber', 'operatingHours',
-                                  'branches', 'serviceAreas'
+                                  'branches', 'serviceAreas', 'description', 'services', 'achievements', 'highlights', 'specializations'
                                 ];
                                 fallbackKeys.forEach(k => {
                                   const fallbackKey = `_fallback_${k}`;
@@ -192,7 +193,8 @@ export function getSupabase() {
                             if (item && typeof item === 'object') {
                               const virtualKeys = [
                                 'pendingUpdates', 'experience', 'eventsCompleted', 'awards', 'certifications',
-                                'brandName', 'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas'
+                                'brandName', 'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas',
+                                'description', 'services', 'achievements', 'highlights', 'specializations'
                               ];
                               const fallbackObj: any = {};
                               let hasVirtual = false;

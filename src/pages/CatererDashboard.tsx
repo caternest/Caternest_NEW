@@ -766,8 +766,66 @@ export default function CatererDashboard() {
           whatsappNumber: profileFormData.whatsappNumber || null,
           address: profileFormData.location || null,
           city: profileFormData.city || null,
+          services: caterer.services || null,
+          achievements: caterer.achievements || null,
+          highlights: caterer.highlights || null,
+          specializations: caterer.specializations || null,
           pendingUpdates: finalPendingUpdates
       };
+
+      // ADDED DEBUG LOGS
+      console.log("=== CATERNEST DATA SYNCHRONIZATION AUDIT LOGS ===");
+      const directKeys = [
+          { name: "Brand Public Name", field: "brandName", col: "includedItems._fallback_brandName" },
+          { name: "Brand Tagline", field: "tagline", col: "includedItems._fallback_tagline" },
+          { name: "Description", field: "description", col: "includedItems._fallback_description" },
+          { name: "Experience Years", field: "experience", col: "includedItems._fallback_experience" },
+          { name: "Events Completed", field: "eventsCompleted", col: "includedItems._fallback_eventsCompleted" },
+          { name: "Awards", field: "awards", col: "includedItems._fallback_awards" },
+          { name: "Certifications", field: "certifications", col: "includedItems._fallback_certifications" },
+          { name: "Operating Hours", field: "operatingHours", col: "includedItems._fallback_operatingHours" },
+          { name: "Branch Count", field: "branches", col: "includedItems._fallback_branches" },
+          { name: "Service Areas", field: "serviceAreas", col: "includedItems._fallback_serviceAreas" },
+          { name: "WhatsApp Number", field: "whatsappNumber", col: "includedItems._fallback_whatsappNumber" },
+          { name: "HQ Address", field: "address", col: "address" },
+          { name: "City", field: "city", col: "city" }
+      ];
+      directKeys.forEach(({ name, field, col }) => {
+          const oldVal = (caterer as any)[field];
+          const newVal = (directPayload as any)[field];
+          if (oldVal !== newVal) {
+              console.log(`[SYNC DEBUG] Field: "${name}", Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "${col}"`);
+          }
+      });
+
+      const sensitiveKeysMapping = [
+          { name: "Founder Name", field: "ownerName", col: "owner" },
+          { name: "Legal Business Name", field: "businessName", col: "businessName" },
+          { name: "Phone/Mobile", field: "mobile", col: "phone" },
+          { name: "Alternate Phone", field: "alternateMobile", col: "alternatePhone" },
+          { name: "Email", field: "email", col: "email" },
+          { name: "FSSAI", field: "fssai", col: "fssaiNumber" },
+          { name: "GST", field: "gst", col: "gstNumber" },
+          { name: "PAN", field: "pan", col: "panNumber" },
+          { name: "Logo", field: "logo", col: "logo" },
+          { name: "Cover Banner", field: "coverBanner", col: "coverBanner" },
+          { name: "Founder Photo", field: "ownerPhoto", col: "ownerPhoto" },
+          { name: "Branch Photo", field: "branchPhoto", col: "branchPhoto" }
+      ];
+      sensitiveKeysMapping.forEach(({ name, field, col }) => {
+          const oldVal = field === "ownerPhoto" ? (caterer.ownerPhoto || caterer.founderImageUrl) :
+                         field === "mobile" ? caterer.phone :
+                         field === "alternateMobile" ? caterer.alternatePhone :
+                         field === "fssai" ? (caterer.fssaiNumber || caterer.fssai) :
+                         field === "gst" ? (caterer.gstNumber || caterer.gst) :
+                         field === "pan" ? (caterer.panNumber || caterer.pan) :
+                         (caterer as any)[field];
+          const newVal = (sensitivePayload as any)[field];
+          if (oldVal !== newVal) {
+              console.log(`[SYNC DEBUG] Field: "${name}" (SENSITIVE), Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "pendingUpdates.${field} (Admin review required)"`);
+          }
+      });
+      console.log("================================================");
 
       const supabase = getSupabase() as any;
       if (supabase) {
@@ -805,10 +863,43 @@ export default function CatererDashboard() {
                   toast('Profile saved successfully!', 'success');
               }
               refreshData();
-          } catch (err) {
-              console.error("Quota exceeded during save", err);
-              alert("The profile update request was saved on Supabase! Cache cleared locally.");
-              refreshData();
+          } catch (err: any) {
+              if (err.name === "QuotaExceededError" || err.message?.includes("quota") || err.message?.includes("exceeded")) {
+                  console.warn("[QuotaExceededError] localStorage quota exceeded in Dashboard. Cleaning large datasets inside cache.");
+                  const cleaned = updated.map((c: any) => {
+                      const copy = { ...c };
+                      delete copy.galleryPhotos;
+                      delete copy.menuPackages;
+                      delete copy.packages;
+                      delete copy.draftMenuPackages;
+                      delete copy.images;
+                      if (copy.includedItems && typeof copy.includedItems === "object") {
+                          const incCopy = { ...copy.includedItems };
+                          delete incCopy._fallback_galleryPhotos;
+                          delete incCopy._fallback_menuPackages;
+                          delete incCopy._fallback_packages;
+                          delete incCopy._fallback_draftMenuPackages;
+                          delete incCopy._fallback_images;
+                          copy.includedItems = incCopy;
+                      }
+                      return copy;
+                  });
+                  try {
+                      localStorage.setItem('registrations', JSON.stringify(cleaned));
+                      if (hasSensitiveChanges) {
+                          toast('Sensitive changes require Admin Review. Profile update requested.', 'success');
+                      } else {
+                          toast('Profile saved successfully!', 'success');
+                      }
+                      refreshData();
+                  } catch (innerErr) {
+                      console.error("Quota exceeded even after cleanup", innerErr);
+                      alert("The profile update request was saved on Supabase! Cache cleared locally.");
+                      refreshData();
+                  }
+              } else {
+                  console.error("Error setting localStorage registrations:", err);
+              }
           }
       }
   };

@@ -79,6 +79,7 @@ interface SectionProps {
   achievementsList: any[];
   user: any;
   CrownOrnament: React.ComponentType<{ theme: any }>;
+  experienceVal?: any;
 }
 
 /* ==========================================================================

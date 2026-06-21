@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DEMO_CATERERS } from '../data';
 import { Link, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Search, ChevronRight, ChevronLeft, Check, ChefHat, Heart, Users, Award, MenuSquare, ImageIcon } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { getSupabase } from '../lib/supabase';
 
@@ -119,7 +119,7 @@ export default function Explore() {
             
             allCaterers = [...allCaterers, ...formattedCaterers];
             // Cache locally
-            localStorage.setItem('registrations', JSON.stringify(data));
+            safeSaveRegistrations(data);
           }
         } catch (e: any) {
           console.error("Error fetching registrations from Supabase in Explore page, falling back to local:", e);
