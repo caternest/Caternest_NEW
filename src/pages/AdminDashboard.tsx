@@ -6,8 +6,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB } from '../lib/supabase';
 import { generateUUID } from '../lib/orderUtils';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  const adminEmail = user?.email || 'admin@caternest.com';
+
   const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings'>('overview');
   const [foodItemImages, setFoodItemImages] = useState<any[]>([]);
   const [platformFeePerPlate, setPlatformFeePerPlate] = useState<number>(2);
@@ -146,7 +150,7 @@ export default function AdminDashboard() {
           timestamp: new Date().toISOString(),
           action,
           details: `User action on entity: ${entityName}`,
-          user_email: 'admin@quickchef.com',
+          user_email: adminEmail,
           role: 'Admin'
       };
       
@@ -159,7 +163,7 @@ export default function AdminDashboard() {
         }
       }
       
-      const updatedLogs = [{ ...newLog, date: newLog.timestamp, by: 'Admin', entity: entityName }, ...existingLogs];
+      const updatedLogs = [{ ...newLog, date: newLog.timestamp, by: user?.name || adminEmail, entity: entityName }, ...existingLogs];
       localStorage.setItem('auditLogs', JSON.stringify(updatedLogs));
       setAuditLogs(updatedLogs);
   };
@@ -721,7 +725,7 @@ export default function AdminDashboard() {
           // Log to audit log
           await logAudit(
               "Approve Profile Update", 
-              `${item.businessName || item.name || 'Caterer'} | Req By: ${payloadPending._requestedBy || item.owner || 'N/A'} | Req At: ${payloadPending._requestedAt ? new Date(payloadPending._requestedAt).toLocaleString() : 'N/A'} | Appr By: admin@quickchef.com | Appr At: ${new Date().toLocaleString()}`
+              `${item.businessName || item.name || 'Caterer'} | Req By: ${payloadPending._requestedBy || item.owner || 'N/A'} | Req At: ${payloadPending._requestedAt ? new Date(payloadPending._requestedAt).toLocaleString() : 'N/A'} | Appr By: ${adminEmail} | Appr At: ${new Date().toLocaleString()}`
           );
 
           // Force immediately re-fetch/pull the caterer record from Supabase to guarantee eventual consistency across sessions
@@ -789,7 +793,7 @@ export default function AdminDashboard() {
       if (item && item.pendingUpdates) {
           await logAudit(
               "Reject Profile Update", 
-              `${item.businessName || item.name} | Req By: ${item.pendingUpdates._requestedBy || item.owner || 'N/A'} | Req At: ${item.pendingUpdates._requestedAt ? new Date(item.pendingUpdates._requestedAt).toLocaleString() : 'N/A'} | Rej By: admin@quickchef.com | Rej At: ${new Date().toLocaleString()}`
+              `${item.businessName || item.name} | Req By: ${item.pendingUpdates._requestedBy || item.owner || 'N/A'} | Req At: ${item.pendingUpdates._requestedAt ? new Date(item.pendingUpdates._requestedAt).toLocaleString() : 'N/A'} | Rej By: ${adminEmail} | Rej At: ${new Date().toLocaleString()}`
           );
       }
       toast('Profile updates rejected.', 'success');
@@ -1174,7 +1178,7 @@ export default function AdminDashboard() {
                                   const businessName = parts[0]?.replace('User action on entity: ', '') || log.entity || 'Unknown Caterer';
                                   const reqBy = parts.find((p: string) => p.startsWith('Req By:'))?.replace('Req By: ', '') || 'N/A';
                                   const reqAt = parts.find((p: string) => p.startsWith('Req At:'))?.replace('Req At: ', '') || 'N/A';
-                                  const processedBy = parts.find((p: string) => p.startsWith('Appr By:') || p.startsWith('Rej By:'))?.replace('Appr By: ', '')?.replace('Rej By: ', '') || log.by || 'admin@quickchef.com';
+                                  const processedBy = parts.find((p: string) => p.startsWith('Appr By:') || p.startsWith('Rej By:'))?.replace('Appr By: ', '')?.replace('Rej By: ', '') || log.by || 'admin@caternest.com';
                                   const processedAt = parts.find((p: string) => p.startsWith('Appr At:') || p.startsWith('Rej At:'))?.replace('Appr At: ', '')?.replace('Rej At: ', '') || new Date(log.timestamp || log.date).toLocaleString();
 
                                   const isApprove = log.action === "Approve Profile Update";
