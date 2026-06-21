@@ -110,28 +110,49 @@ export function getSupabase() {
           return (tableName: string) => {
             const queryBuilder = target.from(tableName);
 
-            return new Proxy(queryBuilder, {
-              get(qTarget, qProp) {
-                if (qProp === 'insert' || qProp === 'upsert' || qProp === 'update') {
-                  return (values: any, options?: any) => {
-                    const sanitized = sanitizePayload(tableName, values);
-                    if (tableName === 'orders') {
-                      console.log("ORDERS UPSERT PAYLOAD", sanitized);
-                    }
-                    if (tableName === 'notifications') {
-                      console.log("NOTIFICATION PAYLOAD", sanitized);
-                    }
-
-                    let promise = qTarget[qProp](sanitized, options);
-                    const originalThen = promise.then;
-
-                    promise.then = function (onfulfilled?: any, onrejected?: any) {
-                      return originalThen.call(promise, (result: any) => {
+            // Wrap builder recursively to intercept then resolutions and map fallbacks
+            const wrapBuilder = (builder: any): any => {
+              return new Proxy(builder, {
+                get(bTarget, bProp, bReceiver) {
+                  if (bProp === 'then') {
+                    const originalThen = bTarget.then;
+                    return function (onfulfilled?: any, onrejected?: any) {
+                      return originalThen.call(bTarget, (result: any) => {
                         if (result?.error) {
                           if (tableName === 'orders') {
                             console.error("ORDERS UPSERT ERROR", result.error);
                           } else if (tableName === 'notifications') {
                             console.error("NOTIFICATION ERROR", result.error);
+                          }
+                        }
+
+                        if (result && result.data) {
+                          if (tableName === 'caterer_registrations') {
+                            const processRow = (row: any) => {
+                              if (row && row.includedItems && typeof row.includedItems === 'object') {
+                                if (row.includedItems._fallback_pendingUpdates !== undefined) {
+                                  row.pendingUpdates = row.includedItems._fallback_pendingUpdates;
+                                }
+                                const fallbackKeys = [
+                                  'experience', 'eventsCompleted', 'awards', 'certifications',
+                                  'brandName', 'tagline', 'whatsappNumber', 'operatingHours',
+                                  'branches', 'serviceAreas'
+                                ];
+                                fallbackKeys.forEach(k => {
+                                  const fallbackKey = `_fallback_${k}`;
+                                  if (row.includedItems[fallbackKey] !== undefined) {
+                                    row[k] = row.includedItems[fallbackKey];
+                                  }
+                                });
+                              }
+                              return row;
+                            };
+
+                            if (Array.isArray(result.data)) {
+                              result.data.forEach(processRow);
+                            } else {
+                              processRow(result.data);
+                            }
                           }
                         }
                         return onfulfilled ? onfulfilled(result) : result;
@@ -144,14 +165,94 @@ export function getSupabase() {
                         return onrejected ? onrejected(err) : Promise.reject(err);
                       });
                     };
+                  }
 
-                    return promise;
-                  };
+                  const value = bTarget[bProp];
+                  if (typeof value === 'function') {
+                    return (...args: any[]) => {
+                      let processedArgs = args;
+
+                      // Intercept insert/update/upsert parameters to extract virtual fallback keys
+                      if (tableName === 'caterer_registrations' && (bProp === 'insert' || bProp === 'update' || bProp === 'upsert')) {
+                        const originalPayload = args[0];
+                        if (originalPayload) {
+                          const clonePayload = (item: any): any => {
+                            if (!item || typeof item !== 'object') return item;
+                            return { ...item };
+                          };
+                          
+                          let processedPayload;
+                          if (Array.isArray(originalPayload)) {
+                            processedPayload = originalPayload.map(clonePayload);
+                          } else {
+                            processedPayload = clonePayload(originalPayload);
+                          }
+
+                          const processPayloadItems = (item: any) => {
+                            if (item && typeof item === 'object') {
+                              const virtualKeys = [
+                                'pendingUpdates', 'experience', 'eventsCompleted', 'awards', 'certifications',
+                                'brandName', 'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas'
+                              ];
+                              const fallbackObj: any = {};
+                              let hasVirtual = false;
+                              virtualKeys.forEach(k => {
+                                if (item[k] !== undefined) {
+                                  fallbackObj[`_fallback_${k}`] = item[k];
+                                  hasVirtual = true;
+                                }
+                              });
+
+                              if (hasVirtual) {
+                                const existingIncluded = item.includedItems || {};
+                                const mergedIncluded = typeof existingIncluded === 'object' && !Array.isArray(existingIncluded)
+                                  ? { ...existingIncluded, ...fallbackObj }
+                                  : { _fallback_list: existingIncluded, ...fallbackObj };
+                                item.includedItems = mergedIncluded;
+                              }
+
+                              // Remove from actual database payload so it doesn't trigger PGRST204 mismatch error
+                              virtualKeys.forEach(k => {
+                                delete item[k];
+                              });
+                            }
+                          };
+
+                          if (Array.isArray(processedPayload)) {
+                            processedPayload.forEach(processPayloadItems);
+                          } else {
+                            processPayloadItems(processedPayload);
+                          }
+                          processedArgs = [processedPayload, ...args.slice(1)];
+                        }
+                      }
+
+                      // Apply sanitization using pre-existing helper
+                      if (bProp === 'insert' || bProp === 'upsert' || bProp === 'update') {
+                        const values = processedArgs[0];
+                        const sanitized = sanitizePayload(tableName, values);
+                        if (tableName === 'orders') {
+                          console.log("ORDERS UPSERT PAYLOAD", sanitized);
+                        }
+                        if (tableName === 'notifications') {
+                          console.log("NOTIFICATION PAYLOAD", sanitized);
+                        }
+                        processedArgs = [sanitized, ...processedArgs.slice(1)];
+                      }
+
+                      const res = value.apply(bTarget, processedArgs);
+                      if (res && typeof res === 'object' && typeof res.then === 'function') {
+                        return wrapBuilder(res);
+                      }
+                      return res;
+                    };
+                  }
+                  return value;
                 }
-                const value = qTarget[qProp as keyof typeof qTarget];
-                return typeof value === 'function' ? value.bind(qTarget) : value;
-              }
-            });
+              });
+            };
+
+            return wrapBuilder(queryBuilder);
           };
         }
         const value = target[prop as keyof typeof target];
