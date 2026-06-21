@@ -37,7 +37,13 @@ export default function AdminDashboard() {
 
   const fetchFoodImages = () => {
     fetch('/api/food-images')
-      .then(res => res.json())
+      .then(res => {
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          return res.json();
+        }
+        throw new Error(`Response was not JSON. Status: ${res.status}`);
+      })
       .then(data => {
         if (data && data.success && Array.isArray(data.images)) {
           setFoodItemImages(data.images);
@@ -661,6 +667,10 @@ export default function AdminDashboard() {
           const updated = registrations.map(r => r.id === id ? { ...r, ...mergedPayload } : r);
           setRegistrations(updated);
           localStorage.setItem('registrations', JSON.stringify(updated));
+          await logAudit(
+              "Approve Profile Update", 
+              `${item.businessName || item.name} | Req By: ${item.pendingUpdates._requestedBy || item.owner || 'N/A'} | Req At: ${item.pendingUpdates._requestedAt ? new Date(item.pendingUpdates._requestedAt).toLocaleString() : 'N/A'} | Appr By: admin@quickchef.com | Appr At: ${new Date().toLocaleString()}`
+          );
           toast('Profile updates approved!', 'success');
           return;
       }
@@ -698,6 +708,7 @@ export default function AdminDashboard() {
   };
 
   const handleRejectProfileUpdate = async (id: string) => {
+      const item = registrations.find(r => r.id === id);
       const supabase = getSupabase() as any;
       if (supabase) {
         try {
@@ -718,6 +729,12 @@ export default function AdminDashboard() {
       });
       setRegistrations(updated);
       localStorage.setItem('registrations', JSON.stringify(updated));
+      if (item && item.pendingUpdates) {
+          await logAudit(
+              "Reject Profile Update", 
+              `${item.businessName || item.name} | Req By: ${item.pendingUpdates._requestedBy || item.owner || 'N/A'} | Req At: ${item.pendingUpdates._requestedAt ? new Date(item.pendingUpdates._requestedAt).toLocaleString() : 'N/A'} | Rej By: admin@quickchef.com | Rej At: ${new Date().toLocaleString()}`
+          );
+      }
       toast('Profile updates rejected.', 'success');
   };
   
@@ -1007,8 +1024,12 @@ export default function AdminDashboard() {
                          <div key={r.id} className="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden">
                              <div className="p-6 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
                                  <div>
-                                     <h2 className="font-bold text-lg text-blue-900">Profile Update: {r.businessName}</h2>
-                                     <p className="text-sm text-blue-700 mt-1">Requested by {r.owner} ({r.email})</p>
+                                     <h2 className="font-bold text-lg text-[#173D32]">Profile Update: {r.businessName || r.name}</h2>
+                                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                                         <span><strong>Requested By:</strong> {r.pendingUpdates?._requestedBy || r.owner || 'Caterer'}</span>
+                                         <span className="text-slate-300">|</span>
+                                         <span><strong>Requested On:</strong> {r.pendingUpdates?._requestedAt ? new Date(r.pendingUpdates._requestedAt).toLocaleString() : 'N/A'}</span>
+                                     </div>
                                  </div>
                                  <div className="flex gap-3">
                                      <button onClick={() => handleRejectProfileUpdate(r.id)} className="px-6 py-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 font-bold rounded-xl transition-colors">Reject</button>
@@ -1019,6 +1040,7 @@ export default function AdminDashboard() {
                                  <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Proposed Changes</h3>
                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                      {Object.entries(r.pendingUpdates).map(([key, newValue]: [string, any]) => {
+                                         if (key.startsWith('_')) return null;
                                          // Map profileFormData keys back to registration keys
                                          const keyMap: any = {
                                              ownerName: 'owner',
@@ -1072,8 +1094,59 @@ export default function AdminDashboard() {
                          </div>
                      ))
                  )}
-              </div>
-          )}
+
+                  {/* Past Governance History Logs */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-8 font-sans">
+                      <div className="border-b border-slate-100 pb-4 mb-4 flex justify-between items-center bg-[#FFFDFB]">
+                          <div>
+                              <h3 className="font-bold text-lg text-[#173D32]">Profile Governance History</h3>
+                              <p className="text-xs text-slate-500 mt-1">Historical logs of profile change requests processed by platform administrators</p>
+                          </div>
+                          <span className="text-[10px] font-mono uppercase bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-bold">
+                              {auditLogs.filter(log => log.action === "Approve Profile Update" || log.action === "Reject Profile Update").length} Total Actions
+                          </span>
+                      </div>
+                      
+                      {auditLogs.filter(log => log.action === "Approve Profile Update" || log.action === "Reject Profile Update").length === 0 ? (
+                          <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-xl">No profile change request history found in audit logs.</p>
+                      ) : (
+                          <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+                              {auditLogs.filter(log => log.action === "Approve Profile Update" || log.action === "Reject Profile Update").map((log, index) => {
+                                  // Details parse helper
+                                  const parts = log.details ? log.details.split(' | ') : [];
+                                  const businessName = parts[0]?.replace('User action on entity: ', '') || log.entity || 'Unknown Caterer';
+                                  const reqBy = parts.find((p: string) => p.startsWith('Req By:'))?.replace('Req By: ', '') || 'N/A';
+                                  const reqAt = parts.find((p: string) => p.startsWith('Req At:'))?.replace('Req At: ', '') || 'N/A';
+                                  const processedBy = parts.find((p: string) => p.startsWith('Appr By:') || p.startsWith('Rej By:'))?.replace('Appr By: ', '')?.replace('Rej By: ', '') || log.by || 'admin@quickchef.com';
+                                  const processedAt = parts.find((p: string) => p.startsWith('Appr At:') || p.startsWith('Rej At:'))?.replace('Appr At: ', '')?.replace('Rej At: ', '') || new Date(log.timestamp || log.date).toLocaleString();
+
+                                  const isApprove = log.action === "Approve Profile Update";
+
+                                  return (
+                                      <div key={index} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-200 transition-colors">
+                                          <div>
+                                              <div className="flex items-center gap-3 flex-wrap">
+                                                  <span className="font-bold text-[#173D32] text-sm">{businessName}</span>
+                                                  <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${isApprove ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                                      {isApprove ? 'Approved' : 'Rejected'}
+                                                  </span>
+                                              </div>
+                                              <div className="text-xs text-slate-500 mt-2 space-y-1">
+                                                  <p><strong>Proposed By:</strong> {reqBy} <span className="text-slate-300 mx-1.5">|</span> <strong>Requested On:</strong> {reqAt}</p>
+                                                  <p><strong>Processed By:</strong> {processedBy} <span className="text-slate-300 mx-1.5">|</span> <strong>Processed On:</strong> {processedAt}</p>
+                                              </div>
+                                          </div>
+                                          <div className="text-left md:text-right font-mono text-[10px] text-slate-400">
+                                              {new Date(log.timestamp || log.date).toLocaleDateString()}
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      )}
+                  </div>
+               </div>
+           )}
 
           {activeTab === 'orders' && (
               <div className="space-y-6">

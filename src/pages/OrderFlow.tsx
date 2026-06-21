@@ -510,7 +510,13 @@ export default function OrderFlow() {
 
   useEffect(() => {
     fetch('/api/food-images')
-      .then(res => res.json())
+      .then(res => {
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          return res.json();
+        }
+        throw new Error(`Response was not JSON. Status: ${res.status}, Type: ${contentType}`);
+      })
       .then(data => {
         if (data && data.success && Array.isArray(data.images)) {
           const mapping: Record<string, string> = {};
@@ -837,22 +843,22 @@ export default function OrderFlow() {
   return (
     <div className={cn(
         "min-h-screen flex flex-col font-poppins transition-colors duration-300",
-        (viewMode === "custom" || viewMode === "checkout") ? "bg-[#F8F4EC] pt-0" : "bg-slate-50 text-slate-800 pt-[72px]"
+        (viewMode === "custom" || viewMode === "checkout" || viewMode === "package_detail") ? "bg-[#FAF6EE] pt-0" : "bg-slate-50 text-slate-800 pt-[72px]"
     )}>
       
       {/* Build Header */}
       {viewMode === 'custom' ? (
-          <div className="bg-[#FAF6EE] border-b border-[#D5A859]/20 py-4 shadow-[0_4px_25px_rgba(213,168,89,0.03)] z-20 relative select-none">
-              <div className="max-w-[1550px] mx-auto px-4 sm:px-6 lg:px-10 flex items-center justify-between">
+          <div className="bg-[#FAF6EE] border-b border-[#D5A859]/20 py-2.5 sm:py-4 shadow-[0_4px_25px_rgba(213,168,89,0.03)] z-20 relative select-none">
+              <div className="max-w-full lg:max-w-full xl:max-w-[1240px] 2xl:max-w-[1380px] mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between">
                   {/* Left Controls & Title Branding */}
-                  <div className="flex items-center gap-4.5">
+                  <div className="flex items-center gap-2.5 sm:gap-4.5 min-w-0">
                       {/* Back / Menu Hamburger button */}
                       <button 
                           onClick={() => setViewMode('package_detail')} 
-                          className="w-12 h-12 flex items-center justify-center rounded-full border border-[#7A7369]/25 hover:border-[#D5A859] hover:bg-white text-[#0B1F17] transition-all bg-transparent cursor-pointer group shadow-sm shrink-0"
+                          className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border border-[#7A7369]/25 hover:border-[#D5A859] hover:bg-white text-[#0B1F17] transition-all bg-transparent cursor-pointer group shadow-sm shrink-0"
                           title="Back to Package Details"
                       >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:scale-105">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:scale-105 w-4.5 h-4.5 sm:w-5 sm:h-5">
                               <line x1="4" y1="12" x2="20" y2="12"></line>
                               <line x1="4" y1="6" x2="20" y2="6"></line>
                               <line x1="4" y1="18" x2="20" y2="18"></line>
@@ -860,17 +866,17 @@ export default function OrderFlow() {
                       </button>
 
                       {/* Brand Title with beautiful Gold Ornament */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           {/* Elegant Gold abstract ornament SVG */}
-                          <svg viewBox="0 0 100 100" className="w-8 h-8 text-[#D5A859] shrink-0 animate-pulse" fill="currentColor">
+                          <svg viewBox="0 0 100 100" className="w-6 h-6 sm:w-8 sm:h-8 text-[#D5A859] shrink-0 animate-pulse" fill="currentColor">
                               <path d="M50 15 C45 35 35 45 15 50 C35 55 45 65 50 85 C55 65 65 55 85 50 C65 45 55 35 50 15 Z" />
                               <circle cx="50" cy="50" r="6" fill="#0B1F17" />
                           </svg>
-                          <div className="flex flex-col text-left">
-                              <h1 className="font-display font-black text-2xl tracking-wide text-[#0B1F17] uppercase leading-none">
+                          <div className="flex flex-col text-left min-w-0">
+                              <h1 className="font-display font-black text-base sm:text-xl lg:text-2xl tracking-tight text-[#0B1F17] uppercase leading-tight line-clamp-2 max-h-[2.4em] overflow-hidden break-words">
                                   {caterer.name || "Veg Silver"}
                               </h1>
-                              <span className="text-[9px] font-black uppercase tracking-[0.25em] text-[#7A7369] font-sans leading-none mt-1.5">
+                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-[#7A7369] font-sans leading-none mt-1 sm:mt-1.5 block truncate">
                                   The Gourmet Experience
                               </span>
                           </div>
@@ -878,23 +884,49 @@ export default function OrderFlow() {
                   </div>
 
                   {/* Right Guests Selector */}
-                  <div className="bg-white/90 border border-[#D5A859]/30 rounded-2xl flex items-center px-2 py-1.5 shadow-[0_4px_20px_rgba(213,168,89,0.06)] shrink-0">
+                  <div className="bg-white/90 border border-[#D5A859]/30 rounded-xl sm:rounded-2xl flex items-center px-1 py-1 sm:px-2 sm:py-1.5 shadow-[0_4px_20px_rgba(213,168,89,0.06)] shrink-0 select-none">
                       <button 
                           onClick={() => setGuests(Math.max(selectedPackage.minimumGuests || 50, guests - 10))} 
-                          className="w-10 h-10 flex items-center justify-center bg-transparent border border-[#D5A859]/20 hover:border-[#D5A859]/60 hover:bg-[#FFF8EC] text-[#0B1F17] rounded-xl font-bold transition-all shrink-0 cursor-pointer"
+                          className="w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent border border-[#D5A859]/20 hover:border-[#D5A859]/60 hover:bg-[#FFF8EC] text-[#0B1F17] rounded-[10px] sm:rounded-xl font-bold transition-all shrink-0 cursor-pointer"
                       >
-                          <Minus size={13} strokeWidth={3} />
+                          <Minus size={11} sm:size={13} strokeWidth={3} />
                       </button>
-                      <div className="w-22 text-center flex flex-col justify-center select-none shrink-0 px-2.5">
-                          <span className="font-sans text-[18px] font-black text-[#0B1F17] leading-none">{guests}</span>
-                          <span className="text-[8.5px] text-[#7A7369] tracking-widest font-black uppercase leading-none mt-1">Guests</span>
+                      <div className="w-[45px] sm:w-[88px] text-center flex flex-col justify-center select-none shrink-0 px-0.5 sm:px-2.5">
+                          <span className="font-sans text-[13px] sm:text-[18px] font-black text-[#0B1F17] leading-none">{guests}</span>
+                          <span className="text-[7.5px] sm:text-[8.5px] text-[#7A7369] tracking-tight sm:tracking-widest font-black uppercase leading-none mt-1">Guests</span>
                       </div>
                       <button 
                           onClick={() => setGuests(guests + 10)} 
-                          className="w-10 h-10 flex items-center justify-center bg-transparent border border-[#D5A859]/20 hover:border-[#D5A859]/60 hover:bg-[#FFF8EC] text-[#0B1F17] rounded-xl font-bold transition-all shrink-0 cursor-pointer"
+                          className="w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent border border-[#D5A859]/20 hover:border-[#D5A859]/60 hover:bg-[#FFF8EC] text-[#0B1F17] rounded-[10px] sm:rounded-xl font-bold transition-all shrink-0 cursor-pointer"
                       >
-                          <Plus size={13} strokeWidth={3} />
+                          <Plus size={11} sm:size={13} strokeWidth={3} />
                       </button>
+                  </div>
+              </div>
+          </div>
+      ) : viewMode === 'package_detail' ? (
+          <div className="bg-transparent py-5 sm:py-6 z-20 relative select-none">
+              <div className="max-w-[620px] mx-auto px-4.5 sm:px-6 flex items-center justify-start gap-3 sm:gap-4">
+                  {/* Elegant Back Arrow button */}
+                  <button 
+                      onClick={() => { setViewMode('packages'); setSelectedPackage(null); }} 
+                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#D5A859]/12 text-[#C2BB8B] active:scale-95 transition-all bg-transparent cursor-pointer shrink-0"
+                      title="Back to Packages"
+                  >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#BB9C4A" strokeWidth="2.8" className="transition-transform hover:-translate-x-0.5">
+                          <line x1="19" y1="12" x2="5" y2="12"></line>
+                          <polyline points="12 19 5 12 12 5"></polyline>
+                      </svg>
+                  </button>
+
+                  {/* Brand Title with elegant styling to match template */}
+                  <div className="flex flex-col text-left">
+                      <h1 className="font-display font-bold text-[36px] sm:text-[56px] tracking-[-1px] text-[#0B1F17] uppercase leading-none">
+                          {selectedPackage?.packageName || "Veg Silver"}
+                      </h1>
+                      <span className="text-[9.5px] sm:text-[11px] font-sans font-semibold text-[#B8860B] uppercase tracking-[0.25em] mt-3">
+                          {caterer.name} • {caterer.location}
+                      </span>
                   </div>
               </div>
           </div>
@@ -1088,337 +1120,535 @@ export default function OrderFlow() {
       )}
 
       {viewMode === 'package_detail' && selectedPackage && (
-          <div className="flex-1 max-w-[620px] mx-auto w-full px-4 sm:px-6 py-10 relative">
-              <div className="bg-white rounded-[24px] shadow-[0_16px_48px_rgba(0,0,0,0.06)] overflow-hidden border border-slate-150-custom">
-                  {/* Premium Emerald Green Header with Leaf motif */}
-                  <div className="bg-[#0F3D2E] text-white p-6 sm:p-8 relative overflow-hidden select-none">
-                      {/* Decorative Leaf Vectors on the Right Side of Banner */}
-                      <div className="absolute right-0 bottom-0 top-0 w-2/5 opacity-[0.12] pointer-events-none flex items-center justify-end select-none">
-                          <svg viewBox="0 0 100 100" className="w-36 h-36 text-white" stroke="currentColor">
-                              <path d="M20 90 C20 90 20 40 60 20 C75 12 85 15 90 22 C95 29 90 45 75 60 C55 80 20 90 20 90 Z" fill="none" strokeWidth="1.2" />
-                              <path d="M20 90 Q 55 55 90 22" fill="none" strokeWidth="1.2" strokeDasharray="2 2" />
-                              <path d="M50 55 Q 63 42 78 42" fill="none" strokeWidth="0.8" />
-                              <path d="M40 65 Q 53 52 68 52" fill="none" strokeWidth="0.8" />
-                              <path d="M60 45 Q 71 34 82 35" fill="none" strokeWidth="0.8" />
+          <div className="flex-1 w-full max-w-full md:max-w-[580px] mx-auto px-2 xs:px-3 sm:px-6 py-2 sm:py-8 relative box-border">
+              {/* Outer Luxury 2-layer Bezel Frame */}
+              <div className="bg-[#FAF5EA] rounded-[20px] sm:rounded-[38px] p-0.5 sm:p-1.5 shadow-[0_25px_60px_rgba(21,21,21,0.12)] border-[1.5px] sm:border-[2.8px] border-[#BB9C4A] relative overflow-hidden w-full max-w-full box-border">
+                  <div className="bg-[#FFFDF9] rounded-[18px] sm:rounded-[30px] border border-[#DECC9C] overflow-hidden flex flex-col relative w-full max-w-full box-border">
+                      {/* Premium Emerald Green Header with Leaf motif */}
+                      <div className="bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-white p-4.5 sm:p-7 relative overflow-hidden select-none border-b border-[#BB9C4A]/40">
+                          {/* Detailed decorative leaf watermark on the right */}
+                          <svg viewBox="0 0 100 100" className="absolute -right-2 bottom-0 top-0 w-32 sm:w-40 h-full text-[#032D29] opacity-45 pointer-events-none select-none" fill="none" stroke="currentColor" strokeWidth="1.2">
+                              <path d="M15 85 C 30 65, 45 40, 80 15 C 75 35, 60 75, 15 85 Z" />
+                              <path d="M15 85 L 80 15" strokeDasharray="2 2" />
+                              <path d="M35 65 Q 45 55 57 57" strokeWidth="0.8" />
+                              <path d="M45 53 Q 55 43 67 45" strokeWidth="0.8" />
+                              <path d="M55 41 Q 65 31 77 33" strokeWidth="0.8" />
+                              <path d="M22 75 Q 30 67 40 70" strokeWidth="0.8" />
                           </svg>
-                      </div>
 
-                      <div className="flex items-center gap-4 sm:gap-5 relative z-10">
-                          {/* Elegant circular brand gold crest logo */}
-                          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-full border-2 border-[#D4AF37] flex items-center justify-center shadow-lg shrink-0">
-                              <DynamicCateringIcon packageType={selectedPackage.packageType} className="w-8 h-8 sm:w-9 sm:h-9" />
-                          </div>
-                          
-                          <div className="text-left flex-1">
-                              <h2 className="text-xl sm:text-2xl font-display font-black text-white tracking-wide uppercase leading-tight">
-                                  {selectedPackage.packageName}
-                              </h2>
-                              <div className="mt-1.5 flex items-center">
-                                  {renderVegNonVegBadge(selectedPackage.packageType)}
+                          <div className="flex items-center gap-3.5 sm:gap-5 relative z-10">
+                              {/* Elegant circular brand gold crest logo */}
+                              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full border-2 border-transparent bg-gradient-to-br from-[#F4E2B6] via-[#D4AF37] to-[#886C1D] flex items-center justify-center shadow-[0_4px_16px_rgba(184,150,46,0.25)] shrink-0 p-[2px] relative z-10 transition-transform hover:scale-105 duration-300">
+                                  <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                                      {/* Custom leaf from Screenshot 1 */}
+                                      <svg viewBox="0 0 100 100" className="w-7 sm:w-10 h-7 sm:h-10 text-[#0F3D2E] fill-none" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M50 82 L50 22" />
+                                          <path d="M50 45 C40 35, 42 20, 50 15 C58 20, 60 35, 50 45 Z" fill="#0F3D2E" fillOpacity="0.08" />
+                                          <path d="M50 62 C28 58, 22 42, 34 34 C42 45, 48 53, 50 57" strokeWidth="5" />
+                                          <path d="M50 62 C72 58, 78 42, 66 34 C58 45, 52 53, 50 57" strokeWidth="5" />
+                                      </svg>
+                                  </div>
+                              </div>
+                              
+                              <div className="text-left flex-1">
+                                  <h2 className="text-lg sm:text-2xl font-display font-semibold text-[#F4E2B6] tracking-wider uppercase leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                                      {selectedPackage.packageName}
+                                  </h2>
+                                  <div className="mt-2 text-left">
+                                      <div className="inline-flex items-center gap-1.5 bg-white border border-emerald-600 rounded-[6px] px-2 py-0.5 shadow-xs">
+                                          <span className="w-2 h-2 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
+                                              <span className="w-1 h-1 rounded-full bg-white"></span>
+                                          </span>
+                                          <span className="text-[10px] font-black text-emerald-800 tracking-wider font-sans leading-none uppercase">VEG</span>
+                                      </div>
+                                  </div>
                               </div>
                           </div>
                       </div>
-                  </div>
-                  
-                  <div className="p-6 sm:p-8">
-                     {/* Package Price Redesign with Centermost aligned premium label */}
-                     <div className="mb-6 text-left">
-                        <label className="block text-xs font-black text-slate-450 uppercase tracking-widest mb-2.5 text-center">
-                            Package Price
-                        </label>
-                        
-                        <div className="relative bg-gradient-to-br from-[#FCFAF5] to-[#F5EFE1]/20 rounded-2xl border-2 border-[#D4AF37]/35 p-5 hover:border-[#D4AF37]/60 hover:shadow-[0_8px_30px_rgba(212,175,55,0.08)] transition-all duration-300 overflow-hidden shadow-xs flex flex-col items-center justify-center">
-                            {/* Golden Leaf motif in the backdrop */}
-                            <div className="absolute right-4 bottom-0 top-0 w-1/3 opacity-[0.05] pointer-events-none flex items-center justify-end select-none">
-                                <svg viewBox="0 0 100 100" className="w-20 h-20 text-[#D4AF37]" stroke="currentColor">
-                                    <path d="M10 90 C10 90 10 40 50 20 C65 12 75 15 80 22 C85 29 80 45 65 60 C45 80 10 90 10 90 Z" fill="none" strokeWidth="1.2" />
-                                    <path d="M10 90 L80 22" fill="none" strokeWidth="1" strokeDasharray="2 2" />
-                                </svg>
-                            </div>
-                            
-                            <div className="relative z-10 flex flex-col items-center justify-center text-center">
-                                <span className="text-4xl sm:text-5xl font-display font-black text-[#0F3D2E] tracking-tight">
-                                    ₹{currentPerPlatePrice}
+                      
+                      <div className="p-4 xs:p-5 sm:p-6.5 bg-[#FFFDF9] flex flex-col gap-4 sm:gap-6">
+                         {/* Package Price Redesign with Centermost aligned premium label */}
+                         <div className="text-center">
+                             <div className="relative bg-gradient-to-br from-[#FFFDF9] to-[#FAF5EA] rounded-[18px] sm:rounded-[22px] border border-[#DECC9C] p-4.5 sm:p-6.5 hover:border-[#D4AF37]/50 hover:shadow-[0_12px_36px_rgba(212,175,55,0.08)] transition-all duration-350 overflow-hidden shadow-sm flex flex-col items-center justify-center">
+                                 {/* Corner bevel/flourish details to match Victorian feel */}
+                                 <div className="absolute top-2.5 left-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-t border-l border-[#BB9C4A]/40 rounded-tl-[4px]"></div>
+                                 <div className="absolute top-2.5 right-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-t border-r border-[#BB9C4A]/40 rounded-tr-[4px]"></div>
+                                 <div className="absolute bottom-2.5 left-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-b border-l border-[#BB9C4A]/40 rounded-bl-[4px]"></div>
+                                 <div className="absolute bottom-2.5 right-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-b border-r border-[#BB9C4A]/40 rounded-br-[4px]"></div>
+
+                                 {/* Faint gold leaf background */}
+                                 <div className="absolute right-3 bottom-0 w-20 h-20 sm:w-24 sm:h-24 text-[#C29D38]/6 pointer-events-none select-none">
+                                     <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1">
+                                         <path d="M15 85 C 30 65, 45 40, 80 15 C 75 35, 60 75, 15 85 Z" />
+                                         <path d="M15 85 L 80 15" strokeDasharray="1.5 1.5" />
+                                     </svg>
+                                 </div>
+
+                                 <div className="flex items-center justify-center gap-2 sm:gap-4 mb-2.5 sm:mb-3 relative z-10 w-full px-1 sm:px-2">
+                                     <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
+                                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                         <span className="text-[#C29D38] text-[8px] sm:text-[9px] select-none">⚜️</span>
+                                         <span className="text-[10px] sm:text-[12.5px] font-sans font-semibold tracking-[2px] sm:tracking-[3px] text-[#8C6D1F] uppercase text-center">
+                                             PACKAGE PRICE
+                                         </span>
+                                         <span className="text-[#C29D38] text-[8px] sm:text-[9px] select-none">⚜️</span>
+                                     </div>
+                                     <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
+                                 </div>
+                                 
+                                 <div className="relative z-10 flex flex-col items-center justify-center text-center">
+                                     {/* Metallic Gold Typography */}
+                                     <span className="font-semibold text-5xl xs:text-5.5xl sm:text-9xl md:text-[104px] leading-none select-all text-transparent bg-clip-text"
+                                           style={{
+                                               fontFamily: '"Cinzel", "Libre Baskerville", "Georgia", serif',
+                                               fontWeight: 600,
+                                               letterSpacing: '-1.2px',
+                                               background: 'linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)',
+                                               WebkitBackgroundClip: 'text',
+                                               WebkitTextFillColor: 'transparent',
+                                               filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.08))'
+                                           }}>
+                                         ₹{currentPerPlatePrice}
+                                     </span>
+                                     <span className="text-[12px] sm:text-[14px] font-sans font-black text-[#5C5750] uppercase tracking-[0.2em] mt-2">
+                                         Per Plate
+                                     </span>
+                                 </div>
+                             </div>
+                         </div>
+
+                         {/* Pricing Slabs (Interactive, if available) */}
+                         {selectedPackage.pricingSlabs && selectedPackage.pricingSlabs.length > 0 && (
+                            <div>
+                                <span className="block text-[11px] font-sans font-black text-[#8A6715] uppercase tracking-wider text-left mb-2.5">
+                                    Pricing Tiers
                                 </span>
-                                <span className="text-xs font-sans font-black text-slate-450 uppercase tracking-widest mt-2">
-                                    Per Plate
-                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                                    {(() => {
+                                        const sortedSlabs = [...selectedPackage.pricingSlabs].sort((a: any, b: any) => a.minGuests - b.minGuests);
+                                        return sortedSlabs.map((slab: any, idx: number) => {
+                                            let isActive = false;
+                                            if (guests >= slab.minGuests && (slab.maxGuests === null || guests <= slab.maxGuests)) {
+                                                isActive = true;
+                                            } else if (guests < sortedSlabs[0].minGuests && idx === 0) {
+                                                isActive = true;
+                                            } else if (sortedSlabs[sortedSlabs.length - 1].maxGuests !== null && guests > sortedSlabs[sortedSlabs.length - 1].maxGuests && idx === sortedSlabs.length - 1) {
+                                                isActive = true;
+                                            } else if (slab.maxGuests === null && guests >= slab.minGuests) {
+                                                isActive = true;
+                                            }
+                                            
+                                            return (
+                                                <button 
+                                                    key={idx} 
+                                                    type="button"
+                                                    onClick={() => setGuests(slab.minGuests)}
+                                                    className={cn(
+                                                        "flex flex-col justify-center items-start px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 text-left cursor-pointer", 
+                                                        isActive 
+                                                            ? "border-[#D4AF37] bg-gradient-to-br from-[#FFFDF9] to-[#FCFAF5] shadow-[0_6px_20px_rgba(212,175,55,0.18)] scale-[1.02] -translate-y-0.5 z-10" 
+                                                            : "border-[#DECC9C]/40 bg-white hover:border-[#DECC9C] opacity-80 hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <span className={cn("text-[9px] font-black uppercase tracking-widest font-sans", isActive ? "text-[#8A6715]" : "text-slate-450")}>
+                                                        {slab.minGuests} {slab.maxGuests ? `- ${slab.maxGuests}` : '+'} Guests
+                                                    </span>
+                                                    <span className={cn("text-base sm:text-lg font-black font-display mt-0.5", isActive ? "text-[#0F3D2E]" : "text-slate-800")}>
+                                                        ₹{slab.price} <span className="text-2xs font-sans font-medium text-slate-450">/ plate</span>
+                                                    </span>
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+                                </div>
                             </div>
-                        </div>
-                     </div>
+                         )}
 
-                     {/* Pricing Slabs (Interactive, if available) */}
-                     {selectedPackage.pricingSlabs && selectedPackage.pricingSlabs.length > 0 && (
-                        <div className="mb-6">
-                            <span className="block text-[11px] font-black text-slate-400 uppercase tracking-wider text-left mb-2.5">
-                                Pricing Tiers
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                {(() => {
-                                    const sortedSlabs = [...selectedPackage.pricingSlabs].sort((a: any, b: any) => a.minGuests - b.minGuests);
-                                    return sortedSlabs.map((slab: any, idx: number) => {
-                                        let isActive = false;
-                                        if (guests >= slab.minGuests && (slab.maxGuests === null || guests <= slab.maxGuests)) {
-                                            isActive = true;
-                                        } else if (guests < sortedSlabs[0].minGuests && idx === 0) {
-                                            isActive = true;
-                                        } else if (sortedSlabs[sortedSlabs.length - 1].maxGuests !== null && guests > sortedSlabs[sortedSlabs.length - 1].maxGuests && idx === sortedSlabs.length - 1) {
-                                            isActive = true;
-                                        } else if (slab.maxGuests === null && guests >= slab.minGuests) {
-                                            isActive = true;
-                                        }
-                                        
-                                        return (
-                                            <button 
-                                                key={idx} 
-                                                type="button"
-                                                onClick={() => setGuests(slab.minGuests)}
-                                                className={cn(
-                                                    "flex flex-col justify-center items-start px-4 py-3 rounded-2xl border-2 transition-all duration-300 text-left cursor-pointer", 
-                                                    isActive 
-                                                        ? "border-[#D4AF37] bg-gradient-to-br from-white to-[#FCFAF5] shadow-[0_6px_20px_rgba(212,175,55,0.18)] scale-[1.03] -translate-y-0.5 z-10" 
-                                                        : "border-slate-100 bg-white hover:border-slate-250 opacity-75 hover:opacity-100"
-                                                )}
-                                            >
-                                                <span className={cn("text-[9px] font-black uppercase tracking-widest font-sans", isActive ? "text-[#B8962E]" : "text-slate-400")}>
-                                                    {slab.minGuests} {slab.maxGuests ? `- ${slab.maxGuests}` : '+'} Guests
-                                                </span>
-                                                <span className={cn("text-lg font-black font-display mt-0.5", isActive ? "text-[#0F3D2E]" : "text-slate-800")}>
-                                                    ₹{slab.price} <span className="text-2xs font-sans font-medium text-slate-450">/ plate</span>
-                                                </span>
-                                            </button>
-                                        );
-                                    });
-                                })()}
-                            </div>
-                        </div>
-                     )}
+                         {/* Enter Guest Count Controls */}
+                         <div className="text-left">
+                             <label className="block text-[11px] sm:text-[12.5px] font-sans font-semibold text-[#123326] uppercase tracking-[3px] mb-2 px-0.5">
+                                 ENTER GUEST COUNT
+                             </label>
+                             <div className="flex items-center gap-2 sm:gap-3.5">
+                                {/* Minus Control */}
+                                <button 
+                                   type="button"
+                                   onClick={() => setGuests(Math.max(selectedPackage.minimumGuests || 50, guests - 10))} 
+                                   className="w-12 h-12 xs:w-13 xs:h-13 sm:w-15 sm:h-15 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-[10px] sm:rounded-[14px] border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-xl font-bold shrink-0"
+                                >
+                                   <Minus size={16} sm:size={18} strokeWidth={2.8} />
+                                </button>
+                                
+                                {/* Main Counter input */}
+                                <input 
+                                   type="number" 
+                                   value={guests} 
+                                   onChange={(e) => {
+                                       const val = Math.max(0, Number(e.target.value));
+                                       setGuests(val);
+                                   }}
+                                   className="flex-1 w-full h-12 xs:h-13 sm:h-15 text-center font-sans font-black text-xl xs:text-2xl text-[#123326] bg-white border border-[#DECC9C] hover:border-[#C29D38] focus:border-[#C29D38] rounded-[10px] sm:rounded-[14px] outline-none transition-all shadow-inner select-all"
+                                />
+                                
+                                {/* Plus Control */}
+                                <button 
+                                   type="button"
+                                   onClick={() => setGuests(guests + 10)} 
+                                   className="w-12 h-12 xs:w-13 xs:h-13 sm:w-15 sm:h-15 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-[10px] sm:rounded-[14px] border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-xl font-bold shrink-0"
+                                >
+                                   <Plus size={16} sm:size={18} strokeWidth={2.8} />
+                                </button>
+                             </div>
+                         </div>
 
-                     {/* Enter Guest Count Controls */}
-                     <div className="mb-6 text-left">
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">
-                            Enter Guest Count
-                        </label>
-                        <div className="flex items-center gap-4">
-                           {/* Minus Control */}
-                           <button 
-                              type="button"
-                              onClick={() => setGuests(Math.max(selectedPackage.minimumGuests || 50, guests - 10))} 
-                              className="w-14 h-14 flex items-center justify-center bg-[#F7F4EB] hover:bg-[#EFEADF] active:scale-95 text-slate-800 rounded-2xl border border-[#D4AF37]/20 hover:border-[#D4AF37]/40 transition-all cursor-pointer shadow-xs text-xl font-bold"
-                           >
-                              <Minus size={18} strokeWidth={2.5} />
-                           </button>
-                           
-                           {/* Main Counter input */}
-                           <input 
-                              type="number" 
-                              value={guests} 
-                              onChange={(e) => {
-                                  const val = Math.max(0, Number(e.target.value));
-                                  setGuests(val);
-                              }}
-                              className="flex-1 h-14 text-center font-sans font-extrabold text-xl text-slate-800 bg-white border-2 border-slate-200 rounded-2xl outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/5 transition-all text-ellipsis select-all"
-                           />
-                           
-                           {/* Plus Control */}
-                           <button 
-                              type="button"
-                              onClick={() => setGuests(guests + 10)} 
-                              className="w-14 h-14 flex items-center justify-center bg-[#F7F4EB] hover:bg-[#EFEADF] active:scale-95 text-slate-800 rounded-2xl border border-[#D4AF37]/20 hover:border-[#D4AF37]/40 transition-all cursor-pointer shadow-xs text-xl font-bold"
-                           >
-                              <Plus size={18} strokeWidth={2.5} />
-                           </button>
-                        </div>
-                     </div>
+                         {/* Gold Detail Estimate Summary Card */}
+                         <div className="bg-[#FCFAF7] border border-[#DECC9C] rounded-[18px] sm:rounded-[24px] p-4 sm:p-7 shadow-[0_12px_40px_rgba(212,175,55,0.03)] relative overflow-hidden text-left w-full box-border">
+                             <div className="absolute top-0 right-0 w-36 h-36 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none"></div>
 
-                     {/* Gold Detail Estimate Summary Card */}
-                     <div className="bg-[#FAF8F5] border-2 border-[#D4AF37]/25 rounded-[28px] p-6 sm:p-7 mb-6 shadow-[0_12px_36px_rgba(212,175,55,0.04)] relative overflow-hidden text-left">
-                        <div className="absolute top-0 right-0 w-36 h-36 bg-[#D4AF37]/8 rounded-full blur-3xl pointer-events-none"></div>
-                        <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-[#0F3D2E]/5 rounded-full blur-3xl pointer-events-none"></div>
+                             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5 border-b border-[#E5D2A6] pb-3 sm:pb-3.5">
+                                <div className="w-7.5 h-7.5 rounded-full border border-[#DECC9C] bg-[#FCFAF5] text-[#8C6D1F] flex items-center justify-center shadow-xs shrink-0">
+                                   <svg className="w-4 h-4 text-[#8A6715]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                      <line x1="9" y1="9" x2="15" y2="9" />
+                                      <line x1="9" y1="13" x2="15" y2="13" />
+                                      <line x1="9" y1="17" x2="15" y2="17" />
+                                   </svg>
+                                </div>
+                                <h4 className="font-sans font-semibold text-[10px] sm:text-[12px] tracking-[2px] sm:tracking-[3px] text-[#123326] uppercase">
+                                   ESTIMATE SUMMARY
+                                </h4>
+                             </div>
 
-                        <div className="flex items-center gap-2.5 mb-4 border-b border-[#D4AF37]/15 pb-3">
-                           <div className="w-7 h-7 rounded-full border border-[#D4AF37]/35 bg-[#FCFAF5] text-[#D4AF37] flex items-center justify-center shadow-xs">
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                 <polyline points="14 2 14 8 20 8"></polyline>
-                                 <line x1="16" y1="13" x2="8" y2="13"></line>
-                                 <line x1="16" y1="17" x2="8" y2="17"></line>
-                              </svg>
-                           </div>
-                           <h4 className="font-sans font-black text-[10px] tracking-widest text-[#0F3D2E] uppercase">
-                              Estimate Summary
-                           </h4>
-                        </div>
+                             <div className="space-y-3 sm:space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-left">
+                                   <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] sm:tracking-[1.5px] font-sans">CATERING PACKAGE</span>
+                                   <span className="font-sans font-black text-[#123326] text-xs sm:text-xs uppercase tracking-[0.05em]">{selectedPackage.packageName}</span>
+                                </div>
+                                
+                                <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
+                                
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-left">
+                                   <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] sm:tracking-[1.5px] font-sans">PRICE PER PLATE</span>
+                                   <span className="font-sans font-black text-[#123326] text-xs sm:text-sm">₹{currentPerPlatePrice}</span>
+                                </div>
+                                
+                                <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
+                                
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-left">
+                                   <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] sm:tracking-[1.5px] font-sans">EXPECTED GUEST COUNT</span>
+                                   <span className="font-sans font-black text-[#123326] text-xs sm:text-sm">{guests}</span>
+                                </div>
+                                
+                                <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
+                                
+                                {/* Elevated dynamic highlight for the total (Requirement 6) */}
+                                <div className="pt-1.5 sm:pt-2">
+                                    <div className="bg-gradient-to-r from-[#F6F0DF] to-[#EFE5CD] border border-[#DECC9C] rounded-[12px] sm:rounded-[16px] p-3 sm:p-4.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 shadow-md relative overflow-hidden group hover:border-[#C29D38] transition-all">
+                                       <div className="flex flex-col text-left">
+                                           <span className="text-[9px] sm:text-[10px] font-sans font-semibold text-[#B8860B] uppercase tracking-[2px] sm:tracking-[3px]">ESTIMATED TOTAL</span>
+                                           <span className="text-[9px] sm:text-[9.5px] text-[#5C5750] font-medium tracking-tight mt-0.5">Inclusive of all taxes</span>
+                                       </div>
+                                       <span className="font-semibold text-2.5xl xs:text-3.5xl sm:text-4.5xl md:text-[52px] leading-none text-[#C9A227] sm:text-transparent sm:bg-clip-text" style={{ fontFamily: '"Cinzel", "Libre Baskerville", "Georgia", serif', fontWeight: 600, letterSpacing: '-0.5px', background: 'linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.08))' }}>
+                                           ₹{(currentPerPlatePrice * guests).toLocaleString('en-IN')}
+                                       </span>
+                                    </div>
+                                </div>
+                             </div>
+                         </div>
 
-                        <div className="space-y-3.5">
-                           <div className="flex justify-between items-center text-xs sm:text-sm">
-                              <span className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider">Catering Package</span>
-                              <span className="font-sans font-black text-slate-800 text-xs uppercase tracking-[0.05em]">{selectedPackage.packageName}</span>
-                           </div>
-                           
-                           <div className="w-full border-t border-dashed border-[#D4AF37]/15"></div>
-                           
-                           <div className="flex justify-between items-center text-xs sm:text-sm">
-                              <span className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider">Price Per Plate</span>
-                              <span className="font-black text-[#0F3D2E] font-display text-sm">₹{currentPerPlatePrice}</span>
-                           </div>
-                           
-                           <div className="w-full border-t border-dashed border-[#D4AF37]/15"></div>
-                           
-                           <div className="flex justify-between items-center text-xs sm:text-sm">
-                              <span className="text-slate-500 font-extrabold text-[10px] uppercase tracking-wider">Expected Guest Count</span>
-                              <span className="font-black text-slate-800 font-display text-sm">{guests}</span>
-                           </div>
-                           
-                           {/* Elevated dynamic highlight for the total (Requirement 6) */}
-                           <div className="pt-2">
-                               <div className="bg-gradient-to-r from-[#FCFAF5] to-[#F5EFE1]/40 border border-[#D4AF37]/35 rounded-2xl p-4 flex justify-between items-center shadow-xs">
-                                  <div className="flex flex-col">
-                                      <span className="text-[10px] font-sans font-black text-[#886C1D] uppercase tracking-widest">Estimated Total</span>
-                                      <span className="text-[9px] text-slate-400 font-bold font-sans mt-0.5">Inclusive of curated menu</span>
-                                  </div>
-                                  <span className="text-2.5xl sm:text-3.5xl font-display font-black text-[#0F3D2E] tracking-tight">
-                                     ₹{(currentPerPlatePrice * guests).toLocaleString('en-IN')}
-                                  </span>
-                               </div>
-                           </div>
-                        </div>
-                     </div>
+                         {/* Disclaimer Policy */}
+                         <div className="flex items-start gap-1.5 text-[10px] sm:text-[11px] text-[#7A7369] font-medium leading-relaxed mb-1 select-all text-left px-1">
+                             <span className="text-xs text-[#C29D38] font-bold shrink-0">ⓘ</span>
+                             <span>Taxes and additional charges may apply as per venue policy.</span>
+                         </div>
 
-                     {/* Disclaimer Policy */}
-                     <p className="flex items-start gap-1.5 text-[11px] text-slate-400 font-medium leading-relaxed mb-6 select-all text-left">
-                        <span className="text-xs text-slate-400">ⓘ</span>
-                        <span>Taxes and additional charges may apply as per venue policy.</span>
-                     </p>
-
-                     {/* Call To Action Button (Premium Emerald / Gold outline) */}
-                     <button 
-                        type="button"
-                        onClick={() => setViewMode('custom')} 
-                        className="w-full bg-gradient-to-r from-[#0F3D2E] to-[#0A2F24] text-white font-sans font-bold text-sm tracking-wide py-4 px-6 rounded-2xl shadow-[0_12px_30px_rgba(11,61,46,0.18)] hover:shadow-[0_16px_40px_rgba(212,175,55,0.25)] border-2 border-[#D4AF37]/45 hover:border-[#D4AF37]/80 hover:scale-[1.01] transition-all outline-none flex items-center justify-center gap-2 cursor-pointer group"
-                     >
-                        <span>Continue With Menu</span> 
-                        <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
-                     </button>
+                         {/* Call To Action Button (Premium Emerald / Gold outline) */}
+                         <button 
+                            type="button"
+                            onClick={() => setViewMode('custom')} 
+                            className="w-full bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-[#FDE5A9] font-sans font-bold text-xs sm:text-[13px] uppercase tracking-[2px] sm:tracking-[4px] py-3.5 sm:py-4.5 px-4 sm:px-6 rounded-[12px] sm:rounded-[14px] shadow-[0_12px_30px_rgba(2,27,26,0.25)] hover:shadow-[0_16px_40px_rgba(184,150,46,0.3)] border-2 border-[#BB9C4A] hover:border-[#F4E2B6] hover:scale-[1.01] hover:-translate-y-0.5 transition-all outline-none flex items-center justify-center gap-2 cursor-pointer group"
+                         >
+                            <span>CONTINUE WITH MENU</span> 
+                            <ChevronRight size={14} className="transition-transform group-hover:translate-x-1 text-[#FDE5A9] stroke-[3]" />
+                         </button>
+                      </div>
                   </div>
               </div>
           </div>
        )}
 
        {viewMode === 'custom' && selectedPackage && (
-      <div className="flex-1 max-w-full lg:max-w-full xl:max-w-[1380px] 2xl:max-w-[1550px] mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
+      <div className="flex-1 max-w-full lg:max-w-full xl:max-w-[1240px] 2xl:max-w-[1380px] mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-4.5 xl:gap-5">
               
-              {/* MOBILE ONLY - Progress & Categories Horizontal Scroll */}
-              {(() => {
-                  const activeCats = menuCategories.filter((cat: string) => {
-                      const catItems = selectedPackage?.categories?.find((c: any) => c.categoryName === cat)?.items || [];
-                      return catItems.length > 0;
-                  });
-                  const totalCats = activeCats.length;
-                  const doneCats = activeCats.filter((cat: string) => {
-                      const catData = selectedPackage?.categories?.find((c: any) => c.categoryName === cat);
-                      if (!catData) return false;
-                      const match = catData.selectionRule?.match(/\d+/);
-                      const limit = match ? parseInt(match[0], 10) : 0;
-                      if (limit === 0) return true;
-                      const selectedCount = (catData.items || []).filter((i: string) => selectedItems[i]).length;
-                      return selectedCount >= limit;
-                  }).length;
-                  const pctDone = Math.round((doneCats / (totalCats || 1)) * 100);
+              {/* MOBILE ONLY LAYOUT (Screenshot reference style) */}
+              <div className="block lg:hidden w-full">
+                  {/* MOBILE PROGRESS BAR (Screenshot style) */}
+                  {(() => {
+                      const activeCats = menuCategories.filter((cat: string) => {
+                          const catItems = selectedPackage?.categories?.find((c: any) => c.categoryName === cat)?.items || [];
+                          return catItems.length > 0;
+                      });
+                      const totalCats = activeCats.length;
+                      const doneCats = activeCats.filter((cat: string) => {
+                          const catData = selectedPackage?.categories?.find((c: any) => c.categoryName === cat);
+                          if (!catData) return false;
+                          const match = catData.selectionRule?.match(/\d+/);
+                          const limit = match ? parseInt(match[0], 10) : 0;
+                          if (limit === 0) return true;
+                          const selectedCount = (catData.items || []).filter((i: string) => selectedItems[i]).length;
+                          return selectedCount >= limit;
+                      }).length;
+                      const pctDone = Math.round((doneCats / (totalCats || 1)) * 100);
 
-                  return (
-                      <div className="block lg:hidden w-full space-y-3.5 mb-2">
-                          {/* Progress Card */}
-                          <div className="bg-[#FDFBF6] rounded-2xl border border-[#D5A859]/22 p-3.5 shadow-[0_6px_20px_rgba(120,90,40,0.03)]">
-                              <div className="flex items-center justify-between gap-3 select-none">
-                                  <div className="flex items-center gap-2.5">
-                                      <div className="w-7 h-7 rounded-full bg-[#FFF8EC] flex items-center justify-center border border-[#D5A859]/25 shadow-sm text-xs shrink-0">
-                                          👑
-                                      </div>
-                                      <div>
-                                          <span className="text-[9px] font-semibold text-[#7A7369] block leading-none mb-0.5">Catering Selection Progress</span>
-                                          <span className="text-[12px] font-bold font-display text-[#123326] leading-none block">Perfect Wedding Feast</span>
-                                      </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-bold font-sans text-[#2A2A2A]">
-                                          {doneCats}/{totalCats} Completed
-                                      </span>
-                                      <span className="text-[10px] font-medium text-[#7A7369]">({pctDone}%)</span>
+                      return (
+                          <div className="bg-[#0B1F17] text-white py-1.5 px-3 flex items-center justify-between text-[10px] font-sans border border-[#D4AF37]/30 select-none rounded-[10px] mb-3 shadow-md h-[34px]">
+                              <div className="flex items-center gap-1.5">
+                                  <span className="text-[9px] font-black uppercase tracking-[0.08em] text-[#D5A859]">Progress</span>
+                                  <div className="w-[64px] bg-white/10 h-1.5 rounded-full overflow-hidden">
+                                      <div 
+                                          className="bg-gradient-to-r from-[#FCE6A9] to-[#D5A859] h-full rounded-full transition-all duration-500" 
+                                          style={{ width: `${pctDone}%` }}
+                                      />
                                   </div>
                               </div>
-                              <div className="w-full bg-[#F5EFE1] h-[5px] rounded-full overflow-hidden mt-3">
-                                  <div 
-                                      className="bg-gradient-to-r from-[#FCE6A9] via-[#D5A859] to-[#9E7730] h-full rounded-full transition-all duration-500" 
-                                      style={{ width: `${pctDone}%` }}
-                                  />
+                              <div className="flex items-center gap-1.5 font-black tracking-wider text-[#FAF6EE] text-[10px]">
+                                  <span>{doneCats}/{totalCats} Done</span>
+                                  <span className="text-[#D4AF37]/60">|</span>
+                                  <span className="text-[#E6C77D] font-mono">{pctDone}%</span>
                               </div>
                           </div>
+                      );
+                  })()}
 
-                          {/* Horizontal Chips */}
-                          <div className="w-full relative">
-                              <div className="flex overflow-x-auto gap-2 pb-2.5 no-scrollbar scroll-smooth -mx-1 px-1">
-                                  {menuCategories.map((cat: string) => {
-                                      const catData = selectedPackage.categories?.find((c: any) => c.categoryName === cat);
-                                      const catItems = catData?.items || [];
-                                      if (catItems.length === 0) return null;
-                                      const selectedCount = catItems.filter((i: string) => selectedItems[i]).length;
-                                      
-                                      const match = catData.selectionRule?.match(/\d+/);
-                                      const catLimit = match ? parseInt(match[0], 10) : 0;
-                                      const isDone = selectedCount >= catLimit;
-                                      const isActive = activeCategory === cat;
+                  <div className="mb-4 pl-1 select-none">
+                      <h2 
+                          className="text-[28px] font-bold text-[#0B1F17] leading-tight mb-1"
+                          style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                      >
+                          {activeCategory}
+                      </h2>
+                      <p className="text-[10.5px] font-extrabold tracking-[0.18em] text-[#8B6E4A] uppercase font-sans">
+                          {getSelectionRuleLabel(selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.selectionRule)}
+                      </p>
+                  </div>
 
-                                      return (
-                                          <button
-                                              key={cat}
-                                              onClick={() => setActiveCategory(cat)}
-                                              className={cn(
-                                                  "px-3.5 py-2.5 rounded-full transition-all border text-[11px] font-bold flex items-center gap-1.5 shrink-0 select-none relative cursor-pointer leading-none",
-                                                  isActive 
-                                                     ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_4px_12px_rgba(11,31,23,0.15)]" 
-                                                     : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 shadow-[0_1px_4px_rgba(120,90,40,0.02)]"
-                                              )}
-                                          >
-                                              <span className={cn("text-xs transition-transform duration-300", isActive ? "text-[#E6C77D]" : "text-[#123326]")}>
-                                                  {getCategoryIcon(cat)}
-                                              </span>
-                                              <span className="font-sans font-bold tracking-tight">{cat}</span>
-                                              
-                                              {catLimit > 0 ? (
-                                                  isDone ? (
-                                                      <span className={cn(
-                                                          "text-[8px] px-1 rounded-full font-black text-center shrink-0 min-w-[14px]",
-                                                          isActive ? "bg-white/15 text-[#E6C77D]" : "bg-[#27AE60]/12 text-[#1E8E5A]"
-                                                      )}>
-                                                          ✓
-                                                      </span>
-                                                  ) : (
-                                                      <span className={cn(
-                                                          "text-[8px] px-1.5 py-0.5 rounded-full font-black shrink-0",
-                                                          isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
-                                                      )}>
-                                                          {selectedCount}/{catLimit}
-                                                      </span>
-                                                  )
+                  {/* TWO COLUMN MOBILE CONTENT: LEFT 80px, RIGHT Remainder */}
+                  <div className="flex flex-row gap-2.5 items-start w-full">
+                      {/* LEFT: Compact categories sidebar (80px width) */}
+                      <div className="w-[80px] shrink-0 flex flex-col gap-2 max-h-[calc(100vh-190px)] overflow-y-auto no-scrollbar scroll-smooth pr-0.5 pb-20">
+                          {menuCategories.map((cat: string) => {
+                              const catData = selectedPackage.categories?.find((c: any) => c.categoryName === cat);
+                              const catItems = catData?.items || [];
+                              if (catItems.length === 0) return null;
+                              const selectedCount = catItems.filter((i: string) => selectedItems[i]).length;
+                              
+                              const match = catData.selectionRule?.match(/\d+/);
+                              const catLimit = match ? parseInt(match[0], 10) : 0;
+                              const isDone = selectedCount >= catLimit;
+                              const isActive = activeCategory === cat;
+
+                              return (
+                                  <button
+                                      key={cat}
+                                      onClick={() => setActiveCategory(cat)}
+                                      className={cn(
+                                          "w-full rounded-[14px] p-1.5 pb-2 flex flex-col items-center justify-between text-center transition-all duration-300 border relative group cursor-pointer min-h-[76px] select-none",
+                                          isActive 
+                                             ? "bg-[#106B40] text-white border-[#D4AF37] shadow-[0_4px_12px_rgba(16,107,64,0.18)] font-black" 
+                                             : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 hover:border-[#D4AF37]/40 shadow-sm"
+                                      )}
+                                  >
+                                      {/* Status Indicator inside Category Card */}
+                                      <div className="absolute top-1 right-1">
+                                          {catLimit > 0 ? (
+                                              isDone ? (
+                                                  <span className={cn(
+                                                      "w-3.5 h-3.5 rounded-full flex items-center justify-center font-black border text-[7.5px]",
+                                                      isActive 
+                                                          ? "bg-[#D4AF37] text-[#106B40] border-[#D4AF37]" 
+                                                          : "bg-[#1E8E5A]/10 text-[#1E8E5A] border-[#1E8E5A]/20"
+                                                  )}>
+                                                      ✓
+                                                  </span>
                                               ) : (
                                                   <span className={cn(
-                                                      "text-[8px] px-1.5 py-0.5 rounded-full font-black shrink-0",
-                                                      isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
+                                                      "px-1 rounded-full font-bold text-[7px] border tracking-tight leading-none h-3 w-fit flex items-center justify-center font-sans",
+                                                      isActive 
+                                                          ? "bg-white/20 text-white border-transparent" 
+                                                          : "bg-slate-150 text-slate-500 border-slate-200/60"
+                                                  )}>
+                                                      {selectedCount}/{catLimit}
+                                                  </span>
+                                              )
+                                          ) : (
+                                              selectedCount > 0 && (
+                                                  <span className={cn(
+                                                      "px-1 rounded-full font-bold text-[7px] border tracking-tight leading-none h-3 w-fit flex items-center justify-center font-sans",
+                                                      isActive 
+                                                          ? "bg-white/20 text-white border-transparent" 
+                                                          : "bg-slate-100 text-slate-500 border-slate-200/60"
                                                   )}>
                                                       {selectedCount}
                                                   </span>
+                                              )
+                                          )}
+                                      </div>
+
+                                      {/* Icon + Label */}
+                                      <div className="flex flex-col items-center gap-1 justify-center flex-1 py-1 w-full mt-2">
+                                          <span className={cn("text-[15px] transition-transform duration-300 group-hover:scale-115", isActive ? "text-[#ECE2D0]" : "text-[#D5A859]")}>
+                                              {getCategoryIcon(cat)}
+                                          </span>
+                                          <span 
+                                              className={cn(
+                                                  "text-[8.5px] leading-[1.15] font-sans tracking-tight uppercase font-black block w-full text-center px-0.5 max-h-[2.4em] overflow-hidden line-clamp-2",
+                                                  isActive ? "text-[#FFF8EC]" : "text-[#123326]"
                                               )}
-                                          </button>
+                                              style={{
+                                                  whiteSpace: "normal",
+                                                  wordBreak: "keep-all",
+                                                  overflowWrap: "anywhere"
+                                              }}
+                                          >
+                                              {cat}
+                                          </span>
+                                      </div>
+                                  </button>
+                              );
+                          })}
+                      </div>
+
+                      {/* RIGHT: Menu items list with full-width search & cards */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-2 pb-20">
+                          {/* Full-width Search Box */}
+                          <div className="relative w-full mb-1">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#D5A859] select-none">🍸</span>
+                              <input 
+                                  type="text" 
+                                  placeholder="Search dishes..." 
+                                  className="w-full pl-9 pr-4 bg-[#FFFDF9]/95 border border-[#D4AF37]/35 hover:border-[#D5A859]/60 focus:border-[#D4AF37] rounded-full text-[12px] font-semibold shadow-[inset_0_1px_3px_rgba(120,90,40,0.03)] outline-none transition-all placeholder:text-[#7A7369]/40 text-[#123326] h-[38px] tracking-wide"
+                                  onChange={(e) => {
+                                      const val = e.target.value.toLowerCase();
+                                      document.querySelectorAll('.mobile-dish-row').forEach(el => {
+                                          const name = el.getAttribute('data-name')?.toLowerCase() || '';
+                                          if(name.includes(val)) el.classList.remove('hidden');
+                                          else el.classList.add('hidden');
+                                      });
+                                  }}
+                              />
+                          </div>
+
+                          {/* Dishes Horizontal Row Cards */}
+                          <div className="flex flex-col gap-2 max-h-[calc(100vh-230px)] overflow-y-auto no-scrollbar pb-24 pr-0.5">
+                              {(() => {
+                                  const catData = selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory);
+                                  const itemsStr = catData?.items || [];
+                                  if (itemsStr.length === 0) {
+                                      return <div className="text-center py-8 text-neutral-400 text-xs italic">No items available</div>;
+                                  }
+                                  return itemsStr.map((itemName: string, idx: number) => {
+                                      const isSelected = selectedItems[itemName];
+                                      const selectedCount = itemsStr.filter((i: string) => selectedItems[i]).length;
+                                      
+                                      const limitMatch = catData.selectionRule?.match(/\d+/);
+                                      const catLimit = limitMatch ? parseInt(limitMatch[0], 10) : 0;
+                                      const isAtLimit = catLimit > 0 && selectedCount >= catLimit;
+                                      const isDisabled = !isSelected && isAtLimit;
+                                      const isNonVeg = isItemNonVeg(itemName, activeCategory);
+
+                                      return (
+                                          <div 
+                                              key={itemName}
+                                              data-name={itemName}
+                                              onClick={() => {
+                                                  if (!isDisabled) toggleItem(itemName, activeCategory);
+                                              }}
+                                              className={cn(
+                                                  "mobile-dish-row relative bg-[#FFFDF9] rounded-[16px] flex items-center justify-between p-3 py-3.5 transition-all duration-300 border shadow-sm select-none min-h-[58px]",
+                                                  isSelected 
+                                                     ? "bg-[#FFF8EC]/60" 
+                                                     : isDisabled 
+                                                        ? "opacity-45 bg-slate-50/50" 
+                                                        : ""
+                                              )}
+                                              style={{
+                                                  border: isDisabled 
+                                                      ? "1px solid rgba(226,232,240,0.5)" 
+                                                      : isSelected 
+                                                          ? "2px solid rgba(212,175,55,0.85)" 
+                                                          : "1px solid rgba(212,175,55,0.35)",
+                                                  boxShadow: isSelected 
+                                                      ? "0 4px 14px rgba(160,120,50,0.12)" 
+                                                      : "0 2px 6px rgba(160,120,50,0.04)"
+                                              }}
+                                          >
+                                              {/* Left text portion */}
+                                              <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
+                                                  {/* Veg/Non-veg indicator badge */}
+                                                  <div className="shrink-0 flex items-center">
+                                                      {isNonVeg ? (
+                                                          <span className="flex items-center justify-center w-3.5 h-3.5 border border-red-800 rounded-sm p-[1.5px] bg-white">
+                                                              <span className="w-1.5 h-1.5 rounded-full bg-red-800"></span>
+                                                          </span>
+                                                      ) : (
+                                                          <span className="flex items-center justify-center w-3.5 h-3.5 border border-emerald-700 rounded-sm p-[1.5px] bg-white">
+                                                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+                                                          </span>
+                                                      )}
+                                                  </div>
+
+                                                  {/* Elegant playfair name */}
+                                                  <span 
+                                                      className="text-[12.5px] font-bold text-[#0B1F17] leading-tight truncate pr-1"
+                                                      style={{
+                                                          fontFamily: '"Playfair Display", Georgia, serif'
+                                                      }}
+                                                  >
+                                                      {itemName}
+                                                  </span>
+                                              </div>
+
+                                              {/* Right Button Column */}
+                                              <div className="shrink-0 pl-1.5">
+                                                  {isSelected ? (
+                                                      <button
+                                                          type="button"
+                                                          onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              toggleItem(itemName, activeCategory);
+                                                          }}
+                                                          className="px-3.5 py-1.5 bg-[#0B1F17] text-[#FFF8EC] border border-[#D5A859]/35 font-extrabold text-[10px] uppercase tracking-wider rounded-[14px] transition-all flex items-center gap-1.5 select-none shadow-[0_3px_8px_rgba(11,31,23,0.18)]"
+                                                      >
+                                                          ✓ Added
+                                                      </button>
+                                                  ) : (
+                                                      <button
+                                                          type="button"
+                                                          disabled={isDisabled}
+                                                          onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              if (!isDisabled) toggleItem(itemName, activeCategory);
+                                                          }}
+                                                          className={cn(
+                                                              "px-3.5 py-1.5 font-extrabold text-[10px] uppercase tracking-wider rounded-[14px] transition-all select-none",
+                                                              isDisabled 
+                                                                  ? "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed" 
+                                                                  : "bg-[#8B6E4A] hover:bg-[#7D5F3D] text-[#FFFDF9] border border-[#8B6E4A] shadow-sm"
+                                                          )}
+                                                      >
+                                                          + Add
+                                                      </button>
+                                                  )}
+                                              </div>
+                                          </div>
                                       );
-                                  })}
-                              </div>
+                                  });
+                              })()}
                           </div>
                       </div>
-                  );
-              })()}
+                  </div>
+              </div>
 
               {/* LEFT PANEL - Categories (Desktop) */}
               <div className="hidden lg:block lg:w-[185px] xl:w-[200px] shrink-0">
@@ -1495,7 +1725,7 @@ export default function OrderFlow() {
                                       key={cat}
                                       onClick={() => setActiveCategory(cat)}
                                       className={cn(
-                                          "w-full text-left px-3.5 py-2.5 rounded-xl transition-all border text-[12px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
+                                          "w-full text-left px-3 py-2 rounded-xl transition-all border text-[11.5px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
                                           isActive 
                                              ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_6px_18px_rgba(11,31,23,0.15)]" 
                                              : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 hover:border-[#D4AF37]/40 hover:bg-[#FAF4E5] shadow-[0_2px_6px_rgba(120,90,40,0.02)]"
@@ -1576,7 +1806,7 @@ export default function OrderFlow() {
 
               {/* MIDDLE PANEL - Available Dishes */}
               <div 
-                  className="flex-1 min-w-0 flex flex-col lg:overflow-hidden mb-24 lg:mb-6 rounded-[24px] lg:rounded-[28px] min-h-[400px] lg:min-h-[650px]"
+                  className="hidden lg:flex flex-1 min-w-0 flex-col lg:overflow-hidden mb-24 lg:mb-6 rounded-[24px] lg:rounded-[28px] min-h-[400px] lg:min-h-[650px]"
                   style={{
                       backgroundColor: "#FDFBF6",
                       border: "1px solid rgba(212,175,55,0.35)",
@@ -1584,7 +1814,7 @@ export default function OrderFlow() {
                   }}
               >
                   {/* Category Header Area */}
-                  <div className="p-4 md:p-8 pb-4 md:pb-6 border-b border-[#D5A859]/15 bg-transparent">
+                  <div className="p-3 md:px-4.5 pb-2.5 md:pb-3 border-b border-[#D5A859]/15 bg-transparent">
                       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 md:gap-6">
                           <div>
                               <h2 
@@ -1626,12 +1856,12 @@ export default function OrderFlow() {
                               )}
                           </div>
 
-                          <div className="relative w-full sm:w-[260px] lg:w-[290px] shrink-0 self-center sm:self-end">
+                          <div className="relative w-full sm:w-[210px] lg:w-[245px] shrink-0 self-center sm:self-end">
                               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#D5A859] select-none">🍸</span>
                               <input 
                                   type="text" 
                                   placeholder="Search dishes..." 
-                                  className="w-full pl-10 pr-5 bg-[#FFFDF9]/95 border border-[#D4AF37]/30 hover:border-[#D5A859]/60 focus:border-[#D4AF37] rounded-full text-[14px] font-semibold shadow-[inset_0_1px_3px_rgba(120,90,40,0.03)] outline-none transition-all placeholder:text-[#7A7369]/40 text-[#123326] h-[44px] tracking-wide"
+                                  className="w-full pl-10 pr-5 bg-[#FFFDF9]/95 border border-[#D4AF37]/30 hover:border-[#D5A859]/60 focus:border-[#D4AF37] rounded-full text-[12px] font-semibold shadow-[inset_0_1px_3px_rgba(120,90,40,0.03)] outline-none transition-all placeholder:text-[#7A7369]/40 text-[#123326] h-[38px] tracking-wide"
                                   onChange={(e) => {
                                       const val = e.target.value.toLowerCase();
                                       document.querySelectorAll('.dish-card-item').forEach(el => {
@@ -1646,7 +1876,7 @@ export default function OrderFlow() {
                   </div>
                   
                   {/* Grid layout - Highly spacious & elevated matching Screenshot 1 */}
-                  <div className="p-3 sm:p-4 lg:p-4.5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-3 sm:gap-3.5 xl:gap-4 auto-rows-max overflow-y-visible lg:overflow-y-auto h-auto lg:h-full max-h-none lg:max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/15 pb-20 lg:pb-16">
+                  <div className="p-1.5 sm:px-3 lg:px-3.5 py-3 sm:py-4 lg:py-4.5 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-2 sm:gap-3 xl:gap-3.5 auto-rows-max overflow-y-visible lg:overflow-y-auto h-auto lg:h-full max-h-none lg:max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/12 pb-20 lg:pb-16">
                       {(selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.items || []).map((itemName: string, idx: number) => {
                           const isSelected = selectedItems[itemName];
                           const itemsInCat = selectedPackage.categories?.find((c: any) => c.categoryName === activeCategory)?.items || [];
@@ -1667,7 +1897,7 @@ export default function OrderFlow() {
                                   onMouseEnter={() => setHoveredCardIdx(idx)}
                                   onMouseLeave={() => setHoveredCardIdx(null)}
                                   className={cn(
-                                      "dish-card-item relative bg-[#FFFDF9] rounded-[16px] flex flex-col justify-between p-3.5 pt-4.5 pb-3 transition-all duration-300 cursor-pointer select-none min-h-[135px] xl:min-h-[145px]",
+                                      "dish-card-item relative bg-[#FFFDF9] rounded-[16px] flex flex-col justify-between p-2 sm:p-2.5 pt-2 sm:pt-2.5 pb-1.5 sm:pb-2 transition-all duration-300 cursor-pointer select-none min-h-[92px] sm:min-h-[108px] max-h-[114px] sm:max-h-none",
                                       isSelected 
                                           ? "bg-[#FFF8EC]/60" 
                                           : isDisabled 
@@ -1698,7 +1928,7 @@ export default function OrderFlow() {
                                   {/* Champagne Gold Gilded Top Accent bar */}
                                   {!isDisabled && (
                                       <div 
-                                          className="absolute top-0 left-0 right-0 h-1 rounded-t-[16px] opacity-90"
+                                          className="absolute top-0 left-0 right-0 h-[3px] sm:h-1 rounded-t-[16px] opacity-90"
                                           style={{
                                               background: "linear-gradient(90deg, #FCE6A9, #D4AF37, #B8872B, #D4AF37, #FCE6A9)"
                                           }}
@@ -1706,35 +1936,35 @@ export default function OrderFlow() {
                                   )}
 
                                   {/* Header Item Category & Type */}
-                                  <div className="flex justify-between items-center gap-3 mb-3.5">
+                                  <div className="flex justify-between items-center gap-1.5 mb-1 sm:mb-1.5 mt-0.5 sm:mt-0 leading-none">
                                       {/* Veg / Non-Veg Indicator Badge */}
                                       {isNonVeg ? (
-                                          <div className="flex items-center gap-2 text-xs font-bold text-[#8C2A2A]">
-                                              <span className="flex items-center justify-center w-[15px] h-[15px] border-2 border-red-800 rounded-sm p-[2px] bg-white shrink-0">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#8C2A2A]">
+                                              <span className="flex items-center justify-center w-3 h-3 border border-red-800 rounded-sm p-[1.5px] bg-white shrink-0">
                                                   <span className="w-1.5 h-1.5 rounded-full bg-red-800"></span>
                                               </span>
-                                              <span className="text-[10.5px] font-extrabold tracking-wider text-red-800 font-sans uppercase">Non-Veg</span>
+                                              <span className="hidden sm:inline text-[10px] font-extrabold tracking-wider text-red-800 font-sans uppercase">Non-Veg</span>
                                           </div>
                                       ) : (
-                                          <div className="flex items-center gap-2 text-xs font-bold text-[#1E8E5A]">
-                                              <span className="flex items-center justify-center w-[15px] h-[15px] border-2 border-emerald-700 rounded-sm p-[2px] bg-white shrink-0">
-                                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#1E8E5A]">
+                                              <span className="flex items-center justify-center w-3 h-3 border border-emerald-700 rounded-sm p-[1.5px] bg-white shrink-0">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 font-sans"></span>
                                               </span>
-                                              <span className="text-[10.5px] font-extrabold tracking-wider text-emerald-700 font-sans uppercase">Veg</span>
+                                              <span className="hidden sm:inline text-[10px] font-extrabold tracking-wider text-[#1E8E5A] font-sans uppercase">Veg</span>
                                           </div>
                                       )}
 
                                       {/* Top right crown indicating slot limit */}
-                                      <div className="flex items-center gap-1.5 text-xs font-black text-[#D5A859]">
+                                      <div className="hidden sm:flex items-center gap-1 text-xs font-black text-[#D5A859]">
                                           <span>👑</span>
-                                          <span className="text-13px font-bold font-sans">{limitPerCategory || 1}</span>
+                                          <span className="text-12px font-bold font-sans">{limitPerCategory || 1}</span>
                                       </div>
                                   </div>
 
                                   {/* Item Name - Beautiful Playfair display serif, scaled up */}
-                                  <div className="flex-1 flex flex-col justify-center my-1.5 px-0.5 min-h-[44px] xl:min-h-[48px]">
+                                  <div className="flex-1 flex flex-col justify-center my-0.5 select-all min-h-[28px] sm:min-h-[32px]">
                                       <h4 
-                                          className="text-[15.5px] sm:text-[16.5px] lg:text-[17px] xl:text-[17.5px] font-bold font-display text-[#0B1F17] leading-snug text-center line-clamp-2 select-all"
+                                          className="text-[12px] sm:text-[14px] font-bold font-display text-[#0B1F17] leading-tight text-center line-clamp-2"
                                           style={{
                                               fontFamily: '"Playfair Display", Georgia, serif',
                                               whiteSpace: 'normal',
@@ -1747,17 +1977,19 @@ export default function OrderFlow() {
                                   </div>
 
                                   {/* Bottom Control Row */}
-                                  <div className="flex items-center justify-between gap-2.5 mt-3 pt-3 border-t border-slate-100/90 shrink-0">
+                                  <div className="flex items-center justify-center sm:justify-between gap-1.5 mt-1 sm:mt-1.5 pt-1 sm:pt-1.5 border-t border-slate-100/90 shrink-0">
                                       {/* Left status badge */}
-                                      {isPremium ? (
-                                          <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-[#9E7730] bg-[#FFF8EC] px-2.5 py-1 rounded-[6px] border border-[#D5A859]/20 w-fit">
-                                              Premium
-                                          </span>
-                                      ) : (
-                                          <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-[#1E8E5A] bg-[#1E8E5A]/8 px-2.5 py-1 rounded-[6px] border border-[#1E8E5A]/15 w-fit">
-                                              Included
-                                          </span>
-                                      )}
+                                      <div className="hidden sm:block">
+                                          {isPremium ? (
+                                              <span className="text-[8.5px] font-extrabold uppercase tracking-wide text-[#9E7730] bg-[#FFF8EC] px-1.5 py-0.5 rounded-[5px] border border-[#D5A859]/15 w-fit">
+                                                  Premium
+                                              </span>
+                                          ) : (
+                                              <span className="text-[8.5px] font-extrabold uppercase tracking-wide text-[#1E8E5A] bg-[#1E8E5A]/8 px-1.5 py-0.5 rounded-[5px] border border-[#1E8E5A]/12 w-fit">
+                                                  Included
+                                              </span>
+                                          )}
+                                      </div>
 
                                       {/* Right Gold-accented Button */}
                                       {isSelected ? (
@@ -1767,9 +1999,9 @@ export default function OrderFlow() {
                                                   e.stopPropagation();
                                                   if (!isDisabled) toggleItem(itemName, activeCategory);
                                               }}
-                                              className="px-3.5 py-1 bg-[#123326] hover:bg-[#0B1F17] border border-[#D5A859]/20 text-[#FFF8EC] font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all duration-200 shadow-sm cursor-pointer min-w-[76px] text-center"
+                                              className="w-full sm:w-auto px-2 sm:px-3.5 py-1 sm:py-1.5 bg-[#123326] hover:bg-[#0B1F17] border border-[#D5A859]/20 text-[#FFF8EC] font-black text-[9px] sm:text-[10px] uppercase tracking-wider rounded-lg transition-all duration-200 shadow-sm cursor-pointer min-h-[26px] flex items-center justify-center gap-0.5"
                                           >
-                                              ✓ Added
+                                              <span className="text-[9px]">✓</span> Added
                                           </button>
                                       ) : (
                                           <button 
@@ -1780,7 +2012,7 @@ export default function OrderFlow() {
                                               }}
                                               disabled={isDisabled}
                                               className={cn(
-                                                  "px-3.5 py-1 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all duration-200 select-none min-w-[76px] text-center cursor-pointer",
+                                                  "w-full sm:w-auto px-2 sm:px-3.5 py-1 sm:py-1.5 font-black text-[9px] sm:text-[10px] uppercase tracking-wider rounded-lg transition-all duration-200 select-none cursor-pointer min-h-[26px] flex items-center justify-center",
                                                   isDisabled 
                                                       ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed shadow-none" 
                                                       : "bg-[#8B6E4A] hover:bg-[#7D5F3D] text-[#FFFDF9] shadow-[0_1.5px_4px_rgba(139,110,74,0.18)] active:scale-[0.97]"
@@ -1797,7 +2029,7 @@ export default function OrderFlow() {
               </div>
 
               {/* RIGHT PANEL - Live Order Summary */}
-              <div className="hidden lg:block lg:w-[290px] xl:w-[310px] shrink-0">
+              <div className="hidden lg:block lg:w-[265px] xl:w-[280px] shrink-0">
                   <div className="rounded-[2rem] p-5 pb-6 sticky top-28 overflow-hidden relative flex flex-col h-[calc(100vh-140px)] border border-[#D4AF37]/28" style={{ background: "linear-gradient(135deg, #04140D 0%, #010604 100%)", boxShadow: "0 24px 75px rgba(5,20,13,0.45), 0 0 40px rgba(212,175,55,0.04), inset 0 0 0 1px rgba(255,240,200,0.07)" }}>
                       {/* Inner champagne-gold gilded luxury border double-line */}
                       <div className="absolute inset-2 md:inset-2.5 rounded-[1.6rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
@@ -2036,50 +2268,61 @@ export default function OrderFlow() {
            {/* Bottom Sheet Card */}
            <div 
                className={cn(
-                   "fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out rounded-t-[2.5rem] border-t border-[#D4AF37]/50 flex flex-col overflow-hidden",
-                   mobileCartExpanded ? "h-[85vh]" : "h-[74px] shadow-[0_-8px_30px_rgba(5,20,13,0.35)]"
+                   "fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out flex flex-col overflow-hidden",
+                   mobileCartExpanded ? "h-[85vh] rounded-t-[2.5rem] border-t border-[#D4AF37]/50" : "h-[48px] rounded-t-[1.2rem] border-t border-[#D4AF37]/30 shadow-[0_-8px_30px_rgba(5,20,13,0.35)]"
                )}
                style={{ 
                    background: "linear-gradient(135deg, #04140D 0%, #010604 100%)",
                }}
            >
                {/* Champagne double-line gilded border - inside container */}
-               <div className="absolute inset-2.5 rounded-t-[2rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
+               {mobileCartExpanded && (
+                   <div className="absolute inset-2.5 rounded-t-[2rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
+               )}
                {/* Glow spots */}
                <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#D5A859]/12 rounded-full pointer-events-none blur-3xl"></div>
-
-               {/* DRAG HANDLE OR EXPANDER TRIGGER */}
-               <div 
-                   className="w-full text-center py-3 relative z-10 cursor-pointer select-none border-b border-white/5"
-                   onClick={() => setMobileCartExpanded(!mobileCartExpanded)}
-               >
-                   {/* Drag handle pill */}
-                   <div className="w-12 h-1.5 bg-[#D4AF37]/45 hover:bg-[#D4AF37]/75 rounded-full mx-auto mb-1 transition-colors"></div>
-                   {!mobileCartExpanded && (
-                       /* Collapsed view internal content */
-                       <div className="flex items-center justify-between px-6 pt-1">
-                           <div className="flex items-center gap-2.5 select-none">
-                               <span className="text-lg">🛒</span>
-                               <div className="text-left leading-none">
-                                   <span className="text-[12px] font-black text-[#FDFBFA] tracking-tight block">
-                                       Your Order ({selectedItemsCount} {selectedItemsCount === 1 ? 'Item' : 'Items'})
-                                   </span>
-                                   <span className="text-[9px] font-bold text-[#D5A859] tracking-wider uppercase block mt-1">
-                                       {guests} Guests Selected
-                                   </span>
-                               </div>
-                           </div>
-                           <div className="flex items-center gap-3">
-                               <span className="text-[16px] font-black font-display text-[#E5C37A]">
-                                   ₹{(currentPerPlatePrice * guests).toLocaleString('en-IN')}
-                               </span>
-                               <span className="text-[10px] bg-[#D4AF37]/20 border border-[#D4AF37]/45 text-[#E6C77D] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
-                                   Expand ⬆
-                               </span>
-                           </div>
+               
+               {!mobileCartExpanded ? (
+                   /* Collapsed view - 35% height reduced ultra-compact elegant bar with equally spaced elements and highly visible dividers */
+                   <div 
+                       className="w-full h-full flex items-center justify-between px-3 cursor-pointer relative z-10 select-none pb-0.5"
+                       onClick={() => setMobileCartExpanded(true)}
+                   >
+                       {/* 1st part: Price */}
+                       <div className="flex-1 flex items-center justify-center gap-1.5">
+                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                           <span className="text-[13px] font-black text-[#FFF8EC] tracking-wider font-sans">
+                               ₹{(currentPerPlatePrice * guests).toLocaleString('en-IN')}
+                           </span>
                        </div>
-                   )}
-               </div>
+                       
+                       {/* 1st divider */}
+                       <div className="h-4.5 w-[1.5px] bg-[#D4AF37]/50 shrink-0"></div>
+
+                       {/* 2nd part: Items Count */}
+                       <div className="flex-1 text-center font-black text-[13px] text-[#FFF8EC] tracking-wider font-sans">
+                           {selectedItemsCount} {selectedItemsCount === 1 ? 'Item' : 'Items'}
+                       </div>
+
+                       {/* 2nd divider */}
+                       <div className="h-4.5 w-[1.5px] bg-[#D4AF37]/50 shrink-0"></div>
+
+                       {/* 3rd part: View Order */}
+                       <div className="flex-1 flex items-center justify-center gap-1 font-extrabold text-[11px] text-[#E5C37A] uppercase tracking-widest font-sans">
+                           View Order <span className="text-[#E5C37A] text-[11.5px] font-black">↗</span>
+                       </div>
+                   </div>
+               ) : (
+                   /* Expanded Drawer view header with drag-handle */
+                   <>
+                       <div 
+                           className="w-full text-center py-2.5 relative z-10 cursor-pointer select-none border-b border-white/5"
+                           onClick={() => setMobileCartExpanded(false)}
+                       >
+                           <div className="w-12 h-1 bg-[#D4AF37]/45 hover:bg-[#D4AF37]/75 rounded-full mx-auto mb-1 transition-colors"></div>
+                       </div>
+                   </>
+               )}
 
                {mobileCartExpanded && (
                    /* Expanded bottom sheet view */

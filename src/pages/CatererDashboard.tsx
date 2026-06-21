@@ -746,7 +746,11 @@ export default function CatererDashboard() {
           sensitivePayload.ownerPhoto !== (caterer.ownerPhoto || caterer.founderImageUrl || '') ||
           sensitivePayload.branchPhoto !== (caterer.branchPhoto || '');
 
-      const finalPendingUpdates = hasSensitiveChanges ? sensitivePayload : (caterer.pendingUpdates || null);
+      const finalPendingUpdates = hasSensitiveChanges ? {
+          ...sensitivePayload,
+          _requestedBy: caterer.owner || caterer.businessName || "Caterer",
+          _requestedAt: new Date().toISOString()
+      } : (caterer.pendingUpdates || null);
 
       const directPayload = {
           brandName: profileFormData.brandName || null,
