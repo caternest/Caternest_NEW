@@ -969,6 +969,81 @@ export default function CatererDetails() {
         setEditedCaterer({ ...found });
       }
     }
+
+    // Dynamic database refresh load to prevent stale caching issues across sessions
+    const fetchFreshContent = async () => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      try {
+        console.log("[CATERER DETAILS] Performing background live sync with database for profile ID/Slug:", id);
+        let query = supabase.from('caterer_registrations').select('*');
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
+        if (isUuid) {
+          query = query.eq('id', id);
+        }
+        
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          const localRegs = JSON.parse(localStorage.getItem("registrations") || "[]");
+          const updatedLocalRegs = [...localRegs];
+          
+          data.forEach((freshRecord: any) => {
+            const index = updatedLocalRegs.findIndex((r: any) => r.id === freshRecord.id);
+            if (index > -1) {
+              updatedLocalRegs[index] = { ...updatedLocalRegs[index], ...freshRecord };
+            } else {
+              updatedLocalRegs.push(freshRecord);
+            }
+          });
+          
+          localStorage.setItem("registrations", JSON.stringify(updatedLocalRegs));
+          console.log("[CATERER DETAILS] Local registrations copy synced to database.");
+
+          let freshAllCaterers = [...DEMO_CATERERS];
+          const freshRegMapped = updatedLocalRegs.map((r: any) => ({
+            ...r,
+            id: r.id,
+            name: r.businessName,
+            location: r.location || "Banjara Hills",
+            type: r.type || "Veg + Non-Veg",
+            startingPrice: 350,
+            rating: r.rating || null,
+            reviewCount: r.reviewCount || null,
+            description: r.description || "Welcome to our premium catering service.",
+            images: r.images || [],
+            logo: r.logo || "",
+            address: r.address || r.location || "Hyderabad, Telangana",
+            phone: r.phone || "+91 98765 43210",
+            menus: [],
+            menuPackages: r.menuPackages || r.packages || [],
+            packages: r.packages || r.menuPackages || [],
+            menuItems: r.menuItems || [],
+            coverBanner: r.coverBanner,
+            ownerPhoto: r.ownerPhoto,
+            ownerName: r.owner || "Business Owner",
+            galleryPhotos: r.galleryPhotos || [],
+            achievements: r.achievements,
+            awards: r.awards,
+            highlights: r.highlights || null,
+            teamPhotos: r.teamPhotos || [],
+            kitchenPhotos: r.kitchenPhotos || [],
+            specializations: r.specializations || (r.serviceAreas ? [] : null),
+            services: r.services || null,
+          }));
+          freshAllCaterers = [...freshAllCaterers, ...freshRegMapped];
+          const brandNewFound = freshAllCaterers.find((c) => c.id === id || getCatererSlug(c) === id);
+          if (brandNewFound) {
+            setCaterer(brandNewFound);
+            if (!isEditing) {
+              setEditedCaterer({ ...brandNewFound });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[CATERER DETAILS] Background sync exception:", err);
+      }
+    };
+    fetchFreshContent();
   }, [id, isEditing]);
 
   const [lightboxOpen, setLightboxOpen] = useState(false);

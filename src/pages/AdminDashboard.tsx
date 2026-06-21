@@ -633,46 +633,103 @@ export default function AdminDashboard() {
 
   const handleApproveProfileUpdate = async (id: string) => {
       const item = registrations.find(r => r.id === id);
-      if (item && item.pendingUpdates) {
-          const mergedPayload = {
-              owner: item.pendingUpdates.ownerName || item.owner,
-              ownerName: item.pendingUpdates.ownerName || item.owner || item.ownerName,
-              businessName: item.pendingUpdates.businessName || item.businessName,
-              phone: item.pendingUpdates.mobile || item.phone,
-              alternatePhone: item.pendingUpdates.alternateMobile || item.alternatePhone,
-              whatsappNumber: item.pendingUpdates.whatsappNumber || item.whatsappNumber,
-              email: item.pendingUpdates.email || item.email,
-              address: item.pendingUpdates.location || item.location || item.address,
-              city: item.pendingUpdates.city || item.city,
-              description: item.pendingUpdates.description || item.description,
-              fssaiNumber: item.pendingUpdates.fssai || item.fssai || item.fssaiNumber,
-              gstNumber: item.pendingUpdates.gst || item.gst || item.gstNumber,
-              panNumber: item.pendingUpdates.pan || item.pan || item.panNumber,
-              logo: item.pendingUpdates.logo || item.logo,
-              coverBanner: item.pendingUpdates.coverBanner || item.coverBanner,
-              ownerPhoto: item.pendingUpdates.ownerPhoto || item.ownerPhoto,
-              branchPhoto: item.pendingUpdates.branchPhoto || item.branchPhoto,
-              pendingUpdates: null
-          };
+      if (!item) {
+          console.error("[APPROVE BUG DEBUG] Target record not found in local registrations state for ID:", id);
+          toast('Error: Target record not found.', 'error');
+          return;
+      }
+      
+      const payloadPending = item.pendingUpdates;
+      if (!payloadPending) {
+          console.warn("[APPROVE BUG DEBUG] Target record has no pendingUpdates payload to approve. ID:", id);
+          toast('No pending updates found.', 'error');
+          return;
+      }
 
-          const supabase = getSupabase() as any;
-          if (supabase) {
-              try {
-                  await supabase.from('caterer_registrations').update(mergedPayload).eq('id', id);
-              } catch (err) {
-                  console.error("Supabase update error during approval:", err);
+      console.log("[APPROVE BUG DEBUG] Started handleApproveProfileUpdate.");
+      console.log("- Target Row ID:", id);
+      console.log("- Original Record values:", {
+          businessName: item.businessName,
+          ownerName: item.ownerName || item.owner,
+          phone: item.phone,
+          logo: item.logo,
+          coverBanner: item.coverBanner
+      });
+      console.log("- Pending Updates Payload to merge:", JSON.stringify(payloadPending));
+
+      const mergedPayload = {
+          owner: payloadPending.ownerName || item.owner,
+          ownerName: payloadPending.ownerName || item.owner || item.ownerName,
+          businessName: payloadPending.businessName || item.businessName,
+          phone: payloadPending.mobile || payloadPending.phone || item.phone,
+          alternatePhone: payloadPending.alternateMobile || payloadPending.alternatePhone || item.alternatePhone,
+          whatsappNumber: payloadPending?.whatsappNumber || item.whatsappNumber,
+          email: payloadPending.email || item.email,
+          address: payloadPending.location || payloadPending.address || item.location || item.address,
+          city: payloadPending.city || item.city,
+          description: payloadPending.description || item.description,
+          fssaiNumber: payloadPending.fssai || payloadPending.fssaiNumber || item.fssai || item.fssaiNumber,
+          gstNumber: payloadPending.gst || payloadPending.gstNumber || item.gst || item.gstNumber,
+          panNumber: payloadPending.pan || payloadPending.panNumber || item.pan || item.panNumber,
+          logo: payloadPending.logo || item.logo,
+          coverBanner: payloadPending.coverBanner || item.coverBanner,
+          ownerPhoto: payloadPending.ownerPhoto || item.ownerPhoto,
+          branchPhoto: payloadPending.branchPhoto || item.branchPhoto,
+          pendingUpdates: null
+      };
+
+      console.log("- Merging Pending Updates: Complete dynamic field mapping completed.");
+      console.log("- Merged Payload to write:", JSON.stringify(mergedPayload));
+
+      const supabase = getSupabase() as any;
+      let databaseWriteSuccessful = false;
+
+      if (supabase) {
+          try {
+              console.log("Invoking update on Supabase table 'caterer_registrations'...");
+              const response = await supabase.from('caterer_registrations').update(mergedPayload).eq('id', id);
+              
+              console.log("Supabase update response received:", {
+                  status: response?.status,
+                  statusText: response?.statusText,
+                  error: response?.error,
+                  data: response?.data
+              });
+
+              if (response?.error) {
+                  console.error("Supabase error response during approval write:", response.error);
+                  toast(`Database Update Failed: ${response.error.message || response.error.details || 'Schema violation / RLS Block'}`, 'error');
+              } else {
+                  console.log("Supabase update returned success status. Rows affected: (Success 200/204 indicates row matching id updated)");
+                  databaseWriteSuccessful = true;
               }
+          } catch (err) {
+              console.error("Expected exception crash during Supabase update execution:", err);
+              toast('Database connection error during write.', 'error');
           }
+      } else {
+          console.warn("[APPROVE BUG DEBUG] Supabase is not configured. Running offline/localStorage path.");
+          databaseWriteSuccessful = true; // allow localStorage update in sandbox mode
+      }
 
+      if (databaseWriteSuccessful) {
+          // Sync local react state first
           const updated = registrations.map(r => r.id === id ? { ...r, ...mergedPayload } : r);
           setRegistrations(updated);
           localStorage.setItem('registrations', JSON.stringify(updated));
+
+          // Log to audit log
           await logAudit(
               "Approve Profile Update", 
-              `${item.businessName || item.name} | Req By: ${item.pendingUpdates._requestedBy || item.owner || 'N/A'} | Req At: ${item.pendingUpdates._requestedAt ? new Date(item.pendingUpdates._requestedAt).toLocaleString() : 'N/A'} | Appr By: admin@quickchef.com | Appr At: ${new Date().toLocaleString()}`
+              `${item.businessName || item.name || 'Caterer'} | Req By: ${payloadPending._requestedBy || item.owner || 'N/A'} | Req At: ${payloadPending._requestedAt ? new Date(payloadPending._requestedAt).toLocaleString() : 'N/A'} | Appr By: admin@quickchef.com | Appr At: ${new Date().toLocaleString()}`
           );
-          toast('Profile updates approved!', 'success');
-          return;
+
+          // Force immediately re-fetch/pull the caterer record from Supabase to guarantee eventual consistency across sessions
+          console.log("Immediately re-fetching latest registrations list from Supabase...");
+          await fetchSupabaseData();
+          console.log("Refetch completed successfully!");
+
+          toast('Profile updates approved and live published!', 'success');
       }
   };
 
