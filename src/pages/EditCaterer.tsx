@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Save } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
 import { toast } from '../components/Toast';
 
@@ -37,7 +37,7 @@ export default function EditCaterer() {
       // Change status to Pending Re-Approval upon edit
       const updated = all.map((c: any) => c.id === id ? { ...caterer, menuPackages, status: 'Pending Re-Approval' } : c);
       try {
-        localStorage.setItem('registrations', JSON.stringify(updated));
+        safeSaveRegistrations(updated);
         toast('Profile updated! Sent to Admin for Re-Approval.', 'success');
         navigate('/businesses');
       } catch (err) {

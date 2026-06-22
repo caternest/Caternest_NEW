@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB } from '../lib/supabase';
@@ -10,6 +10,8 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const adminEmail = user?.email || 'admin@caternest.com';
+
   const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings'>('overview');
   const [foodItemImages, setFoodItemImages] = useState<any[]>([]);
   const [platformFeePerPlate, setPlatformFeePerPlate] = useState<number>(2);
@@ -39,7 +41,13 @@ export default function AdminDashboard() {
 
   const fetchFoodImages = () => {
     fetch('/api/food-images')
-      .then(res => res.json())
+      .then(res => {
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          return res.json();
+        }
+        throw new Error(`Response was not JSON. Status: ${res.status}`);
+      })
       .then(data => {
         if (data && data.success && Array.isArray(data.images)) {
           setFoodItemImages(data.images);
@@ -66,7 +74,7 @@ export default function AdminDashboard() {
           .order('created_at', { ascending: false });
         if (!regError && regData) {
           setRegistrations(regData);
-          localStorage.setItem('registrations', JSON.stringify(regData));
+          safeSaveRegistrations(regData);
         }
 
         // Fetch orders
@@ -142,7 +150,7 @@ export default function AdminDashboard() {
           timestamp: new Date().toISOString(),
           action,
           details: `User action on entity: ${entityName}`,
-          user_email: user?.email || 'admin@caternest.com',
+          user_email: adminEmail,
           role: 'Admin'
       };
       
@@ -155,7 +163,7 @@ export default function AdminDashboard() {
         }
       }
       
-      const updatedLogs = [{ ...newLog, date: newLog.timestamp, by: 'Admin', entity: entityName }, ...existingLogs];
+      const updatedLogs = [{ ...newLog, date: newLog.timestamp, by: user?.name || adminEmail, entity: entityName }, ...existingLogs];
       localStorage.setItem('auditLogs', JSON.stringify(updatedLogs));
       setAuditLogs(updatedLogs);
   };
@@ -537,7 +545,7 @@ export default function AdminDashboard() {
 
       const updated = registrations.map(x => x.id === id ? { ...x, ...updatePayload } : x);
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       logAudit('Moved to Trash', r?.businessName || id);
       setDeleteConfirm(null);
       toast('Caterer moved to Trash', 'success');
@@ -562,7 +570,7 @@ export default function AdminDashboard() {
 
       const updated = registrations.map(x => x.id === id ? { ...x, ...updatePayload } : x);
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       logAudit('Restored from Trash', r?.businessName || id);
       toast('Caterer restored and moved to Pending Review.', 'success');
   };
@@ -581,7 +589,7 @@ export default function AdminDashboard() {
 
       const updated = registrations.filter(x => x.id !== id);
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       logAudit('Permanently Deleted', r?.businessName || id);
       setPermanentDeleteConfirm(null);
       toast('Caterer permanently deleted', 'success');
@@ -623,48 +631,109 @@ export default function AdminDashboard() {
 
     const updated = finalRegs.map(r => r.id === id ? { ...r, status: newStatus } : r);
     setRegistrations(updated);
-    localStorage.setItem('registrations', JSON.stringify(updated));
+    safeSaveRegistrations(updated);
     toast(`Caterer marked as ${newStatus}`, 'success');
   };
 
   const handleApproveProfileUpdate = async (id: string) => {
       const item = registrations.find(r => r.id === id);
-      if (item && item.pendingUpdates) {
-          const mergedPayload = {
-              owner: item.pendingUpdates.ownerName || item.owner,
-              ownerName: item.pendingUpdates.ownerName || item.owner || item.ownerName,
-              businessName: item.pendingUpdates.businessName || item.businessName,
-              phone: item.pendingUpdates.mobile || item.phone,
-              alternatePhone: item.pendingUpdates.alternateMobile || item.alternatePhone,
-              whatsappNumber: item.pendingUpdates.whatsappNumber || item.whatsappNumber,
-              email: item.pendingUpdates.email || item.email,
-              address: item.pendingUpdates.location || item.location || item.address,
-              city: item.pendingUpdates.city || item.city,
-              description: item.pendingUpdates.description || item.description,
-              fssaiNumber: item.pendingUpdates.fssai || item.fssai || item.fssaiNumber,
-              gstNumber: item.pendingUpdates.gst || item.gst || item.gstNumber,
-              panNumber: item.pendingUpdates.pan || item.pan || item.panNumber,
-              logo: item.pendingUpdates.logo || item.logo,
-              coverBanner: item.pendingUpdates.coverBanner || item.coverBanner,
-              ownerPhoto: item.pendingUpdates.ownerPhoto || item.ownerPhoto,
-              branchPhoto: item.pendingUpdates.branchPhoto || item.branchPhoto,
-              pendingUpdates: null
-          };
+      if (!item) {
+          console.error("[APPROVE BUG DEBUG] Target record not found in local registrations state for ID:", id);
+          toast('Error: Target record not found.', 'error');
+          return;
+      }
+      
+      const payloadPending = item.pendingUpdates;
+      if (!payloadPending) {
+          console.warn("[APPROVE BUG DEBUG] Target record has no pendingUpdates payload to approve. ID:", id);
+          toast('No pending updates found.', 'error');
+          return;
+      }
 
-          const supabase = getSupabase() as any;
-          if (supabase) {
-              try {
-                  await supabase.from('caterer_registrations').update(mergedPayload).eq('id', id);
-              } catch (err) {
-                  console.error("Supabase update error during approval:", err);
+      console.log("[APPROVE BUG DEBUG] Started handleApproveProfileUpdate.");
+      console.log("- Target Row ID:", id);
+      console.log("- Original Record values:", {
+          businessName: item.businessName,
+          ownerName: item.ownerName || item.owner,
+          phone: item.phone,
+          logo: item.logo,
+          coverBanner: item.coverBanner
+      });
+      console.log("- Pending Updates Payload to merge:", JSON.stringify(payloadPending));
+
+      const mergedPayload = {
+          owner: payloadPending.ownerName || item.owner,
+          ownerName: payloadPending.ownerName || item.owner || item.ownerName,
+          businessName: payloadPending.businessName || item.businessName,
+          phone: payloadPending.mobile || payloadPending.phone || item.phone,
+          alternatePhone: payloadPending.alternateMobile || payloadPending.alternatePhone || item.alternatePhone,
+          whatsappNumber: payloadPending?.whatsappNumber || item.whatsappNumber,
+          email: payloadPending.email || item.email,
+          address: payloadPending.location || payloadPending.address || item.location || item.address,
+          city: payloadPending.city || item.city,
+          description: payloadPending.description || item.description,
+          fssaiNumber: payloadPending.fssai || payloadPending.fssaiNumber || item.fssai || item.fssaiNumber,
+          gstNumber: payloadPending.gst || payloadPending.gstNumber || item.gst || item.gstNumber,
+          panNumber: payloadPending.pan || payloadPending.panNumber || item.pan || item.panNumber,
+          logo: payloadPending.logo || item.logo,
+          coverBanner: payloadPending.coverBanner || item.coverBanner,
+          ownerPhoto: payloadPending.ownerPhoto || item.ownerPhoto,
+          branchPhoto: payloadPending.branchPhoto || item.branchPhoto,
+          pendingUpdates: null
+      };
+
+      console.log("- Merging Pending Updates: Complete dynamic field mapping completed.");
+      console.log("- Merged Payload to write:", JSON.stringify(mergedPayload));
+
+      const supabase = getSupabase() as any;
+      let databaseWriteSuccessful = false;
+
+      if (supabase) {
+          try {
+              console.log("Invoking update on Supabase table 'caterer_registrations'...");
+              const response = await supabase.from('caterer_registrations').update(mergedPayload).eq('id', id);
+              
+              console.log("Supabase update response received:", {
+                  status: response?.status,
+                  statusText: response?.statusText,
+                  error: response?.error,
+                  data: response?.data
+              });
+
+              if (response?.error) {
+                  console.error("Supabase error response during approval write:", response.error);
+                  toast(`Database Update Failed: ${response.error.message || response.error.details || 'Schema violation / RLS Block'}`, 'error');
+              } else {
+                  console.log("Supabase update returned success status. Rows affected: (Success 200/204 indicates row matching id updated)");
+                  databaseWriteSuccessful = true;
               }
+          } catch (err) {
+              console.error("Expected exception crash during Supabase update execution:", err);
+              toast('Database connection error during write.', 'error');
           }
+      } else {
+          console.warn("[APPROVE BUG DEBUG] Supabase is not configured. Running offline/localStorage path.");
+          databaseWriteSuccessful = true; // allow localStorage update in sandbox mode
+      }
 
+      if (databaseWriteSuccessful) {
+          // Sync local react state first
           const updated = registrations.map(r => r.id === id ? { ...r, ...mergedPayload } : r);
           setRegistrations(updated);
-          localStorage.setItem('registrations', JSON.stringify(updated));
-          toast('Profile updates approved!', 'success');
-          return;
+          safeSaveRegistrations(updated);
+
+          // Log to audit log
+          await logAudit(
+              "Approve Profile Update", 
+              `${item.businessName || item.name || 'Caterer'} | Req By: ${payloadPending._requestedBy || item.owner || 'N/A'} | Req At: ${payloadPending._requestedAt ? new Date(payloadPending._requestedAt).toLocaleString() : 'N/A'} | Appr By: ${adminEmail} | Appr At: ${new Date().toLocaleString()}`
+          );
+
+          // Force immediately re-fetch/pull the caterer record from Supabase to guarantee eventual consistency across sessions
+          console.log("Immediately re-fetching latest registrations list from Supabase...");
+          await fetchSupabaseData();
+          console.log("Refetch completed successfully!");
+
+          toast('Profile updates approved and live published!', 'success');
       }
   };
 
@@ -695,11 +764,12 @@ export default function AdminDashboard() {
           return r;
       });
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
       toast('Profile updates approved!', 'success');
   };
 
   const handleRejectProfileUpdate = async (id: string) => {
+      const item = registrations.find(r => r.id === id);
       const supabase = getSupabase() as any;
       if (supabase) {
         try {
@@ -719,7 +789,13 @@ export default function AdminDashboard() {
           return r;
       });
       setRegistrations(updated);
-      localStorage.setItem('registrations', JSON.stringify(updated));
+      safeSaveRegistrations(updated);
+      if (item && item.pendingUpdates) {
+          await logAudit(
+              "Reject Profile Update", 
+              `${item.businessName || item.name} | Req By: ${item.pendingUpdates._requestedBy || item.owner || 'N/A'} | Req At: ${item.pendingUpdates._requestedAt ? new Date(item.pendingUpdates._requestedAt).toLocaleString() : 'N/A'} | Rej By: ${adminEmail} | Rej At: ${new Date().toLocaleString()}`
+          );
+      }
       toast('Profile updates rejected.', 'success');
   };
   
@@ -1009,8 +1085,12 @@ export default function AdminDashboard() {
                          <div key={r.id} className="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden">
                              <div className="p-6 border-b border-blue-100 flex justify-between items-center bg-blue-50/50">
                                  <div>
-                                     <h2 className="font-bold text-lg text-blue-900">Profile Update: {r.businessName}</h2>
-                                     <p className="text-sm text-blue-700 mt-1">Requested by {r.owner} ({r.email})</p>
+                                     <h2 className="font-bold text-lg text-[#173D32]">Profile Update: {r.businessName || r.name}</h2>
+                                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                                         <span><strong>Requested By:</strong> {r.pendingUpdates?._requestedBy || r.owner || 'Caterer'}</span>
+                                         <span className="text-slate-300">|</span>
+                                         <span><strong>Requested On:</strong> {r.pendingUpdates?._requestedAt ? new Date(r.pendingUpdates._requestedAt).toLocaleString() : 'N/A'}</span>
+                                     </div>
                                  </div>
                                  <div className="flex gap-3">
                                      <button onClick={() => handleRejectProfileUpdate(r.id)} className="px-6 py-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 font-bold rounded-xl transition-colors">Reject</button>
@@ -1021,6 +1101,7 @@ export default function AdminDashboard() {
                                  <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Proposed Changes</h3>
                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                      {Object.entries(r.pendingUpdates).map(([key, newValue]: [string, any]) => {
+                                         if (key.startsWith('_')) return null;
                                          // Map profileFormData keys back to registration keys
                                          const keyMap: any = {
                                              ownerName: 'owner',
@@ -1074,8 +1155,59 @@ export default function AdminDashboard() {
                          </div>
                      ))
                  )}
-              </div>
-          )}
+
+                  {/* Past Governance History Logs */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-8 font-sans">
+                      <div className="border-b border-slate-100 pb-4 mb-4 flex justify-between items-center bg-[#FFFDFB]">
+                          <div>
+                              <h3 className="font-bold text-lg text-[#173D32]">Profile Governance History</h3>
+                              <p className="text-xs text-slate-500 mt-1">Historical logs of profile change requests processed by platform administrators</p>
+                          </div>
+                          <span className="text-[10px] font-mono uppercase bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-bold">
+                              {auditLogs.filter(log => log.action === "Approve Profile Update" || log.action === "Reject Profile Update").length} Total Actions
+                          </span>
+                      </div>
+                      
+                      {auditLogs.filter(log => log.action === "Approve Profile Update" || log.action === "Reject Profile Update").length === 0 ? (
+                          <p className="text-sm text-slate-400 italic text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-xl">No profile change request history found in audit logs.</p>
+                      ) : (
+                          <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+                              {auditLogs.filter(log => log.action === "Approve Profile Update" || log.action === "Reject Profile Update").map((log, index) => {
+                                  // Details parse helper
+                                  const parts = log.details ? log.details.split(' | ') : [];
+                                  const businessName = parts[0]?.replace('User action on entity: ', '') || log.entity || 'Unknown Caterer';
+                                  const reqBy = parts.find((p: string) => p.startsWith('Req By:'))?.replace('Req By: ', '') || 'N/A';
+                                  const reqAt = parts.find((p: string) => p.startsWith('Req At:'))?.replace('Req At: ', '') || 'N/A';
+                                  const processedBy = parts.find((p: string) => p.startsWith('Appr By:') || p.startsWith('Rej By:'))?.replace('Appr By: ', '')?.replace('Rej By: ', '') || log.by || 'admin@caternest.com';
+                                  const processedAt = parts.find((p: string) => p.startsWith('Appr At:') || p.startsWith('Rej At:'))?.replace('Appr At: ', '')?.replace('Rej At: ', '') || new Date(log.timestamp || log.date).toLocaleString();
+
+                                  const isApprove = log.action === "Approve Profile Update";
+
+                                  return (
+                                      <div key={index} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-200 transition-colors">
+                                          <div>
+                                              <div className="flex items-center gap-3 flex-wrap">
+                                                  <span className="font-bold text-[#173D32] text-sm">{businessName}</span>
+                                                  <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${isApprove ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                                      {isApprove ? 'Approved' : 'Rejected'}
+                                                  </span>
+                                              </div>
+                                              <div className="text-xs text-slate-500 mt-2 space-y-1">
+                                                  <p><strong>Proposed By:</strong> {reqBy} <span className="text-slate-300 mx-1.5">|</span> <strong>Requested On:</strong> {reqAt}</p>
+                                                  <p><strong>Processed By:</strong> {processedBy} <span className="text-slate-300 mx-1.5">|</span> <strong>Processed On:</strong> {processedAt}</p>
+                                              </div>
+                                          </div>
+                                          <div className="text-left md:text-right font-mono text-[10px] text-slate-400">
+                                              {new Date(log.timestamp || log.date).toLocaleDateString()}
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      )}
+                  </div>
+               </div>
+           )}
 
           {activeTab === 'orders' && (
               <div className="space-y-6">

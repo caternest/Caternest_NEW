@@ -129,6 +129,14 @@ CREATE TABLE IF NOT EXISTS public.orders (
     "completedAt" TIMESTAMPTZ
 );
 
+-- Platform settings table
+CREATE TABLE IF NOT EXISTS public.platform_settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    "platformFeePerPlate" NUMERIC DEFAULT 2
+);
+
 -- Notifications table
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

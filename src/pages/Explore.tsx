@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DEMO_CATERERS } from '../data';
 import { Link, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Search, ChevronRight, ChevronLeft, Check, ChefHat, Heart, Users, Award, MenuSquare, ImageIcon } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { getSupabase } from '../lib/supabase';
 
@@ -119,7 +119,7 @@ export default function Explore() {
             
             allCaterers = [...allCaterers, ...formattedCaterers];
             // Cache locally
-            localStorage.setItem('registrations', JSON.stringify(data));
+            safeSaveRegistrations(data);
           }
         } catch (e: any) {
           console.error("Error fetching registrations from Supabase in Explore page, falling back to local:", e);
@@ -353,15 +353,15 @@ export default function Explore() {
                     <button className="absolute top-4 left-4 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-red-500 hover:bg-white transition-colors">
                         <Heart size={16} />
                     </button>
-                    
-                    {/* Floating Logo Profile */}
-                    <div className="absolute bottom-0 translate-y-1/2 left-6 w-20 h-20 bg-white rounded-full p-1.5 shadow-lg z-10 border border-slate-100 flex items-center justify-center overflow-hidden">
-                        {caterer.logo ? (
-                            <img src={caterer.logo} alt="Logo" className="w-full h-full object-cover rounded-full" />
-                        ) : (
-                            <span className="font-display font-bold text-slate-300 text-2xl uppercase">{(caterer.name || 'Caterer').substring(0,2)}</span>
-                        )}
-                    </div>
+                </div>
+                
+                {/* Floating Logo Profile (positioned outside h-56 container so overflow-hidden doesn't crop it) */}
+                <div className="absolute top-56 -translate-y-1/2 left-6 w-[80px] h-[80px] sm:w-[92px] sm:h-[92px] lg:w-[104px] lg:h-[104px] bg-[#FFFDFB] rounded-full p-1.5 border-2 border-[#D4AF37] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-10 flex items-center justify-center overflow-hidden">
+                    {caterer.logo ? (
+                        <img src={caterer.logo} alt="Logo" className="w-full h-full object-contain object-center rounded-full" />
+                    ) : (
+                        <span className="font-display font-bold text-[#D4AF37] text-lg sm:text-xl lg:text-2xl uppercase">{(caterer.name || 'Caterer').substring(0,2)}</span>
+                    )}
                 </div>
                 
                 <div className="p-6 pt-12 flex-1 flex flex-col relative z-0">

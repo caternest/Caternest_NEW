@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChefHat, Mail, Lock, AlertCircle } from 'lucide-react';
 import { toast } from '../components/Toast';
 import { getSupabase } from '../lib/supabase';
+import { safeSaveRegistrations } from '../lib/utils';
 
 export default function CatererLogin() {
   const { signIn, logout } = useAuth();
@@ -181,7 +182,7 @@ export default function CatererLogin() {
            if (rawLocal) {
               const allLocal = JSON.parse(rawLocal);
               const updatedLocal = allLocal.map((r: any) => r.id === activeReg.id ? { ...r, userId: authUser.id } : r);
-              localStorage.setItem('registrations', JSON.stringify(updatedLocal));
+              safeSaveRegistrations(updatedLocal);
            }
          }
       }

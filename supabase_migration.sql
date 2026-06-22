@@ -273,5 +273,16 @@ ALTER TABLE public.caterer_registrations
 ALTER TABLE public.orders 
   ADD COLUMN IF NOT EXISTS "platformFeePerPlate" NUMERIC;
 
+CREATE TABLE IF NOT EXISTS public.platform_settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    "platformFeePerPlate" NUMERIC DEFAULT 2
+);
+
+INSERT INTO public.platform_settings (id, "platformFeePerPlate")
+VALUES ('default', 2)
+ON CONFLICT (id) DO NOTHING;
+
 NOTIFY pgrst, 'reload schema';
 
