@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, ShieldCheck, Key, Image as ImageIcon, FileText, ChefHat, Building2, User, UploadCloud, X, CheckCircle2 } from 'lucide-react';
-import { cn, compressImageFile, safeSaveRegistrations } from '../lib/utils';
+import { cn, compressImageFile } from '../lib/utils';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
 import { toast } from '../components/Toast';
 import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
@@ -192,7 +192,7 @@ export default function AdminEditCaterer() {
       const all = JSON.parse(raw);
       const updated = all.map((c: any) => c.id === id ? { ...caterer, menuPackages } : c);
       try {
-        safeSaveRegistrations(updated);
+        localStorage.setItem('registrations', JSON.stringify(updated));
 
         // Persist full profile updates to Supabase caterer_registrations table securely
         const supabase = getSupabase();
@@ -241,7 +241,7 @@ export default function AdminEditCaterer() {
                 if (refreshedRaw) {
                   const refreshedAll = JSON.parse(refreshedRaw);
                   const updatedWithUserId = refreshedAll.map((c: any) => c.id === id ? { ...c, userId: data.userId } : c);
-                  safeSaveRegistrations(updatedWithUserId);
+                  localStorage.setItem('registrations', JSON.stringify(updatedWithUserId));
                   setCaterer((prev: any) => ({ ...prev, userId: data.userId }));
                 }
               }

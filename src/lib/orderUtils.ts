@@ -333,50 +333,21 @@ export async function performOrderStatusUpdate(
   if (supabase) {
     try {
       console.log(`[ORDER UPDATE PROGRESS] Performing direct Supabase update for order #${orderId}...`);
-      
-      let errorResponse: any = null;
-      let attemptPayload = { ...dbPayload };
-      let success = false;
-      let dataResult: any = null;
-      
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const { data, error } = await (supabase as any)
-          .from('orders')
-          .update(attemptPayload)
-          .eq('id', orderId)
-          .select();
-          
-        if (!error) {
-          success = true;
-          dataResult = data;
-          break;
-        }
-        
-        errorResponse = error;
-        // Check for PGRST204 column missing error
-        if (error.code === 'PGRST204') {
-          const match = error.message?.match(/Could not find (?:the )?['"]?([a-zA-Z0-9_]+)['"]? column/i) || 
-                        error.message?.match(/column:? ['"]?([a-zA-Z0-9_]+)['"]?/i) ||
-                        error.message?.match(/Could not find column ['"]?([a-zA-Z0-9_]+)['"]?/i);
-                        
-          const missingColumn = match ? match[1] : null;
-          if (missingColumn && attemptPayload[missingColumn] !== undefined) {
-            console.warn(`[ORDER UPDATE WARNING] Column "${missingColumn}" does not exist in "orders" table. Removing and retrying...`);
-            delete attemptPayload[missingColumn];
-            continue;
-          }
-        }
-        break;
+      const { data, error } = await (supabase as any)
+        .from('orders')
+        .update(dbPayload)
+        .eq('id', orderId)
+        .select();
+
+      // Requirement: Add orders table update error logging
+      if (error) {
+        console.log("ORDERS TABLE UPDATE ERROR", error);
+        console.error("[ORDER UPDATE ERROR] Supabase update statement rejected:", error);
+        toast(`Database save rejected: ${error.message}`, "error");
+        throw error;
       }
 
-      if (!success && errorResponse) {
-        console.log("ORDERS TABLE UPDATE ERROR", errorResponse);
-        console.error("[ORDER UPDATE ERROR] Supabase update statement rejected:", errorResponse);
-        toast(`Database save rejected: ${errorResponse.message}`, "error");
-        throw errorResponse;
-      }
-
-      console.log("[ORDER UPDATE SUCCESS] Updated row result:", dataResult);
+      console.log("[ORDER UPDATE SUCCESS] Updated row result:", data);
     } catch (saveErr: any) {
       console.error("[ORDER UPDATE ERROR] Exception during Supabase transaction:", saveErr);
       throw saveErr;

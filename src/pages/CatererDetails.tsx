@@ -35,29 +35,12 @@ import {
   Plus,
   Pencil,
   Sparkles,
-  ChevronUp,
-  ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 import { DEMO_REVIEWS, DEMO_CATERERS } from "../data";
 import { cn, compressImageFile, getCatererSlug } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 import { getSupabase, uploadToSupabaseBucket } from "../lib/supabase";
 import { toast } from "../components/Toast";
-import {
-  AboutCatererCard,
-  ServicesOfferCard,
-  FoodGalleryCard,
-  MenuPackagesCard,
-  ReviewsCard,
-  AdditionalMediaCard,
-  BranchDetailsCard,
-  ServiceAreasCard,
-  OperatingHoursCard,
-  AchievementsCard,
-  AwardsCertsCard,
-  ContactSidebarCard
-} from "../components/PremiumCatererSections";
 
 // Highly polished, realistic decorative crown vector asset to perfectly mimic the image design
 const CrownOrnament = ({
@@ -424,130 +407,6 @@ const getHighlightIcon = (title: string, subtitle: string) => {
   return CheckCircle2;
 };
 
-export const serviceIcons: Record<string, any> = {
-  ChefHat: ChefHat,
-  Sparkles: Sparkles,
-  Briefcase: Briefcase,
-  Award: Award,
-  Users: Users,
-  Clock: Clock,
-  Heart: Heart,
-};
-
-export const DEFAULT_SERVICES = [
-  {
-    title: "Wedding Catering",
-    desc: "Make your big day memorable with our luxury custom royal feasts.",
-    image: "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=600&auto=format&fit=crop",
-    iconName: "ChefHat",
-  },
-  {
-    title: "Birthday Parties",
-    desc: "Delicious menus and vibrant spreads for birthday celebrations of all sizes.",
-    image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=600&auto=format&fit=crop",
-    iconName: "Sparkles",
-  },
-  {
-    title: "Corporate Events",
-    desc: "Professional elite catering for meetings, conferences, and formal galas.",
-    image: "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=600&auto=format&fit=crop",
-    iconName: "Briefcase",
-  }
-];
-
-export const SERVICE_SUGGESTIONS = [
-  {
-    title: "Wedding Catering",
-    desc: "Make your big day memorable with our luxury custom royal feasts.",
-    image: "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=600&auto=format&fit=crop",
-    iconName: "ChefHat",
-  },
-  {
-    title: "Birthday Parties",
-    desc: "Delicious menus and vibrant spreads for birthday celebrations of all sizes.",
-    image: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=600&auto=format&fit=crop",
-    iconName: "Sparkles",
-  },
-  {
-    title: "Corporate Events",
-    desc: "Professional elite catering for meetings, conferences, and formal galas.",
-    image: "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=600&auto=format&fit=crop",
-    iconName: "Briefcase",
-  },
-  {
-    title: "Engagement Catering",
-    desc: "Curated menu selections for a romantic, high-end engagement celebration.",
-    image: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?q=80&w=600&auto=format&fit=crop",
-    iconName: "Heart",
-  },
-  {
-    title: "Housewarming Catering",
-    desc: "Traditional food warmers with warm cuisine to welcome you to your brand new house.",
-    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=600&auto=format&fit=crop",
-    iconName: "ChefHat",
-  },
-  {
-    title: "Reception Catering",
-    desc: "Sumptuous spread options with premium cutlery and gold standard service hosts.",
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=600&auto=format&fit=crop",
-    iconName: "Award",
-  },
-  {
-    title: "Outdoor Catering",
-    desc: "Beautiful alfresco food stalls to accompany a fresh open lawn setup safely.",
-    image: "https://images.unsplash.com/photo-1504387828636-abeb50775c09?q=80&w=600&auto=format&fit=crop",
-    iconName: "Sparkles",
-  },
-  {
-    title: "Live Food Counters",
-    desc: "Interactive hot food hubs prep cooking custom items directly on order.",
-    image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop",
-    iconName: "ChefHat",
-  },
-  {
-    title: "Buffet Services",
-    desc: "Efficient gourmet multi-cuisine buffet grids that keep dishes warm and fresh.",
-    image: "https://images.unsplash.com/photo-1555244161-0b5c10ad7f48?q=80&w=600&auto=format&fit=crop",
-    iconName: "Users",
-  },
-  {
-    title: "Traditional South Indian Catering",
-    desc: "Authentic spices and traditional recipes plated beautifully on classic banana leaves.",
-    image: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=600&auto=format&fit=crop",
-    iconName: "ChefHat",
-  },
-  {
-    title: "North Indian Catering",
-    desc: "Exquisite rich tandoori grills, rich layered biryanis, and fresh hand-stretched naans.",
-    image: "https://images.unsplash.com/photo-1585938338392-50a599307c78?q=80&w=600&auto=format&fit=crop",
-    iconName: "ChefHat",
-  },
-  {
-    title: "Premium Catering Packages",
-    desc: "Luxury, bespoke food presentation using elite culinary styling and menu curation.",
-    image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop",
-    iconName: "Award",
-  },
-  {
-    title: "Event Management",
-    desc: "Full planning, bespoke themes, styling setups, and smooth timeline coordination.",
-    image: "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=600&auto=format&fit=crop",
-    iconName: "Briefcase",
-  },
-  {
-    title: "Destination Wedding Catering",
-    desc: "Gourmet kitchens anywhere, delivering outstanding taste scales without boundaries.",
-    image: "https://images.unsplash.com/photo-1519225495810-7512c696505a?q=80&w=600&auto=format&fit=crop",
-    iconName: "Sparkles",
-  },
-  {
-    title: "Festival Catering",
-    desc: "Sattvik options matching strict cultural purity with traditional festive menus.",
-    image: "https://images.unsplash.com/photo-1514516345957-556ca7d90a29?q=80&w=600&auto=format&fit=crop",
-    iconName: "Heart",
-  }
-];
-
 export default function CatererDetails() {
   const { user } = useAuth();
   const { id } = useParams();
@@ -561,13 +420,6 @@ export default function CatererDetails() {
   const [editingHighlightIndex, setEditingHighlightIndex] = useState<number | 'experience' | 'eventsCompleted' | null>(null);
   const [highlightForm, setHighlightForm] = useState({ title: "", subtitle: "" });
   const [showCustomInput, setShowCustomInput] = useState(false);
-
-  // Add Service Modal States
-  const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
-  const [newServiceTitle, setNewServiceTitle] = useState("");
-  const [newServiceDesc, setNewServiceDesc] = useState("");
-  const [newServiceImage, setNewServiceImage] = useState("https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=600&auto=format&fit=crop");
-  const [newServiceIcon, setNewServiceIcon] = useState("ChefHat");
 
   const openEditHighlightModal = (type: number | 'experience' | 'eventsCompleted' | null) => {
     setEditingHighlightIndex(type);
@@ -657,17 +509,14 @@ export default function CatererDetails() {
   };
 
   useEffect(() => {
-    if (isEditing && editedCaterer) {
-      if (!editedCaterer.highlights || !editedCaterer.services) {
-        setEditedCaterer((prev: any) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            highlights: prev.highlights || caterer?.highlights || DEFAULT_HIGHLIGHTS,
-            services: prev.services || caterer?.services || DEFAULT_SERVICES
-          };
-        });
-      }
+    if (isEditing && editedCaterer && !editedCaterer.highlights) {
+      setEditedCaterer((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          highlights: prev.highlights || caterer?.highlights || DEFAULT_HIGHLIGHTS
+        };
+      });
     }
   }, [isEditing, editedCaterer, caterer]);
 
@@ -776,8 +625,6 @@ export default function CatererDetails() {
       "specializations",
       "galleryPhotos",
       "highlights",
-      "services",
-      "achievements",
     ];
 
     const changes: any = {};
@@ -856,67 +703,9 @@ export default function CatererDetails() {
       !isAdmin &&
       Object.keys(changes).filter((k) => sensitiveKeys.includes(k)).length > 0
     ) {
-      finalPendingUpdates._requestedBy = caterer.owner || caterer.name || "Caterer";
-      finalPendingUpdates._requestedAt = new Date().toISOString();
       tableUpdatePayload["pendingUpdates"] = finalPendingUpdates;
       finalLocalCatererState["pendingUpdates"] = finalPendingUpdates;
     }
-
-    // ADDED DEBUG LOGS
-    console.log("=== CATERNEST DATA SYNCHRONIZATION AUDIT LOGS ===");
-    const directKeys = [
-        { name: "Brand Public Name", field: "brandName", col: "includedItems._fallback_brandName" },
-        { name: "Brand Tagline", field: "tagline", col: "includedItems._fallback_tagline" },
-        { name: "Description", field: "description", col: "includedItems._fallback_description" },
-        { name: "Experience Years", field: "experience", col: "includedItems._fallback_experience" },
-        { name: "Events Completed", field: "eventsCompleted", col: "includedItems._fallback_eventsCompleted" },
-        { name: "Awards", field: "awards", col: "includedItems._fallback_awards" },
-        { name: "Certifications", field: "certifications", col: "includedItems._fallback_certifications" },
-        { name: "Operating Hours", field: "operatingHours", col: "includedItems._fallback_operatingHours" },
-        { name: "Branch Count", field: "branches", col: "includedItems._fallback_branches" },
-        { name: "Service Areas", field: "serviceAreas", col: "includedItems._fallback_serviceAreas" },
-        { name: "WhatsApp Number", field: "whatsappNumber", col: "includedItems._fallback_whatsappNumber" },
-        { name: "HQ Address", field: "address", col: "address" },
-        { name: "City", field: "city", col: "city" },
-        { name: "Services", field: "services", col: "includedItems._fallback_services" },
-        { name: "Achievements", field: "achievements", col: "includedItems._fallback_achievements" },
-        { name: "Highlights", field: "highlights", col: "includedItems._fallback_highlights" },
-        { name: "Specializations", field: "specializations", col: "includedItems._fallback_specializations" }
-    ];
-    directKeys.forEach(({ name, field, col }) => {
-        const oldVal = (caterer as any)[field];
-        const newVal = tableUpdatePayload[field];
-        if (oldVal !== newVal && newVal !== undefined) {
-            console.log(`[SYNC DEBUG] Field: "${name}", Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "${col}"`);
-        }
-    });
-
-    const sensitiveKeysMapping = [
-        { name: "Founder Name", field: "ownerName", col: "owner" },
-        { name: "Legal Business Name", field: "businessName", col: "businessName" },
-        { name: "Phone/Mobile", field: "phone", col: "phone" },
-        { name: "Alternate Phone", field: "alternatePhone", col: "alternatePhone" },
-        { name: "Email", field: "email", col: "email" },
-        { name: "FSSAI", field: "fssai", col: "fssaiNumber" },
-        { name: "GST", field: "gst", col: "gstNumber" },
-        { name: "PAN", field: "pan", col: "panNumber" },
-        { name: "Logo", field: "logo", col: "logo" },
-        { name: "Cover Banner", field: "coverBanner", col: "coverBanner" },
-        { name: "Founder Photo", field: "ownerPhoto", col: "ownerPhoto" },
-        { name: "Branch Photo", field: "branchPhoto", col: "branchPhoto" }
-    ];
-    sensitiveKeysMapping.forEach(({ name, field, col }) => {
-        const oldVal = (caterer as any)[field];
-        const newVal = editedCaterer[field];
-        if (oldVal !== newVal && newVal !== undefined) {
-             if (isAdmin) {
-                 console.log(`[SYNC DEBUG] Field: "${name}" (SENSITIVE - Admin Direct Save), Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "${col}"`);
-             } else {
-                 console.log(`[SYNC DEBUG] Field: "${name}" (SENSITIVE), Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "pendingUpdates.${field} (Admin review required)"`);
-             }
-        }
-    });
-    console.log("================================================");
 
     // 1. Update in Supabase
     const supabase = getSupabase() as any;
@@ -959,36 +748,7 @@ export default function CatererDetails() {
           }
           return c;
         });
-
-        try {
-          localStorage.setItem("registrations", JSON.stringify(updated));
-        } catch (error: any) {
-          if (error.name === "QuotaExceededError" || error.message?.includes("quota") || error.message?.includes("exceeded")) {
-            console.warn("[QuotaExceededError] localStorage quota exceeded in Details. Cleaning large datasets inside cache.");
-            const cleaned = updated.map((c: any) => {
-              const copy = { ...c };
-              delete copy.galleryPhotos;
-              delete copy.menuPackages;
-              delete copy.packages;
-              delete copy.draftMenuPackages;
-              delete copy.images;
-              if (copy.includedItems && typeof copy.includedItems === "object") {
-                const incCopy = { ...copy.includedItems };
-                delete incCopy._fallback_galleryPhotos;
-                delete incCopy._fallback_menuPackages;
-                delete incCopy._fallback_packages;
-                delete incCopy._fallback_draftMenuPackages;
-                delete incCopy._fallback_images;
-                copy.includedItems = incCopy;
-              }
-              return copy;
-            });
-            localStorage.setItem("registrations", JSON.stringify(cleaned));
-            console.log("[QuotaExceededError Resolved] Successfully saved cleaned registrations cache inside Details.");
-          } else {
-            throw error;
-          }
-        }
+        localStorage.setItem("registrations", JSON.stringify(updated));
       } catch (e) {
         console.error("Failed to update localStorage:", e);
       }
@@ -1041,7 +801,6 @@ export default function CatererDetails() {
           teamPhotos: r.teamPhotos || [],
           kitchenPhotos: r.kitchenPhotos || [],
           specializations: r.specializations || (r.serviceAreas ? [] : null),
-          services: r.services || null,
         }));
         allCaterers = [...allCaterers, ...regMapped];
       } catch (e) {}
@@ -1054,81 +813,6 @@ export default function CatererDetails() {
         setEditedCaterer({ ...found });
       }
     }
-
-    // Dynamic database refresh load to prevent stale caching issues across sessions
-    const fetchFreshContent = async () => {
-      const supabase = getSupabase();
-      if (!supabase) return;
-      try {
-        console.log("[CATERER DETAILS] Performing background live sync with database for profile ID/Slug:", id);
-        let query = supabase.from('caterer_registrations').select('*');
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
-        if (isUuid) {
-          query = query.eq('id', id);
-        }
-        
-        const { data, error } = await query;
-        if (!error && data && data.length > 0) {
-          const localRegs = JSON.parse(localStorage.getItem("registrations") || "[]");
-          const updatedLocalRegs = [...localRegs];
-          
-          data.forEach((freshRecord: any) => {
-            const index = updatedLocalRegs.findIndex((r: any) => r.id === freshRecord.id);
-            if (index > -1) {
-              updatedLocalRegs[index] = { ...updatedLocalRegs[index], ...freshRecord };
-            } else {
-              updatedLocalRegs.push(freshRecord);
-            }
-          });
-          
-          localStorage.setItem("registrations", JSON.stringify(updatedLocalRegs));
-          console.log("[CATERER DETAILS] Local registrations copy synced to database.");
-
-          let freshAllCaterers = [...DEMO_CATERERS];
-          const freshRegMapped = updatedLocalRegs.map((r: any) => ({
-            ...r,
-            id: r.id,
-            name: r.businessName,
-            location: r.location || "Banjara Hills",
-            type: r.type || "Veg + Non-Veg",
-            startingPrice: 350,
-            rating: r.rating || null,
-            reviewCount: r.reviewCount || null,
-            description: r.description || "Welcome to our premium catering service.",
-            images: r.images || [],
-            logo: r.logo || "",
-            address: r.address || r.location || "Hyderabad, Telangana",
-            phone: r.phone || "+91 98765 43210",
-            menus: [],
-            menuPackages: r.menuPackages || r.packages || [],
-            packages: r.packages || r.menuPackages || [],
-            menuItems: r.menuItems || [],
-            coverBanner: r.coverBanner,
-            ownerPhoto: r.ownerPhoto,
-            ownerName: r.owner || "Business Owner",
-            galleryPhotos: r.galleryPhotos || [],
-            achievements: r.achievements,
-            awards: r.awards,
-            highlights: r.highlights || null,
-            teamPhotos: r.teamPhotos || [],
-            kitchenPhotos: r.kitchenPhotos || [],
-            specializations: r.specializations || (r.serviceAreas ? [] : null),
-            services: r.services || null,
-          }));
-          freshAllCaterers = [...freshAllCaterers, ...freshRegMapped];
-          const brandNewFound = freshAllCaterers.find((c) => c.id === id || getCatererSlug(c) === id);
-          if (brandNewFound) {
-            setCaterer(brandNewFound);
-            if (!isEditing) {
-              setEditedCaterer({ ...brandNewFound });
-            }
-          }
-        }
-      } catch (err) {
-        console.error("[CATERER DETAILS] Background sync exception:", err);
-      }
-    };
-    fetchFreshContent();
   }, [id, isEditing]);
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -1137,7 +821,7 @@ export default function CatererDetails() {
   const [activeGalleryTab, setActiveGalleryTab] = useState("All");
   const [guestCount, setGuestCount] = useState(100);
   const [activeTab, setActiveTab] = useState("Overview");
-  const [builderTab, setBuilderTab] = useState<"branding" | "highlights" | "location" | "gallery">("branding");
+  const [builderTab, setBuilderTab] = useState<"branding" | "about" | "highlights" | "location" | "gallery">("branding");
   const [mobileEditorView, setMobileEditorView] = useState<"editor" | "preview">("editor");
 
   const handleTabClick = (tab: string) => {
@@ -1160,7 +844,7 @@ export default function CatererDetails() {
         ?.scrollIntoView({ behavior: "smooth" });
     } else if (tab === "About Us") {
       document
-        .getElementById("overview-section")
+        .getElementById("founder-info")
         ?.scrollIntoView({ behavior: "smooth" });
     }
   };
@@ -1369,60 +1053,6 @@ export default function CatererDetails() {
         ? targetCatererObj.certifications
         : []
     : [];
-
-  const rawAchievements = targetCatererObj.achievements;
-  let achievementsList: any[] = [];
-  if (Array.isArray(rawAchievements)) {
-    achievementsList = rawAchievements;
-  } else if (typeof rawAchievements === "string" && rawAchievements.trim().startsWith("[")) {
-    try {
-      achievementsList = JSON.parse(rawAchievements);
-    } catch (e) {
-      achievementsList = [];
-    }
-  } else if (typeof rawAchievements === "string" && rawAchievements.trim() !== "") {
-    achievementsList = rawAchievements.split(",").map(item => {
-      const parts = item.trim().split(" ");
-      const val = parts[0] || "10+";
-      const lbl = parts.slice(1).join(" ") || "Successful Events";
-      return { value: val, title: lbl };
-    });
-  } else {
-    const items = [];
-    const evVal = targetCatererObj.eventsCompleted;
-    const expVal = targetCatererObj.experience;
-    if (evVal !== undefined && evVal !== null && evVal !== "") {
-      items.push({
-        value: `${parseInt(evVal.toString()).toLocaleString()}+`,
-        title: "Successful Events"
-      });
-    } else {
-      items.push({
-        value: "5,000+",
-        title: "Successful Events"
-      });
-    }
-    if (expVal !== undefined && expVal !== null && expVal !== "") {
-      items.push({
-        value: `${parseInt(expVal.toString()).toLocaleString()}+`,
-        title: "Years of Trust"
-      });
-    } else {
-      items.push({
-        value: "10+",
-        title: "Years of Trust"
-      });
-    }
-    items.push({
-      value: "100,000+",
-      title: "Happy Customers"
-    });
-    items.push({
-      value: "150+",
-      title: "Expert Professionals"
-    });
-    achievementsList = items;
-  }
   const branchesVal = targetCatererObj.branches
     ? parseInt(targetCatererObj.branches.toString())
     : null;
@@ -1464,7 +1094,7 @@ export default function CatererDetails() {
         </div>
         
         {/* Tab Selectors */}
-        <div className="grid grid-cols-4 bg-[#03110D] border-b border-[#DEAA38]/15 text-[10px] uppercase font-bold tracking-wider relative shrink-0">
+        <div className="grid grid-cols-5 bg-[#03110D] border-b border-[#DEAA38]/15 text-[10px] uppercase font-bold tracking-wider relative shrink-0">
           <button 
             type="button"
             onClick={() => setBuilderTab("branding")}
@@ -1476,6 +1106,18 @@ export default function CatererDetails() {
           >
             <ImageIcon size={15} />
             <span className="text-[8px] tracking-tight mt-0.5">Branding</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setBuilderTab("about")}
+            className={cn(
+              "py-3.5 flex flex-col items-center gap-1 transition-all border-b-2 hover:bg-[#0B3D2E]/20 cursor-pointer", 
+              builderTab === "about" ? "text-[#DEAA38] border-[#DEAA38] bg-[#0B3D2E]/10 font-bold" : "text-white/40 border-transparent"
+            )}
+            title="Founder & Team Story"
+          >
+            <User size={15} />
+            <span className="text-[8px] tracking-tight mt-0.5">Founder</span>
           </button>
           <button 
             type="button"
@@ -1659,6 +1301,70 @@ export default function CatererDetails() {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {builderTab === "about" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pb-1.5 font-mono">Founder Bio Story</h4>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 animate-pulse">Founder/Owner Name</label>
+                <input
+                  type="text"
+                  value={editedCaterer.founderName || editedCaterer.ownerName || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, founderName: e.target.value, ownerName: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] transition font-sans"
+                  placeholder="Founder Name"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50">Founder Personal Quote / Bio</label>
+                <textarea
+                  value={editedCaterer.founderDescription || ""}
+                  onChange={(e) => setEditedCaterer({ ...editedCaterer, founderDescription: e.target.value })}
+                  className="bg-black/40 border border-emerald-900/40 rounded-xl px-4 py-3 text-xs text-white/95 placeholder:text-white/20 outline-none focus:border-[#DEAA38] h-24 resize-none transition font-sans"
+                  placeholder="Describe your credentials, passion, and culinary philosophy."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/50 block">Founder Portrait Photo</label>
+                <div className="flex items-center gap-4 bg-black/30 p-3 rounded-xl border border-emerald-950/20">
+                  {editedCaterer.ownerPhoto ? (
+                    <img src={editedCaterer.ownerPhoto} className="w-14 h-14 object-cover rounded-full border border-[#DEAA38]" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-emerald-950/40 flex items-center justify-center text-[#DEAA38] border border-[#DEAA38]/20">
+                      <User size={20} />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <label className="cursor-pointer bg-emerald-900/60 border border-emerald-500/20 hover:bg-emerald-800 text-white font-bold text-[10px] px-3 py-2 rounded-lg flex items-center gap-1.5 justify-center transition w-fit shadow-xs">
+                      <ImageIcon size={12} /> Upload Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            setEditedCaterer({ ...editedCaterer, ownerPhoto: base64 });
+                          }
+                        }}
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      value={editedCaterer.ownerPhoto || ""}
+                      onChange={(e) => setEditedCaterer({ ...editedCaterer, ownerPhoto: e.target.value })}
+                      placeholder="Photo URL"
+                      className="bg-black/50 border border-emerald-950/80 rounded-lg px-2.5 py-1 text-[10px] w-full text-white/80 font-sans"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <h4 className="text-[10px] uppercase tracking-widest text-[#DEAA38] font-bold border-b border-[#DEAA38]/10 pt-4 pb-1.5 font-mono">Our Specialties</h4>
               <div className="flex flex-col gap-1.5">
@@ -1678,7 +1384,6 @@ export default function CatererDetails() {
                 />
                 <span className="text-[9px] text-[#DEAA38]/60 font-mono italic">Separate specialties with commas</span>
               </div>
-
             </div>
           )}
 
@@ -2103,165 +1808,6 @@ export default function CatererDetails() {
             </motion.div>
           </div>
         )}
-
-        {isAddServiceModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#052118] border border-[#D4A437]/40 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.6)] w-full max-w-xl p-6 text-white overflow-hidden relative"
-            >
-              <button
-                type="button"
-                onClick={() => setIsAddServiceModalOpen(false)}
-                className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-
-              <h3 className="text-lg font-black uppercase text-[#D4A437] tracking-wider mb-2 font-display">
-                Add Custom Service
-              </h3>
-              <p className="text-white/70 text-xs mb-4 font-sans">
-                Create a custom service card or select one of the pre-designed popular templates below.
-              </p>
-
-              {/* Suggestions Panel Inside Modal */}
-              <div className="mb-5 bg-[#03150F] rounded-2xl p-3 border border-[#D4A437]/10">
-                <span className="text-[9px] uppercase font-bold text-[#D4A437] tracking-widest block mb-2 font-mono">
-                  Recommended Service Templates (Click to prefill)
-                </span>
-                <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
-                  {SERVICE_SUGGESTIONS.map((sug) => {
-                    const isPrefilled = newServiceTitle === sug.title;
-                    return (
-                      <button
-                        key={sug.title}
-                        type="button"
-                        onClick={() => {
-                          setNewServiceTitle(sug.title);
-                          setNewServiceDesc(sug.desc);
-                          setNewServiceImage(sug.image);
-                          setNewServiceIcon(sug.iconName);
-                          toast(`Loaded template: ${sug.title}`, "success");
-                        }}
-                        className={cn(
-                          "text-[10px] px-2.5 py-1.5 rounded-lg transition font-sans font-bold flex items-center gap-1 cursor-pointer border",
-                          isPrefilled
-                            ? "bg-[#D4A437]/20 text-[#D4A437] border-[#D4A437]"
-                            : "bg-white/5 hover:bg-white/10 text-white/90 border-transparent"
-                        )}
-                      >
-                        + {sug.title}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Custom Input Form */}
-              <div className="space-y-4 pt-1">
-                <div className="flex flex-col gap-1.5 font-sans">
-                  <label className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest font-mono">
-                    Service Title
-                  </label>
-                  <input
-                    type="text"
-                    value={newServiceTitle}
-                    onChange={(e) => setNewServiceTitle(e.target.value)}
-                    className="bg-black/40 border border-white/10 focus:border-[#D4A437] rounded-xl px-3 py-2 text-xs outline-none transition text-white w-full"
-                    placeholder="e.g. Traditional Royal Buffet"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5 font-sans">
-                  <label className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest font-mono">
-                    Service Description
-                  </label>
-                  <textarea
-                    value={newServiceDesc}
-                    onChange={(e) => setNewServiceDesc(e.target.value)}
-                    className="bg-black/40 border border-white/10 focus:border-[#D4A437] rounded-xl px-3 py-2 text-xs outline-none transition text-white w-full h-18 resize-none"
-                    placeholder="Briefly describe what's included in this premium service package..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-sans">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest font-mono">
-                      Image URL
-                    </label>
-                    <input
-                      type="text"
-                      value={newServiceImage}
-                      onChange={(e) => setNewServiceImage(e.target.value)}
-                      className="bg-black/40 border border-white/10 focus:border-[#D4A437] rounded-xl px-3 py-2 text-xs outline-none transition text-white w-full"
-                      placeholder="Paste cover image URL..."
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5 font-sans">
-                    <label className="text-[10px] uppercase font-bold text-[#D4A437] tracking-widest font-mono">
-                      Choose Icon Style
-                    </label>
-                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-xl px-2.5 py-1 h-[34px]">
-                      {Object.keys(serviceIcons).map((iconKey) => {
-                        const IconComp = serviceIcons[iconKey];
-                        const isSelected = newServiceIcon === iconKey;
-                        return (
-                          <button
-                            key={iconKey}
-                            type="button"
-                            onClick={() => setNewServiceIcon(iconKey)}
-                            className={cn(
-                              "p-1 rounded-md transition hover:bg-white/15 select-none cursor-pointer",
-                              isSelected ? "text-[#D4A437] bg-white/10" : "text-white/40"
-                            )}
-                            title={iconKey}
-                          >
-                            <IconComp size={15} />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5 pt-4 border-t border-white/10 mt-6 font-sans">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!newServiceTitle.trim()) {
-                        toast("Please enter a service title", "error");
-                        return;
-                      }
-                      const servicesList = [...(editedCaterer?.services || caterer?.services || DEFAULT_SERVICES)];
-                      servicesList.push({
-                        title: newServiceTitle,
-                        desc: newServiceDesc || "Premium custom service prepared according to special design tastes.",
-                        image: newServiceImage || "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=600&auto=format&fit=crop",
-                        iconName: newServiceIcon
-                      });
-                      setEditedCaterer({ ...editedCaterer, services: servicesList });
-                      setIsAddServiceModalOpen(false);
-                      toast("Successfully added service to the list!", "success");
-                    }}
-                    className="bg-[#D4A437] hover:bg-[#b08427] text-[#052118] font-bold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
-                  >
-                    Add Service
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddServiceModalOpen(false)}
-                    className="bg-white/5 hover:bg-white/10 text-white font-bold text-xs px-5 py-3 rounded-xl transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
       </AnimatePresence>
 
       {/* Lightbox */}
@@ -2315,547 +1861,775 @@ export default function CatererDetails() {
       {isEditing && renderEditSettingsModal()}
 
       {/* Live profile display panel */}
-      <div className="w-full bg-[#FDF7F2] relative overflow-x-hidden min-h-screen">
+      <div className="w-full bg-[#FAF8F3] relative overflow-x-hidden">
 
-        {/* TOP ROW: BREADCRUMBS & NAVIGATION BUTTONS */}
-        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-5 mt-[85px] sm:mt-[96px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 font-sans relative z-30 border-b border-[#E8DCC7]/40">
-          {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 font-medium">
-            <Link to="/" className="hover:text-[#0B3D2E] hover:font-bold transition-all">Home</Link>
-            <ChevronRight size={12} className="text-slate-400" />
-            <Link to="/explore" className="hover:text-[#0B3D2E] hover:font-bold transition-all">Caterers</Link>
-            <ChevronRight size={12} className="text-slate-400" />
-            <span className="font-semibold text-[#0B3D2E] bg-[#0F3D2E]/5 px-2.5 py-1 rounded-md">{targetCatererObj.brandName || targetCatererObj.name}</span>
-          </div>
+          {/* SECTION 1: HERO CONTAINER WITH INTEGRATED COVER BANNER */}
+      <div className="relative w-full bg-[#0B3D2E] text-white pt-6 pb-12 mt-[72px] rounded-b-[3.5rem] border-b-4 border-[#D4A437]/25 shadow-[0_15px_40px_rgba(11,61,46,0.15)] overflow-hidden">
+        {/* Background Cover Banner - Lighter 80% opacity to remain vibrant and visible */}
+        <div className="absolute inset-0 z-0">
+          {editedCaterer && isEditing ? (
+            editedCaterer.coverBanner ? (
+              <img
+                src={editedCaterer.coverBanner}
+                alt={caterer.name}
+                className="w-full h-full object-cover opacity-80"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#0B3D2E]/80 to-[#124f3c]/80 flex items-center justify-center">
+                <ImageIcon className="text-[#D4A437]/25 w-32 h-32" />
+              </div>
+            )
+          ) : fallbackBanner ? (
+            <img
+              src={fallbackBanner}
+              alt={caterer.name}
+              className="w-full h-full object-cover opacity-80"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#0B3D2E]/80 to-[#124f3c]/80 flex items-center justify-center">
+              <ImageIcon className="text-[#D4A437]/25 w-32 h-32" />
+            </div>
+          )}
+          {/* Left Side Banner Overlay - smooth dark gradient only on the left side, keeping the right vibrant */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.45) 25%, rgba(0,0,0,0.15) 55%, transparent 100%)",
+            }}
+          />
 
-          {/* Action Row */}
-          <div className="flex gap-2 items-center font-sans">
-            {isOwnerOrAdmin && isEditing && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleSaveChanges}
-                  className="flex items-center gap-1.5 bg-[#01A378] hover:bg-[#028b67] text-white px-4 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[10px] cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
-                >
-                  SAVE CHANGES
-                </button>
+        </div>
+
+        <div className="relative z-10 max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-between">
+          {/* Top Row: Navigation buttons */}
+          <div className="flex justify-between items-center w-full mb-8">
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95"
+              >
+                <ChevronLeft size={16} /> Back to Caterers
+              </button>
+              {isOwnerOrAdmin && isEditing && (
+                <label className="flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-bold transition-all w-fit border border-white/10 shadow-sm text-xs cursor-pointer hover:scale-105 active:scale-95 font-sans">
+                  Change Cover 🔒
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const base64 = await convertFileToBase64(file);
+                        setEditedCaterer({ ...editedCaterer, coverBanner: base64 });
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="flex gap-3.5 items-center font-sans">
+              {isOwnerOrAdmin && isEditing && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveChanges}
+                    className="flex items-center gap-2 bg-[#01A378] hover:bg-[#028b67] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-xs cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
+                  >
+                    SAVE CHANGES
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditedCaterer({ ...caterer });
+                    }}
+                    className="flex items-center gap-2 bg-[#D11A2A] hover:bg-[#b01421] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-xs cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
+                  >
+                    CANCEL
+                  </button>
+                </>
+              )}
+              {isOwnerOrAdmin && !isEditing && (
                 <button
                   type="button"
                   onClick={() => {
-                    setIsEditing(false);
-                    setEditedCaterer({ ...caterer });
+                    setIsEditing(true);
+                    if (!isEditing) {
+                      setEditedCaterer({ ...caterer });
+                    }
                   }}
-                  className="flex items-center gap-1.5 bg-[#D11A2A] hover:bg-[#b01421] text-white px-4 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[10px] cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
+                  className="flex items-center gap-2 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-6 py-2.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] hover:shadow-[0_8px_25px_rgba(222,170,56,0.38)] text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
                 >
-                  CANCEL
+                  Edit Profile
                 </button>
-              </>
-            )}
-            {isOwnerOrAdmin && !isEditing && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing(true);
-                  if (!isEditing) {
-                    setEditedCaterer({ ...caterer });
-                  }
-                }}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-4.5 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] text-[10px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+              )}
+              <button 
+                onClick={handleShare}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/25 backdrop-blur-md text-white px-5 py-2.5 rounded-full font-bold transition-all duration-300 w-fit border border-white/20 shadow-sm text-xs cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
               >
-                Edit Profile
+                Share
               </button>
-            )}
-            <button 
-              onClick={handleShare}
-              className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-full font-bold transition-all duration-300 border border-slate-200 shadow-sm text-[10px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
-            >
-              Share
-            </button>
+            </div>
           </div>
-        </div>
-
-        {/* SECTION 1: HERO CONTAINER WITH INTEGRATED COVER BANNER */}
-        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mb-6 mt-1 relative z-20">
-          <div className="bg-[#FFFDFB] rounded-[2rem] sm:rounded-[2.5rem] border border-[#E8DCC7] p-4 sm:p-6 shadow-[0_8px_30px_rgba(15,61,46,0.08)] relative">
-            
-            {/* Cover Banner Area Wrapper with Overflow-Visible */}
-            <div className="relative w-full overflow-visible">
-              {/* Background Cover Banner */}
-              <div className="relative w-full h-44 sm:h-56 md:h-64 lg:h-72 rounded-2xl sm:rounded-[1.8rem] overflow-hidden bg-[#0F3D2E]">
-                {editedCaterer && isEditing ? (
-                  editedCaterer.coverBanner ? (
+          {/* Identity Row */}
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mt-4 mb-4">
+            {/* Left Section: Glassmorphism Dark Blur Panel */}
+            <div
+              className="flex flex-col md:flex-row items-center gap-6 md:gap-8 p-6 md:py-6 md:px-8 rounded-[20px] border border-[#D4A437]/25 w-full lg:max-w-[85%] xl:max-w-[80%] shadow-[0_12px_42px_rgba(0,0,0,0.35)] text-center md:text-left"
+              style={{
+                background: "rgba(0,0,0,0.45)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+            >
+              {/* Round Logo card without wreath ornaments (flawless premium design) */}
+              <div className="shrink-0 select-none relative group">
+                {/* White logo rounded card background */}
+                <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-white rounded-full p-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.25),_0_0_15px_rgba(212,164,55,0.15)] border-4 border-[#D4A437] flex items-center justify-center overflow-hidden hover:scale-105 transition-transform duration-300 relative">
+                  {editedCaterer && isEditing ? (
+                    <>
+                      {editedCaterer.logo ? (
+                        <img
+                          src={editedCaterer.logo}
+                          alt="Logo"
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : (
+                        <div className="text-[#0B3D2E] text-xs font-bold font-sans uppercase">No Logo</div>
+                      )}
+                      <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-[10px] font-bold uppercase cursor-pointer text-center p-1 font-sans transition-opacity opacity-0 group-hover:opacity-100">
+                        <span>Upload 🔒</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const base64 = await convertFileToBase64(file);
+                              setEditedCaterer({ ...editedCaterer, logo: base64 });
+                            }
+                          }}
+                        />
+                      </label>
+                    </>
+                  ) : caterer.logo ? (
                     <img
-                      src={editedCaterer.coverBanner}
-                      alt={targetCatererObj.name}
-                      className="w-full h-full object-cover"
+                      src={caterer.logo}
+                      alt="Logo"
+                      className="w-full h-full object-cover rounded-full"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-[#0F3D2E]/80 to-[#0A5A42]/80 flex items-center justify-center">
-                      <ImageIcon className="text-[#DFC27A]/25 w-32 h-32" />
-                    </div>
-                  )
-                ) : fallbackBanner ? (
-                  <img
-                    src={fallbackBanner}
-                    alt={targetCatererObj.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#0F3D2E]/80 to-[#0A5A42]/80 flex items-center justify-center">
-                    <ImageIcon className="text-[#DFC27A]/25 w-32 h-32" />
-                  </div>
-                )}
-                {/* Optional Subtle dark overlay to keep image legible */}
-                <div className="absolute inset-0 bg-black/10" />
-
-                {/* Heart/Wishlist Button mimicking Screenshot 1 */}
-                <button
-                  type="button"
-                  className="absolute top-4 right-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#FFFDFB]/95 hover:bg-[#FFFDFB] text-slate-700 hover:text-red-500 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shadow-md border border-[#E8DCC7] cursor-pointer"
-                >
-                  <Heart size={16} className="fill-none stroke-current" />
-                </button>
-
-                {/* "Change Cover" overlay button inside edit mode */}
-                {isOwnerOrAdmin && isEditing && (
-                  <label className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-bold transition-all border border-white/10 shadow-sm text-[11px] cursor-pointer font-sans">
-                    Change Cover 🔒
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const base64 = await convertFileToBase64(file);
-                          setEditedCaterer({ ...editedCaterer, coverBanner: base64 });
-                        }
-                      }}
-                    />
-                  </label>
-                )}
+                    <span className="font-display font-medium text-[#0B3D2E] text-4xl uppercase tracking-wider">
+                      {caterer.name.substring(0, 2)}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* LOGO block (Premium Rounded Circular Luxury Branding, Verified Badge) */}
-              <div 
-                id="profile-logo-container"
-                className="absolute left-[20px] sm:left-[28px] lg:left-[36px] -bottom-[60px] sm:-bottom-[80px] lg:-bottom-[105px] z-40 font-sans select-none overflow-visible"
+              {/* Premium Typography & Details Stack with natural wrapping */}
+              <div className="flex-1 text-left w-full">
+                {isEditing ? (
+                  <div className="space-y-3 font-sans w-full max-w-xl text-white">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Brand Public Name (Non-Sensitive)
+                      </span>
+                      <input
+                        type="text"
+                        value={editedCaterer.brandName || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, brandName: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Public Brand Name"
+                      />
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono flex items-center gap-1">
+                        Legal Business Name (Sensitive 🔒) <ShieldCheck size={11} className="text-[#DEAA38]" />
+                      </span>
+                      <input
+                        type="text"
+                        value={editedCaterer.businessName || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, businessName: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Legal Business Name"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Brand Tagline (Non-Sensitive)
+                      </span>
+                      <input
+                        type="text"
+                        value={editedCaterer.tagline || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, tagline: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Brand Tagline"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Official HQ Address (Non-Sensitive)
+                      </span>
+                      <input
+                        type="text"
+                        value={editedCaterer.address || editedCaterer.location || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, address: e.target.value, location: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="HQ Address / Area"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                        Contact Phone (Non-Sensitive)
+                      </span>
+                      <input
+                        type="text"
+                        value={editedCaterer.phone || ""}
+                        onChange={(e) => setEditedCaterer({ ...editedCaterer, phone: e.target.value })}
+                        className="bg-black/40 border border-[#D4AF37]/35 rounded-xl px-3 py-1.5 text-xs text-white outline-none w-full focus:border-[#D4AF37]"
+                        placeholder="Phone or Mobile Number"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-extrabold text-white tracking-wider uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)] leading-none max-w-2xl select-text flex flex-wrap items-center gap-x-3 gap-y-1">
+                      {targetCatererObj.brandName || targetCatererObj.name || targetCatererObj.businessName}{" "}
+                      {targetCatererObj.status === "Approved" && (
+                        <span
+                          className="inline-flex items-center justify-center align-middle bg-[#10B981] text-white rounded-full p-1 shadow-lg shrink-0 border border-white/20 select-none w-6 h-6 ml-1.5"
+                          title="Verified Caterer"
+                        >
+                          <Check size={13} className="text-white stroke-[4]" />
+                        </span>
+                      )}
+                    </h1>
+                    {targetCatererObj.tagline && (
+                      <p className="text-[#DEAA38] text-xs sm:text-sm font-bold tracking-[0.25em] uppercase mt-3.5 font-sans">
+                        ✦ {targetCatererObj.tagline} ✦
+                      </p>
+                    )}
+
+                    {/* Location & Details Area */}
+                    <div className="flex items-center gap-1.5 text-slate-100/95 hover:text-white font-medium text-xs sm:text-sm mt-3 transition-colors">
+                      <MapPin size={14} className="text-[#D4A437]" />
+                      <span>{targetCatererObj.address || targetCatererObj.location}</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-slate-200 text-xs sm:text-sm font-semibold mt-2">
+                      {targetCatererObj.rating && (
+                        <div className="flex items-center gap-1.5">
+                          <Star
+                            size={14}
+                            className="fill-[#D4A437] stroke-[#D4A437]"
+                          />
+                          <span className="font-extrabold text-[#D4A437]">
+                            {targetCatererObj.rating}
+                          </span>
+                          {targetCatererObj.reviewCount && (
+                            <span className="text-slate-300 font-medium">
+                              ({targetCatererObj.reviewCount} Reviews)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {targetCatererObj.rating && targetCatererObj.eventsCompleted && (
+                        <span className="text-white/20 hidden sm:inline">
+                          |
+                        </span>
+                      )}
+                      {targetCatererObj.eventsCompleted && (
+                        <span className="text-slate-200 font-sans font-semibold">
+                          {targetCatererObj.eventsCompleted}+ Events Completed
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right Section: Explore Menu button */}
+            <div className="w-full lg:w-auto shrink-0 flex justify-center mt-4 lg:mt-0 pb-1 lg:pb-0">
+              <button
+                onClick={() => {
+                  document
+                    .getElementById("menu-packages")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="w-full sm:w-auto px-10 py-4 bg-[#D4A437] hover:bg-[#E0B84C] text-white font-black tracking-widest text-xs uppercase rounded-2xl border border-[rgba(212,164,55,0.4)] shadow-[0_4px_20px_rgba(212,164,55,0.35),0_10px_25px_rgba(212,164,55,0.2)] flex items-center justify-center gap-3 transition-all duration-300 hover:-translate-y-[2px] active:scale-95 group/btn cursor-pointer font-sans"
               >
-                <div className="w-[100px] h-[100px] sm:w-[130px] sm:h-[130px] lg:w-[160px] lg:h-[160px] bg-[#FFFDFB] rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.18)] border-[3px] border-[#D4AF37] flex flex-col items-center justify-center relative group overflow-visible">
-                  <div className="w-full h-full bg-[#FFFDFB] flex flex-col items-center justify-center relative rounded-full overflow-hidden">
-                    {editedCaterer && isEditing ? (
-                      <>
-                        {editedCaterer.logo ? (
-                          <img
-                            src={editedCaterer.logo}
-                            alt="Logo"
-                            className="w-full h-full object-cover object-center"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-center p-3 bg-[#051410] w-full h-full rounded-full">
-                            <div className="border border-[#D4AF37]/40 rounded-full p-2 flex flex-col items-center justify-center">
-                              <span className="font-serif font-semibold text-[#D4AF37] text-md sm:text-lg uppercase tracking-wider">
-                                {editedCaterer.brandName?.substring(0, 2) || "RF"}
-                              </span>
-                            </div>
-                            <span className="text-[#D4AF37] text-[8px] sm:text-[9px] font-bold font-sans uppercase mt-2 leading-tight tracking-wider">No Logo</span>
-                          </div>
+                <BookOpen
+                  size={16}
+                  className="text-white group-hover/btn:scale-110 transition-transform"
+                />
+                BOOK NOW
+              </button>
+            </div>
+          </div>
+
+          {/* Premium Statistics Strip */}
+          {(() => {
+            const displayObj = isEditing ? (editedCaterer || caterer) : caterer;
+            if (!displayObj) return null;
+
+            // Consolidate the highlights to display
+            const activeHighlightsList: Array<{
+              type: "experience" | "eventsCompleted" | "dynamic";
+              index?: number;
+              title: string;
+              subtitle: string;
+              icon: React.ComponentType<any>;
+            }> = [];
+
+            // 1. Years of Experience
+            if (displayObj.experience !== undefined && displayObj.experience !== null && displayObj.experience !== "") {
+              activeHighlightsList.push({
+                type: "experience",
+                title: `${displayObj.experience}+ Years`,
+                subtitle: "Experience",
+                icon: Award
+              });
+            } else if (isEditing) {
+              activeHighlightsList.push({
+                type: "experience",
+                title: "Years Experience",
+                subtitle: "Not configured",
+                icon: Award
+              });
+            }
+
+            // 2. Events Completed
+            if (displayObj.eventsCompleted !== undefined && displayObj.eventsCompleted !== null && displayObj.eventsCompleted !== "") {
+              activeHighlightsList.push({
+                type: "eventsCompleted",
+                title: `${displayObj.eventsCompleted}+ Events`,
+                subtitle: "Completed",
+                icon: Users
+              });
+            } else if (isEditing) {
+              activeHighlightsList.push({
+                type: "eventsCompleted",
+                title: "Events Completed",
+                subtitle: "Not configured",
+                icon: Users
+              });
+            }
+
+            // 3. Dynamic custom highlights
+            const hList = displayObj.highlights !== undefined && displayObj.highlights !== null
+              ? displayObj.highlights
+              : DEFAULT_HIGHLIGHTS; // Default fallback
+
+            if (Array.isArray(hList)) {
+              hList.forEach((hl: any, idx: number) => {
+                if (hl && (hl.title || hl.subtitle)) {
+                  activeHighlightsList.push({
+                    type: "dynamic",
+                    index: idx,
+                    title: hl.title || "",
+                    subtitle: hl.subtitle || "",
+                    icon: getHighlightIcon(hl.title, hl.subtitle)
+                  });
+                }
+              });
+            }
+
+            const hasAnyVisibleHighlights = activeHighlightsList.length > 0 || displayObj.whatsappNumber;
+
+            if (!hasAnyVisibleHighlights && !isEditing) return null;
+
+            return (
+              <div className="w-full mt-10">
+                <div className="bg-[#0B3D2E]/95 backdrop-blur-md rounded-3xl border border-[#D4A437]/30 shadow-[0_12px_40px_rgba(11,61,46,0.35),_0_0_15px_rgba(212,164,55,0.15)] px-6 py-5 lg:py-4 lg:px-10 flex flex-wrap items-center justify-around text-white gap-6">
+                  
+                  {activeHighlightsList.map((hl, listIdx) => {
+                    const IconComp = hl.icon;
+                    const isConfigured = !(hl.title === "Years Experience" && hl.subtitle === "Not configured") && 
+                                         !(hl.title === "Events Completed" && hl.subtitle === "Not configured");
+
+                    return (
+                      <React.Fragment key={`${hl.type}-${hl.index ?? listIdx}`}>
+                        {listIdx > 0 && (
+                          <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
                         )}
-                        <label className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-white text-[10px] font-bold uppercase cursor-pointer text-center p-2 font-sans opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                          <span>Upload 🔒</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const base64 = await convertFileToBase64(file);
-                                setEditedCaterer({ ...editedCaterer, logo: base64 });
-                              }
-                            }}
-                          />
-                        </label>
-                      </>
-                    ) : targetCatererObj.logo ? (
+                        <div className="flex items-center gap-3 min-w-[140px] md:min-w-0 relative group">
+                          <div className={`p-2.5 rounded-xl border border-white/5 text-[#D4A437] transition-all duration-300 ${isConfigured ? 'bg-white/10' : 'bg-white/5 opacity-40 border-dashed border-white/20'}`}>
+                            <IconComp size={18} />
+                          </div>
+                          <div className="text-left pr-6">
+                            <div className={`font-extrabold text-sm lg:text-base leading-tight ${isConfigured ? 'text-white' : 'text-white/40 italic'}`}>
+                              {hl.title}
+                            </div>
+                            <div className={`text-[10px] uppercase tracking-wider font-extrabold font-sans ${isConfigured ? 'text-[#D4A437]' : 'text-[#D4A437]/45'}`}>
+                              {hl.subtitle}
+                            </div>
+                          </div>
+
+                          {/* Hover Overlay for Edit & Delete inside edit mode */}
+                          {isOwnerOrAdmin && isEditing && (
+                            <div className="absolute top-1/2 -translate-y-1/2 -right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-black/80 p-1.5 rounded-lg border border-white/15 shadow-xl z-20">
+                              <button
+                                type="button"
+                                title="Edit highlight"
+                                onClick={() => openEditHighlightModal(hl.type === 'dynamic' ? hl.index! : hl.type as any)}
+                                className="p-1 hover:bg-white/10 rounded text-amber-400 transition cursor-pointer"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete highlight"
+                                onClick={() => handleDeleteHighlight(hl.type === 'dynamic' ? hl.index! : hl.type as any)}
+                                className="p-1 hover:bg-red-500/20 rounded text-red-500 transition cursor-pointer"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Standard WhatsApp dynamic booking block */}
+                  {displayObj.whatsappNumber && (
+                    <>
+                      {activeHighlightsList.length > 0 && (
+                        <div className="hidden lg:block w-px h-8 bg-[#D4A437]/20"></div>
+                      )}
+                      <div className="flex items-center gap-3 min-w-[140px] md:min-w-0">
+                        <div className="bg-white/10 p-2.5 rounded-xl border border-white/5 text-[#D4A437]">
+                          <MessageCircle size={18} />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-extrabold text-sm lg:text-base text-white leading-tight">
+                            Interactive
+                          </div>
+                          <div className="text-[10px] text-[#D4A437] uppercase tracking-wider font-extrabold font-sans font-sans">
+                            WhatsApp Booking
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* "+" Add Highlight button in edit mode */}
+                  {isOwnerOrAdmin && isEditing && (
+                    <div className="flex items-center justify-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEditHighlightModal(null)}
+                        className="flex items-center gap-1.5 bg-[#D4A437]/25 hover:bg-[#D4A437]/45 text-[#D4A437] font-black tracking-wider uppercase px-4 py-2 rounded-full border border-[#D4A437]/40 text-[10px] transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
+                      >
+                        <Plus size={13} className="stroke-[3]" />
+                        Add Highlight
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* SECTION 1.5: TABS BAR SYSTEM (Cream Palette) */}
+      <div className="max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mt-6 mb-10 relative z-30">
+        <div className="bg-white p-2 rounded-3xl md:rounded-full border-2 border-[#D4A437]/45 flex flex-wrap md:flex-nowrap gap-1.5 md:gap-2.5 shadow-[0_8px_32px_rgba(212,164,55,0.12)] overflow-x-auto no-scrollbar justify-center md:justify-start w-full md:w-max">
+          {[
+            "Overview",
+            "Packages",
+            "Menu",
+            "Gallery",
+            "Reviews",
+            "About Us",
+          ].map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => handleTabClick(tab)}
+                className={cn(
+                  "px-5 py-2.5 rounded-full font-extrabold text-xs tracking-wider uppercase whitespace-nowrap transition-all duration-300 flex items-center gap-2 cursor-pointer border-2",
+                  isActive
+                    ? "bg-[#0B3D2E] text-white border-[#D4A437] shadow-[0_4px_14px_rgba(11,61,46,0.25)] scale-[1.03]"
+                    : "bg-transparent text-slate-800 hover:text-[#0B3D2E] hover:bg-[#0B3D2E]/5 border-transparent",
+                )}
+              >
+                {tab === "Overview" && (
+                  <LayoutGrid
+                    size={13}
+                    className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
+                  />
+                )}
+                {tab === "Packages" && (
+                  <Package
+                    size={13}
+                    className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
+                  />
+                )}
+                {tab === "Menu" && (
+                  <MenuSquare
+                    size={13}
+                    className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
+                  />
+                )}
+                {tab === "Gallery" && (
+                  <ImageIcon
+                    size={13}
+                    className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
+                  />
+                )}
+                {tab === "Reviews" && (
+                  <Star
+                    size={13}
+                    className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
+                  />
+                )}
+                {tab === "About Us" && (
+                  <User
+                    size={13}
+                    className={cn(isActive ? "text-[#D4A437]" : "opacity-80")}
+                  />
+                )}
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="max-w-[1600px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 relative z-30">
+        <div className="grid grid-cols-1 gap-8 items-start my-8">
+          {/* LEFT COLUMN (72% width) */}
+          <div className="flex flex-col gap-8 w-full">
+            {/* SECTION 2: SERVICES DESK & MENU EXPLORE - Horizontal bar */}
+            <div
+              id="overview-section"
+              className="bg-white rounded-3xl p-6 shadow-sm border border-[#D4A437]/20 flex flex-col xl:flex-row items-center gap-8 overflow-hidden relative z-10 hover:shadow-md transition-shadow"
+            >
+              {/* Founder Mini Info */}
+              {isEditing ? (
+                <div
+                  id="founder-info"
+                  className="flex flex-col gap-2 shrink-0 pr-8 xl:border-r border-slate-200 w-full xl:w-96 text-left font-sans"
+                >
+                  <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                    Founder Detail (Sensitive 🔒)
+                  </span>
+                  <div className="flex items-center gap-3 mb-1">
+                    {editedCaterer.ownerPhoto ? (
                       <img
-                        src={targetCatererObj.logo}
-                        alt="Logo"
-                        className="w-full h-full object-cover object-center rounded-full"
-                        referrerPolicy="no-referrer"
+                        src={editedCaterer.ownerPhoto}
+                        alt="Founder"
+                        className="w-12 h-12 rounded-full object-cover border"
                       />
                     ) : (
-                      // Gorgeous luxury default crest inside the circle
-                      <div className="flex flex-col items-center justify-center text-center bg-[#051410] w-full h-full p-2.5 sm:p-4 select-none rounded-full">
-                        <div className="flex flex-col items-center justify-center">
-                          {/* Crown Icon */}
-                          <p className="text-[#D4AF37] text-xs sm:text-sm lg:text-base mb-0.5">👑</p>
-                          <div className="w-8 h-8 sm:w-11 sm:h-11 lg:w-14 lg:h-14 rounded-full border border-[#D4AF37]/40 flex items-center justify-center relative shadow-inner">
-                            <span className="font-serif font-bold text-[#D4AF37] text-xs sm:text-sm lg:text-base tracking-wider">
-                              {targetCatererObj.brandName?.substring(0, 2) || targetCatererObj.name?.substring(0, 2) || "RF"}
-                            </span>
-                          </div>
-                          <span className="font-serif font-semibold text-[#D4AF37] text-[8px] sm:text-[9px] lg:text-[10px] uppercase tracking-widest leading-tight mt-1 truncate max-w-[70px] sm:max-w-[90px] lg:max-w-[120px]">
-                            {targetCatererObj.brandName || targetCatererObj.name || "Royal"}
-                          </span>
-                        </div>
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <User size={16} />
                       </div>
                     )}
-                  </div>
-                  {/* Elegant Gold Verified shield tag on the bottom-right of the circular card */}
-                  {targetCatererObj.status === "Approved" && (
-                    <div
-                      className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-gradient-to-r from-[#D4AF37] to-[#AA7C11] text-white p-1 rounded-full shadow-md border border-[#FFFDFB] select-none w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center z-50 animate-pulse"
-                      title="Verified Caterer"
-                    >
-                      <Check className="text-white stroke-[4] w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Overlapping Profile Details Row */}
-            <div className="flex flex-col lg:flex-row justify-between items-stretch gap-6 mt-1 flex-wrap">
-              
-              {/* Left & Center section container - always row aligned so spacer keeps details tidy */}
-              <div className="flex flex-row items-start gap-4 sm:gap-6 md:gap-8 flex-1">
-                
-                {/* Responsive spacing matching the absolute-positioned logo to avoid text overlap */}
-                <div className="shrink-0 w-[128px] sm:w-[160px] lg:w-[200px] h-1 select-none pointer-events-none" />
-
-                {/* CENTER Identity Details */}
-                <div className="flex-1 text-left mt-3 sm:mt-5">
-                  {isEditing ? (
-                    <div className="space-y-3 font-sans w-full max-w-xl text-slate-800">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest font-mono">
-                          Brand Public Name (Non-Sensitive)
-                        </span>
-                        <input
-                          type="text"
-                          value={editedCaterer.brandName || ""}
-                          onChange={(e) => setEditedCaterer({ ...editedCaterer, brandName: e.target.value })}
-                          className="bg-white border border-[#DFC27A] rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none w-full focus:border-[#D4AF37]"
-                          placeholder="Public Brand Name"
-                        />
-                      </div>
-                      
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest font-mono flex items-center gap-1">
-                          Legal Business Name (Sensitive 🔒) <ShieldCheck size={11} className="text-[#DEAA38]" />
-                        </span>
-                        <input
-                          type="text"
-                          value={editedCaterer.businessName || ""}
-                          onChange={(e) => setEditedCaterer({ ...editedCaterer, businessName: e.target.value })}
-                          className="bg-white border border-[#DFC27A] rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none w-full focus:border-[#D4AF37]"
-                          placeholder="Legal Business Name"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest font-mono">
-                          Brand Tagline (Non-Sensitive)
-                        </span>
-                        <input
-                          type="text"
-                          value={editedCaterer.tagline || ""}
-                          onChange={(e) => setEditedCaterer({ ...editedCaterer, tagline: e.target.value })}
-                          className="bg-white border border-[#DFC27A] rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none w-full focus:border-[#D4AF37]"
-                          placeholder="Brand Tagline"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest font-mono">
-                          Official HQ Address (Non-Sensitive)
-                        </span>
-                        <input
-                          type="text"
-                          value={editedCaterer.address || editedCaterer.location || ""}
-                          onChange={(e) => setEditedCaterer({ ...editedCaterer, address: e.target.value, location: e.target.value })}
-                          className="bg-white border border-[#DFC27A] rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none w-full focus:border-[#D4AF37]"
-                          placeholder="HQ Address / Area"
-                        />
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest font-mono">
-                          Contact Phone (Non-Sensitive)
-                        </span>
-                        <input
-                          type="text"
-                          value={editedCaterer.phone || ""}
-                          onChange={(e) => setEditedCaterer({ ...editedCaterer, phone: e.target.value })}
-                          className="bg-white border border-[#DFC27A] rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none w-full focus:border-[#D4AF37]"
-                          placeholder="Phone or Mobile Number"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col font-sans text-left">
-                      <div className="flex flex-wrap items-center justify-start gap-2 sm:gap-3">
-                        <h1 className="text-2xl sm:text-3xl md:text-3.5xl lg:text-4xl font-display font-semibold text-[#173D32] tracking-tight leading-tight select-text">
-                          {targetCatererObj.brandName || targetCatererObj.name || targetCatererObj.businessName}
-                        </h1>
-                        {targetCatererObj.status === "Approved" && (
-                          <span
-                            className="inline-flex items-center gap-1 bg-[#FAF4EE] text-[#D4AF37] border border-[#DFC27A] rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest select-none align-middle"
-                            title="Verified and vetted"
-                          >
-                            Verified
-                          </span>
-                        )}
-                      </div>
-                      {targetCatererObj.tagline && (
-                        <p className="text-[#D4AF37]/90 text-[10px] sm:text-[11px] font-semibold tracking-[0.15em] uppercase mt-1 px-1">
-                          ✦ {targetCatererObj.tagline}
-                        </p>
-                      )}
-
-                      {/* Premium rating & detail strip aligned beautifully with Screenshot 1 */}
-                      <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1.5 mt-3 text-xs font-sans text-[#555555]">
-                        {targetCatererObj.rating && (
-                          <div className="flex items-center gap-1 font-bold">
-                            <span className="text-[#D4AF37] text-sm">★</span>
-                            <span className="text-slate-900 font-extrabold">{targetCatererObj.rating}</span>
-                            {targetCatererObj.reviewCount && (
-                              <span className="text-[#8A8A8A] font-medium font-sans ml-0.5 hover:underline cursor-pointer" onClick={() => handleTabClick("Reviews")}>
-                                ({targetCatererObj.reviewCount} Reviews)
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {targetCatererObj.rating && targetCatererObj.eventsCompleted && (
-                          <span className="text-slate-300">|</span>
-                        )}
-                        {targetCatererObj.eventsCompleted && (
-                          <span className="text-slate-700 font-semibold font-sans flex items-center gap-1">
-                            <span className="text-[#0F3D2E]">🎉</span> {targetCatererObj.eventsCompleted}+ Events Completed
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Location HQ */}
-                      <div className="flex items-center justify-start gap-1.5 text-[#555555] font-medium text-xs mt-2 transition-colors font-sans">
-                        <MapPin size={13} className="text-[#D4AF37] shrink-0" />
-                        <span>{targetCatererObj.address || targetCatererObj.location}</span>
-                      </div>
-
-                      {/* Experience indicator */}
-                      {targetCatererObj.experience && (
-                        <div className="flex items-center justify-start gap-1.5 text-[#555555] font-semibold text-xs mt-1.5 font-sans">
-                          <Award size={13} className="text-[#D4AF37] shrink-0" />
-                          <span>{targetCatererObj.experience}+ Years of Experience</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              {/* RIGHT BLOCK (Pricing card, Customizable Packages & prominent BOOK NOW button) */}
-              {(() => {
-                const computedLowestPrice = packageTiers.length > 0 
-                  ? Math.min(...packageTiers.map(p => typeof p.price === 'number' && !isNaN(p.price) ? p.price : 299)) 
-                  : (targetCatererObj.startingPrice || 299);
-                return (
-                  <div className="w-full lg:w-72 shrink-0 flex flex-col justify-between gap-3 self-center lg:self-stretch mt-4 lg:mt-0 font-sans relative z-10">
-                    
-                    {/* Micro-Pricing Card */}
-                    <div className="bg-[#FFFDFB] border border-[#E8DCC7] rounded-3xl p-5 flex flex-col justify-center shadow-[0_8px_30px_rgba(15,61,46,0.08)] relative">
-                      <span className="text-[10px] text-[#8A8A8A] font-bold uppercase tracking-widest mb-1 font-sans">Starting from</span>
-                      
-                      <div className="flex items-baseline gap-1 mt-1">
-                        <span 
-                          className="text-4xl text-[#D4AF37]"
-                          style={{
-                            fontFamily: '"Cormorant Garamond", "Playfair Display", "Georgia", serif',
-                            fontWeight: 600,
-                          }}
-                        >
-                          ₹{computedLowestPrice.toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-xs text-[#555555] font-medium ml-1">/ Plate</span>
-                      </div>
-
-                      <div className="h-[1px] bg-[#E8DCC7]/60 my-3 w-full"></div>
-
-                      <div className="flex items-center gap-1.5 text-[10px] text-[#555555] font-bold uppercase tracking-wider">
-                        <Package size={13} className="text-[#D4AF37] shrink-0" />
-                        <span>Customizable Packages</span>
-                      </div>
-                    </div>
-
-                    {/* Prominent EMERALD BOOK NOW CTA button */}
-                    <button
-                      onClick={() => {
-                        document
-                          .getElementById("menu-packages")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      className="w-full px-5 py-3.5 text-white font-extrabold tracking-widest text-[11px] uppercase rounded-2xl bg-[#0F3D2E] border border-[#DFC27A]/40 shadow-[0_8px_30px_rgba(15,61,46,0.15)] flex items-center justify-center gap-2.5 transition-all duration-300 hover:bg-[#0A5A42] hover:scale-[1.02] active:scale-95 group/btn cursor-pointer font-sans"
-                    >
-                      <BookOpen
-                        size={14}
-                        className="text-[#D4AF37] group-hover/btn:scale-110 transition-transform"
+                    <label className="bg-[#FAF8F3] hover:bg-[#FAF6EC] border border-[#D4AF37]/35 text-[#0F3D2E] font-bold text-[10px] tracking-wider uppercase px-3 py-1.5 rounded-lg cursor-pointer transition">
+                      Upload Portrait 🔒
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            setEditedCaterer({ ...editedCaterer, ownerPhoto: base64 });
+                          }
+                        }}
                       />
-                      <span>BOOK NOW</span>
-                    </button>
-
+                    </label>
                   </div>
-                );
-              })()}
+                  <input
+                    type="text"
+                    value={editedCaterer.founderName || editedCaterer.ownerName || ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, founderName: e.target.value, ownerName: e.target.value })}
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs outline-none w-full"
+                    placeholder="Founder Name"
+                  />
+                  <textarea
+                    value={editedCaterer.founderDescription || ""}
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, founderDescription: e.target.value })}
+                    className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 text-xs h-14 resize-none outline-none w-full"
+                    placeholder="Brief founder bio/story"
+                  />
+                </div>
+              ) : targetCatererObj.ownerName || targetCatererObj.founderName ? (
+                <div
+                  id="founder-info"
+                  className="flex items-center gap-4 shrink-0 pr-8 xl:border-r border-slate-200 w-full xl:w-auto"
+                >
+                  {targetCatererObj.ownerPhoto ? (
+                    <img
+                      src={targetCatererObj.ownerPhoto}
+                      alt="Founder"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center">
+                      <User size={24} className="text-slate-400" />
+                    </div>
+                  )}
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-[#D4A437] uppercase tracking-widest">
+                      Founder
+                    </p>
+                    <p className="font-bold text-slate-900 text-lg">
+                      {targetCatererObj.founderName || targetCatererObj.ownerName}
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-[180px] line-clamp-2 mt-0.5">
+                      {targetCatererObj.founderDescription ||
+                        "Passionate about serving delicious food."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
 
+              {/* Specializations / Services Icons */}
+              {isEditing ? (
+                <div className="flex-1 flex flex-col gap-1 px-4 w-full text-left font-sans h-full justify-center">
+                  <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                    Specializations & Cuisines (Non-Sensitive)
+                  </span>
+                  <input
+                    type="text"
+                    value={
+                      Array.isArray(editedCaterer.specializations)
+                        ? editedCaterer.specializations.join(", ")
+                        : typeof editedCaterer.specializations === "string"
+                          ? editedCaterer.specializations
+                          : ""
+                    }
+                    onChange={(e) => setEditedCaterer({ ...editedCaterer, specializations: e.target.value })}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-xs outline-none w-full"
+                    placeholder="e.g. Wedding, Corporate, Birthday, North Indian (Comma separated)"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Split multiple specializations using commas</p>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-x-8 gap-y-4 px-4 w-full">
+                  {(() => {
+                    const currentSpecList = targetCatererObj.specializations
+                      ? typeof targetCatererObj.specializations === "string"
+                        ? targetCatererObj.specializations.split(",").map((s: string) => s.trim()).filter(Boolean)
+                        : Array.isArray(targetCatererObj.specializations)
+                          ? targetCatererObj.specializations
+                          : []
+                      : [];
+
+                    return currentSpecList.slice(0, 5).map((spec: string, i: number) => {
+                      // Map some generic icons
+                      const GenericIcon = spec.toLowerCase().includes("wedding")
+                        ? Briefcase
+                        : spec.toLowerCase().includes("corporate")
+                          ? Building
+                          : spec.toLowerCase().includes("birthday")
+                            ? GiftIcon
+                            : ChefHat;
+                      return (
+                        <div
+                          key={i}
+                          className="flex flex-col items-center gap-2 text-center max-w-[80px]"
+                        >
+                          <div className="text-[#D4A437] bg-amber-50 p-3 rounded-xl">
+                            <GenericIcon size={24} strokeWidth={1.5} />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-700 leading-tight">
+                            {spec}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+
+              {/* Menu Explore Button */}
+              <div className="shrink-0 w-full xl:w-auto mt-4 xl:mt-0">
+                <button
+                  onClick={() => {
+                    document
+                      .getElementById("menu-packages")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="w-full xl:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-[#0B3D2E] text-white font-bold rounded-xl shadow-lg hover:bg-[#124f3c] transition-colors uppercase tracking-widest text-sm relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 w-1/3 skew-x-12"></div>
+                  <BookOpen size={20} /> MENU EXPLORE
+                </button>
+              </div>
             </div>
 
-          </div>
-        </div>
-
-        {/* SECTION 1.5: TABS BAR SYSTEM (Cream Palette - Compact & Pro spacing matching Screenshot 1) */}
-        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-6 relative z-30 font-sans">
-          <div className="bg-white p-2 rounded-2xl border border-[#E8DCC7]/80 flex flex-wrap md:flex-nowrap gap-1.5 shadow-[0_4px_25px_rgba(15,61,46,0.04)] overflow-x-auto no-scrollbar justify-start md:justify-center w-full">
-            {[
-              "Overview",
-              "Packages",
-              "Menu",
-              "Gallery",
-              "Reviews",
-              "About Us",
-            ].map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => handleTabClick(tab)}
-                  className={cn(
-                    "px-6 py-3 rounded-xl font-bold text-xs tracking-wide uppercase whitespace-nowrap transition-all duration-300 flex items-center gap-2 cursor-pointer border",
-                    isActive
-                      ? "bg-[#0F3D2E] text-white border-[#D4AF37] shadow-[0_4px_12px_rgba(15,61,46,0.15)] scale-[1.01]"
-                      : "bg-transparent text-slate-600 hover:text-[#0F3D2E] hover:bg-[#FAF6EC]/50 border-transparent",
-                  )}
-                >
-                  {tab === "Overview" && (
-                    <LayoutGrid
-                      size={14}
-                      className={cn(isActive ? "text-[#D4AF37]" : "text-slate-400")}
-                    />
-                  )}
-                  {tab === "Packages" && (
-                    <Package
-                      size={14}
-                      className={cn(isActive ? "text-[#D4AF37]" : "text-slate-400")}
-                    />
-                  )}
-                  {tab === "Menu" && (
-                    <MenuSquare
-                      size={14}
-                      className={cn(isActive ? "text-[#D4AF37]" : "text-slate-400")}
-                    />
-                  )}
-                  {tab === "Gallery" && (
-                    <ImageIcon
-                      size={14}
-                      className={cn(isActive ? "text-[#D4AF37]" : "text-slate-400")}
-                    />
-                  )}
-                  {tab === "Reviews" && (
-                    <Star
-                      size={14}
-                      className={cn(isActive ? "text-[#D4AF37]" : "text-slate-400")}
-                    />
-                  )}
-                  {tab === "About Us" && (
-                    <User
-                      size={14}
-                      className={cn(isActive ? "text-[#D4AF37]" : "text-slate-400")}
-                    />
-                  )}
-                  <span>{tab}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-      <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 relative z-30">
-        <div className="grid grid-cols-1 gap-6 items-start my-6">
-          {/* LEFT COLUMN (72% width) */}
-          <div className="flex flex-col gap-6 w-full">
-            {/* SECTION 2: REDESIGNED LUXURY CARDS SYSTEM - TWO-COLUMN BENTO */}
-            <div id="overview-section" className="scroll-mt-24">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start text-left">
-                
-                {/* Left 2 Columns: About Us & Services We Offer */}
-                <div className="lg:col-span-2 flex flex-col gap-6">
-                  
-                  <AboutCatererCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                    experienceVal={experienceVal}
-                  />
-
-                  <ServicesOfferCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    newServiceTitle={newServiceTitle}
-                    setNewServiceTitle={setNewServiceTitle}
-                    newServiceDesc={newServiceDesc}
-                    setNewServiceDesc={setNewServiceDesc}
-                    newServiceImage={newServiceImage}
-                    setNewServiceImage={setNewServiceImage}
-                    newServiceIcon={newServiceIcon}
-                    setNewServiceIcon={setNewServiceIcon}
-                    setIsAddServiceModalOpen={setIsAddServiceModalOpen}
-                    CrownOrnament={CrownOrnament}
-                  />
-
-                  {/* SECTION 4: FOOD GALLERY OVERVIEW */}
-                  <div
-                    id="gallery-section"
-                    className="bg-[#FFFDFB] rounded-[24px] p-6 md:p-8 border border-[#E8DCC7] shadow-[0_8px_30px_rgba(15,61,46,0.08)] scroll-mt-24"
-                  >
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-xl md:text-2xl font-display font-bold text-[#173D32] tracking-tight">
-                        Food Gallery
-                      </h2>
-                      {isEditing && (
-                        <div className="flex gap-2">
-                          <label className="cursor-pointer bg-[#173D32] text-white hover:bg-[#0f2922] text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1">
-                            <Plus size={14} /> Add photo (Non-sensitive)
+            {/* SECTION 3: BUSINESS INFORMATION CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+              {/* Branches Details */}
+              {true ? (
+                <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                  <div className="flex justify-between items-center w-full">
+                    <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                      <Building
+                        size={22}
+                        className="text-[#D4AF37]"
+                        strokeWidth={1.5}
+                      />{" "}
+                      BRANCHES DETAILS
+                    </h3>
+                    {isOwnerOrAdmin && !isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setEditedCaterer({ ...caterer });
+                        }}
+                        className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+                    )}
+                  </div>
+                  <LuxuryDivider />
+                  {isEditing ? (
+                    <div className="flex flex-col gap-3.5 py-2 flex-1 justify-between font-sans">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Active Branches Count (Non-Sensitive)
+                        </span>
+                        <input
+                          type="number"
+                          value={editedCaterer.branches !== undefined && editedCaterer.branches !== null ? editedCaterer.branches : ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, branches: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="Count of active branches"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Branch Photo (Sensitive 🔒)
+                        </span>
+                        <div className="flex items-center gap-3">
+                          {editedCaterer.branchPhoto ? (
+                            <img src={editedCaterer.branchPhoto} className="w-12 h-12 object-cover rounded-lg border border-[#D4AF37]/35" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 border border-dashed border-slate-300">
+                              <Building size={16} />
+                            </div>
+                          )}
+                          <label className="bg-[#FAF8F3] hover:bg-[#FAF6EC] border border-[#D4AF37]/35 text-[#0F3D2E] font-bold text-[10px] tracking-wider uppercase px-3 py-2 rounded-lg cursor-pointer transition">
+                            Upload 🔒
                             <input
                               type="file"
                               accept="image/*"
@@ -2864,494 +2638,876 @@ export default function CatererDetails() {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   const base64 = await convertFileToBase64(file);
-                                  const currentPhotos =
-                                    editedCaterer.galleryPhotos ||
-                                    editedCaterer.images ||
-                                    [];
-                                  setEditedCaterer({
-                                    ...editedCaterer,
-                                    galleryPhotos: [...currentPhotos, base64],
-                                    images: [...currentPhotos, base64],
-                                  });
+                                  setEditedCaterer({ ...editedCaterer, branchPhoto: base64 });
                                 }
                               }}
                             />
                           </label>
+                          {editedCaterer.branchPhoto && (
+                            <button
+                              type="button"
+                              onClick={() => setEditedCaterer({ ...editedCaterer, branchPhoto: "" })}
+                              className="text-[10.5px] text-rose-550 hover:text-rose-600 font-bold underline cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-4 font-sans text-sm font-bold text-slate-700">
+                        <MapPin size={18} className="text-[#D4AF37]" />
+                        <span>Head Office</span>
+                        <span className="bg-[#FAF6EC] border border-[#D4AF37]/30 text-[#D4AF37] font-semibold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full font-mono">
+                          HEAD OFFICE
+                        </span>
+                      </div>
+                      
+                      {branchesVal && branchesVal > 0 ? (
+                        <div className="mb-4 flex flex-col font-sans">
+                          <p className="text-[15px] text-[#1C1C1C] font-extrabold font-display">
+                            {branchesVal} Active Region Branches
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                            Orchestrating bespoke culinary events across multiple localized branches.
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {targetCatererObj.branchPhoto ? (
+                        <div className="h-44 bg-slate-50 rounded-2xl overflow-hidden relative flex items-center justify-center border-2 border-[#D4AF37]/20 shadow-inner group-hover:border-[#D4AF37]/45 transition-colors mt-auto">
+                          <img
+                            src={targetCatererObj.branchPhoto}
+                            alt="Branch Landscape"
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0F3D2E]/40 via-transparent to-transparent"></div>
+                        </div>
+                      ) : (
+                        <div className="h-44 flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 rounded-2xl bg-[#FCFAF5]/30 mt-auto">
+                          <Building size={24} className="text-[#D4AF37]/40 mb-2" />
+                          <p className="text-xs text-slate-400 italic">No branch gallery photo available</p>
                         </div>
                       )}
-                    </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
 
-                    {isEditing ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {(
-                          editedCaterer &&
-                          (editedCaterer.galleryPhotos || editedCaterer.images || [])
-                        ).map((img: string, i: number) => (
-                          <div
-                            key={i}
-                            className="aspect-video md:aspect-square rounded-2xl overflow-hidden relative shadow-sm border border-slate-200 group"
-                          >
-                            <img
-                              src={img}
-                              alt="Gallery item"
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="bg-black/40 flex items-center justify-center absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const currentPhotos =
-                                    editedCaterer.galleryPhotos ||
-                                    editedCaterer.images ||
-                                    [];
-                                  const filtered = currentPhotos.filter(
-                                    (_: any, idx: number) => idx !== i,
-                                  );
-                                  setEditedCaterer({
-                                    ...editedCaterer,
-                                    galleryPhotos: filtered,
-                                    images: filtered,
-                                  });
-                                }}
-                                className="bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition"
-                                title="Remove Photo"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        {editedCaterer &&
-                          (editedCaterer.galleryPhotos || editedCaterer.images || [])
-                            .length === 0 && (
-                            <div className="col-span-full py-8 text-center text-slate-400 font-sans font-medium text-xs">
-                              No gallery photos uploaded yet. Click the button above
-                              to add photos.
-                            </div>
-                          )}
+              {/* Service Areas */}
+              {true ? (
+                <div className="md:col-span-6 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                  <div className="flex justify-between items-center w-full">
+                    <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                      <MapPin
+                        size={22}
+                        className="text-[#D4AF37]"
+                        strokeWidth={1.5}
+                      />{" "}
+                      SERVICE AREAS
+                    </h3>
+                    {isOwnerOrAdmin && !isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setEditedCaterer({ ...caterer });
+                        }}
+                        className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+                    )}
+                  </div>
+                  <LuxuryDivider />
+                  {isEditing ? (
+                    <div className="flex flex-col gap-3.5 py-2 flex-1 justify-between font-sans">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Service Areas (Non-Sensitive)
+                        </span>
+                        <textarea
+                          value={editedCaterer.serviceAreas || ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, serviceAreas: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-3 text-slate-800 text-xs h-28 outline-none transition resize-none"
+                          placeholder="e.g. Jubilee Hills, Banjara Hills, Gachibowli (Comma separated)"
+                        />
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {allGalleryPhotos
-                          .slice(0, 4)
-                          .map((img: string, i: number) => (
-                            <div
-                              key={i}
-                              onClick={() => openLightbox(allGalleryPhotos, i)}
-                              className="aspect-video md:aspect-square rounded-2xl overflow-hidden relative cursor-zoom-in group shadow-sm border border-slate-200"
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {targetCatererObj.serviceAreas ? (
+                        <div className="flex flex-col flex-1 justify-between relative min-h-[160px]">
+                          <p className="text-[17px] text-[#1C1C1C] font-display font-medium leading-relaxed mb-6 z-10 select-text mt-2">
+                            {targetCatererObj.serviceAreas}
+                          </p>
+                          <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-85 pointer-events-none flex items-center justify-end group-hover:scale-105 transition-transform duration-500">
+                            <svg
+                              viewBox="0 0 100 100"
+                              className="w-16 h-16 text-[#D4AF37]"
                             >
-                              <img
-                                src={img}
-                                alt="Gallery"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              <path
+                                d="M10 20 L40 10 L70 25 L90 15 L90 80 L70 90 L40 75 L10 85 Z"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                               />
-                              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors"></div>
+                              <circle
+                                cx="55"
+                                cy="45"
+                                r="5"
+                                fill="#0F3D2E"
+                                stroke="currentColor"
+                                strokeWidth="1"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col justify-center items-center text-center py-6 border border-dashed border-[#D4AF37]/35 rounded-2xl bg-[#FCFAF5]/50 mb-4 font-sans h-full min-h-[160px]">
+                          <MapPin
+                            size={28}
+                            className="text-[#D4AF37] mb-2"
+                            strokeWidth={1.5}
+                          />
+                          <p className="text-xs font-bold text-slate-700">
+                            No Service Areas Configured
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+                            Cities and regional operational locations are not specified.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Operating Hours */}
+              {true ? (
+                <div className="md:col-span-12 lg:col-span-4 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                  <div className="flex justify-between items-center w-full">
+                    <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                      <Clock
+                        size={22}
+                        className="text-[#D4AF37]"
+                        strokeWidth={1.5}
+                      />{" "}
+                      OPERATING HOURS
+                    </h3>
+                    {isOwnerOrAdmin && !isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditing(true);
+                          setEditedCaterer({ ...caterer });
+                        }}
+                        className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+                    )}
+                  </div>
+                  <LuxuryDivider />
+                  {isEditing ? (
+                    <div className="flex flex-col gap-3.5 py-2 flex-1 justify-between font-sans">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Operating Hours Schedule (Non-Sensitive)
+                        </span>
+                        <input
+                          type="text"
+                          value={editedCaterer.operatingHours || ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, operatingHours: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition animate-in fade-in"
+                          placeholder="e.g. Mon-Sun: 9:00 AM - 10:50 PM"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {targetCatererObj.operatingHours ? (
+                        <div className="flex flex-col h-full justify-between flex-1 min-h-[160px]">
+                          <div className="space-y-4 font-sans mt-2">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
+                                WEEKLY SCHEDULE
+                              </span>
+                              <span className="text-[17px] font-extrabold text-[#0F3D2E] mt-1">
+                                Monday - Sunday
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
+                                TIMINGS
+                              </span>
+                              <div className="inline-flex items-center gap-2 bg-[#FCFAF5] border border-[#D4AF37]/30 px-4 py-2 rounded-xl mt-1.5 w-fit">
+                                <span className="text-[15px] font-extrabold text-[#D4AF37] tracking-wider whitespace-pre-wrap">
+                                  {targetCatererObj.operatingHours}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-slate-400 italic font-medium mt-1">
+                              (Open on all holidays)
+                            </p>
+                          </div>
+                          <div className="mt-4 flex justify-end text-[#D4AF37] opacity-80 group-hover:scale-110 transition-transform duration-500 mt-auto">
+                            <CalendarDays size={44} className="stroke-[1.5]" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col justify-center items-center text-center py-6 border border-dashed border-[#D4AF37]/35 rounded-2xl bg-[#FCFAF5]/50 mb-4 font-sans h-full min-h-[160px]">
+                          <Clock
+                            size={28}
+                            className="text-[#D4AF37] mb-2"
+                            strokeWidth={1.5}
+                          />
+                          <p className="text-xs font-bold text-slate-700">
+                            No Timings Configured
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+                            Operational hours and timings schedules are not configured.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Track Record (Experience & Events) changed to Achievements */}
+              {true ? (
+                <div className="md:col-span-6 lg:col-span-5 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                  <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                    <Award
+                      size={22}
+                      className="text-[#D4AF37]"
+                      strokeWidth={1.5}
+                    />{" "}
+                    ACHIEVEMENTS
+                  </h3>
+                  <LuxuryDivider />
+                  {isEditing ? (
+                    <div className="space-y-4 flex-1 flex flex-col justify-center py-2 font-sans select-text">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Successful Events Completed (Non-Sensitive)
+                        </span>
+                        <input
+                          type="number"
+                          value={editedCaterer.eventsCompleted !== undefined && editedCaterer.eventsCompleted !== null ? editedCaterer.eventsCompleted : ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, eventsCompleted: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. 1500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Years of Trust / Experience (Non-Sensitive)
+                        </span>
+                        <input
+                          type="number"
+                          value={editedCaterer.experience !== undefined && editedCaterer.experience !== null ? editedCaterer.experience : ""}
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, experience: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. 12"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 flex-1 flex flex-col justify-center py-2 select-text font-sans">
+                      {[
+                        {
+                          val: targetCatererObj.eventsCompleted
+                            ? `${parseInt(targetCatererObj.eventsCompleted.toString()).toLocaleString()}+`
+                            : "5,000+",
+                          lbl: "Successful Events"
+                        },
+                        {
+                          val: "100,000+",
+                          lbl: "Happy Customers"
+                        },
+                        {
+                          val: "150+",
+                          lbl: "Expert Professionals"
+                        },
+                        {
+                          val: experienceVal
+                            ? `${experienceVal}+`
+                            : "10+",
+                          lbl: "Years of Trust"
+                        }
+                      ].map((ach, idx) => (
+                        <div key={idx} className="flex items-center gap-4 py-1.5 border-b border-[#D4AF37]/10 last:border-0 font-sans">
+                          <div className="flex-shrink-0 bg-amber-50/65 border border-[#D4AF37]/45 rounded-full p-1.5 text-[#D4AF37] shadow-xs">
+                            <Check size={14} className="stroke-[3]" />
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-xl font-black text-[#D4AF37] tracking-tight leading-none font-display">
+                              {ach.val}
+                            </span>
+                            <span className="text-[13px] font-medium text-slate-700">
+                              {ach.lbl}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Awards / Certifications */}
+              {true ? (
+                <div className="md:col-span-12 lg:col-span-7 bg-white/95 rounded-[24px] p-8 border-2 border-[#D4AF37]/35 shadow-[0_12px_40px_rgba(212,175,55,0.06)] hover:shadow-[0_20px_50px_rgba(212,175,55,0.18)] hover:border-[#D4AF37]/50 transition-all duration-500 flex flex-col h-full group">
+                  <h3 className="font-display font-bold text-[#0F3D2E] text-lg flex items-center gap-2.5 uppercase tracking-wider">
+                    <Award
+                      size={22}
+                      className="text-[#D4AF37]"
+                      strokeWidth={1.5}
+                    />{" "}
+                    AWARDS & CERTS
+                  </h3>
+                  <LuxuryDivider />
+                  {isEditing ? (
+                    <div className="space-y-4 flex-1 flex flex-col justify-center py-2 font-sans select-text">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Awards (Non-Sensitive)
+                        </span>
+                        <input
+                          type="text"
+                          value={
+                            Array.isArray(editedCaterer.awards)
+                              ? editedCaterer.awards.join(", ")
+                              : typeof editedCaterer.awards === "string"
+                                ? editedCaterer.awards
+                                : ""
+                          }
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, awards: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. Best Wedding Caterer, Excellence in Hospitality"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+                          Certifications (Non-Sensitive)
+                        </span>
+                        <input
+                          type="text"
+                          value={
+                            Array.isArray(editedCaterer.certifications)
+                              ? editedCaterer.certifications.join(", ")
+                              : typeof editedCaterer.certifications === "string"
+                                ? editedCaterer.certifications
+                                : ""
+                          }
+                          onChange={(e) => setEditedCaterer({ ...editedCaterer, certifications: e.target.value })}
+                          className="bg-white border border-slate-200 focus:border-[#D4AF37] rounded-xl px-3 py-2 text-slate-800 text-xs outline-none transition"
+                          placeholder="e.g. FSSAI Certified, Hazard Analysis Critical Control Point (HACCP)"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleSaveChanges}
+                          className="bg-[#00A86B] hover:bg-[#00915c] text-white font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedCaterer({ ...caterer });
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold tracking-wider uppercase transition-all text-[10px] px-4 py-2.5 rounded-xl cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {awardsList.length > 0 || certificationsList.length > 0 ? (
+                        <div className="flex-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-6 py-2">
+                           {awardsList.map((award: string, i: number) => (
+                            <div key={i} className="flex flex-col items-center">
+                              <GoldMedalIcon title={award} />
                             </div>
                           ))}
-                        {allGalleryPhotos.length > 4 ? (
-                          <div
-                            onClick={() => openLightbox(allGalleryPhotos, 4)}
-                            className="aspect-video md:aspect-square rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors group"
-                          >
-                            <div className="bg-[#0B3D2E] text-white rounded-full p-3 mb-2 group-hover:scale-110 transition-transform shadow-sm">
-                              <PlayCircle size={24} />
+                          {certificationsList.map((cert: string, i: number) => (
+                            <div key={i} className="flex flex-col items-center">
+                              <GoldMedalIcon title={cert} isShield={true} />
                             </div>
-                            <span className="text-sm font-bold text-slate-700">
-                              View More
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              Photos & Videos
-                            </span>
-                          </div>
-                        ) : null}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-wrap items-center justify-center gap-x-12 gap-y-6 py-2 select-text font-sans">
+                          <GoldMedalIcon title="Best Wedding Caterer" />
+                          <GoldMedalIcon title="Excellence in Catering" isShield={true} />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            {/* SECTION 4: GALLERY OVERVIEW */}
+            <div
+              id="gallery-section"
+              className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="uppercase tracking-widest text-[#0B3D2E] font-bold flex items-center gap-1.5">
+                  <span className="text-[#D4A437]">✦</span> Gallery
+                </h3>
+                {isEditing && (
+                  <div className="flex gap-2">
+                    <label className="cursor-pointer bg-[#0B3D2E] text-white hover:bg-[#124f3c] text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1">
+                      <Plus size={14} /> Add photo (Non-sensitive)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await convertFileToBase64(file);
+                            const currentPhotos =
+                              editedCaterer.galleryPhotos ||
+                              editedCaterer.images ||
+                              [];
+                            setEditedCaterer({
+                              ...editedCaterer,
+                              galleryPhotos: [...currentPhotos, base64],
+                              images: [...currentPhotos, base64],
+                            });
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {isEditing ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {(
+                    editedCaterer &&
+                    (editedCaterer.galleryPhotos || editedCaterer.images || [])
+                  ).map((img: string, i: number) => (
+                    <div
+                      key={i}
+                      className="aspect-video md:aspect-square rounded-2xl overflow-hidden relative shadow-sm border border-slate-200 group"
+                    >
+                      <img
+                        src={img}
+                        alt="Gallery item"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="bg-black/40 flex items-center justify-center absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentPhotos =
+                              editedCaterer.galleryPhotos ||
+                              editedCaterer.images ||
+                              [];
+                            const filtered = currentPhotos.filter(
+                              (_: any, idx: number) => idx !== i,
+                            );
+                            setEditedCaterer({
+                              ...editedCaterer,
+                              galleryPhotos: filtered,
+                              images: filtered,
+                            });
+                          }}
+                          className="bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition"
+                          title="Remove Photo"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {editedCaterer &&
+                    (editedCaterer.galleryPhotos || editedCaterer.images || [])
+                      .length === 0 && (
+                      <div className="col-span-full py-8 text-center text-slate-400 font-sans font-medium text-xs">
+                        No gallery photos uploaded yet. Click the button above
+                        to add photos.
                       </div>
                     )}
-                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {allGalleryPhotos
+                    .slice(0, 4)
+                    .map((img: string, i: number) => (
+                      <div
+                        key={i}
+                        onClick={() => openLightbox(allGalleryPhotos, i)}
+                        className="aspect-video md:aspect-square rounded-2xl overflow-hidden relative cursor-zoom-in group shadow-sm border border-slate-200"
+                      >
+                        <img
+                          src={img}
+                          alt="Gallery"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors"></div>
+                      </div>
+                    ))}
+                  {allGalleryPhotos.length > 4 ? (
+                    <div
+                      onClick={() => openLightbox(allGalleryPhotos, 4)}
+                      className="aspect-video md:aspect-square rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors group"
+                    >
+                      <div className="bg-[#0B3D2E] text-white rounded-full p-3 mb-2 group-hover:scale-110 transition-transform shadow-sm">
+                        <PlayCircle size={24} />
+                      </div>
+                      <span className="text-sm font-bold text-slate-700">
+                        View More
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        Photos & Videos
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
 
-                  {/* SECTION 6: CHOOSE YOUR PACKAGE */}
-                  <section
-                    id="menu-packages"
-                    className="bg-[#FCFAF5] rounded-[1.75rem] p-5 md:p-6 shadow-sm border border-amber-200/25 relative overflow-hidden select-none scroll-mt-24 w-full text-left"
+            {/* SECTION 6: MENU PACKAGES */}
+            <section
+              id="menu-packages"
+              className="bg-[#FCFAF5] rounded-[2.5rem] p-6 md:p-8 shadow-sm border border-amber-200/30 relative overflow-hidden select-none"
+            >
+              <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-amber-100/15 to-transparent rounded-bl-full pointer-events-none"></div>
+
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-6 mb-8 pb-6 border-b border-amber-200/40">
+                <div className="text-center sm:text-left select-none">
+                  <h2 className="text-2xl font-display font-black text-[#051410] tracking-tight relative inline-block">
+                    Choose Your Package
+                  </h2>
+                  <div className="flex items-center justify-center sm:justify-start gap-1 text-[#DEAA38] mt-1 text-xs font-serif">
+                    <span className="opacity-40">⏤⊰</span>
+                    <span className="text-xs">❃</span>
+                    <span className="font-bold uppercase tracking-wider text-[9px] text-[#D4A437] font-sans mx-1">
+                      Premium Selections
+                    </span>
+                    <span className="text-xs">❃</span>
+                    <span className="opacity-40">⊱⏤</span>
+                  </div>
+                </div>
+
+                {/* Guest Selector Counter */}
+                <div className="bg-gradient-to-r from-stone-50 to-[#FFFDF5] border border-amber-200/60 rounded-xl p-1.5 px-3 flex items-center gap-3 shadow-[0_4px_12px_rgba(222,170,56,0.06)]">
+                  <button
+                    onClick={() =>
+                      setGuestCount((prev) => Math.max(10, prev - 10))
+                    }
+                    className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-base select-none cursor-pointer"
                   >
-                    <div className="absolute top-0 right-0 w-85 h-85 bg-gradient-to-bl from-amber-100/15 to-transparent rounded-bl-full pointer-events-none"></div>
-
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 pb-4 border-b border-amber-200/30">
-                      <div className="text-center sm:text-left select-none">
-                        <h2 className="text-xl font-display font-bold text-[#051410] tracking-tight relative inline-block">
-                          Choose Your Package
-                        </h2>
-                        <div className="flex items-center justify-center sm:justify-start gap-1 text-[#DEAA38] mt-0.5 text-[11px] font-serif">
-                          <span className="opacity-40">⏤⊰</span>
-                          <span className="text-[11px]">❃</span>
-                          <span className="font-bold uppercase tracking-wider text-[8px] text-[#D4A437] font-sans mx-1">
-                            Premium Selections
-                          </span>
-                          <span className="text-[11px]">❃</span>
-                          <span className="opacity-40">⊱⏤</span>
-                        </div>
-                      </div>
-
-                      {/* Guest Selector Counter */}
-                      <div className="bg-gradient-to-r from-stone-50 to-[#FFFDF5] border border-amber-200/50 rounded-lg p-1 px-2.5 flex items-center gap-2.5 shadow-[0_3px_10px_rgba(222,170,56,0.04)]">
-                        <button
-                          onClick={() =>
-                            setGuestCount((prev) => Math.max(10, prev - 10))
-                          }
-                          className="w-6 h-6 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-sm select-none cursor-pointer"
-                        >
-                          −
-                        </button>
-                        <div className="text-center min-w-[50px] select-none">
-                          <span className="block text-xs font-black text-slate-800 leading-none">
-                            {guestCount}
-                          </span>
-                          <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">
-                            Guests
-                          </span>
-                        </div>
-                        <button
-                          onClick={() =>
-                            setGuestCount((prev) => Math.min(3000, prev + 10))
-                          }
-                          className="w-6 h-6 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-sm select-none cursor-pointer"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Responsive dynamic grid package listing */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                      {packageTiers.map((pkg, idx) => {
-                        const theme = pkg.theme || "silver";
-
-                        // Theme backgrounds, borders and custom styling definitions
-                        let bgBorderClass =
-                          "bg-gradient-to-b from-[#FFFDFB] to-white border border-[#E8DCC7] shadow-[0_8px_30px_rgba(15,61,46,0.08)]";
-                        let badgeClass =
-                          "bg-[#FCFAF5] text-[#173D32] border-[#E8DCC7]";
-                        let badgeDotClass = "bg-[#D4AF37]";
-                        let titleClass = "text-[#173D32]";
-                        let buttonClass =
-                          "bg-[#173D32] hover:bg-[#0f2922] text-white shadow-[0_4px_12px_rgba(23,61,50,0.15)]";
-
-                        if (theme === "gold") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF2] to-[#FFFBF0] border-2 border-[#DEAA38] shadow-[0_12px_35px_rgba(222,170,56,0.14)]";
-                          titleClass = "text-[#A27008]";
-                          buttonClass =
-                            "bg-gradient-to-r from-[#D4AF37] via-[#F5E6B3] to-[#AA7C11] text-[#051410] font-black border border-[#DEAA38]/30 shadow-[0_6px_20px_rgba(170,124,17,0.25)] hover:brightness-105";
-                        } else if (theme === "platinum") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF9] to-white border border-[#E8DCC7] shadow-[0_8px_30px_rgba(15,61,46,0.08)]";
-                          titleClass = "text-[#173D32]";
-                        } else if (theme === "premium") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFF5F5] to-white border-2 border-red-300 shadow-[0_10px_30px_rgba(239,68,68,0.08)]";
-                          titleClass = "text-red-950";
-                          badgeClass = "bg-red-50 text-red-800 border-red-200/60";
-                          badgeDotClass = "bg-red-600";
-                          buttonClass =
-                            "bg-gradient-to-r from-red-700 to-[#7F1D1D] hover:from-red-800 hover:to-[#5E0000] text-white shadow-[0_6px_20px_rgba(127,29,29,0.25)]";
-                        } else if (theme === "royal") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF6] to-[#FFF9F2] border-2 border-[#DEAA38] shadow-[0_12px_45px_rgba(222,170,56,0.26)]";
-                          titleClass = "text-[#925F02]";
-                          badgeClass = "bg-red-50 text-red-800 border-red-200/60";
-                          badgeDotClass = "bg-red-600";
-                        } else if (theme === "grand") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF9] to-white border-2 border-[#DEAA38]/50 shadow-[0_12px_35px_rgba(222,170,56,0.12)]";
-                          titleClass = "text-[#173D32]";
-                          badgeClass = "bg-red-50 text-red-800 border-red-200/60";
-                          badgeDotClass = "bg-red-600";
-                        }
-
-                        return (
-                          <div
-                            key={pkg.id}
-                            className={cn(
-                              "rounded-[2rem] p-6 transition-all duration-300 relative flex flex-col pt-10 h-full group hover:-translate-y-2 select-none",
-                              bgBorderClass,
-                            )}
-                          >
-                            {/* Decorative 3D Floating Crown */}
-                            <CrownOrnament theme={theme} />
-
-                            {/* Best Seller/Popular Ribbon */}
-                            {pkg.popular && (
-                              <div className="absolute -top-3 right-6 bg-gradient-to-r from-[#EF4444] to-[#C21111] text-white font-black text-[9px] uppercase px-4 py-1.5 rounded-full shadow-[0_4px_10px_rgba(239,68,68,0.35)] tracking-widest border border-red-500/15 z-35">
-                                Popular
-                              </div>
-                            )}
-
-                            {/* Veg / Non-Veg Tag */}
-                            <div className="text-center mb-4">
-                              <span
-                                className={cn(
-                                  "text-[9px] uppercase tracking-widest font-extrabold px-3 py-1 rounded-full mb-1 inline-flex items-center gap-1 border shadow-xs",
-                                  badgeClass,
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "w-1.5 h-1.5 rounded-full",
-                                    badgeDotClass,
-                                  )}
-                                ></span>
-                                {pkg.type === "veg" ? "Pure Veg" : "Non-Veg Allowed"}
-                              </span>
-
-                              <h3
-                                className={cn(
-                                  "text-base font-sans font-bold tracking-wide uppercase leading-tight mt-1",
-                                  titleClass,
-                                )}
-                              >
-                                {pkg.name}
-                              </h3>
-                            </div>
-
-                            {/* Price plate */}
-                            <div className="text-center mb-5 pb-4 border-b border-dashed border-stone-200">
-                              <div className="inline-flex items-baseline text-[#0F3D2E]">
-                                <span className="text-lg font-bold font-poppins mr-0.5 text-stone-400">
-                                  ₹
-                                </span>
-                                <span className="text-[28px] font-extrabold font-poppins leading-none tracking-tight">
-                                  {pkg.price}
-                                </span>
-                                <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider ml-1">
-                                  / plate
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Description Text */}
-                            <p className="text-[12px] leading-relaxed text-[#555555] mb-5 text-center italic font-medium px-2 flex-1">
-                              "{pkg.desc}"
-                            </p>
-
-                            {/* Core items specs list */}
-                            <div className="space-y-3 mb-6 bg-[#FCFAF5] p-4 rounded-xl border border-[#E8DCC7]/40">
-                              <div className="flex items-center gap-3">
-                                <div className="w-7.5 h-7.5 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#DEAA38] shrink-0 border border-[#E8DCC7]">
-                                  <ChefHat size={14} strokeWidth={2} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#444444] tracking-tight">
-                                  {pkg.categoriesCount} Categories Included
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <div className="w-7.5 h-7.5 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#DEAA38] shrink-0 border border-[#E8DCC7]">
-                                  <Award size={14} strokeWidth={2} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#444444] tracking-tight">
-                                  {pkg.selectItems}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <div className="w-7.5 h-7.5 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#DEAA38] shrink-0 border border-[#E8DCC7]">
-                                  <Users size={14} strokeWidth={2} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#444444] tracking-tight">
-                                  {pkg.guests}+ Guests Limit
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Order Button (View Details) */}
-                            <Link
-                              to={`/order/${caterer.id}`}
-                              state={{
-                                packageIdx: pkg.id,
-                                customGuestCount: guestCount,
-                              }}
-                              className={cn(
-                                "mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95 cursor-pointer pointer-events-auto",
-                                buttonClass,
-                              )}
-                            >
-                              View Details{" "}
-                              <ChevronRight size={14} className="stroke-[3]" />
-                            </Link>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-
-                  {/* TESTIMONIALS & REVIEWS SECTION */}
-                  <ReviewsCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                    reviews={DEMO_REVIEWS.filter(
-                      (r) => r.catererId === caterer.id || r.catererId === String(caterer.id)
-                    )}
-                  />
-
-                  {/* SECTION 5: CONTACT PROTECTION NOTICE */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-sm w-full text-left">
-                    <div className="w-16 h-16 bg-amber-100 rounded-full flex flex-shrink-0 items-center justify-center text-amber-600">
-                      <ShieldCheck size={32} />
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                      <h4 className="font-bold text-amber-900 mb-1 text-xl">
-                        Privacy Protected Contact
-                      </h4>
-                      <p className="text-amber-800 font-medium">
-                        To protect caterer confidentiality, direct contact details
-                        (Phone & WhatsApp) will be securely shared only after your
-                        order is confirmed.
-                      </p>
-                    </div>
-                    {user?.role === "admin" && (
-                      <div className="flex gap-4 items-center border-t md:border-t-0 md:border-l border-amber-200 pt-4 md:pt-0 md:pl-6 w-full md:w-auto">
-                        <div className="text-amber-900 font-bold flex flex-col font-sans">
-                          <span className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">
-                            Admin View
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <Phone size={14} /> {caterer.phone}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    −
+                  </button>
+                  <div className="text-center min-w-[55px] select-none">
+                    <span className="block text-sm font-black text-slate-800 leading-none">
+                      {guestCount}
+                    </span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">
+                      Guests
+                    </span>
                   </div>
+                  <button
+                    onClick={() =>
+                      setGuestCount((prev) => Math.min(3000, prev + 10))
+                    }
+                    className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-base select-none cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
-                  </div> {/* Closes Left 2 Columns wrapper: lg:col-span-2 flex flex-col gap-6 */}
+              {/* Responsive dynamic grid package listing */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                {packageTiers.map((pkg, idx) => {
+                  const theme = pkg.theme || "silver";
 
-                {/* Right Column: Service Areas, Operating Hours, Achievements, and Branches Details */}
-                <div className="lg:col-span-1 flex flex-col gap-6 w-full">
-                  <BranchDetailsCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                  />
-                  <ServiceAreasCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                  />
+                  // Theme backgrounds, borders and custom styling definitions
+                  let bgBorderClass =
+                    "bg-gradient-to-b from-stone-50 to-white border border-stone-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.02)]";
+                  let badgeClass =
+                    "bg-green-50 text-green-800 border-green-200/60";
+                  let badgeDotClass = "bg-green-600";
+                  let titleClass = "text-slate-800";
+                  let buttonClass =
+                    "bg-[#002C26] hover:bg-[#003B31] text-white shadow-[0_4px_10px_rgba(0,44,38,0.2)]";
 
-                  <OperatingHoursCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                  />
+                  if (theme === "gold") {
+                    bgBorderClass =
+                      "bg-gradient-to-b from-[#FFFDF2] to-[#FFFBF0] border-2 border-[#DEAA38]/50 shadow-[0_12px_35px_rgba(222,170,56,0.12)]";
+                    titleClass = "text-[#A27008]";
+                    buttonClass =
+                      "bg-gradient-to-r from-[#D4AF37] via-[#F5E6B3] to-[#AA7C11] text-[#051410] font-black border border-[#DEAA38]/30 shadow-[0_6px_20px_rgba(170,124,17,0.25)] hover:brightness-105";
+                  } else if (theme === "platinum") {
+                    bgBorderClass =
+                      "bg-gradient-to-b from-[#F9FAFB] to-white border border-slate-300 shadow-[0_4px_22px_rgba(0,0,0,0.03)]";
+                    titleClass = "text-slate-900";
+                  } else if (theme === "premium") {
+                    bgBorderClass =
+                      "bg-gradient-to-b from-[#FFF5F5] to-white border-2 border-red-200/80 shadow-[0_10px_30px_rgba(239,68,68,0.05)]";
+                    titleClass = "text-red-955";
+                    badgeClass = "bg-red-50 text-red-800 border-red-200/60";
+                    badgeDotClass = "bg-red-600";
+                    buttonClass =
+                      "bg-gradient-to-r from-red-700 to-[#7F1D1D] hover:from-red-800 hover:to-[#5E0000] text-white shadow-[0_6px_20px_rgba(127,29,29,0.25)]";
+                  } else if (theme === "royal") {
+                    bgBorderClass =
+                      "bg-gradient-to-b from-[#FFFDF6] to-[#FFF9F2] border-2 border-[#DEAA38] shadow-[0_12px_45px_rgba(222,170,56,0.26)]";
+                    titleClass = "text-[#925F02]";
+                    badgeClass = "bg-red-50 text-red-800 border-red-200/60";
+                    badgeDotClass = "bg-red-600";
+                  } else if (theme === "grand") {
+                    bgBorderClass =
+                      "bg-gradient-to-b from-[#FFFDF9] to-white border-2 border-[#DEAA38]/40 shadow-[0_8px_30px_rgba(222,170,56,0.08)]";
+                    titleClass = "text-amber-955";
+                    badgeClass = "bg-red-50 text-red-800 border-red-200/60";
+                    badgeDotClass = "bg-red-600";
+                  }
 
-                <AchievementsCard
-                  caterer={caterer}
-                  editedCaterer={editedCaterer}
-                  setEditedCaterer={setEditedCaterer}
-                  isEditing={isEditing}
-                  setIsEditing={setIsEditing}
-                  isOwnerOrAdmin={isOwnerOrAdmin}
-                  handleSaveChanges={handleSaveChanges}
-                  targetCatererObj={targetCatererObj}
-                  allGalleryPhotos={allGalleryPhotos}
-                  openLightbox={openLightbox}
-                  guestCount={guestCount}
-                  setGuestCount={setGuestCount}
-                  packageTiers={packageTiers}
-                  awardsList={awardsList}
-                  certificationsList={certificationsList}
-                  achievementsList={achievementsList}
-                  user={user}
-                  CrownOrnament={CrownOrnament}
-                />
+                  return (
+                    <div
+                      key={pkg.id}
+                      className={cn(
+                        "rounded-[2rem] p-6 transition-all duration-300 relative flex flex-col pt-10 h-full group hover:-translate-y-2 select-none",
+                        bgBorderClass,
+                      )}
+                    >
+                      {/* Decorative 3D Floating Crown */}
+                      <CrownOrnament theme={theme} />
 
-              <AwardsCertsCard
-                caterer={caterer}
-                editedCaterer={editedCaterer}
-                setEditedCaterer={setEditedCaterer}
-                isEditing={isEditing}
-                setIsEditing={setIsEditing}
-                isOwnerOrAdmin={isOwnerOrAdmin}
-                handleSaveChanges={handleSaveChanges}
-                targetCatererObj={targetCatererObj}
-                allGalleryPhotos={allGalleryPhotos}
-                openLightbox={openLightbox}
-                guestCount={guestCount}
-                setGuestCount={setGuestCount}
-                packageTiers={packageTiers}
-                awardsList={awardsList}
-                certificationsList={certificationsList}
-                achievementsList={achievementsList}
-                user={user}
-                CrownOrnament={CrownOrnament}
-              />
+                      {/* Best Seller/Popular Ribbon */}
+                      {pkg.popular && (
+                        <div className="absolute -top-3 right-6 bg-gradient-to-r from-[#EF4444] to-[#C21111] text-white font-black text-[9px] uppercase px-4 py-1.5 rounded-full shadow-[0_4px_10px_rgba(239,68,68,0.35)] tracking-widest border border-red-500/15 z-35">
+                          Popular
+                        </div>
+                      )}
+
+                      {/* Veg / Non-Veg Tag */}
+                      <div className="text-center mb-4">
+                        <span
+                          className={cn(
+                            "text-[9px] uppercase tracking-widest font-extrabold px-3 py-1 rounded-full mb-1 inline-flex items-center gap-1 border shadow-xs",
+                            badgeClass,
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              badgeDotClass,
+                            )}
+                          ></span>
+                          {pkg.type === "veg" ? "Pure Veg" : "Non-Veg Allowed"}
+                        </span>
+
+                        <h3
+                          className={cn(
+                            "text-base font-serif font-black tracking-wide uppercase leading-tight mt-1",
+                            titleClass,
+                          )}
+                        >
+                          {pkg.name}
+                        </h3>
+                      </div>
+
+                      {/* Price plate */}
+                      <div className="text-center mb-5 pb-4 border-b border-dashed border-stone-200">
+                        <div className="inline-flex items-baseline text-slate-950">
+                          <span className="text-lg font-bold font-poppins mr-0.5 text-stone-400">
+                            ₹
+                          </span>
+                          <span className="text-3.5xl font-black font-poppins leading-none tracking-tight">
+                            {pkg.price}
+                          </span>
+                          <span className="text-[9px] text-stone-400 font-semibold uppercase tracking-wider ml-1">
+                            / plate
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Description Text */}
+                      <p className="text-[12px] leading-relaxed text-slate-500 mb-5 text-center italic font-medium px-2 flex-1">
+                        "{pkg.desc}"
+                      </p>
+
+                      {/* Core items specs list */}
+                      <div className="space-y-3 mb-6 bg-[#FAF6F0]/40 p-4 rounded-xl border border-stone-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-7.5 h-7.5 rounded-full bg-amber-50/70 flex items-center justify-center text-[#DEAA38] shrink-0 border border-amber-100">
+                            <ChefHat size={14} strokeWidth={2} />
+                          </div>
+                          <span className="text-xs font-bold text-slate-700 tracking-tight">
+                            {pkg.categoriesCount} Categories Included
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="w-7.5 h-7.5 rounded-full bg-amber-50/70 flex items-center justify-center text-[#DEAA38] shrink-0 border border-amber-100">
+                            <Award size={14} strokeWidth={2} />
+                          </div>
+                          <span className="text-xs font-bold text-slate-700 tracking-tight">
+                            {pkg.selectItems}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="w-7.5 h-7.5 rounded-full bg-amber-50/70 flex items-center justify-center text-[#DEAA38] shrink-0 border border-amber-100">
+                            <Users size={14} strokeWidth={2} />
+                          </div>
+                          <span className="text-xs font-bold text-slate-700 tracking-tight">
+                            {pkg.guests}+ Guests Limit
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Order Button (View Details) */}
+                      <Link
+                        to={`/order/${caterer.id}`}
+                        state={{
+                          packageIdx: pkg.id,
+                          customGuestCount: guestCount,
+                        }}
+                        className={cn(
+                          "mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95 cursor-pointer pointer-events-auto",
+                          buttonClass,
+                        )}
+                      >
+                        View Details{" "}
+                        <ChevronRight size={14} className="stroke-[3]" />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* SECTION 5: CONTACT PROTECTION NOTICE */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-sm">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex flex-shrink-0 items-center justify-center text-amber-600">
+                <ShieldCheck size={32} />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h4 className="font-bold text-amber-900 mb-1 text-xl">
+                  Privacy Protected Contact
+                </h4>
+                <p className="text-amber-800 font-medium">
+                  To protect caterer confidentiality, direct contact details
+                  (Phone & WhatsApp) will be securely shared only after your
+                  order is confirmed.
+                </p>
+              </div>
+              {user?.role === "admin" && (
+                <div className="flex gap-4 items-center border-t md:border-t-0 md:border-l border-amber-200 pt-4 md:pt-0 md:pl-6 w-full md:w-auto">
+                  <div className="text-amber-900 font-bold flex flex-col font-sans">
+                    <span className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">
+                      Admin View
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Phone size={14} /> {caterer.phone}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
+        </div> {/* closes live preview panel */}
       </div>
     </div>
-  </div>
-</div> {/* closes live preview panel */}
-      </div>
   );
 }
 

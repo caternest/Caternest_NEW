@@ -57,13 +57,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
 
   React.useEffect(() => {
     fetch('/api/food-images')
-      .then(res => {
-        const contentType = res.headers.get('content-type');
-        if (res.ok && contentType && contentType.includes('application/json')) {
-          return res.json();
-        }
-        throw new Error(`Response was not JSON. Status: ${res.status}`);
-      })
+      .then(res => res.json())
       .then(data => {
         if (data && data.success && Array.isArray(data.images)) {
           setFoodImages(data.images);
@@ -76,13 +70,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
 
   const refreshBuilderImages = () => {
     fetch('/api/food-images')
-      .then(res => {
-        const contentType = res.headers.get('content-type');
-        if (res.ok && contentType && contentType.includes('application/json')) {
-          return res.json();
-        }
-        throw new Error(`Response was not JSON. Status: ${res.status}`);
-      })
+      .then(res => res.json())
       .then(data => {
         if (data && data.success && Array.isArray(data.images)) {
           setFoodImages(data.images);

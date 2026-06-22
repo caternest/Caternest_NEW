@@ -29,7 +29,7 @@ let supabaseInstance: any = null;
 
 const tableWhitelists: Record<string, string[]> = {
   caterer_registrations: [
-    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'ownerName', 'name',
+    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'ownerName',
     'phone', 'alternatePhone', 'email', 'address', 'city', 'cuisine',
     'categories', 'minGuests', 'pricePerPlate', 'status', 'verificationStatus',
     'menuUploaded', 'panNumber', 'aadhaarNumber', 'fssaiNumber', 'gstNumber',
@@ -38,8 +38,7 @@ const tableWhitelists: Record<string, string[]> = {
     'galleryPhotos', 'draftMenuPackages', 'aadhaarUrl', 'panUrl', 'fssaiUrl',
     'gstUrl', 'otherDocsUrl', 'rating', 'reviewCount', 'email_verified',
     'experience', 'eventsCompleted', 'awards', 'certifications', 'brandName',
-    'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas', 'pendingUpdates',
-    'description', 'services', 'achievements', 'highlights', 'specializations'
+    'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas', 'pendingUpdates'
   ],
   orders: [
     'id', 'created_at', 'updated_at', 'userId', 'catererId', 'catererName',
@@ -111,49 +110,28 @@ export function getSupabase() {
           return (tableName: string) => {
             const queryBuilder = target.from(tableName);
 
-            // Wrap builder recursively to intercept then resolutions and map fallbacks
-            const wrapBuilder = (builder: any): any => {
-              return new Proxy(builder, {
-                get(bTarget, bProp, bReceiver) {
-                  if (bProp === 'then') {
-                    const originalThen = bTarget.then;
-                    return function (onfulfilled?: any, onrejected?: any) {
-                      return originalThen.call(bTarget, (result: any) => {
+            return new Proxy(queryBuilder, {
+              get(qTarget, qProp) {
+                if (qProp === 'insert' || qProp === 'upsert' || qProp === 'update') {
+                  return (values: any, options?: any) => {
+                    const sanitized = sanitizePayload(tableName, values);
+                    if (tableName === 'orders') {
+                      console.log("ORDERS UPSERT PAYLOAD", sanitized);
+                    }
+                    if (tableName === 'notifications') {
+                      console.log("NOTIFICATION PAYLOAD", sanitized);
+                    }
+
+                    let promise = qTarget[qProp](sanitized, options);
+                    const originalThen = promise.then;
+
+                    promise.then = function (onfulfilled?: any, onrejected?: any) {
+                      return originalThen.call(promise, (result: any) => {
                         if (result?.error) {
                           if (tableName === 'orders') {
                             console.error("ORDERS UPSERT ERROR", result.error);
                           } else if (tableName === 'notifications') {
                             console.error("NOTIFICATION ERROR", result.error);
-                          }
-                        }
-
-                        if (result && result.data) {
-                          if (tableName === 'caterer_registrations') {
-                            const processRow = (row: any) => {
-                              if (row && row.includedItems && typeof row.includedItems === 'object') {
-                                if (row.includedItems._fallback_pendingUpdates !== undefined) {
-                                  row.pendingUpdates = row.includedItems._fallback_pendingUpdates;
-                                }
-                                const fallbackKeys = [
-                                  'experience', 'eventsCompleted', 'awards', 'certifications',
-                                  'brandName', 'tagline', 'whatsappNumber', 'operatingHours',
-                                  'branches', 'serviceAreas', 'description', 'services', 'achievements', 'highlights', 'specializations'
-                                ];
-                                fallbackKeys.forEach(k => {
-                                  const fallbackKey = `_fallback_${k}`;
-                                  if (row.includedItems[fallbackKey] !== undefined) {
-                                    row[k] = row.includedItems[fallbackKey];
-                                  }
-                                });
-                              }
-                              return row;
-                            };
-
-                            if (Array.isArray(result.data)) {
-                              result.data.forEach(processRow);
-                            } else {
-                              processRow(result.data);
-                            }
                           }
                         }
                         return onfulfilled ? onfulfilled(result) : result;
@@ -166,95 +144,14 @@ export function getSupabase() {
                         return onrejected ? onrejected(err) : Promise.reject(err);
                       });
                     };
-                  }
 
-                  const value = bTarget[bProp];
-                  if (typeof value === 'function') {
-                    return (...args: any[]) => {
-                      let processedArgs = args;
-
-                      // Intercept insert/update/upsert parameters to extract virtual fallback keys
-                      if (tableName === 'caterer_registrations' && (bProp === 'insert' || bProp === 'update' || bProp === 'upsert')) {
-                        const originalPayload = args[0];
-                        if (originalPayload) {
-                          const clonePayload = (item: any): any => {
-                            if (!item || typeof item !== 'object') return item;
-                            return { ...item };
-                          };
-                          
-                          let processedPayload;
-                          if (Array.isArray(originalPayload)) {
-                            processedPayload = originalPayload.map(clonePayload);
-                          } else {
-                            processedPayload = clonePayload(originalPayload);
-                          }
-
-                          const processPayloadItems = (item: any) => {
-                            if (item && typeof item === 'object') {
-                              const virtualKeys = [
-                                'pendingUpdates', 'experience', 'eventsCompleted', 'awards', 'certifications',
-                                'brandName', 'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas',
-                                'description', 'services', 'achievements', 'highlights', 'specializations'
-                              ];
-                              const fallbackObj: any = {};
-                              let hasVirtual = false;
-                              virtualKeys.forEach(k => {
-                                if (item[k] !== undefined) {
-                                  fallbackObj[`_fallback_${k}`] = item[k];
-                                  hasVirtual = true;
-                                }
-                              });
-
-                              if (hasVirtual) {
-                                const existingIncluded = item.includedItems || {};
-                                const mergedIncluded = typeof existingIncluded === 'object' && !Array.isArray(existingIncluded)
-                                  ? { ...existingIncluded, ...fallbackObj }
-                                  : { _fallback_list: existingIncluded, ...fallbackObj };
-                                item.includedItems = mergedIncluded;
-                              }
-
-                              // Remove from actual database payload so it doesn't trigger PGRST204 mismatch error
-                              virtualKeys.forEach(k => {
-                                delete item[k];
-                              });
-                            }
-                          };
-
-                          if (Array.isArray(processedPayload)) {
-                            processedPayload.forEach(processPayloadItems);
-                          } else {
-                            processPayloadItems(processedPayload);
-                          }
-                          processedArgs = [processedPayload, ...args.slice(1)];
-                        }
-                      }
-
-                      // Apply sanitization using pre-existing helper
-                      if (bProp === 'insert' || bProp === 'upsert' || bProp === 'update') {
-                        const values = processedArgs[0];
-                        const sanitized = sanitizePayload(tableName, values);
-                        if (tableName === 'orders') {
-                          console.log("ORDERS UPSERT PAYLOAD", sanitized);
-                        }
-                        if (tableName === 'notifications') {
-                          console.log("NOTIFICATION PAYLOAD", sanitized);
-                        }
-                        processedArgs = [sanitized, ...processedArgs.slice(1)];
-                      }
-
-                      const res = value.apply(bTarget, processedArgs);
-                      if (res && typeof res === 'object' && typeof res.then === 'function') {
-                        return wrapBuilder(res);
-                      }
-                      return res;
-                    };
-                  }
-                  return value;
+                    return promise;
+                  };
                 }
-              });
-            };
-
-            return wrapBuilder(queryBuilder);
+                const value = qTarget[qProp as keyof typeof qTarget];
+                return typeof value === 'function' ? value.bind(qTarget) : value;
+              }
+            });
           };
         }
         const value = target[prop as keyof typeof target];
@@ -378,41 +275,14 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
         }
       }
 
-      let errorResponse: any = null;
-      let attemptPayload = sanitizePayload(tableName, sanitized);
-      let success = false;
+      const { error } = await supabase
+        .from(tableName)
+        .upsert(sanitized, { onConflict: 'id' });
       
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const { error } = await supabase
-          .from(tableName)
-          .upsert(attemptPayload, { onConflict: 'id' });
-          
-        if (!error) {
-          success = true;
-          break;
-        }
-        
-        errorResponse = error;
-        // Check for PGRST204 column missing error
-        if (error.code === 'PGRST204') {
-          const match = error.message?.match(/Could not find (?:the )?['"]?([a-zA-Z0-9_]+)['"]? column/i) || 
-                        error.message?.match(/column:? ['"]?([a-zA-Z0-9_]+)['"]?/i) ||
-                        error.message?.match(/Could not find column ['"]?([a-zA-Z0-9_]+)['"]?/i);
-                        
-          const missingColumn = match ? match[1] : null;
-          if (missingColumn && attemptPayload[missingColumn] !== undefined) {
-            console.warn(`[SYNC WARNING] Column "${missingColumn}" does not exist in "${tableName}" on Supabase. Removing from payload and retrying...`);
-            delete attemptPayload[missingColumn];
-            continue;
-          }
-        }
-        break;
-      }
+      console.log(`[TRACE_LOG #12] ${tableName} upsert response error:`, error);
       
-      if (!success && errorResponse) {
-        console.error(`[SYNC ERROR] Upsert failed for table "${tableName}" on item:`, errorResponse);
-      } else {
-        console.log(`[SYNC SUCCESS] Synchronized item successfully to "${tableName}".`);
+      if (error) {
+        console.warn(`Supabase upsert warning on table "${tableName}":`, error.message);
       }
     }
   } catch (err) {
@@ -510,7 +380,7 @@ export async function fetchPlatformFeePerPlate(): Promise<number> {
     }
     if (data && data.length > 0) {
       const row = data[0] as any;
-      const dbFee = Number(row.platformFeePerPlate !== undefined ? row.platformFeePerPlate : fee);
+      const dbFee = Number(row.platformFeePerPlate !== undefined ? row.platformFeePerPlate : (row.platform_fee_per_plate !== undefined ? row.platform_fee_per_plate : fee));
       if (!isNaN(dbFee)) {
         fee = dbFee;
         localStorage.setItem('platformFeePerPlate', fee.toString());
@@ -531,10 +401,10 @@ export async function updatePlatformFeePerPlateInDB(fee: number): Promise<void> 
   if (!supabase) return;
 
   try {
-    const payload = { id: 'default', platformFeePerPlate: fee };
+    const payload = { id: 'default', platformFeePerPlate: fee, platform_fee_per_plate: fee };
     const { error } = await (supabase.from('platform_settings') as any).upsert(payload, { onConflict: 'id' });
     if (error) {
-      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ platformFeePerPlate: fee }).eq('id', 'default');
+      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ platformFeePerPlate: fee, platform_fee_per_plate: fee }).eq('id', 'default');
       if (err2) {
         console.warn("Could not sync platform fee to Supabase", err2);
       }
