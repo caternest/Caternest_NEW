@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UploadCloud, CheckCircle2, Clock, MapPin, ChevronLeft, ChevronRight, Check, Trash2, Link, Save, ShieldCheck, Mail, Lock, Sparkles, AlertCircle, HelpCircle, Bold, Italic, List, ListOrdered, Underline, CheckCircle, Flame, Star, Coffee, Utensils, Award } from 'lucide-react';
-import { cn, compressImageFile, safeSaveRegistrations } from '../lib/utils';
+import { cn, compressImageFile } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import JoinSteps from '../components/JoinSteps';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
@@ -476,7 +476,7 @@ export default function JoinCaterer() {
         
         // Populate local storage as a local high fidelity cache as well
         const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
-        safeSaveRegistrations([...existing, { ...newReg, id: (data as any)?.[0]?.id || Math.random().toString(36).substr(2, 9) }]);
+        localStorage.setItem('registrations', JSON.stringify([...existing, { ...newReg, id: (data as any)?.[0]?.id || Math.random().toString(36).substr(2, 9) }]));
         
         // Trigger New Partner notification
         storeNotification(

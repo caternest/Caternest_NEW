@@ -1,78 +1,118 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600&family=Poppins:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Cinzel:wght@400;500;600;700;800;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
-  --font-poppins: "Poppins", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Playfair Display", Georgia, serif;
-  --font-serif: "Cormorant Garamond", Georgia, serif;
-  --font-cinzel: "Cinzel", "Libre Baskerville", Georgia, serif;
-  --font-baskerville: "Libre Baskerville", Georgia, serif;
+  /* Sleek Interface Typography - replacing serif display with a beautiful tech-forward Space Grotesk/Inter combo */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-poppins: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
   
-  --color-primary-50: #fcf8f0;
-  --color-primary-100: #f6ead4;
-  --color-primary-200: #eed5a7;
-  --color-primary-300: #e4bc75;
-  --color-primary-400: #dda64e;
-  --color-primary-500: #d68d2f;
-  --color-primary-600: #c27124;
-  --color-primary-700: #a25521;
-  --color-primary-800: #824121;
-  --color-primary-900: #69361e;
+  /* Sleek Interface Accent Colors */
+  --color-primary-50: #f0f6ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-505: #0284c7;
+  --color-primary-500: #0284c7;
+  --color-primary-600: #0369a1;
+  --color-primary-700: #075985;
+  --color-primary-800: #0c4a6e;
+  --color-primary-900: #0a3a5c;
 
-  /* Luxury Dark Green Scheme */
-  --color-brand-green-50: #f2f7f5;
-  --color-brand-green-100: #e0eee8;
-  --color-brand-green-200: #c2dcd2;
-  --color-brand-green-300: #9bc3b6;
-  --color-brand-green-400: #6ea494;
-  --color-brand-green-500: #4e8878;
-  --color-brand-green-600: #3c6c60;
-  --color-brand-green-700: #32574e;
-  --color-brand-green-800: #2a4640;
-  --color-brand-green-900: #0f2922;
-  --color-brand-green-950: #051410;
+  /* Sleek Interface Brand Green Scheme mapped to Deep Slate Blue */
+  --color-brand-green-50: #f8fafc;
+  --color-brand-green-100: #f1f5f9;
+  --color-brand-green-200: #e2e8f0;
+  --color-brand-green-300: #cbd5e1;
+  --color-brand-green-400: #94a3b8;
+  --color-brand-green-500: #3b82f6;
+  --color-brand-green-600: #2563eb;
+  --color-brand-green-700: #1d4ed8;
+  --color-brand-green-800: #1e293b;
+  --color-brand-green-805: #1e293b;
+  --color-brand-green-900: #0f172a;
+  --color-brand-green-905: #1e293b;
+  --color-brand-green-909: #0f172a;
+  --color-brand-green-950: #020617;
 
-  --color-brand-gold-50: #fcf8f0;
-  --color-brand-gold-100: #f6ead4;
-  --color-brand-gold-200: #eed5a7;
-  --color-brand-gold-300: #e4bc75;
-  --color-brand-gold-400: #dda64e;
-  --color-brand-gold-500: #DEAA38;
-  --color-brand-gold-600: #c28824;
-  --color-brand-gold-700: #a26521;
-  --color-brand-gold-800: #825021;
-  --color-brand-gold-900: #69411e;
+  /* Sleek Interface Brand Gold Scheme mapped to Indigo / Bright Blue */
+  --color-brand-gold-50: #eff6ff;
+  --color-brand-gold-100: #dbeafe;
+  --color-brand-gold-200: #bfdbfe;
+  --color-brand-gold-300: #93c5fd;
+  --color-brand-gold-400: #60a5fa;
+  --color-brand-gold-500: #3b82f6;
+  --color-brand-gold-600: #2563eb;
+  --color-brand-gold-700: #1d4ed8;
+  --color-brand-gold-800: #1e40af;
+  --color-brand-gold-900: #1e3a8a;
 
-  --color-slate-50: #FDFCFB;
-  --color-slate-100: #F5EFE1;
-  --color-slate-200: #E5E1DA;
-  --color-slate-300: #D1CDDA;
-  --color-slate-400: #A09CAB;
-  --color-slate-500: #716D7A;
-  --color-slate-600: #524E5A;
-  --color-slate-700: #3D3944;
-  --color-slate-800: #2D3748;
-  --color-slate-900: #1A1A1A;
+  /* True Cool Slate values instead of previous warm/beige colors */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-505: #64748b;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
 }
 
 @layer base {
   body {
-    @apply font-sans bg-slate-50 text-slate-900 antialiased;
+    @apply font-sans bg-slate-50 text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight text-slate-900;
+    @apply font-display tracking-tight text-slate-900 font-bold;
   }
 }
 
+/* Glass & Glass Dark with high contrast styling */
 .glass {
-  background: rgba(255, 255, 255, 0.90);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .glass-dark {
-  background: rgba(15, 41, 34, 0.85);
+  background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(51, 65, 85, 0.8);
+}
+
+/* Beautiful dynamic card hover effect typical of the Sleek Interface */
+.slick-card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border-width: 1px;
+  border-color: rgba(226, 232, 240, 0.8);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.slick-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-color: rgba(203, 213, 225, 0.8);
+}
+
+.slick-card-interactive {
+  composes: slick-card;
+  cursor: pointer;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.slick-card-interactive:hover {
+  transform: translateY(-2px);
+}
+
+.slick-card-interactive:active {
+  transform: translateY(0);
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, safeSaveRegistrations } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { ChefHat, Menu, X, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabase } from '../lib/supabase';
@@ -38,7 +38,36 @@ export default function Navbar() {
           .select('*');
         if (!error && data) {
           setRegistrations(data);
-          safeSaveRegistrations(data);
+          try {
+            localStorage.setItem('registrations', JSON.stringify(data));
+          } catch (storageErr) {
+            console.warn("Could not save full registrations in Navbar localStorage. Attempting sanitized fallback...", storageErr);
+            try {
+              const sanitizeItem = (val: any): any => {
+                if (typeof val === 'string') {
+                  if (val.length > 500 && (val.startsWith('data:') || val.includes(';base64,'))) {
+                    return '/placeholder.jpg';
+                  }
+                  return val;
+                }
+                if (Array.isArray(val)) {
+                  return val.map(item => sanitizeItem(item));
+                }
+                if (val !== null && typeof val === 'object') {
+                  const cleanedObj: any = {};
+                  for (const k of Object.keys(val)) {
+                    cleanedObj[k] = sanitizeItem(val[k]);
+                  }
+                  return cleanedObj;
+                }
+                return val;
+              };
+              const cleaned = data.map(r => sanitizeItem(r));
+              localStorage.setItem('registrations', JSON.stringify(cleaned));
+            } catch (fallbackErr) {
+              console.error("Failed to write even sanitized registrations in Navbar:", fallbackErr);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to fetch registrations in Navbar:", err);

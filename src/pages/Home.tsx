@@ -359,17 +359,15 @@ function TrendingCaterers() {
                         {(Number(caterer.rating) || 5.0).toFixed(1)}
                     </div>
                 </div>
+
+                <div className="absolute bottom-0 translate-y-1/2 left-6 w-20 h-20 bg-white rounded-full p-1.5 shadow-lg z-10 border border-slate-100 flex items-center justify-center overflow-hidden">
+                    {caterer.logo ? (
+                        <img src={caterer.logo} alt="Logo" className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                        <span className="font-display font-bold text-slate-300 text-2xl uppercase">{(caterer.name || 'Caterer').substring(0,2)}</span>
+                    )}
+                </div>
               </div>
-              
-              {/* Floating Logo Profile (positioned outside h-56 container so overflow-hidden doesn't crop it) */}
-              <div className="absolute top-56 -translate-y-1/2 left-6 w-[80px] h-[80px] sm:w-[92px] sm:h-[92px] lg:w-[104px] lg:h-[104px] bg-[#FFFDFB] rounded-full p-1.5 border-2 border-[#D4AF37] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-10 flex items-center justify-center overflow-hidden">
-                  {caterer.logo ? (
-                      <img src={caterer.logo} alt="Logo" className="w-full h-full object-contain object-center rounded-full" />
-                  ) : (
-                      <span className="font-display font-bold text-[#D4AF37] text-lg sm:text-xl lg:text-2xl uppercase">{(caterer.name || 'Caterer').substring(0,2)}</span>
-                  )}
-              </div>
-              
               <div className="p-6 pt-12 flex-1 flex flex-col relative z-0">
                 <div className="mb-4">
                   <h3 className="text-2xl font-display font-bold text-slate-900 mb-1 line-clamp-1">{caterer.name}</h3>

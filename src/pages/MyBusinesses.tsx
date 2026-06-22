@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Building, Plus, ArrowRight, Clock, CheckCircle2, XCircle, AlertCircle, Edit } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { cn, safeSaveRegistrations } from '../lib/utils';
+import { cn } from '../lib/utils';
 
 export default function MyBusinesses() {
   const { user } = useAuth();
@@ -123,7 +123,7 @@ export default function MyBusinesses() {
                                  if (window.confirm('Delete this business?')) {
                                      const raw = JSON.parse(localStorage.getItem('registrations') || '[]');
                                      const updated = raw.filter((x:any) => x.id !== b.id);
-                                     safeSaveRegistrations(updated);
+                                     localStorage.setItem('registrations', JSON.stringify(updated));
                                      setBusinesses(updated.filter((r: any) => (r.userId === user?.id || (r.email && r.email.toLowerCase() === user?.email?.toLowerCase())) && r.status !== 'Deleted'));
                                  }
                              }} className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm font-bold rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1">
