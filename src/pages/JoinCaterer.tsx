@@ -170,7 +170,7 @@ export default function JoinCaterer() {
     return 1;
   });
   const [status, setStatus] = useState<'form' | 'pending' | 'approved'>('form');
-  const { user } = useAuth();
+  const { user, signUp } = useAuth();
   const navigate = useNavigate();
   
   const [menuPackages, setMenuPackages] = useState<any[]>(() => {
@@ -431,9 +431,37 @@ export default function JoinCaterer() {
       e.preventDefault();
     }
     
-    // Construct registration payload
+    const supabase = getSupabase();
+    let signupUserId = user?.id || 'demo-user';
+    let authCreated = false;
+
+    // 1. Trigger Auth Provisioning & Profile Creation first if database is available
+    if (supabase) {
+      try {
+        console.log("[JOIN CATERER FLOW] Provisioning auth user account on Supabase for:", formData.email);
+        const authRes = await signUp(formData.email, formData.password, formData.ownerName, formData.mobile, 'caterer');
+        
+        if (authRes.error) {
+          console.error("[JOIN CATERER FLOW] Auth Provisioning failed:", authRes.error);
+          alert(`Failed to create your auth credentials user: ${authRes.error.message || authRes.error.toString()}`);
+          return;
+        }
+        
+        if (authRes.data?.user) {
+          signupUserId = authRes.data.user.id;
+          authCreated = true;
+          console.log("[JOIN CATERER FLOW] Created new Auth User:", signupUserId);
+        }
+      } catch (authExc: any) {
+        console.error("[JOIN CATERER FLOW] Exception during auth provisioning:", authExc);
+        alert(`Account creation error: ${authExc.message || authExc.toString()}`);
+        return;
+      }
+    }
+
+    // Construct registration payload (without email_verified physical column to avoid schema cache failures)
     const newReg = {
-      userId: user?.id || 'demo-user',
+      userId: signupUserId,
       businessName: formData.businessName,
       owner: formData.ownerName,
       ownerName: formData.ownerName,
@@ -454,13 +482,11 @@ export default function JoinCaterer() {
       galleryPhotos: formData.galleryPhotos,
       gallery: formData.galleryPhotos,
       packages: menuPackages,
-      draftMenuPackages: menuPackages,
-      email_verified: true
+      draftMenuPackages: menuPackages
     };
 
     console.log("Database write starting. Payload to be inserted into public.caterer_registrations:", newReg);
 
-    const supabase = getSupabase();
     if (supabase) {
       try {
         const { data, error } = await (supabase
@@ -469,6 +495,15 @@ export default function JoinCaterer() {
           .select();
 
         if (error) {
+          // Rollback profiles and anything we can do if insert fails
+          if (authCreated && signupUserId !== 'demo-user') {
+            console.warn("[JOIN CATERER FLOW] SQL registration insert failed. Rolling back profile record for user ID:", signupUserId);
+            try {
+              await supabase.from('profiles').delete().eq('id', signupUserId);
+            } catch (rollbackErr) {
+              console.error("[JOIN CATERER FLOW] Rollback profile record failed:", rollbackErr);
+            }
+          }
           throw error;
          }
 
