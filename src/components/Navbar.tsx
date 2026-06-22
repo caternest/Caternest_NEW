@@ -92,7 +92,7 @@ export default function Navbar() {
           let filtered = data;
           if (user.roles.includes('admin')) {
             filtered = data.filter((n: any) => n.targetRole === 'admin');
-          } else if (user.roles.includes('partner') || hasCatererBusinesses) {
+          } else if (user.role === 'caterer') {
             const myCatererIds = registrations
               .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
               .map((r: any) => r.id);
@@ -118,7 +118,7 @@ export default function Navbar() {
       let filtered = parsed;
       if (user.roles.includes('admin')) {
         filtered = parsed.filter((n: any) => n.targetRole === 'admin');
-      } else if (user.roles.includes('partner') || hasCatererBusinesses) {
+      } else if (user.role === 'caterer') {
         const myCatererIds = registrations
           .filter((r: any) => r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase()))
           .map((r: any) => r.id);
@@ -418,9 +418,9 @@ export default function Navbar() {
                                     <Settings size={16} /> Admin Profile
                                   </Link>
                                 </>
-                            ) : (user.roles.includes('partner') || hasCatererBusinesses) ? (
+                            ) : user.role === 'caterer' ? (
                                 <>
-                                  {(user.roles.includes('partner') || hasApprovedCatererBusiness) && (
+                                  {user.role === 'caterer' && (
                                     <Link 
                                       to="/caterer-dashboard" 
                                       onClick={() => {
@@ -456,7 +456,7 @@ export default function Navbar() {
                                   <Link to="/businesses" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <Building size={16} /> My Business
                                   </Link>
-                                  {(user.roles.includes('partner') || hasApprovedCatererBusiness) && (
+                                  {user.role === 'caterer' && (
                                     <Link to="/businesses" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                       <Package size={16} /> My Packages
                                     </Link>

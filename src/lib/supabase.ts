@@ -103,7 +103,17 @@ export function getSupabase() {
     return null;
   }
   if (!supabaseInstance) {
-    const rawClient = createClient(supabaseUrl, supabaseAnonKey);
+    const rawClient = createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: true
+        }
+      }
+    );
 
     supabaseInstance = new Proxy(rawClient, {
       get(target, prop, receiver) {

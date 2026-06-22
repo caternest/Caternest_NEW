@@ -183,7 +183,7 @@ function HeroSection() {
         </div>
 
         {/* Homepage top-right area Customer Order Summary Widget */}
-        {user && !user.roles.includes('partner') && !user.roles.includes('admin') && activeOrders.length > 0 && (
+        {user && user.role === 'customer' && activeOrders.length > 0 && (
           <div className="w-full lg:w-[420px] bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-2xl border border-white/20 shrink-0 text-slate-900 self-start lg:mt-8">
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
               <h3 className="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
