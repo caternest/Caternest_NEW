@@ -470,7 +470,6 @@ export default function JoinCaterer() {
       alternatePhone: formData.alternateMobile,
       additionalPhone: formData.additionalMobile,
       username: formData.username,
-      password: formData.password,
       address: formData.location,
       city: formData.city,
       status: 'Pending Approval',

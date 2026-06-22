@@ -217,15 +217,23 @@ app.post("/api/admin/reset-password", async (req: any, res: any) => {
       }
 
       userId = createdUser.id;
+      authUser = createdUser;
     }
 
+    const finalEmail = authUser?.email || email;
+
+    // Check if user is an admin
+    const isAdminEmail = ['meda1824@gmail.com', 'ybmk24@gmail.com'].includes(finalEmail.toLowerCase().trim());
+    const isAdminRole = authUser?.user_metadata?.role === 'admin';
+    const finalRole = (isAdminEmail || isAdminRole) ? 'admin' : 'caterer';
+
     // 3. Keep caterer_registrations and profiles tables in perfect sync
-    // Update password, email, and user ID in registrations
+    // Update user ID and email in registrations
     const { error: updateRegError } = await supabase
       .from('caterer_registrations')
       .update({ 
         userId: userId,
-        password: newPassword 
+        email: finalEmail
       })
       .eq('id', catererId);
 
@@ -238,9 +246,9 @@ app.post("/api/admin/reset-password", async (req: any, res: any) => {
       .from('profiles')
       .upsert({
         id: userId,
-        email: email,
-        full_name: caterer.ownerName || caterer.businessName || 'Caterer',
-        role: 'caterer',
+        email: finalEmail,
+        full_name: (isAdminEmail || isAdminRole) ? (authUser?.user_metadata?.full_name || 'Primary Admin') : (caterer.ownerName || caterer.businessName || 'Caterer'),
+        role: finalRole,
         must_change_password: false
       }, { onConflict: 'id' });
 
@@ -334,15 +342,24 @@ app.post("/api/admin/approve-caterer", async (req: any, res: any) => {
       }
 
       userId = createdUser.id;
+      authUser = createdUser;
       console.log(`[AUTH ADMIN] Created new auth user on approval: ${userId}`);
     }
 
+    const finalEmail = authUser?.email || email;
+
+    // Check if user is an admin
+    const isAdminEmail = ['meda1824@gmail.com', 'ybmk24@gmail.com'].includes(finalEmail.toLowerCase().trim());
+    const isAdminRole = authUser?.user_metadata?.role === 'admin';
+    const finalRole = (isAdminEmail || isAdminRole) ? 'admin' : 'caterer';
+
     // 3. Keep caterer_registrations and profiles tables in perfect sync
-    // Update password, email, and user ID in registrations
+    // Update status, email, and user ID in registrations
     const { error: updateRegError } = await supabase
       .from('caterer_registrations')
       .update({ 
         userId: userId,
+        email: finalEmail,
         status: 'Approved'
       })
       .eq('id', catererId);
@@ -351,15 +368,15 @@ app.post("/api/admin/approve-caterer", async (req: any, res: any) => {
       console.warn("Warning: caterer_registrations table sync failed on approval:", updateRegError.message);
     }
 
-    // Create or update profiles row with role = 'caterer' and must_change_password = true
+    // Create or update profiles row with correct identity properties
     const { error: updateProfileError } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
-        email: email,
-        full_name: caterer.ownerName || caterer.businessName || 'Caterer',
-        role: 'caterer',
-        must_change_password: true
+        email: finalEmail,
+        full_name: (isAdminEmail || isAdminRole) ? (authUser?.user_metadata?.full_name || 'Primary Admin') : (caterer.ownerName || caterer.businessName || 'Caterer'),
+        role: finalRole,
+        must_change_password: (isAdminEmail || isAdminRole) ? false : true
       }, { onConflict: 'id' });
 
     if (updateProfileError) {

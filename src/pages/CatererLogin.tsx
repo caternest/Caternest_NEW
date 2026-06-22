@@ -39,7 +39,7 @@ export default function CatererLogin() {
       }
 
       if (inputId.includes('@')) {
-        resolvedEmail = inputId;
+        resolvedEmail = inputId.toLowerCase();
       } else {
         // Resolve email using username or phone lookups
         const { data: matchedRegs, error: lookupErr } = await supabase
@@ -65,54 +65,18 @@ export default function CatererLogin() {
           return;
         }
 
-        resolvedEmail = resolvedRecord.email;
+        resolvedEmail = resolvedRecord.email.toLowerCase();
       }
 
       // 1. Sign in natively via Supabase
+      console.log("[AUDIT LOG] CatererLogin.tsx invoking signIn with payload:", {
+        email: resolvedEmail,
+        passwordLength: formData.password?.length
+      });
+
       let signInResult = await signIn(resolvedEmail, formData.password);
       let authUser = signInResult?.data?.user;
       let signInErr = signInResult?.error;
-
-      if (signInErr) {
-        console.warn("[CATERER LOGIN] Native sign-in failed. Searching registrations for matching email + password to trigger auto-sync provisioning...", signInErr);
-        // Let's check if there is an approved caterer registration with matching email and password
-        const { data: matchedCaterers, error: dbErr } = await supabase
-          .from('caterer_registrations')
-          .select('id, email, password, status')
-          .eq('email', resolvedEmail)
-          .eq('password', formData.password);
-
-        if (!dbErr && matchedCaterers && matchedCaterers.length > 0) {
-          const matchedCaterer = matchedCaterers[0];
-          console.log("[CATERER LOGIN] Found matching registration row. Auto-provisioning auth credentials via backend API...");
-          try {
-            const syncRes = await fetch('/api/admin/reset-password', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                catererId: matchedCaterer.id,
-                newPassword: formData.password
-              })
-            });
-            
-            if (syncRes.ok) {
-              console.log("[CATERER LOGIN] Backend auth sync completed successfully! Retrying native sign-in...");
-              const retryResult = await signIn(resolvedEmail, formData.password);
-              if (retryResult?.data?.user) {
-                authUser = retryResult.data.user;
-                signInErr = null;
-              } else {
-                signInErr = retryResult?.error || new Error("Failed to sign in after credentials sync.");
-              }
-            } else {
-              const syncErrData = await syncRes.json().catch(() => ({}));
-              console.error("[CATERER LOGIN] Backend sync failed:", syncErrData.error || syncRes.statusText);
-            }
-          } catch (syncExc) {
-            console.error("[CATERER LOGIN] Exception during backend credentials sync:", syncExc);
-          }
-        }
-      }
 
       if (signInErr) {
         setError(signInErr.message || "Invalid email or password.");

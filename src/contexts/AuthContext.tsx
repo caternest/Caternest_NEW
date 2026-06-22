@@ -149,6 +149,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Identity Drift Repair Guard
+      if (activeProfile && !isSupabaseOffline) {
+        let needsProfileUpdate = false;
+        const updatePayload: any = {};
+
+        // 1. Auto Repair Profiles Email
+        if (authUser.email && activeProfile.email !== authUser.email) {
+          console.log(`[IDENTITY REPAIR] Drift detected: activeProfile email "${activeProfile.email}" != authUser email "${authUser.email}". Repairing profiles...`);
+          updatePayload.email = authUser.email;
+          activeProfile.email = authUser.email;
+          needsProfileUpdate = true;
+        }
+
+        // 2. Auto Repair Admin Role Drift
+        const isAdminEmail = ['meda1824@gmail.com', 'ybmk24@gmail.com'].includes(authUser.email?.toLowerCase().trim());
+        const isAdminRole = authUser.user_metadata?.role === 'admin';
+        if ((isAdminEmail || isAdminRole) && activeProfile.role !== 'admin') {
+          console.log(`[IDENTITY REPAIR] Admin drift detected: profile role "${activeProfile.role}" != "admin" for admin user. Repairing role...`);
+          updatePayload.role = 'admin';
+          activeProfile.role = 'admin';
+          needsProfileUpdate = true;
+        }
+
+        if (needsProfileUpdate) {
+          try {
+            await supabase
+              .from('profiles')
+              .update(updatePayload)
+              .eq('id', authUser.id);
+            console.log("[IDENTITY REPAIR] Profiles table updated successfully with correct identity values.");
+          } catch (updateErr) {
+            console.error("[IDENTITY REPAIR] Error repairing profiles row in DB:", updateErr);
+          }
+        }
+
+        // 3. Auto Repair Caterer Registrations Email
+        if (authUser.email) {
+          try {
+            const { data: regs, error: regsErr } = await supabase
+              .from('caterer_registrations')
+              .select('id, email')
+              .eq('userId', authUser.id);
+
+            if (!regsErr && regs && regs.length > 0) {
+              for (const r of regs) {
+                if (r.email !== authUser.email) {
+                  console.log(`[IDENTITY REPAIR] Drift detected: caterer_registrations email "${r.email}" != authUser email "${authUser.email}". Repairing registration ID "${r.id}"...`);
+                  await supabase
+                    .from('caterer_registrations')
+                    .update({ email: authUser.email })
+                    .eq('id', r.id);
+                  console.log(`[IDENTITY REPAIR] Registration ID "${r.id}" successfully repaired.`);
+                }
+              }
+            }
+          } catch (rErr) {
+            console.warn("[IDENTITY REPAIR] Caterer registration email check failed:", rErr);
+          }
+        }
+      }
+
       // Prevent activeProfile.role access when activeProfile is null by creating a safe fallback representation
       if (!activeProfile) {
         console.warn("[AUDIT LOG] activeProfile is still null after fetch and fallback checks. Constructing emergency virtual fallback profile to avoid crash.");
@@ -273,8 +334,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabase();
     if (!supabase) throw new Error("Supabase is not configured.");
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {
@@ -292,7 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await supabase.from('profiles').upsert({
           id: data.user.id,
-          email,
+          email: normalizedEmail,
           full_name: name,
           role,
           must_change_password: false // Regular signups shouldn't be forced unless specified
@@ -310,10 +373,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabase();
     if (!supabase) throw new Error("Supabase is not configured.");
 
-    return await supabase.auth.signInWithPassword({
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log("[AUDIT LOG] signIn called with payload:", {
       email,
+      normalizedEmail,
+      passwordLength: password?.length
+    });
+
+    // Temporary diagnostic logging
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
       password
     });
+
+    console.log('AUTH RESULT', {
+      user: data?.user?.id,
+      session: !!data?.session,
+      error
+    });
+
+    return { data, error };
   };
 
   // Logout natively

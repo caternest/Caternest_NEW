@@ -93,7 +93,7 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
         }
 
         const { data, error: signUpErr } = await signUp(
-          formData.email.trim(),
+          formData.email.trim().toLowerCase(),
           formData.password,
           formData.name.trim(),
           formData.phone.trim(),
@@ -104,12 +104,13 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
           setError(signUpErr.message || "Registration failed.");
         } else {
           toast("Registration successful! Verify your email to activate.", "success");
-          setUnverifiedEmail(formData.email.trim());
+          setUnverifiedEmail(formData.email.trim().toLowerCase());
         }
       } else {
         // Native email login
-        console.log("[AUDIT LOG] Calling signInWithPassword helper for email:", formData.email.trim());
-        const { error: signInErr } = await signIn(formData.email.trim(), formData.password);
+        const normalizedEmail = formData.email.trim().toLowerCase();
+        console.log("[AUDIT LOG] Calling signInWithPassword helper for email:", normalizedEmail);
+        const { error: signInErr } = await signIn(normalizedEmail, formData.password);
         
         if (signInErr) {
           console.error("[AUDIT LOG] signInWithPassword returned error:", signInErr.message, signInErr);
