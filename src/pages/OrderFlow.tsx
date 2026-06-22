@@ -11,6 +11,7 @@ import { DEMO_CATERERS } from '../data';
 import { toast } from '../components/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { storeNotification } from '../lib/orderUtils';
+import { saveWithSupabaseSync } from '../lib/supabase';
 
 const getCategoryIcon = (categoryName: string) => {
   const norm = categoryName.toLowerCase();
@@ -647,7 +648,7 @@ export default function OrderFlow() {
   });
   const navigate = useNavigate();
 
-   const handleBooking = (isQuote: boolean) => {
+   const handleBooking = async (isQuote: boolean) => {
        console.log("[TRACE_LOG #2] handleBooking() entry, isQuote:", isQuote);
 
        console.log("[TRACE_LOG #3] user validation block, user:", user);
@@ -709,7 +710,12 @@ export default function OrderFlow() {
        console.log("[TRACE_LOG #6.1] Created newOrder object:", newOrder);
 
        console.log("[TRACE_LOG #8] Before localStorage.setItem('orders')");
-       localStorage.setItem('orders', JSON.stringify([...currentOrders, newOrder]));
+        try {
+            await saveWithSupabaseSync('orders', 'orders', [...currentOrders, newOrder]);
+        } catch (syncErr) {
+            console.error("Synced order failed, writing locally:", syncErr);
+            localStorage.setItem('orders', JSON.stringify([...currentOrders, newOrder]));
+        }
        console.log("[TRACE_LOG #8.1] After localStorage.setItem('orders')");
 
        console.log("ORDER CREATED", newOrder);

@@ -56,7 +56,8 @@ import {
   OperatingHoursCard,
   AchievementsCard,
   AwardsCertsCard,
-  ContactSidebarCard
+  ContactSidebarCard,
+  ContactInfoCard
 } from "../components/PremiumCatererSections";
 
 // Highly polished, realistic decorative crown vector asset to perfectly mimic the image design
@@ -2843,345 +2844,48 @@ export default function CatererDetails() {
                     CrownOrnament={CrownOrnament}
                   />
 
-                  {/* SECTION 4: FOOD GALLERY OVERVIEW */}
-                  <div
-                    id="gallery-section"
-                    className="bg-[#FFFDFB] rounded-[24px] p-6 md:p-8 border border-[#E8DCC7] shadow-[0_8px_30px_rgba(15,61,46,0.08)] scroll-mt-24"
-                  >
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-xl md:text-2xl font-display font-bold text-[#173D32] tracking-tight">
-                        Food Gallery
-                      </h2>
-                      {isEditing && (
-                        <div className="flex gap-2">
-                          <label className="cursor-pointer bg-[#173D32] text-white hover:bg-[#0f2922] text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1">
-                            <Plus size={14} /> Add photo (Non-sensitive)
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const base64 = await convertFileToBase64(file);
-                                  const currentPhotos =
-                                    editedCaterer.galleryPhotos ||
-                                    editedCaterer.images ||
-                                    [];
-                                  setEditedCaterer({
-                                    ...editedCaterer,
-                                    galleryPhotos: [...currentPhotos, base64],
-                                    images: [...currentPhotos, base64],
-                                  });
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </div>
+                  <FoodGalleryCard
+                    caterer={caterer}
+                    editedCaterer={editedCaterer}
+                    setEditedCaterer={setEditedCaterer}
+                    isEditing={isEditing}
+                    setIsEditing={setIsEditing}
+                    isOwnerOrAdmin={isOwnerOrAdmin}
+                    handleSaveChanges={handleSaveChanges}
+                    targetCatererObj={targetCatererObj}
+                    allGalleryPhotos={allGalleryPhotos}
+                    openLightbox={openLightbox}
+                    guestCount={guestCount}
+                    setGuestCount={setGuestCount}
+                    packageTiers={packageTiers}
+                    awardsList={awardsList}
+                    certificationsList={certificationsList}
+                    achievementsList={achievementsList}
+                    user={user}
+                    CrownOrnament={CrownOrnament}
+                    convertFileToBase64={convertFileToBase64}
+                  />
 
-                    {isEditing ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {(
-                          editedCaterer &&
-                          (editedCaterer.galleryPhotos || editedCaterer.images || [])
-                        ).map((img: string, i: number) => (
-                          <div
-                            key={i}
-                            className="aspect-video md:aspect-square rounded-2xl overflow-hidden relative shadow-sm border border-slate-200 group"
-                          >
-                            <img
-                              src={img}
-                              alt="Gallery item"
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="bg-black/40 flex items-center justify-center absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const currentPhotos =
-                                    editedCaterer.galleryPhotos ||
-                                    editedCaterer.images ||
-                                    [];
-                                  const filtered = currentPhotos.filter(
-                                    (_: any, idx: number) => idx !== i,
-                                  );
-                                  setEditedCaterer({
-                                    ...editedCaterer,
-                                    galleryPhotos: filtered,
-                                    images: filtered,
-                                  });
-                                }}
-                                className="bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition"
-                                title="Remove Photo"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        {editedCaterer &&
-                          (editedCaterer.galleryPhotos || editedCaterer.images || [])
-                            .length === 0 && (
-                            <div className="col-span-full py-8 text-center text-slate-400 font-sans font-medium text-xs">
-                              No gallery photos uploaded yet. Click the button above
-                              to add photos.
-                            </div>
-                          )}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {allGalleryPhotos
-                          .slice(0, 4)
-                          .map((img: string, i: number) => (
-                            <div
-                              key={i}
-                              onClick={() => openLightbox(allGalleryPhotos, i)}
-                              className="aspect-video md:aspect-square rounded-2xl overflow-hidden relative cursor-zoom-in group shadow-sm border border-slate-200"
-                            >
-                              <img
-                                src={img}
-                                alt="Gallery"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors"></div>
-                            </div>
-                          ))}
-                        {allGalleryPhotos.length > 4 ? (
-                          <div
-                            onClick={() => openLightbox(allGalleryPhotos, 4)}
-                            className="aspect-video md:aspect-square rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors group"
-                          >
-                            <div className="bg-[#0B3D2E] text-white rounded-full p-3 mb-2 group-hover:scale-110 transition-transform shadow-sm">
-                              <PlayCircle size={24} />
-                            </div>
-                            <span className="text-sm font-bold text-slate-700">
-                              View More
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              Photos & Videos
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* SECTION 6: CHOOSE YOUR PACKAGE */}
-                  <section
-                    id="menu-packages"
-                    className="bg-[#FCFAF5] rounded-[1.75rem] p-5 md:p-6 shadow-sm border border-amber-200/25 relative overflow-hidden select-none scroll-mt-24 w-full text-left"
-                  >
-                    <div className="absolute top-0 right-0 w-85 h-85 bg-gradient-to-bl from-amber-100/15 to-transparent rounded-bl-full pointer-events-none"></div>
-
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 pb-4 border-b border-amber-200/30">
-                      <div className="text-center sm:text-left select-none">
-                        <h2 className="text-xl font-display font-bold text-[#051410] tracking-tight relative inline-block">
-                          Choose Your Package
-                        </h2>
-                        <div className="flex items-center justify-center sm:justify-start gap-1 text-[#DEAA38] mt-0.5 text-[11px] font-serif">
-                          <span className="opacity-40">⏤⊰</span>
-                          <span className="text-[11px]">❃</span>
-                          <span className="font-bold uppercase tracking-wider text-[8px] text-[#D4A437] font-sans mx-1">
-                            Premium Selections
-                          </span>
-                          <span className="text-[11px]">❃</span>
-                          <span className="opacity-40">⊱⏤</span>
-                        </div>
-                      </div>
-
-                      {/* Guest Selector Counter */}
-                      <div className="bg-gradient-to-r from-stone-50 to-[#FFFDF5] border border-amber-200/50 rounded-lg p-1 px-2.5 flex items-center gap-2.5 shadow-[0_3px_10px_rgba(222,170,56,0.04)]">
-                        <button
-                          onClick={() =>
-                            setGuestCount((prev) => Math.max(10, prev - 10))
-                          }
-                          className="w-6 h-6 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-sm select-none cursor-pointer"
-                        >
-                          −
-                        </button>
-                        <div className="text-center min-w-[50px] select-none">
-                          <span className="block text-xs font-black text-slate-800 leading-none">
-                            {guestCount}
-                          </span>
-                          <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 block">
-                            Guests
-                          </span>
-                        </div>
-                        <button
-                          onClick={() =>
-                            setGuestCount((prev) => Math.min(3000, prev + 10))
-                          }
-                          className="w-6 h-6 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-90 transition-all flex items-center justify-center font-bold text-sm select-none cursor-pointer"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Responsive dynamic grid package listing */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                      {packageTiers.map((pkg, idx) => {
-                        const theme = pkg.theme || "silver";
-
-                        // Theme backgrounds, borders and custom styling definitions
-                        let bgBorderClass =
-                          "bg-gradient-to-b from-[#FFFDFB] to-white border border-[#E8DCC7] shadow-[0_8px_30px_rgba(15,61,46,0.08)]";
-                        let badgeClass =
-                          "bg-[#FCFAF5] text-[#173D32] border-[#E8DCC7]";
-                        let badgeDotClass = "bg-[#D4AF37]";
-                        let titleClass = "text-[#173D32]";
-                        let buttonClass =
-                          "bg-[#173D32] hover:bg-[#0f2922] text-white shadow-[0_4px_12px_rgba(23,61,50,0.15)]";
-
-                        if (theme === "gold") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF2] to-[#FFFBF0] border-2 border-[#DEAA38] shadow-[0_12px_35px_rgba(222,170,56,0.14)]";
-                          titleClass = "text-[#A27008]";
-                          buttonClass =
-                            "bg-gradient-to-r from-[#D4AF37] via-[#F5E6B3] to-[#AA7C11] text-[#051410] font-black border border-[#DEAA38]/30 shadow-[0_6px_20px_rgba(170,124,17,0.25)] hover:brightness-105";
-                        } else if (theme === "platinum") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF9] to-white border border-[#E8DCC7] shadow-[0_8px_30px_rgba(15,61,46,0.08)]";
-                          titleClass = "text-[#173D32]";
-                        } else if (theme === "premium") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFF5F5] to-white border-2 border-red-300 shadow-[0_10px_30px_rgba(239,68,68,0.08)]";
-                          titleClass = "text-red-950";
-                          badgeClass = "bg-red-50 text-red-800 border-red-200/60";
-                          badgeDotClass = "bg-red-600";
-                          buttonClass =
-                            "bg-gradient-to-r from-red-700 to-[#7F1D1D] hover:from-red-800 hover:to-[#5E0000] text-white shadow-[0_6px_20px_rgba(127,29,29,0.25)]";
-                        } else if (theme === "royal") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF6] to-[#FFF9F2] border-2 border-[#DEAA38] shadow-[0_12px_45px_rgba(222,170,56,0.26)]";
-                          titleClass = "text-[#925F02]";
-                          badgeClass = "bg-red-50 text-red-800 border-red-200/60";
-                          badgeDotClass = "bg-red-600";
-                        } else if (theme === "grand") {
-                          bgBorderClass =
-                            "bg-gradient-to-b from-[#FFFDF9] to-white border-2 border-[#DEAA38]/50 shadow-[0_12px_35px_rgba(222,170,56,0.12)]";
-                          titleClass = "text-[#173D32]";
-                          badgeClass = "bg-red-50 text-red-800 border-red-200/60";
-                          badgeDotClass = "bg-red-600";
-                        }
-
-                        return (
-                          <div
-                            key={pkg.id}
-                            className={cn(
-                              "rounded-[2rem] p-6 transition-all duration-300 relative flex flex-col pt-10 h-full group hover:-translate-y-2 select-none",
-                              bgBorderClass,
-                            )}
-                          >
-                            {/* Decorative 3D Floating Crown */}
-                            <CrownOrnament theme={theme} />
-
-                            {/* Best Seller/Popular Ribbon */}
-                            {pkg.popular && (
-                              <div className="absolute -top-3 right-6 bg-gradient-to-r from-[#EF4444] to-[#C21111] text-white font-black text-[9px] uppercase px-4 py-1.5 rounded-full shadow-[0_4px_10px_rgba(239,68,68,0.35)] tracking-widest border border-red-500/15 z-35">
-                                Popular
-                              </div>
-                            )}
-
-                            {/* Veg / Non-Veg Tag */}
-                            <div className="text-center mb-4">
-                              <span
-                                className={cn(
-                                  "text-[9px] uppercase tracking-widest font-extrabold px-3 py-1 rounded-full mb-1 inline-flex items-center gap-1 border shadow-xs",
-                                  badgeClass,
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "w-1.5 h-1.5 rounded-full",
-                                    badgeDotClass,
-                                  )}
-                                ></span>
-                                {pkg.type === "veg" ? "Pure Veg" : "Non-Veg Allowed"}
-                              </span>
-
-                              <h3
-                                className={cn(
-                                  "text-base font-sans font-bold tracking-wide uppercase leading-tight mt-1",
-                                  titleClass,
-                                )}
-                              >
-                                {pkg.name}
-                              </h3>
-                            </div>
-
-                            {/* Price plate */}
-                            <div className="text-center mb-5 pb-4 border-b border-dashed border-stone-200">
-                              <div className="inline-flex items-baseline text-[#0F3D2E]">
-                                <span className="text-lg font-bold font-poppins mr-0.5 text-stone-400">
-                                  ₹
-                                </span>
-                                <span className="text-[28px] font-extrabold font-poppins leading-none tracking-tight">
-                                  {pkg.price}
-                                </span>
-                                <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider ml-1">
-                                  / plate
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Description Text */}
-                            <p className="text-[12px] leading-relaxed text-[#555555] mb-5 text-center italic font-medium px-2 flex-1">
-                              "{pkg.desc}"
-                            </p>
-
-                            {/* Core items specs list */}
-                            <div className="space-y-3 mb-6 bg-[#FCFAF5] p-4 rounded-xl border border-[#E8DCC7]/40">
-                              <div className="flex items-center gap-3">
-                                <div className="w-7.5 h-7.5 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#DEAA38] shrink-0 border border-[#E8DCC7]">
-                                  <ChefHat size={14} strokeWidth={2} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#444444] tracking-tight">
-                                  {pkg.categoriesCount} Categories Included
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <div className="w-7.5 h-7.5 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#DEAA38] shrink-0 border border-[#E8DCC7]">
-                                  <Award size={14} strokeWidth={2} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#444444] tracking-tight">
-                                  {pkg.selectItems}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                <div className="w-7.5 h-7.5 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#DEAA38] shrink-0 border border-[#E8DCC7]">
-                                  <Users size={14} strokeWidth={2} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#444444] tracking-tight">
-                                  {pkg.guests}+ Guests Limit
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Order Button (View Details) */}
-                            <Link
-                              to={`/order/${caterer.id}`}
-                              state={{
-                                packageIdx: pkg.id,
-                                customGuestCount: guestCount,
-                              }}
-                              className={cn(
-                                "mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 active:scale-95 cursor-pointer pointer-events-auto",
-                                buttonClass,
-                              )}
-                            >
-                              View Details{" "}
-                              <ChevronRight size={14} className="stroke-[3]" />
-                            </Link>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
+                  <MenuPackagesCard
+                    caterer={caterer}
+                    editedCaterer={editedCaterer}
+                    setEditedCaterer={setEditedCaterer}
+                    isEditing={isEditing}
+                    setIsEditing={setIsEditing}
+                    isOwnerOrAdmin={isOwnerOrAdmin}
+                    handleSaveChanges={handleSaveChanges}
+                    targetCatererObj={targetCatererObj}
+                    allGalleryPhotos={allGalleryPhotos}
+                    openLightbox={openLightbox}
+                    guestCount={guestCount}
+                    setGuestCount={setGuestCount}
+                    packageTiers={packageTiers}
+                    awardsList={awardsList}
+                    certificationsList={certificationsList}
+                    achievementsList={achievementsList}
+                    user={user}
+                    CrownOrnament={CrownOrnament}
+                  />
 
                   {/* TESTIMONIALS & REVIEWS SECTION */}
                   <ReviewsCard
@@ -3206,6 +2910,27 @@ export default function CatererDetails() {
                     reviews={DEMO_REVIEWS.filter(
                       (r) => r.catererId === caterer.id || r.catererId === String(caterer.id)
                     )}
+                  />
+
+                  <AdditionalMediaCard
+                    caterer={caterer}
+                    editedCaterer={editedCaterer}
+                    setEditedCaterer={setEditedCaterer}
+                    isEditing={isEditing}
+                    setIsEditing={setIsEditing}
+                    isOwnerOrAdmin={isOwnerOrAdmin}
+                    handleSaveChanges={handleSaveChanges}
+                    targetCatererObj={targetCatererObj}
+                    allGalleryPhotos={allGalleryPhotos}
+                    openLightbox={openLightbox}
+                    guestCount={guestCount}
+                    setGuestCount={setGuestCount}
+                    packageTiers={packageTiers}
+                    awardsList={awardsList}
+                    certificationsList={certificationsList}
+                    achievementsList={achievementsList}
+                    user={user}
+                    CrownOrnament={CrownOrnament}
                   />
 
                   {/* SECTION 5: CONTACT PROTECTION NOTICE */}
@@ -3262,6 +2987,27 @@ export default function CatererDetails() {
                     CrownOrnament={CrownOrnament}
                   />
                   <ServiceAreasCard
+                    caterer={caterer}
+                    editedCaterer={editedCaterer}
+                    setEditedCaterer={setEditedCaterer}
+                    isEditing={isEditing}
+                    setIsEditing={setIsEditing}
+                    isOwnerOrAdmin={isOwnerOrAdmin}
+                    handleSaveChanges={handleSaveChanges}
+                    targetCatererObj={targetCatererObj}
+                    allGalleryPhotos={allGalleryPhotos}
+                    openLightbox={openLightbox}
+                    guestCount={guestCount}
+                    setGuestCount={setGuestCount}
+                    packageTiers={packageTiers}
+                    awardsList={awardsList}
+                    certificationsList={certificationsList}
+                    achievementsList={achievementsList}
+                    user={user}
+                    CrownOrnament={CrownOrnament}
+                  />
+
+                  <ContactInfoCard
                     caterer={caterer}
                     editedCaterer={editedCaterer}
                     setEditedCaterer={setEditedCaterer}

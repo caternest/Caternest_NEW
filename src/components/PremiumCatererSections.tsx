@@ -20,7 +20,8 @@ import {
   ChevronRight,
   CalendarDays,
   Users,
-  Phone
+  Phone,
+  Mail
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { serviceIcons, DEFAULT_SERVICES } from "../pages/CatererDetails";
@@ -1464,3 +1465,104 @@ export const ContactSidebarCard: React.FC<{
     </div>
   );
 };
+
+// 7. EDITABLE CONTACT INFO CARD
+export const ContactInfoCard: React.FC<SectionProps> = ({
+  isEditing,
+  editedCaterer,
+  setEditedCaterer,
+  isOwnerOrAdmin,
+  setIsEditing,
+  targetCatererObj,
+  caterer
+}) => {
+  return (
+    <div className="bg-[#FFFDFB] rounded-[24px] p-6 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] flex flex-col justify-between group">
+      <div className="flex justify-between items-center w-full">
+        <h3 className="font-serif font-black text-[#173D32] text-[16px] uppercase tracking-wide flex items-center gap-2">
+          <Phone size={18} className="text-[#D4AF37]" strokeWidth={2} /> CONTACT DETAILS
+        </h3>
+        {isOwnerOrAdmin && !isEditing && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditing(true);
+              setEditedCaterer({ ...caterer });
+            }}
+            className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
+          >
+            <Pencil size={11} className="text-[#D4AF37]" /> Edit
+          </button>
+        )}
+      </div>
+
+      <LuxuryDivider />
+
+      {isEditing ? (
+        <div className="flex flex-col gap-3.5 py-1.5 flex-1 justify-between font-sans text-left">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+              HQ Address / Location
+            </span>
+            <input
+              type="text"
+              value={editedCaterer.address || editedCaterer.location || ""}
+              onChange={(e) => setEditedCaterer({ ...editedCaterer, address: e.target.value, location: e.target.value })}
+              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
+              placeholder="e.g. Jubilee Hills, Hyderabad"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 mt-2">
+            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+              WhatsApp Number
+            </span>
+            <input
+              type="text"
+              value={editedCaterer.whatsappNumber || ""}
+              onChange={(e) => setEditedCaterer({ ...editedCaterer, whatsappNumber: e.target.value })}
+              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
+              placeholder="e.g. +91 98765 43210"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 mt-2">
+            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
+              Contact Email (Direct)
+            </span>
+            <input
+              type="email"
+              value={editedCaterer.email || ""}
+              onChange={(e) => setEditedCaterer({ ...editedCaterer, email: e.target.value })}
+              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
+              placeholder="e.g. contact@brand.com"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="border-2 border-dashed border-[#DFC27A]/40 bg-[#FCFAF5]/50 rounded-2xl p-5 flex flex-col gap-4 text-left flex-1 mt-2 font-sans select-text">
+          <div className="flex items-start gap-2.5 text-xs">
+            <MapPin size={15} className="text-[#D4AF37] mt-0.5" />
+            <div>
+              <p className="font-bold text-[#173D32]">HQ Address</p>
+              <p className="text-[#555555] mt-0.5">{targetCatererObj.address || targetCatererObj.location || "Hyderabad, Telangana"}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5 text-xs">
+            <Phone size={15} className="text-[#D4AF37] mt-0.5" />
+            <div>
+              <p className="font-bold text-[#173D32]">WhatsApp Number</p>
+              <p className="text-[#555555] mt-0.5">{targetCatererObj.whatsappNumber || "Shared upon booking"}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5 text-xs">
+            <Mail size={15} className="text-[#D4AF37] mt-0.5" />
+            <div>
+              <p className="font-bold text-[#173D32]">Email Address</p>
+              <p className="text-[#555555] mt-0.5">{targetCatererObj.email || "Shared upon booking"}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+

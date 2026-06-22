@@ -176,7 +176,7 @@ app.post("/api/admin/reset-password", async (req: any, res: any) => {
       console.error("Error listing users from auth admin:", listErr);
     } else if (listData?.users) {
       // Find by userId first, or fallback to email match
-      authUser = listData.users.find(u => 
+      authUser = listData.users.find((u: any) => 
         (userId && u.id === userId) || u.email?.toLowerCase() === email.toLowerCase()
       );
     }
@@ -302,7 +302,7 @@ app.post("/api/admin/approve-caterer", async (req: any, res: any) => {
     if (listErr) {
       console.error("Error listing users from auth admin:", listErr);
     } else if (listData?.users) {
-      authUser = listData.users.find(u => 
+      authUser = listData.users.find((u: any) => 
         (userId && u.id === userId) || u.email?.toLowerCase() === email.toLowerCase()
       );
     }

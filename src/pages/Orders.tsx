@@ -4,7 +4,7 @@ import { Calendar, Users, MapPin, Search, Check, Clock, ArrowRight, ChevronRight
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { toast } from '../components/Toast';
-import { getSupabase } from '../lib/supabase';
+import { getSupabase, saveWithSupabaseSync } from '../lib/supabase';
 import { normalizeStatus, getStatusLabel, getStatusBadgeColor, performOrderStatusUpdate, storeNotification } from '../lib/orderUtils';
 
 
@@ -168,7 +168,7 @@ export default function Orders() {
       const parsedOrders = JSON.parse(rawOrders);
       const updatedOrders = [newOrder, ...parsedOrders];
       
-      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      await saveWithSupabaseSync('orders', 'orders', updatedOrders);
 
       await storeNotification(
         newId,

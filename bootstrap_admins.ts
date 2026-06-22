@@ -56,7 +56,7 @@ async function bootstrap() {
             console.error("Error listing users:", listError);
             continue;
           }
-          const foundUser = listData.users.find(u => u.email === admin.email);
+          const foundUser = listData.users.find((u: any) => u.email === admin.email);
           if (foundUser) {
             userId = foundUser.id;
           } else {

@@ -265,38 +265,30 @@ export async function performOrderStatusUpdate(
 
   const newHistory = [...previousHistory, historyItem];
 
-  // Prepare standard mapped database update payload (Standard + Snake case copies)
+  // Prepare standard mapped database update payload (Standard canonical names)
   const statusUpdateFields: any = {
     status: newStatus.toLowerCase() === 'submitted' ? 'submitted' : normalizedStatus,
     statusHistory: newHistory,
-    status_history: newHistory,
     updated_at: timestamp
   };
 
   if (normalizedStatus === 'approved') {
     statusUpdateFields.approvedAt = timestamp;
-    statusUpdateFields.approved_at = timestamp;
   } else if (normalizedStatus === 'rejected') {
     statusUpdateFields.rejectedAt = timestamp;
-    statusUpdateFields.rejected_at = timestamp;
-    statusUpdateFields.specialNotes = extraData.rejectionReason || '';
     statusUpdateFields.notes = extraData.rejectionReason || '';
   } else if (normalizedStatus === 'changes_requested') {
-    statusUpdateFields.specialNotes = extraData.changesRequestedMemo || '';
     statusUpdateFields.notes = extraData.changesRequestedMemo || '';
   } else if (normalizedStatus === 'quotation_updated') {
     if (extraData.pricePerPlate !== undefined) {
       statusUpdateFields.pricePerPlate = Number(extraData.pricePerPlate);
     }
     if (extraData.totalEstimate !== undefined) {
-      statusUpdateFields.totalEstimate = Number(extraData.totalEstimate);
       statusUpdateFields.totalAmount = Number(extraData.totalEstimate);
     }
     if (extraData.guests !== undefined) {
-      statusUpdateFields.guests = Number(extraData.guests);
       statusUpdateFields.guestCount = Number(extraData.guests);
     }
-    statusUpdateFields.specialNotes = extraData.specialNotes || '';
     statusUpdateFields.notes = extraData.specialNotes || '';
   }
 

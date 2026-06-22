@@ -679,6 +679,15 @@ export default function AdminDashboard() {
           coverBanner: payloadPending.coverBanner || item.coverBanner,
           ownerPhoto: payloadPending.ownerPhoto || item.ownerPhoto,
           branchPhoto: payloadPending.branchPhoto || item.branchPhoto,
+          tagline: payloadPending.tagline || item.tagline,
+          brandName: payloadPending.brandName || item.brandName,
+          experience: payloadPending.experience || item.experience,
+          eventsCompleted: payloadPending.eventsCompleted || item.eventsCompleted,
+          awards: payloadPending.awards || item.awards,
+          certifications: payloadPending.certifications || item.certifications,
+          serviceAreas: payloadPending.serviceAreas || item.serviceAreas,
+          operatingHours: payloadPending.operatingHours || item.operatingHours,
+          branches: payloadPending.branches || item.branches,
           pendingUpdates: null
       };
 
