@@ -1011,8 +1011,38 @@ export default function CatererDashboard() {
       { id: 'profile', label: 'Profile', icon: User },
       { id: 'gallery', label: 'Gallery', icon: ImageIcon },
       { id: 'packages', label: 'Menu Packages', icon: Package },
-      { id: 'settings', label: 'Settings', icon: Settings },
+       { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  if (caterer && (caterer.status === 'Pending Approval' || caterer.status === 'pending_approval')) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 pt-24 select-none">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-100 text-center shadow-lg animate-fade-in"
+          id="pending-approval-guard"
+        >
+          <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-6">
+            <Clock size={32} className="animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-display font-medium text-slate-900 mb-3">Under Review</h2>
+          <p className="text-slate-500 text-sm leading-relaxed mb-6">
+            Your account is under review. Please wait for admin approval.
+          </p>
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left mb-6">
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Business Name</p>
+            <p className="font-bold text-slate-800">{caterer.businessName}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-3 mb-1">Owner</p>
+            <p className="text-xs font-semibold text-slate-600">{caterer.owner || caterer.ownerName}</p>
+          </div>
+          <p className="text-xs text-slate-400 font-medium">
+            Our administrators typically review registration requests within 24 hours.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pt-20">

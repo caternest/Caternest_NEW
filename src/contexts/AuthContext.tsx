@@ -369,27 +369,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Login natively
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (emailOrUsername: string, password: string) => {
     const supabase = getSupabase();
     if (!supabase) throw new Error("Supabase is not configured.");
 
-    const normalizedEmail = email.trim().toLowerCase();
+    let targetEmail = emailOrUsername.trim().toLowerCase();
     console.log("[AUDIT LOG] signIn called with payload:", {
-      email,
-      normalizedEmail,
-      passwordLength: password?.length
+      emailOrUsername,
+      targetEmail,
+      passwordLength: password?.length,
     });
+
+    // If input does not contain '@', it's a username. Resolve to email from caterer_registrations.
+    if (!targetEmail.includes("@")) {
+      try {
+        console.log(
+          "[AUDIT LOG] Input looks like a username. Querying caterer_registrations...",
+        );
+        const { data: reg, error: lookupErr } = await supabase
+          .from("caterer_registrations")
+          .select("email")
+          .eq("username", targetEmail)
+          .maybeSingle();
+
+        if (lookupErr) {
+          console.error(
+            "[AUDIT LOG] Error resolving username to email:",
+            lookupErr,
+          );
+        } else if (reg && reg.email) {
+          console.log(
+            `[AUDIT LOG] Resolved username "${targetEmail}" to email "${reg.email}"`,
+          );
+          targetEmail = reg.email;
+        } else {
+          console.warn(
+            `[AUDIT LOG] No email found associated with username "${targetEmail}"`,
+          );
+        }
+      } catch (err) {
+        console.error(
+          "[AUDIT LOG] Exception during username resolution:",
+          err,
+        );
+      }
+    }
 
     // Temporary diagnostic logging
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password
+      email: targetEmail,
+      password,
     });
 
-    console.log('AUTH RESULT', {
+    console.log("AUTH RESULT", {
       user: data?.user?.id,
       session: !!data?.session,
-      error
+      error,
     });
 
     return { data, error };
