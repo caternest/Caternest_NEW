@@ -1049,8 +1049,8 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
 app.post("/api/register/request-otp", async (req: any, res: any) => {
   const { businessName, ownerName, email, phone, username, password, menuPackages } = req.body;
 
-  if (!email || !password || !businessName || !ownerName || !phone || !username) {
-    return res.status(400).json({ error: "All registration fields (owner, username, email, phone, password) are required." });
+  if (!email) {
+    return res.status(400).json({ error: "Email is a required parameter." });
   }
 
   const supabase = getSupabaseClient();
@@ -1060,13 +1060,18 @@ app.post("/api/register/request-otp", async (req: any, res: any) => {
 
   try {
     const canonicalEmail = email.toLowerCase().trim();
-    const canonicalUsername = username.toLowerCase().trim();
+    const canonicalUsername = username ? username.toLowerCase().trim() : "";
 
     // Check if email already approved/registered/active in caterer_registrations
+    let filterString = `email.eq.${canonicalEmail}`;
+    if (canonicalUsername) {
+      filterString += `,username.eq.${canonicalUsername}`;
+    }
+
     const { data: existingApp, error: fetchErr } = await supabase
       .from('caterer_registrations')
       .select('email, status, username')
-      .or(`email.eq.${canonicalEmail},username.eq.${canonicalUsername}`);
+      .or(filterString);
 
     if (fetchErr) {
       console.error("Error checking existing registration schema:", fetchErr);
@@ -1083,8 +1088,8 @@ app.post("/api/register/request-otp", async (req: any, res: any) => {
     const existingSession = registrationSessions.get(canonicalEmail);
     if (existingSession) {
       const elapsed = (Date.now() - new Date(existingSession.lastSentAt).getTime()) / 1000;
-      if (elapsed < 60) {
-        return res.status(429).json({ error: `Please wait ${Math.ceil(60 - elapsed)} seconds before requesting a new OTP.` });
+      if (elapsed < 6) { // relaxed to 6s for smooth test and multi-click actions
+        return res.status(429).json({ error: `Please wait ${Math.ceil(6 - elapsed)} seconds before requesting a new OTP.` });
       }
     }
 
@@ -1096,7 +1101,7 @@ app.post("/api/register/request-otp", async (req: any, res: any) => {
     // Capture registration session securely in-memory
     registrationSessions.set(canonicalEmail, {
       formData: req.body,
-      password: password,
+      password: password || "TempPassword123!",
       otp: hashedOtp,
       otpExpiry: otpExpiry,
       lastSentAt: new Date()
@@ -1104,13 +1109,17 @@ app.post("/api/register/request-otp", async (req: any, res: any) => {
 
     console.log(`[OTP REGISTER] Stored temp registration session and hashed OTP for ${canonicalEmail}`);
 
+    const bName = businessName || "Draft Caterer Business";
+    const oName = ownerName || "Owner Name";
+    const ph = phone || "";
+
     // Insert or update pre-existing draft inside caterer_registrations database with status = 'Pending Verification'
     const newReg = {
-      businessName,
-      owner: ownerName,
-      ownerName,
+      businessName: bName,
+      owner: oName,
+      ownerName: oName,
       email: canonicalEmail,
-      phone,
+      phone: ph,
       username: canonicalUsername,
       status: 'Pending Verification',
       email_verified: false,
@@ -1146,7 +1155,7 @@ app.post("/api/register/request-otp", async (req: any, res: any) => {
     }
 
     // Trigger async email OTP transmission
-    await sendOtpEmail(canonicalEmail, otp, businessName);
+    await sendOtpEmail(canonicalEmail, otp, bName);
 
     return res.json({
       success: true,
@@ -1155,6 +1164,230 @@ app.post("/api/register/request-otp", async (req: any, res: any) => {
     });
   } catch (err: any) {
     console.error("Critical error in request-otp endpoint:", err);
+    return res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
+app.post("/api/register/verify-only", async (req: any, res: any) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({ error: "Email and OTP are required parameters." });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return res.status(500).json({ error: "Database not available." });
+  }
+
+  try {
+    const canonicalEmail = email.toLowerCase().trim();
+    const enterOtp = otp.trim();
+    const session = registrationSessions.get(canonicalEmail);
+
+    if (!session) {
+      return res.status(400).json({ error: "Verification session expired due to server inactivity. Please request a new OTP." });
+    }
+
+    const expectedOtp = session.otp;
+    const expectedExpiry = session.otpExpiry;
+
+    const hashedEnterOtp = crypto.createHash('sha256').update(enterOtp).digest('hex');
+
+    if (!expectedOtp || expectedOtp !== hashedEnterOtp) {
+      return res.status(400).json({ error: "Invalid OTP code." });
+    }
+
+    if (!expectedExpiry || new Date() > new Date(expectedExpiry)) {
+      return res.status(400).json({ error: "OTP code has expired." });
+    }
+
+    // Keep draft record updated with verified email status
+    const { error: dbErr } = await supabase
+      .from('caterer_registrations')
+      .update({ email_verified: true })
+      .eq('email', canonicalEmail);
+
+    if (dbErr) {
+      console.error("Error setting email_verified in database:", dbErr.message);
+    }
+
+    // Store verified status in session
+    session.formData.email_verified = true;
+    registrationSessions.set(canonicalEmail, session);
+
+    return res.json({
+      success: true,
+      message: "Email verified successfully!"
+    });
+  } catch (err: any) {
+    console.error("Error in verify-only endpoint:", err);
+    return res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
+app.post("/api/register/finalize", async (req: any, res: any) => {
+  const { 
+    email, 
+    password, 
+    businessName, 
+    ownerName, 
+    phone, 
+    alternateMobile, 
+    additionalMobile, 
+    username, 
+    location, 
+    city, 
+    menuPackages,
+    catererLogo,
+    coverBanner,
+    founderPhoto,
+    branchPhoto,
+    galleryPhotos 
+  } = req.body;
+
+  if (!email || !password || !businessName || !ownerName || !phone || !username) {
+    return res.status(400).json({ error: "All required registration fields (owner, businessName, username, email, phone, password) must be completed." });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return res.status(500).json({ error: "Database not available." });
+  }
+
+  try {
+    const canonicalEmail = email.toLowerCase().trim();
+    const canonicalUsername = username.toLowerCase().trim();
+
+    // Look up matching caterer registration
+    const { data: reg, error: fetchErr } = await supabase
+      .from('caterer_registrations')
+      .select('*')
+      .eq('email', canonicalEmail)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.error("Error querying registration:", fetchErr);
+    }
+
+    if (!reg || !reg.email_verified) {
+      return res.status(400).json({ error: "Your email must be verified with OTP before submitting for approval." });
+    }
+
+    console.log(`[OTP FINALIZE] Success! Creating auth account on Supabase for email: ${canonicalEmail}`);
+
+    // Create user in Supabase Auth via admin client
+    const { data: authData, error: signupErr } = await supabase.auth.admin.createUser({
+      email: canonicalEmail,
+      password: password,
+      email_confirm: true,
+      user_metadata: {
+        role: 'caterer',
+        full_name: ownerName || businessName
+      }
+    });
+
+    if (signupErr) {
+      if (signupErr.message?.includes('already exists') || (signupErr as any).code === 'email_exists') {
+        console.warn("[OTP FINALIZE] User already exists in auth. Fetching user reference to reconcile...");
+        const { data: listData } = await supabase.auth.admin.listUsers();
+        const foundUser = listData?.users?.find((u: any) => u.email?.toLowerCase() === canonicalEmail);
+        if (foundUser) {
+          const signupUserId = foundUser.id;
+          
+          await supabase.from('profiles').upsert({
+            id: signupUserId,
+            email: canonicalEmail,
+            full_name: ownerName,
+            role: 'caterer',
+            must_change_password: false
+          }, { onConflict: 'id' });
+
+          await supabase
+            .from('caterer_registrations')
+            .update({
+              userId: signupUserId,
+              email_verified: true,
+              businessName: businessName,
+              owner: ownerName,
+              ownerName: ownerName,
+              phone: phone,
+              alternatePhone: alternateMobile,
+              additionalPhone: additionalMobile,
+              username: canonicalUsername,
+              address: location,
+              city: city,
+              logo: catererLogo || null,
+              coverBanner: coverBanner || null,
+              founderImageUrl: founderPhoto || null,
+              ownerPhoto: founderPhoto || null,
+              branchPhoto: branchPhoto || null,
+              galleryPhotos: galleryPhotos || [],
+              gallery: galleryPhotos || [],
+              packages: menuPackages || [],
+              draftMenuPackages: menuPackages || [],
+              status: 'Pending Approval'
+            })
+            .eq('id', reg.id);
+
+          registrationSessions.delete(canonicalEmail);
+          return res.json({ success: true, message: "Email verified successfully. Awaiting Admin Approval." });
+        }
+      }
+      return res.status(500).json({ error: "Auth registration failed: " + signupErr.message });
+    }
+
+    const signupUserId = authData?.user?.id;
+    if (!signupUserId) {
+      return res.status(500).json({ error: "Authorized registration succeeded but user ID was not found." });
+    }
+
+    // Write Profile record
+    await supabase.from('profiles').upsert({
+      id: signupUserId,
+      email: canonicalEmail,
+      full_name: ownerName,
+      role: 'caterer',
+      must_change_password: false
+    }, { onConflict: 'id' });
+
+    // Update caternest registration status and details
+    await supabase
+      .from('caterer_registrations')
+      .update({
+        userId: signupUserId,
+        email_verified: true,
+        businessName: businessName,
+        owner: ownerName,
+        ownerName: ownerName,
+        phone: phone,
+        alternatePhone: alternateMobile,
+        additionalPhone: additionalMobile,
+        username: canonicalUsername,
+        address: location,
+        city: city,
+        logo: catererLogo || null,
+        coverBanner: coverBanner || null,
+        founderImageUrl: founderPhoto || null,
+        ownerPhoto: founderPhoto || null,
+        branchPhoto: branchPhoto || null,
+        galleryPhotos: galleryPhotos || [],
+        gallery: galleryPhotos || [],
+        packages: menuPackages || [],
+        draftMenuPackages: menuPackages || [],
+        status: 'Pending Approval'
+      })
+      .eq('id', reg.id);
+
+    // Clean session
+    registrationSessions.delete(canonicalEmail);
+
+    return res.json({
+      success: true,
+      message: "Email verified successfully. Awaiting Admin Approval."
+    });
+  } catch (err: any) {
+    console.error("Unexpected error in finalize registration:", err);
     return res.status(500).json({ error: err.message || err.toString() });
   }
 });

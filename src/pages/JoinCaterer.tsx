@@ -238,6 +238,7 @@ export default function JoinCaterer() {
 
   // OTP Verification state properties
   const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [isStep2Verify, setIsStep2Verify] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpVerifyLoading, setOtpVerifyLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
@@ -263,7 +264,7 @@ export default function JoinCaterer() {
     const draftPayload = {
       formData: {
         ...formData,
-        email_verified: true
+        email_verified: formData.email_verified
       },
       step,
       menuPackages
@@ -461,6 +462,32 @@ export default function JoinCaterer() {
     setOtpVerifyLoading(true);
 
     try {
+      if (isStep2Verify) {
+        const response = await fetch('/api/register/verify-only', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            otp: otpCode.trim()
+          })
+        });
+
+        const resData = await response.json();
+        setOtpVerifyLoading(false);
+
+        if (!response.ok) {
+          setOtpError(resData.error || "Invalid OTP or validation failed.");
+          return;
+        }
+
+        setFormData(prev => ({ ...prev, email_verified: true }));
+        toast("Email verified successfully!", "success");
+        setShowOtpScreen(false);
+        setOtpCode('');
+        return;
+      }
+
+      // Classic/Step 5 OTP Verification
       const response = await fetch('/api/register/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -567,27 +594,90 @@ export default function JoinCaterer() {
     setOtpSuccess('');
     setOtpVerifyLoading(true);
 
-    try {
-      const payload = {
-        businessName: formData.businessName,
-        ownerName: formData.ownerName,
-        email: formData.email,
-        phone: formData.mobile,
-        alternateMobile: formData.alternateMobile,
-        additionalMobile: formData.additionalMobile,
-        username: formData.username,
-        password: formData.password,
-        menuPackages: menuPackages,
-        location: formData.location,
-        city: formData.city,
-        catererLogo: formData.catererLogo,
-        coverBanner: formData.coverBanner,
-        founderPhoto: formData.founderPhoto,
-        branchPhoto: formData.branchPhoto,
-        galleryPhotos: formData.galleryPhotos
-      };
+    const payload = {
+      businessName: formData.businessName,
+      ownerName: formData.ownerName,
+      email: formData.email,
+      phone: formData.mobile,
+      alternateMobile: formData.alternateMobile,
+      additionalMobile: formData.additionalMobile,
+      username: formData.username,
+      password: formData.password,
+      menuPackages: menuPackages,
+      location: formData.location,
+      city: formData.city,
+      catererLogo: formData.catererLogo,
+      coverBanner: formData.coverBanner,
+      founderPhoto: formData.founderPhoto,
+      branchPhoto: formData.branchPhoto,
+      galleryPhotos: formData.galleryPhotos
+    };
 
+    if (formData.email_verified) {
+      console.log("[JOIN CATERER FLOW] Email already verified. Finalizing registration directly:", payload);
+      try {
+        const response = await fetch('/api/register/finalize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        setOtpVerifyLoading(false);
+
+        if (!response.ok) {
+          throw new Error(resData.error || "Failed to finalize registration.");
+        }
+
+        toast("Email verified! Awaiting Admin Approval.", "success");
+
+        const newReg = {
+          businessName: formData.businessName,
+          owner: formData.ownerName,
+          ownerName: formData.ownerName,
+          email: formData.email,
+          phone: formData.mobile,
+          alternatePhone: formData.alternateMobile,
+          additionalPhone: formData.additionalMobile,
+          username: formData.username,
+          address: formData.location,
+          city: formData.city,
+          status: 'Pending Approval',
+          logo: formData.catererLogo,
+          coverBanner: formData.coverBanner,
+          founderImageUrl: formData.founderPhoto,
+          ownerPhoto: formData.founderPhoto,
+          branchPhoto: formData.branchPhoto,
+          galleryPhotos: formData.galleryPhotos,
+          gallery: formData.galleryPhotos,
+          packages: menuPackages,
+          draftMenuPackages: menuPackages,
+          id: Math.random().toString(36).substr(2, 9)
+        };
+
+        const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
+        safeSaveRegistrations([...existing, newReg]);
+
+        storeNotification(
+          "",
+          "New Partner Registration 🏢",
+          `Partner "${newReg.businessName}" completed verification. Under review!`,
+          "admin"
+        );
+
+        localStorage.removeItem('caterer_join_form_data');
+        setStatus('pending');
+      } catch (err: any) {
+        setOtpVerifyLoading(false);
+        console.error("[FINALIZATION ERROR] Register finalize failed:", err);
+        alert(err.message || err.toString());
+      }
+      return;
+    }
+
+    try {
       console.log("[JOIN CATERER FLOW] Requesting verification OTP via backend with payload:", payload);
+      setIsStep2Verify(false);
 
       const response = await fetch('/api/register/request-otp', {
         method: 'POST',
@@ -869,20 +959,80 @@ export default function JoinCaterer() {
                                   <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Line 3: Additional Number (Optional)</label>
                                    <input type="text" value={formData.additionalMobile || ''} onChange={e => setFormData({ ...formData, additionalMobile: e.target.value })} className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all mb-4" placeholder="e.g. backup or landline" />
                                    <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">Email Address <span className="text-red-500">*</span></label>
-                                   <input 
-                                     type="email" 
-                                     value={formData.email} 
-                                     onChange={e => {
-                                       const val = e.target.value;
-                                       setFormData({ 
-                                         ...formData, 
-                                         email: val,
-                                         email_verified: true
-                                       });
-                                     }} 
-                                     className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all text-slate-900" 
-                                     placeholder="e.g. delicious@caterer.com" 
-                                   />
+                                   <div className="relative flex items-center">
+                                     <input 
+                                       type="email" 
+                                       value={formData.email} 
+                                       onChange={e => {
+                                         const val = e.target.value;
+                                         setFormData({ 
+                                           ...formData, 
+                                           email: val,
+                                           email_verified: false
+                                         });
+                                       }} 
+                                       className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl pl-4 pr-36 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all text-slate-900 font-sans" 
+                                       placeholder="e.g. delicious@caterer.com" 
+                                     />
+                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                                       {formData.email_verified ? (
+                                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                                           <CheckCircle size={12} className="text-emerald-600" />
+                                           Verified
+                                         </span>
+                                       ) : (
+                                         <button
+                                           type="button"
+                                           disabled={!formData.email || !formData.email.includes('@') || otpVerifyLoading}
+                                           onClick={async () => {
+                                             if (!formData.email || !formData.email.includes('@')) {
+                                               alert("Please enter a valid email address first.");
+                                               return;
+                                             }
+                                             setOtpError('');
+                                             setOtpSuccess('');
+                                             setOtpVerifyLoading(true);
+                                             try {
+                                               const payload = {
+                                                 email: formData.email,
+                                                 ownerName: formData.ownerName || "Caterer Partner",
+                                                 phone: formData.mobile || "",
+                                                 username: formData.username || "",
+                                                 password: formData.password || "",
+                                                 businessName: "Catering Partner"
+                                               };
+                                               
+                                               setIsStep2Verify(true);
+
+                                               const response = await fetch('/api/register/request-otp', {
+                                                 method: 'POST',
+                                                 headers: { 'Content-Type': 'application/json' },
+                                                 body: JSON.stringify(payload)
+                                               });
+                                               const resData = await response.json();
+                                               setOtpVerifyLoading(false);
+                                               if (!response.ok) {
+                                                 alert(resData.error || "Failed to send OTP.");
+                                                 return;
+                                               }
+                                               if (resData.otp) {
+                                                 setDebugOtp(resData.otp);
+                                               }
+                                               setShowOtpScreen(true);
+                                               setResendCooldown(60);
+                                               toast("OTP code sent to your email!", "success");
+                                             } catch (err: any) {
+                                               setOtpVerifyLoading(false);
+                                               alert(err.message || "Failed to communicate with OTP service.");
+                                             }
+                                           }}
+                                           className="bg-[#00483C] hover:bg-[#00362c] text-white disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide transition-all cursor-pointer"
+                                         >
+                                           {otpVerifyLoading ? "Sending..." : "Verify with OTP"}
+                                         </button>
+                                       )}
+                                     </div>
+                                   </div>
                                 </div>
                            </div>
                            
