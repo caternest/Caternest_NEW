@@ -1253,9 +1253,7 @@ app.post("/api/register/verify-otp", async (req: any, res: any) => {
             .update({
               userId: signupUserId,
               email_verified: true,
-              status: 'Pending Approval',
-              otp: null,
-              otp_expiry: null
+              status: 'Pending Approval'
             })
             .eq('id', reg.id);
 
@@ -1294,8 +1292,6 @@ app.post("/api/register/verify-otp", async (req: any, res: any) => {
         userId: signupUserId,
         email_verified: true,
         status: 'Pending Approval',
-        otp: null,
-        otp_expiry: null,
         packages: formData.menuPackages || reg.packages || []
       })
       .eq('id', reg.id);
