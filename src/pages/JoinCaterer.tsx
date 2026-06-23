@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UploadCloud, CheckCircle2, Clock, MapPin, ChevronLeft, ChevronRight, Check, Trash2, Link, Save, ShieldCheck, Mail, Lock, Sparkles, AlertCircle, HelpCircle, Bold, Italic, List, ListOrdered, Underline, CheckCircle, Flame, Star, Coffee, Utensils, Award } from 'lucide-react';
 import { cn, compressImageFile, safeSaveRegistrations } from '../lib/utils';
+import { toast } from '../components/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import JoinSteps from '../components/JoinSteps';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
@@ -235,6 +236,28 @@ export default function JoinCaterer() {
     return defaultData;
   });
 
+  // OTP Verification state properties
+  const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpVerifyLoading, setOtpVerifyLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpSuccess, setOtpSuccess] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [debugOtp, setDebugOtp] = useState('');
+
+  // Handle OTP Resend timer cooldown
+  React.useEffect(() => {
+    let timer: any = null;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown(c => c - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [resendCooldown]);
+
   // Auto-save progress to localStorage draft caching
   React.useEffect(() => {
     const draftPayload = {
@@ -426,164 +449,172 @@ export default function JoinCaterer() {
       }));
   };
 
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) {
+      setOtpError("Please enter a valid 6-digit OTP code.");
+      return;
+    }
+
+    setOtpError('');
+    setOtpSuccess('');
+    setOtpVerifyLoading(true);
+
+    try {
+      const response = await fetch('/api/register/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          otp: otpCode.trim()
+        })
+      });
+
+      const resData = await response.json();
+      setOtpVerifyLoading(false);
+
+      if (!response.ok) {
+        setOtpError(resData.error || "Invalid OTP or validation failed.");
+        return;
+      }
+
+      toast("Email verified! Awaiting Admin Approval.", "success");
+      
+      const newReg = {
+        businessName: formData.businessName,
+        owner: formData.ownerName,
+        ownerName: formData.ownerName,
+        email: formData.email,
+        phone: formData.mobile,
+        alternatePhone: formData.alternateMobile,
+        additionalPhone: formData.additionalMobile,
+        username: formData.username,
+        address: formData.location,
+        city: formData.city,
+        status: 'Pending Approval',
+        logo: formData.catererLogo,
+        coverBanner: formData.coverBanner,
+        founderImageUrl: formData.founderPhoto,
+        ownerPhoto: formData.founderPhoto,
+        branchPhoto: formData.branchPhoto,
+        galleryPhotos: formData.galleryPhotos,
+        gallery: formData.galleryPhotos,
+        packages: menuPackages,
+        draftMenuPackages: menuPackages,
+        id: Math.random().toString(36).substr(2, 9)
+      };
+
+      const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
+      safeSaveRegistrations([...existing, newReg]);
+
+      storeNotification(
+        "",
+        "New Partner Registration 🏢",
+        `Partner "${newReg.businessName}" completed verification. Under review!`,
+        "admin"
+      );
+
+      localStorage.removeItem('caterer_join_form_data');
+      setShowOtpScreen(false);
+      setStatus('pending');
+    } catch (err: any) {
+      setOtpVerifyLoading(false);
+      setOtpError(err.message || "An unexpected error occurred during OTP verification.");
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+
+    setOtpError('');
+    setOtpSuccess('');
+    setOtpVerifyLoading(true);
+
+    try {
+      const response = await fetch('/api/register/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+
+      const resData = await response.json();
+      setOtpVerifyLoading(false);
+
+      if (!response.ok) {
+        setOtpError(resData.error || "Unable to resend OTP.");
+        return;
+      }
+
+      if (resData.otp) {
+        setDebugOtp(resData.otp);
+      }
+
+      setResendCooldown(60);
+      setOtpSuccess("A new verification code has been successfully sent.");
+      toast("Verification OTP resent!", "success");
+    } catch (err: any) {
+      setOtpVerifyLoading(false);
+      setOtpError(err.message || "An unexpected error occurred during resending.");
+    }
+  };
+
   const handleSubmit = async (e: any) => {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
     
-    const supabase = getSupabase();
-    let signupUserId = user?.id || 'demo-user';
-    let authCreated = false;
+    setOtpError('');
+    setOtpSuccess('');
+    setOtpVerifyLoading(true);
 
-    // 1. Trigger Auth Provisioning & Profile Creation first if database is available
-    if (supabase) {
-      try {
-        console.log("[JOIN CATERER FLOW] Provisioning auth user account on Supabase for:", formData.email);
-        const authRes = await signUp(formData.email, formData.password, formData.ownerName, formData.mobile, 'caterer');
-        
-        if (authRes.error) {
-          console.error("[JOIN CATERER FLOW] Auth Provisioning failed:", authRes.error);
-          alert(`Failed to create your auth credentials user: ${authRes.error.message || authRes.error.toString()}`);
-          return;
-        }
-        
-        if (authRes.data?.user) {
-          signupUserId = authRes.data.user.id;
-          authCreated = true;
-          console.log("[JOIN CATERER FLOW] Created new Auth User:", signupUserId);
-        }
-      } catch (authExc: any) {
-        console.error("[JOIN CATERER FLOW] Exception during auth provisioning:", authExc);
-        alert(`Account creation error: ${authExc.message || authExc.toString()}`);
-        return;
+    try {
+      const payload = {
+        businessName: formData.businessName,
+        ownerName: formData.ownerName,
+        email: formData.email,
+        phone: formData.mobile,
+        alternateMobile: formData.alternateMobile,
+        additionalMobile: formData.additionalMobile,
+        username: formData.username,
+        password: formData.password,
+        menuPackages: menuPackages,
+        location: formData.location,
+        city: formData.city,
+        catererLogo: formData.catererLogo,
+        coverBanner: formData.coverBanner,
+        founderPhoto: formData.founderPhoto,
+        branchPhoto: formData.branchPhoto,
+        galleryPhotos: formData.galleryPhotos
+      };
+
+      console.log("[JOIN CATERER FLOW] Requesting verification OTP via backend with payload:", payload);
+
+      const response = await fetch('/api/register/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const resData = await response.json();
+      setOtpVerifyLoading(false);
+
+      if (!response.ok) {
+        throw new Error(resData.error || "Failed to initiate verification OTP.");
       }
-    }
 
-    // Construct registration payload (without email_verified physical column to avoid schema cache failures)
-    const newReg = {
-      userId: signupUserId,
-      businessName: formData.businessName,
-      owner: formData.ownerName,
-      ownerName: formData.ownerName,
-      email: formData.email,
-      phone: formData.mobile,
-      alternatePhone: formData.alternateMobile,
-      additionalPhone: formData.additionalMobile,
-      username: formData.username,
-      address: formData.location,
-      city: formData.city,
-      status: 'Pending Approval',
-      logo: formData.catererLogo,
-      coverBanner: formData.coverBanner,
-      founderImageUrl: formData.founderPhoto,
-      ownerPhoto: formData.founderPhoto,
-      branchPhoto: formData.branchPhoto,
-      galleryPhotos: formData.galleryPhotos,
-      gallery: formData.galleryPhotos,
-      packages: menuPackages,
-      draftMenuPackages: menuPackages
-    };
+      console.log("[JOIN CATERER FLOW] OTP request successful:", resData);
 
-    console.log("Database write starting. Payload to be inserted into public.caterer_registrations:", newReg);
-
-    if (supabase) {
-      try {
-        const { data, error } = await (supabase
-          .from('caterer_registrations') as any)
-          .insert([newReg])
-          .select();
-
-        if (error) {
-          // Rollback profiles and anything we can do if insert fails
-          if (authCreated && signupUserId !== 'demo-user') {
-            console.warn("[JOIN CATERER FLOW] SQL registration insert failed. Rolling back profile record for user ID:", signupUserId);
-            try {
-              await supabase.from('profiles').delete().eq('id', signupUserId);
-            } catch (rollbackErr) {
-              console.error("[JOIN CATERER FLOW] Rollback profile record failed:", rollbackErr);
-            }
-          }
-          throw error;
-         }
-
-        console.log("Database write successful. Insert result:", data);
-        
-        // Populate local storage as a local high fidelity cache as well
-        const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
-        safeSaveRegistrations([...existing, { ...newReg, id: (data as any)?.[0]?.id || Math.random().toString(36).substr(2, 9) }]);
-        
-        // Trigger New Partner notification
-        storeNotification(
-          "",
-          "New Partner Registration 🏢",
-          `Partner "${newReg.businessName}" submitted a business registration application. Review required!`,
-          "admin"
-        );
-
-        setStatus('pending');
-      } catch (err: any) {
-        console.error("CRITICAL DATABASE INSERT ERROR:", err);
-        alert(`Failed to save registration directly to Supabase: ${err.message || err.toString()}`);
+      if (resData.otp) {
+        setDebugOtp(resData.otp);
       }
-    } else {
-      console.warn("Supabase is not configured. Saving to localStorage as fallback...");
-      const existing = JSON.parse(localStorage.getItem('registrations') || '[]');
-      const fallbackReg = { ...newReg, id: Math.random().toString(36).substr(2, 9) };
-      try {
-        localStorage.setItem('registrations', JSON.stringify([...existing, fallbackReg]));
-        storeNotification(
-          "",
-          "New Partner Registration 🏢",
-          `Partner "${newReg.businessName}" submitted a business registration application. Review required!`,
-          "admin"
-        );
-        setStatus('pending');
-      } catch (err) {
-        console.error("Failed to save due to storage quota limit, attempting with minimized images", err);
-        const minimizedReg = {
-          ...fallbackReg,
-          logo: (formData.catererLogo && formData.catererLogo.startsWith('data:image/')) ? '' : formData.catererLogo,
-          coverBanner: (formData.coverBanner && formData.coverBanner.startsWith('data:image/')) ? '' : formData.coverBanner,
-          ownerPhoto: (formData.founderPhoto && formData.founderPhoto.startsWith('data:image/')) ? '' : formData.founderPhoto,
-          branchPhoto: (formData.branchPhoto && formData.branchPhoto.startsWith('data:image/')) ? '' : formData.branchPhoto,
-          galleryPhotos: formData.galleryPhotos ? formData.galleryPhotos.filter(photo => photo && !photo.startsWith('data:image/')) : []
-        };
-        try {
-          localStorage.setItem('registrations', JSON.stringify([...existing, minimizedReg]));
-          alert("Your application was submitted successfully! (Note: High-resolution image uploads were optimized/cleared to fit local storage limit).");
-          setStatus('pending');
-        } catch (err2) {
-          console.warn("Optimizing existing history item sizes in localStorage...");
-          const optimizedExisting = existing.map((entry: any) => ({
-            ...entry,
-            logo: (entry.logo && entry.logo.startsWith('data:image/')) ? '' : entry.logo,
-            coverBanner: (entry.coverBanner && entry.coverBanner.startsWith('data:image/')) ? '' : entry.coverBanner,
-            ownerPhoto: (entry.ownerPhoto && entry.ownerPhoto.startsWith('data:image/')) ? '' : entry.ownerPhoto,
-            branchPhoto: (entry.branchPhoto && entry.branchPhoto.startsWith('data:image/')) ? '' : entry.branchPhoto,
-            galleryPhotos: entry.galleryPhotos ? entry.galleryPhotos.filter((photo: string) => photo && !photo.startsWith('data:image/')) : []
-          }));
-          try {
-            localStorage.setItem('registrations', JSON.stringify([...optimizedExisting, minimizedReg]));
-            setStatus('pending');
-          } catch (err3) {
-            const minimalReg = {
-              ...fallbackReg,
-              logo: '',
-              coverBanner: '',
-              ownerPhoto: '',
-              branchPhoto: '',
-              galleryPhotos: [],
-              packages: []
-            };
-            try {
-              localStorage.setItem('registrations', JSON.stringify([minimalReg]));
-              setStatus('pending');
-            } catch (err4) {
-              alert("Could not submit because your browser local storage is completely full. Please clear some browser storage and try again.");
-            }
-          }
-        }
-      }
+
+      setShowOtpScreen(true);
+      setResendCooldown(60);
+      toast("Verification code sent to your email!", "success");
+    } catch (err: any) {
+      setOtpVerifyLoading(false);
+      console.error("[OTP ERROR] Register request-otp failed:", err);
+      alert(err.message || err.toString());
     }
   };
 
@@ -1283,6 +1314,110 @@ export default function JoinCaterer() {
           </div>
         </div>
       </div>
+      
+      {showOtpScreen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#051410] border-2 border-[#DEAA38]/30 rounded-[2rem] p-6 max-w-sm w-full relative overflow-hidden text-white shadow-2xl shadow-brand-gold-500/10 animate-in zoom-in-95 duration-200">
+            <div className="absolute top-[-50px] right-[-50px] w-40 h-40 bg-[#DEAA38]/5 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-[#DEAA38]/10 border border-[#DEAA38]/30 flex items-center justify-center mx-auto mb-4 text-[#DEAA38]">
+                <Mail size={24} className="animate-pulse" />
+              </div>
+              <h3 className="font-display text-xl font-semibold tracking-wide text-[#DEAA38] mb-1">Verify Your Email</h3>
+              <p className="text-[11px] text-slate-300 px-4 leading-relaxed">
+                We sent a 6-digit verification code to <strong className="text-white font-semibold">{formData.email}</strong>.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-[9px] uppercase tracking-wider font-extrabold text-[#DEAA38] mb-2 text-center font-poppins">
+                  ENTER 6-DIGIT OTP
+                </label>
+                <input 
+                  type="text" 
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setOtpCode(val);
+                    setOtpError('');
+                    setOtpSuccess('');
+                  }}
+                  placeholder="000000" 
+                  className="w-full text-center bg-black/40 border border-slate-700 focus:border-[#DEAA38]/80 focus:bg-black font-mono font-bold text-xl tracking-[0.4em] pl-[0.4em] py-3 rounded-2xl outline-none transition-all text-white" 
+                />
+              </div>
+
+              {otpError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-xs flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{otpError}</span>
+                </div>
+              )}
+
+              {otpSuccess && (
+                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-200 text-xs flex items-start gap-2 animate-in fade-in">
+                  <CheckCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{otpSuccess}</span>
+                </div>
+              )}
+
+              {debugOtp && (
+                <div className="p-3 bg-[#DEAA38]/10 border border-[#DEAA38]/20 rounded-xl text-[10px] text-[#DEAA38] font-poppins">
+                  <p className="font-bold flex items-center justify-center gap-1 mb-1 text-center">
+                    <Sparkles size={11} /> Sandbox Verification Help:
+                  </p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-slate-400">Your OTP Code:</span>
+                    <span className="font-mono font-bold bg-[#DEAA38]/20 px-2 py-0.5 rounded text-white text-xs tracking-wider">{debugOtp}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2">
+                <button 
+                  type="submit" 
+                  disabled={otpVerifyLoading}
+                  className="w-full bg-[#DEAA38] border border-[#DEAA38] hover:bg-[#c28824] disabled:opacity-50 text-[#051410] font-extrabold uppercase py-3 rounded-full text-xs tracking-wider shadow-lg shadow-brand-gold-500/15 transition-all outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DEAA38] active:scale-95 cursor-pointer"
+                >
+                  {otpVerifyLoading ? "Verifying..." : "Verify & Submit Application"}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-5 text-center space-y-2.5 border-t border-slate-900 pt-4 font-poppins">
+              <p className="text-[10px] text-slate-400">
+                Didn't receive the email?
+              </p>
+              <button 
+                type="button" 
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0 || otpVerifyLoading}
+                className="text-xs font-bold text-[#DEAA38] hover:underline disabled:opacity-40 disabled:no-underline cursor-pointer"
+              >
+                {resendCooldown > 0 ? `Resend Code in (${resendCooldown}s)` : "Resend Code"}
+              </button>
+              
+              <div className="pt-1">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowOtpScreen(false);
+                    setOtpCode('');
+                    setOtpError('');
+                    setOtpSuccess('');
+                  }}
+                  className="text-[9px] tracking-wider text-slate-500 hover:text-slate-300 uppercase cursor-pointer"
+                >
+                  Cancel & Modify Application
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

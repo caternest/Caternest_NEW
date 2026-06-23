@@ -174,8 +174,15 @@ export default function CatererLogin() {
         return;
       }
 
+      if (status === 'pending verification') {
+        setError("Your registration is pending email verification. Please sign up again to complete verification.");
+        await logout();
+        setLoading(false);
+        return;
+      }
+
       if (status === 'pending approval' || status === 'pending') {
-        setError("Your account is under review. Please wait for coordinates verification.");
+        setError("Your account is under review. Please wait for coordinator approval.");
         await logout();
         setLoading(false);
         return;

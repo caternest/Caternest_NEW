@@ -52,6 +52,8 @@ CREATE TRIGGER on_auth_user_created
 ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "alternatePhone" TEXT;
 ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "additionalPhone" TEXT;
 ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "email_verified" BOOLEAN DEFAULT false;
+ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "otp" TEXT;
+ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "otp_expiry" TIMESTAMPTZ;
 
 -- ===================================================
 -- 2. Table: notifications
