@@ -384,27 +384,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!targetEmail.includes("@")) {
       try {
         console.log(
-          "[AUDIT LOG] Input looks like a username. Querying caterer_registrations...",
+          "[AUDIT LOG] Input looks like a username. Querying active caterer_registrations...",
         );
-        const { data: reg, error: lookupErr } = await supabase
+        const { data: regs, error: lookupErr } = await supabase
           .from("caterer_registrations")
           .select("email")
           .eq("username", targetEmail)
-          .maybeSingle();
+          .eq("status", "Approved")
+          .order("updated_at", { ascending: false })
+          .limit(1);
 
         if (lookupErr) {
           console.error(
             "[AUDIT LOG] Error resolving username to email:",
             lookupErr,
           );
-        } else if (reg && reg.email) {
+        } else if (regs && regs.length > 0 && regs[0].email) {
           console.log(
-            `[AUDIT LOG] Resolved username "${targetEmail}" to email "${reg.email}"`,
+            `[AUDIT LOG] Resolved username "${targetEmail}" to email "${regs[0].email}"`,
           );
-          targetEmail = reg.email;
+          targetEmail = regs[0].email;
         } else {
           console.warn(
-            `[AUDIT LOG] No email found associated with username "${targetEmail}"`,
+            `[AUDIT LOG] No approved email found associated with username "${targetEmail}"`,
           );
         }
       } catch (err) {

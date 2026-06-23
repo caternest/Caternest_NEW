@@ -55,6 +55,10 @@ ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "email_verifie
 ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "otp" TEXT;
 ALTER TABLE public.caterer_registrations ADD COLUMN IF NOT EXISTS "otp_expiry" TIMESTAMPTZ;
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_active_username
+ON public.caterer_registrations(username)
+WHERE status <> 'Trashed';
+
 -- ===================================================
 -- 2. Table: notifications
 -- Add orderId, catererId, and read columns

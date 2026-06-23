@@ -44,7 +44,7 @@ export default function CatererLogin() {
         // Resolve email using username or phone lookups
         const { data: matchedRegs, error: lookupErr } = await supabase
           .from('caterer_registrations')
-          .select('email, id, status, userId, username, phone')
+          .select('email, id, status, userId, username, phone, updated_at')
           .or(`phone.eq.${inputId},username.eq.${inputId},username.eq.${inputId.toLowerCase()}`);
 
         if (lookupErr) {
@@ -57,10 +57,14 @@ export default function CatererLogin() {
           return;
         }
 
-        // Retrieve registration containing a valid email Address
-        const resolvedRecord = matchedRegs.find(r => r.email) || matchedRegs[0];
+        // Retrieve approved registration containing a valid email Address, ordered by updated_at desc
+        const approvedRegs = matchedRegs
+          .filter(r => r.status === 'Approved' && r.email)
+          .sort((a: any, b: any) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
+
+        const resolvedRecord = approvedRegs[0];
         if (!resolvedRecord || !resolvedRecord.email) {
-          setError("No caterer account found with the provided email, username, or mobile number.");
+          setError("No approved caterer account found with the provided email, username, or mobile number.");
           setLoading(false);
           return;
         }

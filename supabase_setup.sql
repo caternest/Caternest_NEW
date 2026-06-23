@@ -71,6 +71,10 @@ CREATE TABLE IF NOT EXISTS public.caterer_registrations (
     "otp_expiry" TIMESTAMPTZ
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_active_username
+ON public.caterer_registrations(username)
+WHERE status <> 'Trashed';
+
 -- Food images library table
 CREATE TABLE IF NOT EXISTS public.food_images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
