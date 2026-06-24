@@ -49,11 +49,8 @@ import {
   ServicesOfferCard,
   FoodGalleryCard,
   MenuPackagesCard,
-  ReviewsCard,
-  AdditionalMediaCard,
   BranchDetailsCard,
   ServiceAreasCard,
-  AchievementsCard,
   ContactSidebarCard
 } from "../components/PremiumCatererSections";
 
@@ -2377,9 +2374,9 @@ export default function CatererDetails() {
           <div className="bg-[#FFFDFB] rounded-[2rem] sm:rounded-[2.5rem] border border-[#E8DCC7] p-4 sm:p-6 shadow-[0_8px_30px_rgba(15,61,46,0.08)] relative">
             
             {/* Cover Banner Area Wrapper with Overflow-Visible */}
-            <div className="relative w-full overflow-visible">
+            <div className="relative w-full overflow-visible font-sans">
               {/* Background Cover Banner */}
-              <div className="relative w-full h-44 sm:h-56 md:h-64 lg:h-72 rounded-2xl sm:rounded-[1.8rem] overflow-hidden bg-[#0F3D2E]">
+              <div className="relative w-full h-[180px] xs:h-[220px] md:h-64 lg:h-72 rounded-2xl sm:rounded-[1.8rem] overflow-hidden bg-[#0F3D2E]">
                 {editedCaterer && isEditing ? (
                   editedCaterer.coverBanner ? (
                     <img
@@ -2389,7 +2386,7 @@ export default function CatererDetails() {
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-[#0F3D2E]/80 to-[#0A5A42]/80 flex items-center justify-center">
-                      <ImageIcon className="text-[#DFC27A]/25 w-32 h-32" />
+                      <ImageIcon className="text-[#DFC27A]/25 w-24 h-24 sm:w-32 sm:h-32" />
                     </div>
                   )
                 ) : fallbackBanner ? (
@@ -2400,7 +2397,7 @@ export default function CatererDetails() {
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-[#0F3D2E]/80 to-[#0A5A42]/80 flex items-center justify-center">
-                    <ImageIcon className="text-[#DFC27A]/25 w-32 h-32" />
+                    <ImageIcon className="text-[#DFC27A]/25 w-24 h-24 sm:w-32 sm:h-32" />
                   </div>
                 )}
                 {/* Optional Subtle dark overlay to keep image legible */}
@@ -2411,12 +2408,12 @@ export default function CatererDetails() {
                   type="button"
                   className="absolute top-4 right-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#FFFDFB]/95 hover:bg-[#FFFDFB] text-slate-700 hover:text-red-500 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shadow-md border border-[#E8DCC7] cursor-pointer"
                 >
-                  <Heart size={16} className="fill-none stroke-current" />
+                  <Heart size={15} className="fill-none stroke-current" />
                 </button>
 
                 {/* "Change Cover" overlay button inside edit mode */}
                 {isOwnerOrAdmin && isEditing && (
-                  <label className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-bold transition-all border border-white/10 shadow-sm text-[11px] cursor-pointer font-sans">
+                  <label className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full font-bold transition-all border border-white/10 shadow-sm text-[10px] sm:text-[11px] cursor-pointer font-sans">
                     Change Cover 🔒
                     <input
                       type="file"
@@ -2437,9 +2434,9 @@ export default function CatererDetails() {
               {/* LOGO block (Premium Rounded Circular Luxury Branding, Verified Badge) */}
               <div 
                 id="profile-logo-container"
-                className="absolute left-[20px] sm:left-[28px] lg:left-[36px] -bottom-[60px] sm:-bottom-[80px] lg:-bottom-[105px] z-40 font-sans select-none overflow-visible"
+                className="absolute left-[16px] sm:left-[28px] lg:left-[36px] -bottom-[40px] sm:-bottom-[60px] lg:-bottom-[90px] z-40 font-sans select-none overflow-visible"
               >
-                <div className="w-[100px] h-[100px] sm:w-[130px] sm:h-[130px] lg:w-[160px] lg:h-[160px] bg-[#FFFDFB] rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.18)] border-[3px] border-[#D4AF37] flex flex-col items-center justify-center relative group overflow-visible">
+                <div className="w-[84px] h-[84px] sm:w-[120px] sm:h-[120px] lg:w-[150px] lg:h-[150px] bg-[#FFFDFB] rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.18)] border-[3px] border-[#D4AF37] flex flex-col items-center justify-center relative group overflow-visible">
                   <div className="w-full h-full bg-[#FFFDFB] flex flex-col items-center justify-center relative rounded-full overflow-hidden">
                     {editedCaterer && isEditing ? (
                       <>
@@ -2450,16 +2447,16 @@ export default function CatererDetails() {
                             className="w-full h-full object-cover object-center"
                           />
                         ) : (
-                          <div className="flex flex-col items-center justify-center text-center p-3 bg-[#051410] w-full h-full rounded-full">
-                            <div className="border border-[#D4AF37]/40 rounded-full p-2 flex flex-col items-center justify-center">
-                              <span className="font-serif font-semibold text-[#D4AF37] text-md sm:text-lg uppercase tracking-wider">
+                          <div className="flex flex-col items-center justify-center text-center p-2 bg-[#051410] w-full h-full rounded-full">
+                            <div className="border border-[#D4AF37]/40 rounded-full p-1.5 flex flex-col items-center justify-center">
+                              <span className="font-serif font-semibold text-[#D4AF37] text-sm uppercase tracking-wider">
                                 {editedCaterer.brandName?.substring(0, 2) || "RF"}
                               </span>
                             </div>
-                            <span className="text-[#D4AF37] text-[8px] sm:text-[9px] font-bold font-sans uppercase mt-2 leading-tight tracking-wider">No Logo</span>
+                            <span className="text-[#D4AF37] text-[8px] font-bold font-sans uppercase mt-1 leading-tight tracking-wider">No Logo</span>
                           </div>
                         )}
-                        <label className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-white text-[10px] font-bold uppercase cursor-pointer text-center p-2 font-sans opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                        <label className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-white text-[9px] font-bold uppercase cursor-pointer text-center p-2 font-sans opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                           <span>Upload 🔒</span>
                           <input
                             type="file"
@@ -2484,16 +2481,16 @@ export default function CatererDetails() {
                       />
                     ) : (
                       // Gorgeous luxury default crest inside the circle
-                      <div className="flex flex-col items-center justify-center text-center bg-[#051410] w-full h-full p-2.5 sm:p-4 select-none rounded-full">
+                      <div className="flex flex-col items-center justify-center text-center bg-[#051410] w-full h-full p-2 select-none rounded-full">
                         <div className="flex flex-col items-center justify-center">
                           {/* Crown Icon */}
-                          <p className="text-[#D4AF37] text-xs sm:text-sm lg:text-base mb-0.5">👑</p>
-                          <div className="w-8 h-8 sm:w-11 sm:h-11 lg:w-14 lg:h-14 rounded-full border border-[#D4AF37]/40 flex items-center justify-center relative shadow-inner">
-                            <span className="font-serif font-bold text-[#D4AF37] text-xs sm:text-sm lg:text-base tracking-wider">
+                          <p className="text-[#D4AF37] text-[10px] sm:text-xs lg:text-sm mb-0.5">👑</p>
+                          <div className="w-7 h-7 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full border border-[#D4AF37]/40 flex items-center justify-center relative shadow-inner">
+                            <span className="font-serif font-bold text-[#D4AF37] text-[10px] sm:text-xs lg:text-sm tracking-wider">
                               {targetCatererObj.brandName?.substring(0, 2) || targetCatererObj.name?.substring(0, 2) || "RF"}
                             </span>
                           </div>
-                          <span className="font-serif font-semibold text-[#D4AF37] text-[8px] sm:text-[9px] lg:text-[10px] uppercase tracking-widest leading-tight mt-1 truncate max-w-[70px] sm:max-w-[90px] lg:max-w-[120px]">
+                          <span className="font-serif font-semibold text-[#D4AF37] text-[7px] sm:text-[8px] lg:text-[9px] uppercase tracking-widest leading-tight mt-1 truncate max-w-[60px] sm:max-w-[85px] lg:max-w-[110px]">
                             {targetCatererObj.brandName || targetCatererObj.name || "Royal"}
                           </span>
                         </div>
@@ -2503,10 +2500,10 @@ export default function CatererDetails() {
                   {/* Elegant Gold Verified shield tag on the bottom-right of the circular card */}
                   {targetCatererObj.status === "Approved" && (
                     <div
-                      className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-gradient-to-r from-[#D4AF37] to-[#AA7C11] text-white p-1 rounded-full shadow-md border border-[#FFFDFB] select-none w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center z-50 animate-pulse"
+                      className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 bg-gradient-to-r from-[#D4AF37] to-[#AA7C11] text-white p-0.5 rounded-full shadow-md border border-[#FFFDFB] select-none w-4 h-4 sm:w-5.5 sm:h-5.5 flex items-center justify-center z-50 animate-pulse"
                       title="Verified Caterer"
                     >
-                      <Check className="text-white stroke-[4] w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
+                      <Check className="text-white stroke-[4] w-2 sm:w-3 h-2 sm:h-3" />
                     </div>
                   )}
                 </div>
@@ -2517,10 +2514,10 @@ export default function CatererDetails() {
             <div className="flex flex-col lg:flex-row justify-between items-stretch gap-6 mt-1 flex-wrap">
               
               {/* Left & Center section container - always row aligned so spacer keeps details tidy */}
-              <div className="flex flex-row items-start gap-4 sm:gap-6 md:gap-8 flex-1">
+              <div className="flex flex-row items-start gap-3 sm:gap-6 md:gap-8 flex-1 w-full overflow-hidden">
                 
                 {/* Responsive spacing matching the absolute-positioned logo to avoid text overlap */}
-                <div className="shrink-0 w-[128px] sm:w-[160px] lg:w-[200px] h-1 select-none pointer-events-none" />
+                <div className="shrink-0 w-[95px] sm:w-[130px] lg:w-[160px] h-1 select-none pointer-events-none" />
 
                 {/* CENTER Identity Details */}
                 <div className="flex-1 text-left mt-3 sm:mt-5">
@@ -2592,14 +2589,14 @@ export default function CatererDetails() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col font-sans text-left">
-                      <div className="flex flex-wrap items-center justify-start gap-2 sm:gap-3">
-                        <h1 className="text-2xl sm:text-3xl md:text-3.5xl lg:text-4xl font-display font-semibold text-[#173D32] tracking-tight leading-tight select-text">
+                    <div className="flex flex-col font-sans text-left font-sans">
+                      <div className="flex flex-wrap items-center justify-start gap-1.5 sm:gap-3">
+                        <h1 className="text-xl sm:text-3xl md:text-3.5xl lg:text-4xl font-display font-semibold text-[#173D32] tracking-tight leading-tight select-text">
                           {targetCatererObj.brandName || targetCatererObj.name || targetCatererObj.businessName}
                         </h1>
                         {targetCatererObj.status === "Approved" && (
                           <span
-                            className="inline-flex items-center gap-1 bg-[#FAF4EE] text-[#D4AF37] border border-[#DFC27A] rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest select-none align-middle"
+                            className="inline-flex items-center gap-1 bg-[#FAF4EE] text-[#D4AF37] border border-[#DFC27A] rounded-full px-2 py-0.5 text-[8px] sm:text-[9px] font-extrabold uppercase tracking-widest select-none align-middle"
                             title="Verified and vetted"
                           >
                             Verified
@@ -2607,103 +2604,116 @@ export default function CatererDetails() {
                         )}
                       </div>
                       {targetCatererObj.tagline && (
-                        <p className="text-[#D4AF37]/90 text-[10px] sm:text-[11px] font-semibold tracking-[0.15em] uppercase mt-1 px-1">
+                        <p className="text-[#D4AF37]/90 text-[9px] sm:text-[11px] font-semibold tracking-[0.12em] uppercase mt-0.5 px-0.5">
                           ✦ {targetCatererObj.tagline}
                         </p>
                       )}
 
-                      {/* Premium rating & detail strip aligned beautifully with Screenshot 1 */}
-                      <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1.5 mt-3 text-xs font-sans text-[#555555]">
+                      {/* Premium rating & detail strip aligned beautifully and compact for Zomato/Swiggy look */}
+                      <div className="flex flex-wrap items-center justify-start gap-x-2.5 gap-y-1.5 mt-2.5 text-[11px] sm:text-xs font-sans text-[#555555]">
                         {targetCatererObj.rating && (
-                          <div className="flex items-center gap-1 font-bold">
-                            <span className="text-[#D4AF37] text-sm">★</span>
-                            <span className="text-slate-900 font-extrabold">{targetCatererObj.rating}</span>
-                            {targetCatererObj.reviewCount && (
-                              <span className="text-[#8A8A8A] font-medium font-sans ml-0.5 hover:underline cursor-pointer" onClick={() => handleTabClick("Reviews")}>
-                                ({targetCatererObj.reviewCount} Reviews)
-                              </span>
-                            )}
+                          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-extrabold text-[11px]">
+                            <span className="text-[#D4AF37]">★</span>
+                            <span>{targetCatererObj.rating}</span>
                           </div>
                         )}
-                        {targetCatererObj.rating && targetCatererObj.eventsCompleted && (
-                          <span className="text-slate-300">|</span>
-                        )}
                         {targetCatererObj.eventsCompleted && (
-                          <span className="text-slate-700 font-semibold font-sans flex items-center gap-1">
-                            <span className="text-[#0F3D2E]">🎉</span> {targetCatererObj.eventsCompleted}+ Events Completed
+                          <span className="text-slate-700 font-bold font-sans flex items-center gap-1 bg-[#0F3D2E]/5 px-1.5 py-0.5 rounded">
+                            <span>🎉</span> {targetCatererObj.eventsCompleted}+ Events
+                          </span>
+                        )}
+                        {targetCatererObj.experience && (
+                          <span className="text-slate-700 font-bold font-sans flex items-center gap-1 bg-[#D4AF37]/10 px-1.5 py-0.5 rounded">
+                            <span className="text-[#D4AF37]">✦</span> {targetCatererObj.experience}+ Yrs Exp
                           </span>
                         )}
                       </div>
 
                       {/* Location HQ */}
-                      <div className="flex items-center justify-start gap-1.5 text-[#555555] font-medium text-xs mt-2 transition-colors font-sans">
-                        <MapPin size={13} className="text-[#D4AF37] shrink-0" />
-                        <span>{targetCatererObj.address || targetCatererObj.location}</span>
+                      <div className="flex items-center justify-start gap-1 text-[#555555] font-medium text-[11px] sm:text-xs mt-2 transition-colors font-sans">
+                        <MapPin size={12} className="text-[#D4AF37] shrink-0" />
+                        <span className="truncate">{targetCatererObj.address || targetCatererObj.location}</span>
                       </div>
-
-                      {/* Experience indicator */}
-                      {targetCatererObj.experience && (
-                        <div className="flex items-center justify-start gap-1.5 text-[#555555] font-semibold text-xs mt-1.5 font-sans">
-                          <Award size={13} className="text-[#D4AF37] shrink-0" />
-                          <span>{targetCatererObj.experience}+ Years of Experience</span>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
 
               </div>
 
-              {/* RIGHT BLOCK (Pricing card, Customizable Packages & prominent BOOK NOW button) */}
+              {/* Price & Booking Strip */}
               {(() => {
                 const computedLowestPrice = packageTiers.length > 0 
                   ? Math.min(...packageTiers.map(p => typeof p.price === 'number' && !isNaN(p.price) ? p.price : 299)) 
                   : (targetCatererObj.startingPrice || 299);
                 return (
-                  <div className="w-full lg:w-72 shrink-0 flex flex-col justify-between gap-3 self-center lg:self-stretch mt-4 lg:mt-0 font-sans relative z-10">
-                    
-                    {/* Micro-Pricing Card */}
-                    <div className="bg-[#FFFDFB] border border-[#E8DCC7] rounded-3xl p-5 flex flex-col justify-center shadow-[0_8px_30px_rgba(15,61,46,0.08)] relative">
-                      <span className="text-[10px] text-[#8A8A8A] font-bold uppercase tracking-widest mb-1 font-sans">Starting from</span>
-                      
-                      <div className="flex items-baseline gap-1 mt-1">
-                        <span 
-                          className="text-4xl text-[#D4AF37]"
-                          style={{
-                            fontFamily: '"Cormorant Garamond", "Playfair Display", "Georgia", serif',
-                            fontWeight: 600,
-                          }}
-                        >
-                          ₹{computedLowestPrice.toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-xs text-[#555555] font-medium ml-1">/ Plate</span>
+                  <>
+                    {/* Mobile Compact Price & Booking Strip */}
+                    <div className="flex lg:hidden items-center justify-between bg-[#FFFDFB] border border-[#E8DCC7] rounded-2xl p-3.5 shadow-[0_4px_15px_rgba(15,61,46,0.06)] mt-2 w-full z-10 font-sans">
+                      <div className="flex flex-col text-left">
+                        <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">Starting from</span>
+                        <div className="flex items-baseline gap-0.5 mt-1">
+                          <span className="text-xl font-serif font-black text-[#D4AF37]">₹{computedLowestPrice.toLocaleString('en-IN')}</span>
+                          <span className="text-[10px] text-[#555555] font-medium">/ Plate</span>
+                        </div>
                       </div>
-
-                      <div className="h-[1px] bg-[#E8DCC7]/60 my-3 w-full"></div>
-
-                      <div className="flex items-center gap-1.5 text-[10px] text-[#555555] font-bold uppercase tracking-wider">
-                        <Package size={13} className="text-[#D4AF37] shrink-0" />
-                        <span>Customizable Packages</span>
-                      </div>
+                      <button
+                        onClick={() => {
+                          document
+                            .getElementById("menu-packages")
+                            ?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="px-4 py-2.5 text-white font-extrabold tracking-widest text-[10px] uppercase rounded-xl bg-[#0F3D2E] border border-[#DFC27A]/30 shadow-sm flex items-center gap-1.5 transition-all duration-300 hover:bg-[#0A5A42] active:scale-95 cursor-pointer"
+                      >
+                        <BookOpen size={11} className="text-[#D4AF37]" />
+                        <span>BOOK NOW</span>
+                      </button>
                     </div>
 
-                    {/* Prominent EMERALD BOOK NOW CTA button */}
-                    <button
-                      onClick={() => {
-                        document
-                          .getElementById("menu-packages")
-                          ?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      className="w-full px-5 py-3.5 text-white font-extrabold tracking-widest text-[11px] uppercase rounded-2xl bg-[#0F3D2E] border border-[#DFC27A]/40 shadow-[0_8px_30px_rgba(15,61,46,0.15)] flex items-center justify-center gap-2.5 transition-all duration-300 hover:bg-[#0A5A42] hover:scale-[1.02] active:scale-95 group/btn cursor-pointer font-sans"
-                    >
-                      <BookOpen
-                        size={14}
-                        className="text-[#D4AF37] group-hover/btn:scale-110 transition-transform"
-                      />
-                      <span>BOOK NOW</span>
-                    </button>
+                    {/* DESKTOP RIGHT BLOCK */}
+                    <div className="hidden lg:flex w-full lg:w-72 shrink-0 flex-col justify-between gap-3 self-center lg:self-stretch mt-4 lg:mt-0 font-sans relative z-10">
+                      
+                      {/* Micro-Pricing Card */}
+                      <div className="bg-[#FFFDFB] border border-[#E8DCC7] rounded-3xl p-5 flex flex-col justify-center shadow-[0_8px_30px_rgba(15,61,46,0.08)] relative">
+                        <span className="text-[10px] text-[#8A8A8A] font-bold uppercase tracking-widest mb-1 font-sans">Starting from</span>
+                        
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span 
+                            className="text-4xl text-[#D4AF37]"
+                            style={{
+                              fontFamily: '"Cormorant Garamond", "Playfair Display", "Georgia", serif',
+                              fontWeight: 600,
+                            }}
+                          >
+                            ₹{computedLowestPrice.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-xs text-[#555555] font-medium ml-1">/ Plate</span>
+                        </div>
 
-                  </div>
+                        <div className="h-[1px] bg-[#E8DCC7]/60 my-3 w-full"></div>
+
+                        <div className="flex items-center gap-1.5 text-[10px] text-[#555555] font-bold uppercase tracking-wider">
+                          <Package size={13} className="text-[#D4AF37] shrink-0" />
+                          <span>Customizable Packages</span>
+                        </div>
+                      </div>
+
+                      {/* Prominent EMERALD BOOK NOW CTA button */}
+                      <button
+                        onClick={() => {
+                          document
+                            .getElementById("menu-packages")
+                            ?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="w-full px-5 py-3.5 text-white font-extrabold tracking-widest text-[11px] uppercase rounded-2xl bg-[#0F3D2E] border border-[#DFC27A]/40 shadow-[0_8px_30px_rgba(15,61,46,0.15)] flex items-center justify-center gap-2.5 transition-all duration-300 hover:bg-[#0A5A42] hover:scale-[1.02] active:scale-95 group/btn cursor-pointer font-sans"
+                      >
+                        <BookOpen
+                          size={14}
+                          className="text-[#D4AF37] group-hover/btn:scale-110 transition-transform"
+                        />
+                        <span>BOOK NOW</span>
+                      </button>
+                    </div>
+                  </>
                 );
               })()}
 
@@ -2811,6 +2821,27 @@ export default function CatererDetails() {
                     experienceVal={experienceVal}
                   />
 
+                  <MenuPackagesCard
+                    caterer={caterer}
+                    editedCaterer={editedCaterer}
+                    setEditedCaterer={setEditedCaterer}
+                    isEditing={isEditing}
+                    setIsEditing={setIsEditing}
+                    isOwnerOrAdmin={isOwnerOrAdmin}
+                    handleSaveChanges={handleSaveChanges}
+                    targetCatererObj={targetCatererObj}
+                    allGalleryPhotos={allGalleryPhotos}
+                    openLightbox={openLightbox}
+                    guestCount={guestCount}
+                    setGuestCount={setGuestCount}
+                    packageTiers={packageTiers}
+                    awardsList={awardsList}
+                    certificationsList={certificationsList}
+                    achievementsList={achievementsList}
+                    user={user}
+                    CrownOrnament={CrownOrnament}
+                  />
+
                   <ServicesOfferCard
                     caterer={caterer}
                     editedCaterer={editedCaterer}
@@ -2861,73 +2892,6 @@ export default function CatererDetails() {
                     user={user}
                     CrownOrnament={CrownOrnament}
                     convertFileToBase64={convertFileToBase64}
-                  />
-
-                  <MenuPackagesCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                  />
-
-                  {/* TESTIMONIALS & REVIEWS SECTION */}
-                  <ReviewsCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                    reviews={DEMO_REVIEWS.filter(
-                      (r) => r.catererId === caterer.id || r.catererId === String(caterer.id)
-                    )}
-                  />
-
-                  <AdditionalMediaCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
                   />
 
                   {/* SECTION 5: CONTACT PROTECTION NOTICE */}
@@ -3004,26 +2968,7 @@ export default function CatererDetails() {
                     CrownOrnament={CrownOrnament}
                   />
 
-                <AchievementsCard
-                  caterer={caterer}
-                  editedCaterer={editedCaterer}
-                  setEditedCaterer={setEditedCaterer}
-                  isEditing={isEditing}
-                  setIsEditing={setIsEditing}
-                  isOwnerOrAdmin={isOwnerOrAdmin}
-                  handleSaveChanges={handleSaveChanges}
-                  targetCatererObj={targetCatererObj}
-                  allGalleryPhotos={allGalleryPhotos}
-                  openLightbox={openLightbox}
-                  guestCount={guestCount}
-                  setGuestCount={setGuestCount}
-                  packageTiers={packageTiers}
-                  awardsList={awardsList}
-                  certificationsList={certificationsList}
-                  achievementsList={achievementsList}
-                  user={user}
-                  CrownOrnament={CrownOrnament}
-                />
+
             </div>
           </div>
         </div>

@@ -137,11 +137,30 @@ export const AboutCatererCard: React.FC<SectionProps> = ({
               placeholder="Welcome to our premium catering service..."
             />
           </div>
-        ) : (
-          <p className="text-[#444444] text-[15px] md:text-[16px] font-sans leading-[1.8] text-left whitespace-pre-wrap select-text font-medium">
-            {targetCatererObj.description || "Welcome to our premium catering service. We bring extraordinary food, luxury arrangements, and top tier hospitality to elevate your special day."}
-          </p>
-        )}
+        ) : (() => {
+          const [isExpanded, setIsExpanded] = React.useState(false);
+          const descText = targetCatererObj.description || "Welcome to our premium catering service. We bring extraordinary food, luxury arrangements, and top tier hospitality to elevate your special day.";
+          const isLongText = descText.length > 180;
+          return (
+            <div className="flex flex-col items-start w-full">
+              <p className={cn(
+                "text-[#444444] text-[14px] sm:text-[15px] md:text-[16px] font-sans leading-[1.8] text-left whitespace-pre-wrap select-text font-medium transition-all duration-300",
+                !isExpanded && isLongText && "line-clamp-3"
+              )}>
+                {descText}
+              </p>
+              {isLongText && (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-[#D4AF37] hover:text-[#0F3D2E] font-extrabold text-[11px] uppercase tracking-wider mt-2.5 self-start cursor-pointer transition-colors"
+                >
+                  {isExpanded ? "Read Less" : "Read More"}
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2 border-t border-[#E8DCC7]/50 pt-6">
@@ -298,14 +317,14 @@ export const ServicesOfferCard: React.FC<SectionProps & {
 
       <LuxuryDivider />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mt-2 w-full">
+      <div className="flex overflow-x-auto gap-4 pb-4 w-full md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-6 mt-2 scrollbar-none snap-x snap-mandatory">
          {(editedCaterer?.services || caterer?.services || DEFAULT_SERVICES).map((item: any, idx: number) => {
             const IconComp = serviceIcons[item.iconName] || ChefHat;
             const currentServicesLength = (editedCaterer?.services || caterer?.services || DEFAULT_SERVICES).length;
             
             if (isEditing) {
               return (
-                <div key={idx} className="bg-[#FFFDFB] rounded-2xl overflow-hidden border-2 border-[#D4AF37] shadow-[0_8px_24px_rgba(15,61,46,0.08)] flex flex-col items-center text-center pb-5 group relative h-full w-full min-w-[240px]">
+                <div key={idx} className="bg-[#FFFDFB] rounded-2xl overflow-hidden border-2 border-[#D4AF37] shadow-[0_8px_24px_rgba(15,61,46,0.08)] flex flex-col items-center text-center pb-5 group relative h-full w-[260px] shrink-0 md:w-full md:shrink snap-start">
                   <div className="absolute top-2 right-2 flex gap-1 z-30">
                     {idx > 0 && (
                       <button
@@ -436,7 +455,7 @@ export const ServicesOfferCard: React.FC<SectionProps & {
             }
 
             return (
-              <div key={idx} className="bg-[#FFFDFB] rounded-2xl overflow-hidden border-2 border-[#E8DCC7] hover:border-[#DFC27A]/85 shadow-[0_8px_24px_rgba(15,61,46,0.06)] hover:shadow-lg transition-all duration-300 flex flex-col items-center text-center pb-5 group h-full w-full min-w-[240px]">
+              <div key={idx} className="bg-[#FFFDFB] rounded-2xl overflow-hidden border-2 border-[#E8DCC7] hover:border-[#DFC27A]/85 shadow-[0_8px_24px_rgba(15,61,46,0.06)] hover:shadow-lg transition-all duration-300 flex flex-col items-center text-center pb-5 group h-full w-[260px] shrink-0 md:w-full md:shrink snap-start">
                 <div className="w-full h-52 lg:h-56 overflow-hidden relative">
                   <img 
                     src={item.image} 
@@ -756,117 +775,6 @@ export const MenuPackagesCard: React.FC<SectionProps> = ({
   );
 };
 
-// 5. REVIEWS CARD (NEW)
-export const ReviewsCard: React.FC<SectionProps & { reviews: any[] }> = ({ reviews }) => {
-  return (
-    <div
-      id="reviews-section"
-      className="bg-[#FFFDFB] rounded-[24px] p-6 md:p-8 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] scroll-mt-24 w-full"
-    >
-      <h2 className="text-[22px] md:text-[25px] font-serif font-black text-[#173D32] tracking-tight">
-        Client Testimonials
-      </h2>
-      <div className="flex items-center gap-1 text-[#DEAA38] mt-1 mb-6 font-serif">
-        <span className="opacity-40">──</span>
-        <span className="text-xs">❃</span>
-        <span className="font-bold uppercase tracking-wider text-[9px] text-[#D4A437] font-sans mx-1">
-          Words of Appreciation
-        </span>
-        <span className="text-xs">❃</span>
-        <span className="opacity-40">──</span>
-      </div>
-
-      {reviews.length > 0 ? (
-        <div className="space-y-6">
-          {reviews.map((rev) => (
-            <div key={rev.id} className="border-b border-[#E8DCC7]/40 pb-5 last:border-0 last:pb-0 flex gap-4">
-              <img
-                src={rev.authorImage || "https://i.pravatar.cc/150"}
-                alt={rev.authorName}
-                className="w-12 h-12 rounded-full object-cover border border-[#D4AF37]/30 shrink-0 shadow-xs"
-                referrerPolicy="no-referrer"
-              />
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="font-bold text-slate-800 text-[15px]">{rev.authorName}</h4>
-                  <span className="text-[11px] text-slate-400 font-medium font-sans">{rev.date}</span>
-                </div>
-                <div className="flex items-center gap-0.5 mb-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      size={13}
-                      fill={i < Math.floor(rev.rating) ? "#D4AF37" : "none"}
-                      className={i < Math.floor(rev.rating) ? "text-[#D4AF37]" : "text-slate-250"}
-                    />
-                  ))}
-                  <span className="text-xs font-black text-slate-700 ml-1.5 mt-0.5">{rev.rating}</span>
-                </div>
-                <p className="text-[14px] leading-relaxed text-slate-600 font-sans italic">
-                  "{rev.content}"
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-center py-6 text-slate-400 italic text-sm">
-          No verified client reviews listed yet.
-        </p>
-      )}
-    </div>
-  );
-};
-
-// 6. ADDITIONAL MEDIA CARD (NEW)
-export const AdditionalMediaCard: React.FC<{}> = () => {
-  return (
-    <div
-      id="additional-media-section"
-      className="bg-[#FFFDFB] rounded-[24px] p-6 md:p-8 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] scroll-mt-24 w-full"
-    >
-      <h2 className="text-[22px] md:text-[25px] font-serif font-black text-[#173D32] tracking-tight">
-        Gala Showcase Film
-      </h2>
-      <div className="flex items-center gap-1 text-[#DEAA38] mt-1 mb-6 font-serif">
-        <span className="opacity-40">──</span>
-        <span className="text-xs">❃</span>
-        <span className="font-bold uppercase tracking-wider text-[9px] text-[#D4A437] font-sans mx-1">
-          Bespoke Events Film Reel
-        </span>
-        <span className="text-xs">❃</span>
-        <span className="opacity-40">──</span>
-      </div>
-
-      <div className="relative rounded-2xl overflow-hidden aspect-video border-2 border-[#DFC27A]/30 group shadow-md">
-        <img
-          src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=800&auto=format&fit=crop"
-          alt="Luxury Catering Film"
-          className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent flex flex-col justify-end p-5 text-left">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="bg-[#DFC27A]/35 text-white border border-[#DFC27A] text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full font-mono font-bold">
-              Showcase film
-            </span>
-            <span className="text-xs text-[#DFC27A]">• 2:45 mins</span>
-          </div>
-          <h3 className="font-serif font-bold text-white text-[17px] tracking-wide leading-snug">
-            Grand Banquet orchestrations & royal wedding experiences (Official Film)
-          </h3>
-          <p className="text-[12.5px] text-neutral-300 font-sans mt-1 max-w-md hidden sm:block">
-            Take a deep cinematographic journey detailing how our visual culinary curators arrange bespoke reception spreads, catering bars, and premium banqueting layout arrangements.
-          </p>
-
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[#173D32]/95 border-2 border-[#DFC27A] flex items-center justify-center text-white scale-100 hover:scale-[1.08] active:scale-95 transition-all shadow-lg cursor-pointer">
-            <PlayCircle size={36} className="text-[#DFC27A] ml-0.5" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 
 /* ==========================================================================
    RIGHT COLUMN COMPONENTS
@@ -1171,13 +1079,13 @@ export const ServiceAreasCard: React.FC<SectionProps> = ({
                   <p className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest leading-none mb-3 font-mono font-extrabold">
                     Operational Zones
                   </p>
-                  <div className="flex flex-wrap justify-center gap-2 max-w-full">
+                  <div className="flex flex-wrap justify-center gap-1.5 max-w-full">
                     {areas.map((area, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 bg-[#FCFAF5] border-2 border-[#DFC27A]/60 text-[#173D32] px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs hover:border-[#D4AF37] transition-all select-text font-serif"
+                        className="inline-flex items-center gap-1 bg-amber-50/75 border border-[#DFC27A]/40 text-[#173D32] px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs hover:border-[#D4AF37] transition-all select-text font-sans"
                       >
-                        <MapPin size={11} className="text-[#D4AF37]" strokeWidth={2.5} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
                         {area}
                       </span>
                     ))}
@@ -1204,179 +1112,7 @@ export const ServiceAreasCard: React.FC<SectionProps> = ({
   );
 };
 
-// 4. ACHIEVEMENTS CARD
-export const AchievementsCard: React.FC<SectionProps> = ({
-  isEditing,
-  editedCaterer,
-  setEditedCaterer,
-  isOwnerOrAdmin,
-  setIsEditing,
-  achievementsList,
-  caterer
-}) => {
-  return (
-    <div className="bg-[#FFFDFB] rounded-[24px] p-6 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)]">
-      <div className="flex justify-between items-center w-full">
-        <h3 className="font-serif font-black text-[#173D32] text-[16px] uppercase tracking-wide flex items-center gap-2">
-          <Award size={18} className="text-[#D4AF37]" strokeWidth={2} /> ACHIEVEMENTS
-        </h3>
-        {isOwnerOrAdmin && !isEditing && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsEditing(true);
-              setEditedCaterer({ ...caterer });
-            }}
-            className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
-          >
-            <Pencil size={11} className="text-[#D4AF37]" /> Edit
-          </button>
-        )}
-      </div>
 
-      <LuxuryDivider />
-
-      {isEditing ? (
-        <div className="space-y-4 flex-1 flex flex-col justify-center py-1.5 font-sans select-text">
-          <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-            {achievementsList.map((ach: any, achIdx: number) => (
-              <div key={achIdx} className="bg-white/50 border border-[#E8DCC7]/50 rounded-xl p-3 space-y-2 relative group flex flex-col justify-between">
-                <div className="absolute top-2 right-2 flex gap-1 z-30">
-                  {achIdx > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const list = [...achievementsList];
-                        const temp = list[achIdx];
-                        list[achIdx] = list[achIdx - 1];
-                        list[achIdx - 1] = temp;
-                        setEditedCaterer({ ...editedCaterer, achievements: list });
-                      }}
-                      className="p-1 bg-white hover:bg-neutral-50 text-[#0F3D2E] border border-slate-200 rounded-full shadow-xs cursor-pointer"
-                      title="Move Up"
-                    >
-                      <ChevronUp size={10} />
-                    </button>
-                  )}
-                  {achIdx < achievementsList.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const list = [...achievementsList];
-                        const temp = list[achIdx];
-                        list[achIdx] = list[achIdx + 1];
-                        list[achIdx + 1] = temp;
-                        setEditedCaterer({ ...editedCaterer, achievements: list });
-                      }}
-                      className="p-1 bg-white hover:bg-neutral-50 text-[#0F3D2E] border border-slate-200 rounded-full shadow-xs cursor-pointer"
-                      title="Move Down"
-                    >
-                      <ChevronDown size={10} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const list = [...achievementsList];
-                      list.splice(achIdx, 1);
-                      setEditedCaterer({ ...editedCaterer, achievements: list });
-                    }}
-                    className="p-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-full shadow-xs cursor-pointer"
-                    title="Delete"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-1 flex flex-col gap-1">
-                    <span className="text-[9px] uppercase font-bold text-amber-800 font-mono">Value</span>
-                    <input
-                      type="text"
-                      value={ach.value}
-                      onChange={(e) => {
-                        const list = [...achievementsList];
-                        list[achIdx] = { ...list[achIdx], value: e.target.value };
-                        setEditedCaterer({ ...editedCaterer, achievements: list });
-                      }}
-                      className="bg-white border text-center border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#D4AF37] font-semibold text-[#173D32]"
-                      placeholder="e.g. 500+"
-                    />
-                  </div>
-                  <div className="col-span-2 flex flex-col gap-1 pr-16">
-                    <span className="text-[9px] uppercase font-bold text-amber-800 font-mono">Label</span>
-                    <input
-                      type="text"
-                      value={ach.title}
-                      onChange={(e) => {
-                        const list = [...achievementsList];
-                        list[achIdx] = { ...list[achIdx], title: e.target.value };
-                        setEditedCaterer({ ...editedCaterer, achievements: list });
-                      }}
-                      className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#D4AF37] text-[#444444]"
-                      placeholder="e.g. Successful Events"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-[#FCFAF5] rounded-xl border border-[#D4AF37]/25 p-3 space-y-2">
-            <span className="text-[9px] font-bold text-[#DEAA38] uppercase tracking-wider block font-mono">
-              + Suggestion Badge
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {[
-                { value: "1,500+", title: "Successful Events" },
-                { value: "10,000+", title: "Happy Customers" },
-                { value: "15+", title: "Years of Trust" },
-                { value: "120+", title: "Expert Professionals" }
-              ].map((sug) => (
-                <button
-                  key={sug.title}
-                  type="button"
-                  onClick={() => {
-                    const list = [...achievementsList];
-                    list.push({ value: sug.value, title: sug.title });
-                    setEditedCaterer({ ...editedCaterer, achievements: list });
-                  }}
-                  className="bg-white hover:bg-[#F2EDDF] border border-[#DEAA38]/20 hover:border-[#DEAA38] px-2 py-0.5 rounded-full text-[10px] font-bold text-[#173D32] transition cursor-pointer"
-                >
-                  + {sug.title}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4 flex-1 flex flex-col justify-center py-2 select-text font-sans">
-          {achievementsList.length > 0 ? (
-            achievementsList.map((ach: any, idx: number) => (
-              <div key={idx} className="flex items-center gap-4 py-2 border-b border-[#E8DCC7]/30 last:border-0 font-sans">
-                <div className="flex-shrink-0 bg-[#FCFAF5] border-2 border-[#D4AF37]/60 rounded-full p-1.5 text-[#D4AF37] shadow-xs">
-                  <Check size={14} className="stroke-[3]" />
-                </div>
-                <div className="flex flex-col items-start leading-none text-left">
-                  <span className="text-2xl sm:text-3xl font-bold text-[#173D32] tracking-tight font-serif">
-                    {ach.value}
-                  </span>
-                  <span className="text-[13px] font-semibold text-[#666666] uppercase tracking-wider mt-0.5">
-                    {ach.title}
-                  </span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-xs text-[#666666] italic text-center py-4 font-sans">
-              No achievements entered yet
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // 6. CONTACT SIDEBAR CARD
 export const ContactSidebarCard: React.FC<{
