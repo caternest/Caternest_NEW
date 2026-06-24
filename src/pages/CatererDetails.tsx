@@ -53,11 +53,8 @@ import {
   AdditionalMediaCard,
   BranchDetailsCard,
   ServiceAreasCard,
-  OperatingHoursCard,
   AchievementsCard,
-  AwardsCertsCard,
-  ContactSidebarCard,
-  ContactInfoCard
+  ContactSidebarCard
 } from "../components/PremiumCatererSections";
 
 // Highly polished, realistic decorative crown vector asset to perfectly mimic the image design
@@ -3007,48 +3004,6 @@ export default function CatererDetails() {
                     CrownOrnament={CrownOrnament}
                   />
 
-                  <ContactInfoCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                  />
-
-                  <OperatingHoursCard
-                    caterer={caterer}
-                    editedCaterer={editedCaterer}
-                    setEditedCaterer={setEditedCaterer}
-                    isEditing={isEditing}
-                    setIsEditing={setIsEditing}
-                    isOwnerOrAdmin={isOwnerOrAdmin}
-                    handleSaveChanges={handleSaveChanges}
-                    targetCatererObj={targetCatererObj}
-                    allGalleryPhotos={allGalleryPhotos}
-                    openLightbox={openLightbox}
-                    guestCount={guestCount}
-                    setGuestCount={setGuestCount}
-                    packageTiers={packageTiers}
-                    awardsList={awardsList}
-                    certificationsList={certificationsList}
-                    achievementsList={achievementsList}
-                    user={user}
-                    CrownOrnament={CrownOrnament}
-                  />
-
                 <AchievementsCard
                   caterer={caterer}
                   editedCaterer={editedCaterer}
@@ -3069,27 +3024,6 @@ export default function CatererDetails() {
                   user={user}
                   CrownOrnament={CrownOrnament}
                 />
-
-              <AwardsCertsCard
-                caterer={caterer}
-                editedCaterer={editedCaterer}
-                setEditedCaterer={setEditedCaterer}
-                isEditing={isEditing}
-                setIsEditing={setIsEditing}
-                isOwnerOrAdmin={isOwnerOrAdmin}
-                handleSaveChanges={handleSaveChanges}
-                targetCatererObj={targetCatererObj}
-                allGalleryPhotos={allGalleryPhotos}
-                openLightbox={openLightbox}
-                guestCount={guestCount}
-                setGuestCount={setGuestCount}
-                packageTiers={packageTiers}
-                awardsList={awardsList}
-                certificationsList={certificationsList}
-                achievementsList={achievementsList}
-                user={user}
-                CrownOrnament={CrownOrnament}
-              />
             </div>
           </div>
         </div>

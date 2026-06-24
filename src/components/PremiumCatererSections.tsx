@@ -21,7 +21,8 @@ import {
   CalendarDays,
   Users,
   Phone,
-  Mail
+  Mail,
+  X
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { serviceIcons, DEFAULT_SERVICES } from "../pages/CatererDetails";
@@ -1006,6 +1007,54 @@ export const ServiceAreasCard: React.FC<SectionProps> = ({
   targetCatererObj,
   caterer
 }) => {
+  const [newAreaText, setNewAreaText] = React.useState("");
+
+  const rawServiceAreas = isEditing ? editedCaterer.serviceAreas : targetCatererObj.serviceAreas;
+  
+  const areas: string[] = React.useMemo(() => {
+    if (!rawServiceAreas) return [];
+    if (Array.isArray(rawServiceAreas)) return rawServiceAreas;
+    if (typeof rawServiceAreas === "string") {
+      if (rawServiceAreas.trim().startsWith("[")) {
+        try {
+          const parsed = JSON.parse(rawServiceAreas);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+          // Fallback to split
+        }
+      }
+      return rawServiceAreas
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return [];
+  }, [rawServiceAreas]);
+
+  const isEntireHyderabad = areas.length === 1 && areas[0] === "All Hyderabad";
+
+  const updateAreas = (newAreas: string[]) => {
+    setEditedCaterer({
+      ...editedCaterer,
+      serviceAreas: newAreas,
+    });
+  };
+
+  const handleAddArea = () => {
+    const trimmed = newAreaText.trim();
+    if (!trimmed) return;
+    if (areas.includes(trimmed)) {
+      setNewAreaText("");
+      return;
+    }
+    updateAreas([...areas, trimmed]);
+    setNewAreaText("");
+  };
+
+  const handleRemoveArea = (areaToRemove: string) => {
+    updateAreas(areas.filter((a) => a !== areaToRemove));
+  };
+
   return (
     <div className="bg-[#FFFDFB] rounded-[24px] p-6 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] flex flex-col justify-between group">
       <div className="flex justify-between items-center w-full">
@@ -1029,32 +1078,115 @@ export const ServiceAreasCard: React.FC<SectionProps> = ({
       <LuxuryDivider />
 
       {isEditing ? (
-        <div className="flex flex-col gap-3.5 py-1.5 flex-1 justify-between font-sans">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
-              Service Areas (Non-Sensitive)
-            </span>
-            <textarea
-              value={editedCaterer.serviceAreas || ""}
-              onChange={(e) => setEditedCaterer({ ...editedCaterer, serviceAreas: e.target.value })}
-              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-3 text-[#444444] text-xs h-28 outline-none transition resize-none w-full shadow-xs"
-              placeholder="e.g. Jubilee Hills, Banjara Hills, Gachibowli"
+        <div className="flex flex-col gap-3.5 py-1.5 flex-1 justify-between font-sans text-left">
+          {/* Serve Entire Hyderabad checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer select-none bg-[#FCFAF5]/50 border border-[#DFC27A]/35 hover:border-[#D4AF37]/60 rounded-xl px-3.5 py-2.5 transition">
+            <input
+              type="checkbox"
+              checked={isEntireHyderabad}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  updateAreas(["All Hyderabad"]);
+                } else {
+                  updateAreas([]);
+                }
+              }}
+              className="w-4 h-4 text-[#0F3D2E] focus:ring-[#0F3D2E] border-gray-300 rounded cursor-pointer accent-[#0F3D2E]"
             />
-          </div>
+            <span className="text-xs font-bold text-[#173D32] uppercase tracking-wide">
+              Serve Entire Hyderabad
+            </span>
+          </label>
+
+          {!isEntireHyderabad && (
+            <div className="flex flex-col gap-3 mt-1">
+              {/* Custom Area Input & Button */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newAreaText}
+                  onChange={(e) => setNewAreaText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddArea();
+                    }
+                  }}
+                  placeholder="Enter area name, e.g. Jubilee Hills"
+                  className="flex-1 bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3.5 py-2 text-slate-700 text-xs outline-none transition"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddArea}
+                  className="bg-[#0F3D2E] hover:bg-[#173D32] text-white text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+                >
+                  + Add Area
+                </button>
+              </div>
+
+              {/* List of custom chips */}
+              <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1 py-0.5">
+                {areas.length > 0 ? (
+                  areas.map((area, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 bg-[#FCFAF5] border border-[#DFC27A]/50 text-[#173D32] px-2.5 py-1.5 rounded-full text-[11px] font-semibold shadow-xs select-none"
+                    >
+                      {area}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveArea(area)}
+                        className="text-[#D4AF37] hover:text-red-500 transition-colors focus:outline-none cursor-pointer"
+                      >
+                        <X size={11} strokeWidth={2.5} />
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic">No specific service areas added yet. Type an area above and click Add Area.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="border-2 border-dashed border-[#DFC27A]/40 bg-[#FCFAF5]/50 rounded-2xl p-5 flex flex-col items-center justify-center text-center flex-1 min-h-[140px] mt-2">
-          {targetCatererObj.serviceAreas ? (
+          {areas.length > 0 ? (
             <div className="flex flex-col items-center w-full">
-              <div className="w-10 h-10 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#D4AF37] mb-2.5 shadow-sm border border-[#E8DCC7]">
+              <div className="w-10 h-10 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#D4AF37] mb-3 shadow-sm border border-[#E8DCC7]">
                 <MapPin size={18} strokeWidth={2} />
               </div>
-              <p className="text-[14.5px] text-[#173D32] font-sans font-bold leading-relaxed select-text font-serif">
-                {targetCatererObj.serviceAreas}
-              </p>
-              <p className="text-xs text-[#666666] mt-1.5 font-sans leading-relaxed">
-                Operational and active across all regional specified venues and zones.
-              </p>
+              
+              {isEntireHyderabad ? (
+                <div className="flex flex-col items-center">
+                  <span className="inline-flex items-center gap-1.5 bg-[#0F3D2E] text-white px-4 py-2 rounded-full text-xs font-bold shadow-md tracking-wider border border-[#DFC27A]">
+                    📍 All Hyderabad
+                  </span>
+                  <p className="text-xs text-[#666666] mt-3 font-sans leading-relaxed">
+                    Providing top-tier premium catering services across the entire Hyderabad region.
+                  </p>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col items-center">
+                  <p className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest leading-none mb-3 font-mono font-extrabold">
+                    Operational Zones
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2 max-w-full">
+                    {areas.map((area, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 bg-[#FCFAF5] border-2 border-[#DFC27A]/60 text-[#173D32] px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs hover:border-[#D4AF37] transition-all select-text font-serif"
+                      >
+                        <MapPin size={11} className="text-[#D4AF37]" strokeWidth={2.5} />
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-[#666666] mt-3.5 font-sans leading-relaxed">
+                    Available for bookings and site catering at all specified locations.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center">
@@ -1063,86 +1195,6 @@ export const ServiceAreasCard: React.FC<SectionProps> = ({
               </div>
               <p className="text-xs font-bold text-[#444444] font-sans">
                 No Service Areas Configured
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 3. OPERATING HOURS CARD
-export const OperatingHoursCard: React.FC<SectionProps> = ({
-  isEditing,
-  editedCaterer,
-  setEditedCaterer,
-  isOwnerOrAdmin,
-  setIsEditing,
-  targetCatererObj,
-  caterer
-}) => {
-  return (
-    <div className="bg-[#FFFDFB] rounded-[24px] p-6 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] flex flex-col justify-between group">
-      <div className="flex justify-between items-center w-full">
-        <h3 className="font-serif font-black text-[#173D32] text-[16px] uppercase tracking-wide flex items-center gap-2">
-          <Clock size={18} className="text-[#D4AF37]" strokeWidth={2} /> OPERATING HOURS
-        </h3>
-        {isOwnerOrAdmin && !isEditing && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsEditing(true);
-              setEditedCaterer({ ...caterer });
-            }}
-            className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
-          >
-            <Pencil size={11} className="text-[#D4AF37]" /> Edit
-          </button>
-        )}
-      </div>
-
-      <LuxuryDivider />
-
-      {isEditing ? (
-        <div className="flex flex-col gap-3.5 py-1.5 flex-1 justify-between font-sans">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
-              Operating Hours Schedule
-            </span>
-            <input
-              type="text"
-              value={editedCaterer.operatingHours || ""}
-              onChange={(e) => setEditedCaterer({ ...editedCaterer, operatingHours: e.target.value })}
-              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
-              placeholder="e.g. Mon-Sun: 9:00 AM - 10:50 PM"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="border-2 border-dashed border-[#DFC27A]/40 bg-[#FCFAF5]/50 rounded-2xl p-5 flex flex-col items-center justify-center text-center flex-1 min-h-[140px] mt-2">
-          {targetCatererObj.operatingHours ? (
-            <div className="flex flex-col items-center w-full">
-              <div className="w-10 h-10 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#D4AF37] mb-2.5 shadow-sm border border-[#E8DCC7]">
-                <Clock size={18} strokeWidth={2} />
-              </div>
-              <p className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-widest leading-none mb-1.5 text-center font-mono font-extrabold">
-                Weekly Schedule
-              </p>
-              <p className="text-[14.5px] text-[#173D32] font-sans font-bold leading-normal text-center select-text font-serif">
-                {targetCatererObj.operatingHours}
-              </p>
-              <p className="text-xs text-[#666666] mt-1.5 italic font-sansOption font-sans">
-                (Available on all public holidays)
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-[#FCFAF5] flex items-center justify-center text-[#D4AF37] mb-2 border border-[#E8DCC7]">
-                <Clock size={18} strokeWidth={2} />
-              </div>
-              <p className="text-xs font-bold text-[#444444] font-sans">
-                No Timings Configured
               </p>
             </div>
           )}
@@ -1326,113 +1378,6 @@ export const AchievementsCard: React.FC<SectionProps> = ({
   );
 };
 
-// 5. AWARDS & CERTS CARD
-export const AwardsCertsCard: React.FC<SectionProps> = ({
-  isEditing,
-  editedCaterer,
-  setEditedCaterer,
-  isOwnerOrAdmin,
-  setIsEditing,
-  awardsList,
-  certificationsList,
-  caterer
-}) => {
-  return (
-    <div className="bg-[#FFFDFB] rounded-[24px] p-6 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] flex flex-col justify-between group">
-      <div className="flex justify-between items-center w-full">
-        <h3 className="font-serif font-black text-[#173D32] text-[16px] uppercase tracking-wide flex items-center gap-2">
-          <Award size={18} className="text-[#D4AF37]" strokeWidth={2} /> AWARDS & CERTS
-        </h3>
-        {isOwnerOrAdmin && !isEditing && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsEditing(true);
-              setEditedCaterer({ ...caterer });
-            }}
-            className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
-          >
-            <Pencil size={11} className="text-[#D4AF37]" /> Edit
-          </button>
-        )}
-      </div>
-
-      <LuxuryDivider />
-
-      {isEditing ? (
-        <div className="space-y-4 flex-1 flex flex-col justify-center py-1.5 font-sans select-text">
-          <div className="space-y-2">
-            <span className="text-[10px] font-extrabold text-[#DEAA38] uppercase tracking-widest font-mono block">
-              Awards & Credentials (Editable list)
-            </span>
-            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
-              {awardsList.map((award: string, idx: number) => (
-                <div key={idx} className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={award}
-                    onChange={(e) => {
-                      const curr = [...awardsList];
-                      curr[idx] = e.target.value;
-                      setEditedCaterer({ ...editedCaterer, awards: curr });
-                    }}
-                    className="bg-white border text-xs text-[#444444] border-slate-200 focus:border-[#D4AF37] rounded-lg px-2 py-1 flex-1 outline-none transition"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const curr = [...awardsList];
-                      curr.splice(idx, 1);
-                      setEditedCaterer({ ...editedCaterer, awards: curr });
-                    }}
-                    className="p-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg border border-red-100 cursor-pointer"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => {
-                const curr = [...awardsList];
-                curr.push("New Custom Award");
-                setEditedCaterer({ ...editedCaterer, awards: curr });
-              }}
-              className="text-[10px] bg-[#0F3D2E] text-white hover:bg-[#173D32] px-2.5 py-1 rounded-md font-bold transition flex items-center gap-0.5 cursor-pointer mt-1"
-            >
-              + Add Award Badge
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-7 py-2.5">
-          {awardsList.length > 0 || certificationsList.length > 0 ? (
-            <>
-               {awardsList.map((award: string, i: number) => (
-                <div key={`aw-${i}`}>
-                  <GoldMedalIcon title={award} />
-                </div>
-              ))}
-              {certificationsList.map((cert: string, i: number) => (
-                <div key={`c-${i}`}>
-                  <GoldMedalIcon title={cert} isShield={true} />
-                </div>
-              ))}
-            </>
-          ) : (
-            <>
-              <GoldMedalIcon title="Best Wedding Caterer" />
-              <GoldMedalIcon title="Excellence in Catering" isShield={true} />
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
 // 6. CONTACT SIDEBAR CARD
 export const ContactSidebarCard: React.FC<{
   caterer: any;
@@ -1466,103 +1411,6 @@ export const ContactSidebarCard: React.FC<{
   );
 };
 
-// 7. EDITABLE CONTACT INFO CARD
-export const ContactInfoCard: React.FC<SectionProps> = ({
-  isEditing,
-  editedCaterer,
-  setEditedCaterer,
-  isOwnerOrAdmin,
-  setIsEditing,
-  targetCatererObj,
-  caterer
-}) => {
-  return (
-    <div className="bg-[#FFFDFB] rounded-[24px] p-6 border-2 border-[#DFC27A]/50 hover:border-[#D4AF37]/80 transition-all shadow-[0_12px_40px_rgba(15,61,46,0.06)] flex flex-col justify-between group">
-      <div className="flex justify-between items-center w-full">
-        <h3 className="font-serif font-black text-[#173D32] text-[16px] uppercase tracking-wide flex items-center gap-2">
-          <Phone size={18} className="text-[#D4AF37]" strokeWidth={2} /> CONTACT DETAILS
-        </h3>
-        {isOwnerOrAdmin && !isEditing && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsEditing(true);
-              setEditedCaterer({ ...caterer });
-            }}
-            className="flex items-center gap-1 text-[#D4AF37] hover:text-[#0F3D2E] font-bold text-xs font-sans transition-colors cursor-pointer"
-          >
-            <Pencil size={11} className="text-[#D4AF37]" /> Edit
-          </button>
-        )}
-      </div>
 
-      <LuxuryDivider />
 
-      {isEditing ? (
-        <div className="flex flex-col gap-3.5 py-1.5 flex-1 justify-between font-sans text-left">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
-              HQ Address / Location
-            </span>
-            <input
-              type="text"
-              value={editedCaterer.address || editedCaterer.location || ""}
-              onChange={(e) => setEditedCaterer({ ...editedCaterer, address: e.target.value, location: e.target.value })}
-              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
-              placeholder="e.g. Jubilee Hills, Hyderabad"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 mt-2">
-            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
-              WhatsApp Number
-            </span>
-            <input
-              type="text"
-              value={editedCaterer.whatsappNumber || ""}
-              onChange={(e) => setEditedCaterer({ ...editedCaterer, whatsappNumber: e.target.value })}
-              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
-              placeholder="e.g. +91 98765 43210"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 mt-2">
-            <span className="text-[10px] font-bold text-[#DEAA38] uppercase tracking-widest font-mono">
-              Contact Email (Direct)
-            </span>
-            <input
-              type="email"
-              value={editedCaterer.email || ""}
-              onChange={(e) => setEditedCaterer({ ...editedCaterer, email: e.target.value })}
-              className="bg-white border border-[#E8DCC7] focus:border-[#0F3D2E] rounded-xl px-3 py-2 text-slate-700 text-xs outline-none transition"
-              placeholder="e.g. contact@brand.com"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="border-2 border-dashed border-[#DFC27A]/40 bg-[#FCFAF5]/50 rounded-2xl p-5 flex flex-col gap-4 text-left flex-1 mt-2 font-sans select-text">
-          <div className="flex items-start gap-2.5 text-xs">
-            <MapPin size={15} className="text-[#D4AF37] mt-0.5" />
-            <div>
-              <p className="font-bold text-[#173D32]">HQ Address</p>
-              <p className="text-[#555555] mt-0.5">{targetCatererObj.address || targetCatererObj.location || "Hyderabad, Telangana"}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2.5 text-xs">
-            <Phone size={15} className="text-[#D4AF37] mt-0.5" />
-            <div>
-              <p className="font-bold text-[#173D32]">WhatsApp Number</p>
-              <p className="text-[#555555] mt-0.5">{targetCatererObj.whatsappNumber || "Shared upon booking"}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2.5 text-xs">
-            <Mail size={15} className="text-[#D4AF37] mt-0.5" />
-            <div>
-              <p className="font-bold text-[#173D32]">Email Address</p>
-              <p className="text-[#555555] mt-0.5">{targetCatererObj.email || "Shared upon booking"}</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 

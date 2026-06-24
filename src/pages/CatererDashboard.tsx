@@ -194,6 +194,7 @@ export default function CatererDashboard() {
   // Profile Edit State
   const [profileFormData, setProfileFormData] = useState<any>({});
   const [isProfilePending, setIsProfilePending] = useState(false);
+  const [dashboardNewAreaText, setDashboardNewAreaText] = useState('');
 
   const [resolvedCatererId, setResolvedCatererId] = useState<string | null>(() => localStorage.getItem('catererDashboardId'));
   const [isResolvingCaterer, setIsResolvingCaterer] = useState(false);
@@ -325,12 +326,9 @@ export default function CatererDashboard() {
               branchPhoto: cat.branchPhoto || '',
               experience: cat.experience || '',
               eventsCompleted: cat.eventsCompleted || '',
-              awards: cat.awards || '',
-              certifications: cat.certifications || '',
               brandName: cat.brandName || '',
               tagline: cat.tagline || '',
               whatsappNumber: cat.whatsappNumber || '',
-              operatingHours: cat.operatingHours || '',
               branches: cat.branches || '',
               serviceAreas: cat.serviceAreas || ''
           });
@@ -372,12 +370,9 @@ export default function CatererDashboard() {
                    branchPhoto: found.branchPhoto || '',
                    experience: found.experience || '',
                    eventsCompleted: found.eventsCompleted || '',
-                   awards: found.awards || '',
-                   certifications: found.certifications || '',
                    brandName: found.brandName || '',
                    tagline: found.tagline || '',
                    whatsappNumber: found.whatsappNumber || '',
-                   operatingHours: found.operatingHours || '',
                    branches: found.branches || '',
                    serviceAreas: found.serviceAreas || ''
                });
@@ -758,9 +753,6 @@ export default function CatererDashboard() {
           description: profileFormData.description || null,
           experience: profileFormData.experience ? parseInt(profileFormData.experience) : null,
           eventsCompleted: profileFormData.eventsCompleted ? parseInt(profileFormData.eventsCompleted) : null,
-          awards: profileFormData.awards || null,
-          certifications: profileFormData.certifications || null,
-          operatingHours: profileFormData.operatingHours || null,
           branches: profileFormData.branches ? parseInt(profileFormData.branches) : null,
           serviceAreas: profileFormData.serviceAreas || null,
           whatsappNumber: profileFormData.whatsappNumber || null,
@@ -781,9 +773,6 @@ export default function CatererDashboard() {
           { name: "Description", field: "description", col: "includedItems._fallback_description" },
           { name: "Experience Years", field: "experience", col: "includedItems._fallback_experience" },
           { name: "Events Completed", field: "eventsCompleted", col: "includedItems._fallback_eventsCompleted" },
-          { name: "Awards", field: "awards", col: "includedItems._fallback_awards" },
-          { name: "Certifications", field: "certifications", col: "includedItems._fallback_certifications" },
-          { name: "Operating Hours", field: "operatingHours", col: "includedItems._fallback_operatingHours" },
           { name: "Branch Count", field: "branches", col: "includedItems._fallback_branches" },
           { name: "Service Areas", field: "serviceAreas", col: "includedItems._fallback_serviceAreas" },
           { name: "WhatsApp Number", field: "whatsappNumber", col: "includedItems._fallback_whatsappNumber" },
@@ -1493,21 +1482,118 @@ export default function CatererDashboard() {
                                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Number of Branches</label>
                                       <input type="number" value={profileFormData.branches || ''} onChange={(e) => setProfileFormData({...profileFormData, branches: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. 3" />
                                   </div>
-                                  <div>
-                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Operating Hours</label>
-                                      <input type="text" value={profileFormData.operatingHours || ''} onChange={(e) => setProfileFormData({...profileFormData, operatingHours: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. 6:00 AM - 11:00 PM" />
-                                  </div>
-                                  <div>
-                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Service Areas (comma separated)</label>
-                                      <input type="text" value={profileFormData.serviceAreas || ''} onChange={(e) => setProfileFormData({...profileFormData, serviceAreas: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. Banjara Hills, Jubilee Hills, Gachibowli" />
-                                  </div>
                                   <div className="col-span-1 md:col-span-2">
-                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Awards (comma separated)</label>
-                                      <input type="text" value={profileFormData.awards || ''} onChange={(e) => setProfileFormData({...profileFormData, awards: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. Times Food Award 2024, Best Deccani Caterer 2023" />
-                                  </div>
-                                  <div className="col-span-1 md:col-span-2">
-                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Certifications (comma separated)</label>
-                                      <input type="text" value={profileFormData.certifications || ''} onChange={(e) => setProfileFormData({...profileFormData, certifications: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" placeholder="e.g. ISO 22000 Certified, Culinary Institute of India" />
+                                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Service Areas</label>
+                                      
+                                      {/* Serve Entire Hyderabad checkbox */}
+                                      <label className="flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-3 transition hover:bg-slate-100">
+                                          <input
+                                              type="checkbox"
+                                              checked={(() => {
+                                                  const raw = profileFormData.serviceAreas;
+                                                  if (!raw) return false;
+                                                  const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                                  return arr.length === 1 && arr[0] === "All Hyderabad";
+                                              })()}
+                                              onChange={(e) => {
+                                                  if (e.target.checked) {
+                                                      setProfileFormData({ ...profileFormData, serviceAreas: ["All Hyderabad"] });
+                                                  } else {
+                                                      setProfileFormData({ ...profileFormData, serviceAreas: [] });
+                                                  }
+                                              }}
+                                              className="w-4 h-4 text-[#0F3D2E] focus:ring-[#0F3D2E] border-gray-300 rounded cursor-pointer accent-[#0F3D2E]"
+                                          />
+                                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                              Serve Entire Hyderabad
+                                          </span>
+                                      </label>
+
+                                      {!(() => {
+                                          const raw = profileFormData.serviceAreas;
+                                          if (!raw) return false;
+                                          const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                          return arr.length === 1 && arr[0] === "All Hyderabad";
+                                      })() && (
+                                          <div className="flex flex-col gap-3">
+                                              <div className="flex gap-2">
+                                                  <input
+                                                      type="text"
+                                                      value={dashboardNewAreaText}
+                                                      onChange={(e) => setDashboardNewAreaText(e.target.value)}
+                                                      onKeyDown={(e) => {
+                                                          if (e.key === 'Enter') {
+                                                              e.preventDefault();
+                                                              const trimmed = dashboardNewAreaText.trim();
+                                                              if (trimmed) {
+                                                                  const raw = profileFormData.serviceAreas;
+                                                                  const arr = Array.isArray(raw) ? [...raw] : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                                                  if (!arr.includes(trimmed)) {
+                                                                      arr.push(trimmed);
+                                                                      setProfileFormData({ ...profileFormData, serviceAreas: arr });
+                                                                  }
+                                                              }
+                                                              setDashboardNewAreaText("");
+                                                          }
+                                                      }}
+                                                      placeholder="Enter area name, e.g. Jubilee Hills"
+                                                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none"
+                                                  />
+                                                  <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                          const trimmed = dashboardNewAreaText.trim();
+                                                          if (trimmed) {
+                                                              const raw = profileFormData.serviceAreas;
+                                                              const arr = Array.isArray(raw) ? [...raw] : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                                              if (!arr.includes(trimmed)) {
+                                                                  arr.push(trimmed);
+                                                                  setProfileFormData({ ...profileFormData, serviceAreas: arr });
+                                                              }
+                                                          }
+                                                          setDashboardNewAreaText("");
+                                                      }}
+                                                      className="bg-[#0F3D2E] hover:bg-[#173D32] text-white text-xs font-bold px-5 py-3 rounded-xl transition cursor-pointer"
+                                                  >
+                                                      + Add Area
+                                                  </button>
+                                              </div>
+
+                                              <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1 py-1">
+                                                  {(() => {
+                                                      const raw = profileFormData.serviceAreas;
+                                                      if (!raw) return [];
+                                                      return Array.isArray(raw) ? raw : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                                  })().map((area: string, idx: number) => (
+                                                      <span
+                                                          key={idx}
+                                                          className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-full text-xs font-semibold shadow-xs select-none"
+                                                      >
+                                                          {area}
+                                                          <button
+                                                              type="button"
+                                                              onClick={() => {
+                                                                  const raw = profileFormData.serviceAreas;
+                                                                  const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                                                  const filtered = arr.filter((a: string) => a !== area);
+                                                                  setProfileFormData({ ...profileFormData, serviceAreas: filtered });
+                                                              }}
+                                                              className="text-slate-400 hover:text-red-500 transition-colors focus:outline-none cursor-pointer"
+                                                          >
+                                                              <X size={12} strokeWidth={2.5} />
+                                                          </button>
+                                                      </span>
+                                                  ))}
+                                                  {(() => {
+                                                      const raw = profileFormData.serviceAreas;
+                                                      const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? (raw.startsWith("[") ? JSON.parse(raw) : raw.split(",").map(s => s.trim()).filter(Boolean)) : []);
+                                                      return arr.length === 0;
+                                                  })() && (
+                                                      <p className="text-xs text-slate-400 italic">No specific service areas added yet. Type an area above and click Add Area.</p>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      )}
                                   </div>
                               </div>
                           </div>
