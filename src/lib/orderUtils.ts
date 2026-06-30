@@ -1,5 +1,5 @@
 import { toast } from '../components/Toast';
-import { getSupabase } from './supabase';
+import { getSupabase, parseToDbDate } from './supabase';
 
 export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -187,12 +187,10 @@ export function storeNotification(
         try {
           const { error } = await (supabase as any).from('notifications').upsert(notificationPayload, { onConflict: 'id' });
           if (error) {
-            console.error("[NOTIFICATION DB WRITE ERROR]", error.message);
-            console.error("NOTIFICATION ERROR", error);
+            console.warn("[NOTIFICATION DB WRITE ERROR]", error.message);
           }
         } catch (err) {
-          console.error("[NOTIFICATION DB WRITE CRASH]", err);
-          console.error("NOTIFICATION ERROR", err);
+          console.warn("[NOTIFICATION DB WRITE CRASH]", err);
         }
       })();
     }
@@ -315,6 +313,10 @@ export async function performOrderStatusUpdate(
     if (finalFields[k] !== undefined) {
       dbPayload[k] = finalFields[k];
     }
+  }
+
+  if (dbPayload.eventDate) {
+    dbPayload.eventDate = parseToDbDate(dbPayload.eventDate);
   }
 
   // Requirement: Add precise requested logging

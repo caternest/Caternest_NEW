@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import BottomNavigation from './components/BottomNavigation';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import CatererDetails from './pages/CatererDetails';
@@ -37,13 +38,14 @@ function ScrollToTop() {
 
 function Layout() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen pb-16 md:pb-0">
       <ScrollToTop />
       <Navbar />
       <main className="flex-1">
         <Outlet />
       </main>
       <Footer />
+      <BottomNavigation />
     </div>
   );
 }
@@ -58,6 +60,44 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 import { ToastProvider } from './components/Toast';
+import { fetchHomepageMode } from './lib/supabase';
+import { useState } from 'react';
+
+function RootHome() {
+  const [mode, setMode] = useState<string>('classic');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Read from localStorage for immediate load to avoid flash
+    const cached = localStorage.getItem('homepage_mode');
+    if (cached) {
+      setMode(cached);
+      setLoading(false);
+    }
+
+    // Double check with DB
+    fetchHomepageMode()
+      .then((dbMode) => {
+        setMode(dbMode);
+      })
+      .catch((err) => {
+        console.warn("Error loading homepage mode on app load", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading && !localStorage.getItem('homepage_mode')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFDFB]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
+
+  return mode === 'marketplace' ? <Explore /> : <Home />;
+}
 
 export default function App() {
   useEffect(() => {
@@ -70,11 +110,14 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
+            <Route index element={<RootHome />} />
             <Route path="caterer/:id" element={<CatererDetails />} />
             <Route path="join" element={<JoinCaterer />} />
             <Route path="admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="admin/orders" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="admin/partners" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             <Route path="explore" element={<Explore />} />
+            <Route path="explore-caterers" element={<Explore />} />
             <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
             <Route path="change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />

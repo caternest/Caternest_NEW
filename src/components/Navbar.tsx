@@ -78,6 +78,20 @@ export default function Navbar() {
     { name: 'Contact', path: '/contact' },
   ];
 
+  const handleExploreCaterersClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const mode = localStorage.getItem('homepage_mode') || 'classic';
+    if (mode === 'marketplace') {
+      const isCurrentlyExplorePage = ['/', '/explore', '/explore-caterers'].includes(location.pathname);
+      if (isCurrentlyExplorePage) {
+        e.preventDefault();
+        const element = document.getElementById('explore-marketplace');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+  };
+
   const fetchNavbarNotifications = async () => {
     if (!user) return;
     const supabase = getSupabase();
@@ -277,16 +291,33 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8" id="desktop-links-container">
             <div className="flex items-center gap-6">
-              {navLinks.map((link) => (
-                <Link 
-                  key={link.name} 
-                  to={link.path} 
-                  data-keep-profile-open="true" 
-                  className={cn(textClass, location.pathname === link.path && "text-brand-gold-600")}
-                >
-                  {link.name}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isExplore = link.name === 'Explore Caterers';
+                const isMarketplace = localStorage.getItem('homepage_mode') === 'marketplace';
+                
+                // Determine destination URL
+                const toPath = isExplore && isMarketplace ? '/explore?scroll=true' : link.path;
+                
+                // Determine active status
+                let isActive = location.pathname === link.path;
+                if (isExplore) {
+                  isActive = location.pathname === '/explore' || location.pathname === '/explore-caterers' || (location.pathname === '/' && isMarketplace);
+                } else if (link.name === 'Home') {
+                  isActive = location.pathname === '/' && !isMarketplace;
+                }
+
+                return (
+                  <Link 
+                    key={link.name} 
+                    to={toPath} 
+                    data-keep-profile-open="true" 
+                    onClick={isExplore ? handleExploreCaterersClick : undefined}
+                    className={cn(textClass, isActive && "text-brand-gold-600")}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
             </div>
             <div className="flex items-center gap-4 border-l pl-6 border-slate-200 relative">
               {user && user.roles.includes('admin') && (
@@ -405,16 +436,16 @@ export default function Navbar() {
                           <div className="p-2 flex flex-col">
                             {user.roles.includes('admin') ? (
                                 <>
-                                  <Link to="/admin-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
+                                  <Link to="/admin-dashboard" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-brand-green-900 hover:bg-brand-green-50 rounded-lg transition-colors">
                                     <Settings size={16} /> Admin Dashboard
                                   </Link>
-                                  <Link to="/admin-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                  <Link to="/admin/partners" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <Building size={16} /> Partner Registrations
                                   </Link>
-                                  <Link to="/admin-dashboard" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                  <Link to="/admin/orders" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <ShoppingBag size={16} /> All Orders
                                   </Link>
-                                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
+                                  <Link to="/profile" onClick={() => setIsProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-gold-600 rounded-lg transition-colors">
                                     <Settings size={16} /> Admin Profile
                                   </Link>
                                 </>
@@ -512,94 +543,238 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Links */}
+      {/* Mobile slide-out Drawer Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="md:hidden absolute top-full left-0 right-0 bg-white shadow-xl border-t border-slate-100"
-            id="mobile-navigation-drawer"
-          >
-            <div className="px-4 pt-2 pb-6 space-y-1">
-              {navLinks.map((link) => (
-                <Link 
-                  key={link.name} 
-                  to={link.path} 
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs md:hidden"
+            />
+
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="fixed top-0 right-0 bottom-0 w-[290px] max-w-[85vw] bg-[#FFFDFB] shadow-2xl z-55 md:hidden flex flex-col border-l border-[#E8DCC7]/60 overflow-hidden"
+              id="mobile-navigation-drawer"
+            >
+              {/* Drawer Header */}
+              <div className="p-4 border-b border-[#E8DCC7]/40 flex items-center justify-between bg-[#173D32] text-white">
+                <div className="flex items-center gap-2">
+                  <div className="bg-brand-gold-500 p-1.5 rounded-lg text-white">
+                    <ChefHat size={18} />
+                  </div>
+                  <span className="font-display font-bold text-lg tracking-tight">CaterNest</span>
+                </div>
+                <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block px-3 py-3 text-base font-medium font-poppins text-slate-700 hover:text-brand-gold-600 hover:bg-slate-50 rounded-lg"
+                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-white"
                 >
-                  {link.name}
-                </Link>
-              ))}
-              <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3">
-                {!user ? (
-                  <>
-                    <Link 
-                      to="/caterer-login"
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {/* User info if logged in */}
+                {user && (
+                  <div className="p-3 bg-gradient-to-br from-[#173D32]/5 to-[#D4AF37]/5 border border-[#E8DCC7]/40 rounded-xl flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand-gold-100 text-brand-gold-600 flex items-center justify-center font-bold text-lg border border-[#D4AF37]/30">
+                      {user.name.charAt(0)}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-brand-green-900 text-sm truncate">{user.name}</p>
+                      <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                      {user.roles.includes('admin') && (
+                        <span className="inline-block mt-1 text-[8px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wide">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Primary Nav Links */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 block mb-1">Navigation</span>
+                  <Link
+                    to="/"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                      (location.pathname === "/" && localStorage.getItem('homepage_mode') !== 'marketplace') ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                    )}
+                  >
+                    Home
+                  </Link>
+                  <Link
+                    to={localStorage.getItem('homepage_mode') === 'marketplace' ? '/explore?scroll=true' : '/explore'}
+                    onClick={(e) => {
+                      setIsMobileMenuOpen(false);
+                      handleExploreCaterersClick(e);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                      (location.pathname === "/explore" || location.pathname === "/explore-caterers" || (location.pathname === "/" && localStorage.getItem('homepage_mode') === 'marketplace')) ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                    )}
+                  >
+                    Explore Caterers
+                  </Link>
+
+                  {user && (
+                    <Link
+                      to="/orders"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex justify-center items-center gap-2 px-3 py-3 text-base font-medium bg-brand-gold-50 text-brand-gold-700 rounded-lg hover:bg-brand-gold-100 border border-brand-gold-100"
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                        location.pathname === "/orders" ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                      )}
                     >
-                      <ChefHat size={18} /> Caterer Login
+                      <ShoppingBag size={16} className="text-[#D4AF37]" />
+                      {user.role === 'caterer' ? 'My Orders' : 'My Bookings'}
                     </Link>
-                    <Link 
-                      to="/login"
+                  )}
+                </div>
+
+                {/* Role Specific/Management Links */}
+                <div className="space-y-1 border-t border-[#E8DCC7]/30 pt-4">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 block mb-1">Partner Portal</span>
+                  {user ? (
+                    <>
+                      {user.role === 'caterer' ? (
+                        <>
+                          <Link
+                            to="/caterer-dashboard"
+                            onClick={() => {
+                              if (!localStorage.getItem('catererDashboardId') && user) {
+                                try {
+                                  const raw = localStorage.getItem('registrations');
+                                  if (raw) {
+                                    const allRegs = JSON.parse(raw);
+                                    const firstApproved = allRegs.find((r: any) => (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) && r.status === 'Approved');
+                                    if (firstApproved) {
+                                      localStorage.setItem('catererDashboardId', firstApproved.id);
+                                    } else {
+                                      const firstAny = allRegs.find((r: any) => (r.userId === user.id || (r.email && r.email.toLowerCase() === user.email.toLowerCase())) && r.status !== 'Deleted');
+                                      if (firstAny) {
+                                        localStorage.setItem('catererDashboardId', firstAny.id);
+                                      }
+                                    }
+                                  }
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }
+                              setIsMobileMenuOpen(false);
+                            }}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
+                              location.pathname === "/caterer-dashboard" ? "bg-[#173D32]/5 text-[#173D32]" : "text-[#173D32] hover:bg-slate-50"
+                            )}
+                          >
+                            <Settings size={16} /> Partner Dashboard
+                          </Link>
+                          <Link
+                            to="/businesses"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <Building size={16} /> My Businesses
+                          </Link>
+                        </>
+                      ) : (
+                        <Link
+                          to="/partner-selection"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Handshake size={16} /> Become a Partner
+                        </Link>
+                      )}
+
+                      {user.roles.includes('admin') && (
+                        <Link
+                          to="/admin-dashboard"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all bg-red-50 text-red-900 border border-red-100",
+                            location.pathname.startsWith("/admin") ? "bg-red-100" : ""
+                          )}
+                        >
+                          <Settings size={16} /> Admin Dashboard
+                        </Link>
+                      )}
+                    </>
+                  ) : (
+                    <Link
+                      to="/partner-selection"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className="block text-center px-3 py-3 text-base font-medium border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
-                      Login
+                      <Handshake size={16} /> Join as Caterer
                     </Link>
-                    <Link 
-                      to="/signup"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="block text-center px-3 py-3 text-base font-medium bg-brand-green-900 text-white rounded-lg hover:bg-brand-green-800"
-                    >
-                      Sign Up
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3 px-3 py-3 mb-2 bg-slate-50 rounded-xl">
-                      <div className="w-10 h-10 rounded-full bg-brand-gold-100 text-brand-gold-600 flex items-center justify-center font-bold text-lg">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-brand-green-900">{user.name}</p>
-                        <p className="text-sm text-slate-500">{user.email}</p>
+                  )}
+                </div>
+
+                {/* Profile Settings / Auth */}
+                <div className="space-y-1 border-t border-[#E8DCC7]/30 pt-4">
+                  {user ? (
+                    <>
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        <Settings size={16} /> My Profile
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={16} /> Logout
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-2 pt-2">
+                      <Link
+                        to="/caterer-login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex justify-center items-center gap-2 px-3 py-2.5 text-xs font-bold bg-brand-gold-50 text-brand-gold-700 rounded-xl hover:bg-brand-gold-100 border border-brand-gold-100 uppercase tracking-wider"
+                      >
+                        <ChefHat size={14} /> Caterer Login
+                      </Link>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <Link
+                          to="/login"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-center px-3 py-2.5 text-xs font-extrabold border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 uppercase tracking-wider"
+                        >
+                          Login
+                        </Link>
+                        <Link
+                          to="/signup"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-center px-3 py-2.5 text-xs font-extrabold bg-[#173D32] text-white rounded-xl hover:bg-brand-green-800 uppercase tracking-wider"
+                        >
+                          Sign Up
+                        </Link>
                       </div>
                     </div>
-                    <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                      <Settings size={20} /> My Profile
-                    </Link>
-                    <Link to="/orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                      <ShoppingBag size={20} /> My Orders
-                    </Link>
-                    <Link to="/businesses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                      <Building size={20} /> My Businesses
-                    </Link>
-                    <Link to="/partner-selection" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">
-                      <Handshake size={20} /> Become a Partner
-                    </Link>
-                    {user.roles.includes('admin') && (
-                        <Link to="/admin-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 text-base font-medium text-brand-green-900 bg-brand-green-50 rounded-lg mt-2">
-                           <Settings size={20} /> Admin Dashboard
-                        </Link>
-                    )}
-                    <button 
-                      onClick={() => {
-                        logout();
-                        setIsMobileMenuOpen(false);
-                      }} 
-                      className="w-full flex items-center gap-3 px-3 py-3 text-base font-medium text-red-600 hover:bg-red-50 rounded-lg"
-                    >
-                      <LogOut size={20} /> Logout
-                    </button>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </nav>

@@ -508,9 +508,30 @@ export default function AdminEditCaterer() {
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Operating Hours</label>
                                   <input name="operatingHours" value={caterer.operatingHours || ''} onChange={handleChange} placeholder="e.g. 6:00 AM - 11:00 PM" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
                               </div>
-                              <div className="md:col-span-2">
-                                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Service Areas (comma separated)</label>
-                                  <input name="serviceAreas" value={caterer.serviceAreas || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                              <div className="md:col-span-2 flex flex-col gap-3">
+                                  <label className="flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 transition hover:bg-slate-100">
+                                      <input
+                                          type="checkbox"
+                                          checked={!!caterer.serveEntireHyderabad}
+                                          onChange={(e) => {
+                                              setCaterer(prev => ({
+                                                  ...prev,
+                                                  serveEntireHyderabad: e.target.checked
+                                              }));
+                                          }}
+                                          className="w-4 h-4 text-[#0F3D2E] focus:ring-[#0F3D2E] border-gray-300 rounded cursor-pointer accent-[#0F3D2E]"
+                                      />
+                                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                                          Serve Entire Hyderabad
+                                      </span>
+                                  </label>
+
+                                  {!caterer.serveEntireHyderabad && (
+                                      <div>
+                                          <label className="block text-sm font-bold text-slate-700 mb-1.5">Service Areas (comma separated)</label>
+                                          <input name="serviceAreas" value={caterer.serviceAreas || ''} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-brand-green-500" />
+                                      </div>
+                                  )}
                               </div>
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Awards (Optional)</label>

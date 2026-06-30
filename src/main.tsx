@@ -12,6 +12,13 @@ if (!localStorage.getItem('wiped_demo_caterers_v4')) {
     localStorage.setItem('wiped_demo_caterers_v4', 'true');
 }
 
+if (!localStorage.getItem('wiped_test_orders_v1')) {
+    localStorage.removeItem('orders');
+    localStorage.removeItem('notifications');
+    localStorage.removeItem('auditLogs');
+    localStorage.setItem('wiped_test_orders_v1', 'true');
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

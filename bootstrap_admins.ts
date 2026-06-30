@@ -73,6 +73,20 @@ async function bootstrap() {
       }
 
       if (userId) {
+        // Ensure user password and metadata are up to date (reset password to Welcome24)
+        console.log(`Resetting/Updating user ${admin.email} auth credentials...`);
+        const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+          password: 'Welcome24',
+          email_confirm: true,
+          user_metadata: {
+            full_name: admin.name,
+            role: 'admin'
+          }
+        });
+        if (updateError) {
+          console.error(`Warning: Failed to update auth info for ${admin.email}:`, updateError);
+        }
+
         // Ensure profile is set to admin and must_change_password is true
         const { error: profileError } = await supabase
           .from('profiles')
@@ -81,8 +95,7 @@ async function bootstrap() {
             email: admin.email,
             full_name: admin.name,
             role: 'admin',
-            must_change_password: true,
-            updated_at: new Date().toISOString()
+            must_change_password: true
           }, { onConflict: 'id' });
 
         if (profileError) {

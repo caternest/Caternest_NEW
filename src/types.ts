@@ -45,6 +45,9 @@ export interface Caterer {
   operatingHours?: string;
   branches?: number;
   serviceAreas?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  serviceRadiusKm?: number | null;
   pendingUpdates?: any;
 }
 

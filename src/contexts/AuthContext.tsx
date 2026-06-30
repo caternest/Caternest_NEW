@@ -336,22 +336,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        data: {
-          full_name: name,
-          phone,
-          role
+    let data: any = null;
+    let error: any = null;
+
+    try {
+      const res = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            phone,
+            role
+          }
         }
+      });
+      data = res.data;
+      error = res.error;
+    } catch (fetchErr: any) {
+      if (fetchErr?.message?.includes('Failed to fetch') || fetchErr?.toString()?.includes('Failed to fetch')) {
+        console.warn("[AUDIT LOG] Direct sign-up fetch failed. Retrying via high-reliability server auth proxy...");
+        try {
+          const proxyRes = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: normalizedEmail,
+              password,
+              options: {
+                data: {
+                  full_name: name,
+                  phone,
+                  role
+                }
+              }
+            })
+          });
+          if (proxyRes.ok) {
+            const proxyJson = await proxyRes.json();
+            data = proxyJson.data;
+            error = proxyJson.error;
+          } else {
+            const proxyText = await proxyRes.text();
+            error = { message: proxyText || "Proxy sign-up failed" };
+          }
+        } catch (proxyErr: any) {
+          error = { message: proxyErr.message || "Proxy sign-up exception" };
+        }
+      } else {
+        error = fetchErr;
       }
-    });
+    }
 
     if (error) return { data: null, error };
 
+    if (data?.session) {
+      try {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+      } catch (sessErr) {
+        console.warn("Could not set active session locally after proxy sign-up:", sessErr);
+      }
+    }
+
     // Explicit client-side profile creation as a secondary redundant layer to the triggers
-    if (data.user) {
+    if (data && data.user) {
       try {
         await supabase.from('profiles').upsert({
           id: data.user.id,
@@ -417,17 +468,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Temporary diagnostic logging
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: targetEmail,
-      password,
-    });
+    let data: any = null;
+    let error: any = null;
+
+    try {
+      const res = await supabase.auth.signInWithPassword({
+        email: targetEmail,
+        password,
+      });
+      data = res.data;
+      error = res.error;
+    } catch (fetchErr: any) {
+      console.warn("[AUDIT LOG] Direct sign-in client call failed/threw:", fetchErr);
+      if (fetchErr?.message?.includes('Failed to fetch') || fetchErr?.toString()?.includes('Failed to fetch') || true) {
+        console.warn("[AUDIT LOG] Initiating high-reliability server auth proxy login...");
+        try {
+          const proxyRes = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: targetEmail,
+              password
+            })
+          });
+          if (proxyRes.ok) {
+            const proxyJson = await proxyRes.json();
+            data = proxyJson.data;
+            error = proxyJson.error;
+          } else {
+            const proxyText = await proxyRes.text();
+            error = { message: proxyText || "Proxy login failed" };
+          }
+        } catch (proxyErr: any) {
+          error = { message: proxyErr.message || "Proxy login exception" };
+        }
+      } else {
+        error = fetchErr;
+      }
+    }
 
     console.log("AUTH RESULT", {
       user: data?.user?.id,
       session: !!data?.session,
       error,
     });
+
+    if (!error && data?.session) {
+      try {
+        console.log("[AUDIT LOG] Active session received. Setting local client session...");
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+      } catch (setSessErr) {
+        console.error("[AUDIT LOG] Error during client setSession:", setSessErr);
+      }
+    }
 
     return { data, error };
   };
@@ -495,9 +591,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Redirects back to our preview dashboard change password view
     const redirectUrl = `${window.location.origin}/change-password`;
-    return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
-    });
+    
+    try {
+      return await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+    } catch (fetchErr: any) {
+      if (fetchErr?.message?.includes('Failed to fetch') || fetchErr?.toString()?.includes('Failed to fetch')) {
+        console.warn("[AUDIT LOG] Direct reset password fetch failed. Retrying via high-reliability server auth proxy...");
+        try {
+          const proxyRes = await fetch('/api/auth/reset-password-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              redirectTo: redirectUrl
+            })
+          });
+          if (proxyRes.ok) {
+            return { error: null };
+          } else {
+            const errText = await proxyRes.text();
+            return { error: { message: errText || "Proxy reset password failed" } };
+          }
+        } catch (proxyErr: any) {
+          return { error: { message: proxyErr.message || "Proxy reset password exception" } };
+        }
+      }
+      throw fetchErr;
+    }
   };
 
   // Update password flow

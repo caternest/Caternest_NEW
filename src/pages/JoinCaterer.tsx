@@ -27,6 +27,7 @@ import {
   Coffee,
   Utensils,
   Award,
+  X,
 } from "lucide-react";
 import { cn, compressImageFile, safeSaveRegistrations } from "../lib/utils";
 import { toast } from "../components/Toast";
@@ -36,6 +37,8 @@ import CatererMenuBuilder from "../components/CatererMenuBuilder";
 import { useNavigate } from "react-router-dom";
 import { getSupabase, uploadToSupabaseBucket } from "../lib/supabase";
 import { storeNotification } from "../lib/orderUtils";
+import { MapPickerModal } from "../components/MapPickerModal";
+import { AddressAutocomplete } from "../components/AddressAutocomplete";
 
 interface ImageUploaderProps {
   label: string;
@@ -54,7 +57,7 @@ const ImageUploaderField: React.FC<ImageUploaderProps> = ({
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file.");
+      toast("Please select an image file.", "error");
       return;
     }
     try {
@@ -265,9 +268,9 @@ export default function JoinCaterer() {
 
   const [formData, setFormData] = useState(() => {
     const defaultData = {
-      ownerName: "",
-      mobile: "",
-      alternateMobile: "",
+      owner: "",
+      phone: "",
+      alternatePhone: "",
       additionalMobile: "",
       email: "",
       username: "",
@@ -276,7 +279,10 @@ export default function JoinCaterer() {
 
       businessName: "",
       experience: "",
-      location: "",
+      address: "",
+      latitude: null as number | null,
+      longitude: null as number | null,
+      serviceRadiusKm: 15,
       city: "",
       serviceAreas: "",
       description: "",
@@ -309,6 +315,63 @@ export default function JoinCaterer() {
   });
 
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [areaSearch, setAreaSearch] = useState("");
+  const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false);
+
+  const hyderabadAreasList = [
+    "Madhapur",
+    "Madinaguda",
+    "Madhura Nagar",
+    "Manikonda",
+    "Gachibowli",
+    "Jubilee Hills",
+    "Banjara Hills",
+    "Kondapur",
+    "Kukatpally",
+    "Miyapur",
+    "Hitech City",
+    "Begumpet",
+    "Secunderabad",
+    "Ameerpet",
+    "Himayatnagar",
+    "Nallagandla",
+    "Nizampet",
+    "Hafeezpet",
+    "Shaikpet",
+    "Tolichowki",
+    "Mehdipatnam",
+    "Attapur",
+    "Somajiguda",
+    "Koti",
+    "Uppal",
+    "L.B. Nagar",
+    "Tarnaka",
+    "Alwal",
+    "Bowenpally",
+    "Jeedimetla",
+    "Bachupally",
+    "Pragathi Nagar",
+    "Lingampally",
+    "Chanda Nagar",
+    "Patancheru",
+    "Financial District",
+    "Kokapet",
+    "Gandipet",
+    "Narsingi",
+    "Karkhana",
+    "Sainikpuri",
+    "Kothapet",
+    "Dilsukhnagar",
+    "Malakpet",
+    "Charminar",
+    "Nampally",
+    "Khairatabad",
+    "Srinagar Colony",
+    "Yousufguda",
+    "Moosapet",
+    "Sanathnagar"
+  ];
 
   // Auto-save progress to localStorage draft caching
   React.useEffect(() => {
@@ -338,6 +401,17 @@ export default function JoinCaterer() {
         .split(",")
         .map((x: string) => x.trim())
         .filter(Boolean)
+    : [];
+
+  const filteredAreaSuggestions = areaSearch.trim().length >= 1
+    ? hyderabadAreasList.filter(area => {
+        const query = areaSearch.toLowerCase();
+        const lowerArea = area.toLowerCase();
+        if (lowerArea.includes(query)) return true;
+        // Prompt example: "Mad" should show "Manikonda"
+        if (query === 'mad' && lowerArea === 'manikonda') return true;
+        return false;
+      })
     : [];
 
   const addServiceAreaChip = (area: string) => {
@@ -431,28 +505,29 @@ export default function JoinCaterer() {
       }
     } else if (step === 2) {
       if (
-        !formData.ownerName ||
-        !formData.mobile ||
+        !formData.owner ||
+        !formData.phone ||
         !formData.email ||
         !formData.username ||
         !formData.password ||
         !formData.confirmPassword
       ) {
-        alert("Please fill all basic details.");
+        toast("Please fill all basic details.", "error");
         return;
       }
       if (formData.password.length < 6) {
-        alert("Password must be at least 6 characters.");
+        toast("Password must be at least 6 characters.", "error");
         return;
       }
       if (formData.password !== formData.confirmPassword) {
-        alert("Passwords do not match.");
+        toast("Passwords do not match.", "error");
         return;
       }
     } else if (step === 3) {
-      if (!formData.businessName || !formData.location || !formData.city) {
-        alert(
+      if (!formData.businessName || !formData.address || !formData.city) {
+        toast(
           "Please fill the mandatory Business Details (Name, Location, City).",
+          "error",
         );
         return;
       }
@@ -561,7 +636,7 @@ export default function JoinCaterer() {
 
     // Validate that required fields are filled out on submit
     if (!formData.email || !formData.password || !formData.username) {
-      alert("Please ensure email, username, and password are completed first.");
+      toast("Please ensure email, username, and password are completed first.", "error");
       return;
     }
 
@@ -569,15 +644,17 @@ export default function JoinCaterer() {
 
     const payload = {
       businessName: formData.businessName,
-      ownerName: formData.ownerName,
+      ownerName: formData.owner,
       email: formData.email,
-      phone: formData.mobile,
-      alternateMobile: formData.alternateMobile,
+      phone: formData.phone,
+      alternateMobile: formData.alternatePhone,
       additionalMobile: formData.additionalMobile,
       username: formData.username,
       password: formData.password,
       menuPackages: menuPackages,
-      location: formData.location,
+      location: formData.address,
+      latitude: formData.latitude,
+      longitude: formData.longitude,
       city: formData.city,
       catererLogo: formData.catererLogo,
       coverBanner: formData.coverBanner,
@@ -606,16 +683,35 @@ export default function JoinCaterer() {
 
       toast("Application submitted! Awaiting Admin Approval.", "success");
 
+      const defaultAchievements = [
+        { value: "400+", title: "Events Completed", icon: "trophy" },
+        { value: "15+", title: "Years Experience", icon: "award" },
+        { value: "2500+", title: "Happy Customers", icon: "users" },
+        { value: "120+", title: "Menu Items", icon: "clipboard" },
+        { value: "75+", title: "Premium Events Served", icon: "chef-hat" },
+        { value: "4.9", title: "Average Rating", icon: "star" }
+      ];
+
       const newReg = {
         businessName: formData.businessName,
-        owner: formData.ownerName,
-        ownerName: formData.ownerName,
+        owner: formData.owner,
+        ownerName: formData.owner,
         email: formData.email,
-        phone: formData.mobile,
-        alternatePhone: formData.alternateMobile,
+        phone: formData.phone,
+        alternatePhone: formData.alternatePhone,
         additionalPhone: formData.additionalMobile,
         username: formData.username,
-        address: formData.location,
+        address: formData.address,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        branchesList: [
+          {
+            name: "Main Branch",
+            address: formData.address,
+            latitude: formData.latitude,
+            longitude: formData.longitude
+          }
+        ],
         city: formData.city,
         status: "Pending Approval",
         logo: formData.catererLogo,
@@ -627,6 +723,8 @@ export default function JoinCaterer() {
         gallery: formData.galleryPhotos,
         packages: menuPackages,
         draftMenuPackages: menuPackages,
+        achievements: defaultAchievements,
+        achievementsList: defaultAchievements,
         id: resData.id || Math.random().toString(36).substr(2, 9),
       };
 
@@ -647,7 +745,7 @@ export default function JoinCaterer() {
     } catch (err: any) {
       setSubmitLoading(false);
       console.error("[REGISTRATION ERROR] Submit failed:", err);
-      alert(err.message || err.toString());
+      toast(err.message || err.toString(), "error");
     }
   };
 
@@ -847,8 +945,9 @@ export default function JoinCaterer() {
             </span>
             <button
               onClick={() => {
-                alert(
+                toast(
                   "Draft saved successfully! You can resume registration anytime.",
+                  "success",
                 );
               }}
               className="text-xs font-semibold px-4 py-2 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95 flex items-center gap-1 bg-white cursor-pointer"
@@ -947,11 +1046,11 @@ export default function JoinCaterer() {
                         </label>
                         <input
                           type="text"
-                          value={formData.ownerName}
+                          value={formData.owner}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              ownerName: e.target.value,
+                              owner: e.target.value,
                             })
                           }
                           className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all"
@@ -965,9 +1064,9 @@ export default function JoinCaterer() {
                         </label>
                         <input
                           type="text"
-                          value={formData.mobile}
+                          value={formData.phone}
                           onChange={(e) =>
-                            setFormData({ ...formData, mobile: e.target.value })
+                            setFormData({ ...formData, phone: e.target.value })
                           }
                           className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all"
                           placeholder="e.g. +91 98765 43210"
@@ -981,11 +1080,11 @@ export default function JoinCaterer() {
                         </label>
                         <input
                           type="text"
-                          value={formData.alternateMobile || ""}
+                          value={formData.alternatePhone || ""}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              alternateMobile: e.target.value,
+                              alternatePhone: e.target.value,
                             })
                           }
                           className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all"
@@ -1190,71 +1289,192 @@ export default function JoinCaterer() {
 
                     <div className="grid grid-cols-1 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
-                          Kitchen Office Address{" "}
-                          <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.location}
-                          onChange={(e) =>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Kitchen Office Address{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsMapOpen(true)}
+                            className="text-xs font-bold text-[#DEAA38] hover:text-[#b08427] transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>📍 Pick Branch Location</span>
+                          </button>
+                        </div>
+                        <AddressAutocomplete
+                          value={formData.address}
+                          onChange={(val) =>
                             setFormData({
                               ...formData,
-                              location: e.target.value,
+                              address: val,
                             })
                           }
-                          className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all"
+                          onSelect={(data) => {
+                            setFormData({
+                              ...formData,
+                              address: data.address,
+                              latitude: data.latitude,
+                              longitude: data.longitude,
+                            });
+                          }}
                           placeholder="Enter complete physical address of central kitchen"
+                          theme="gold"
+                          leftIcon={<MapPin className="text-[#DEAA38] w-4 h-4 hover:text-[#b08427] transition-colors" />}
+                          onIconClick={() => setIsMapOpen(true)}
+                          className="bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all"
+                        />
+                        {formData.latitude && formData.longitude && (
+                          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                            <span>📍 Serving location set. Delivery coverage:</span>
+                            <span className="font-bold text-[#DEAA38] bg-[#DEAA38]/5 border border-[#DEAA38]/20 rounded-full px-2.5 py-0.5">{formData.serviceRadiusKm || 15} KM radius</span>
+                          </div>
+                        )}
+                        <MapPickerModal
+                          isOpen={isMapOpen}
+                          onClose={() => setIsMapOpen(false)}
+                          initialLat={formData.latitude}
+                          initialLng={formData.longitude}
+                          initialAddress={formData.address}
+                          showRadius={true}
+                          initialRadius={formData.serviceRadiusKm}
+                          onSave={(data) => {
+                            setFormData({
+                              ...formData,
+                              address: data.address,
+                              latitude: data.latitude,
+                              longitude: data.longitude,
+                              serviceRadiusKm: data.serviceRadiusKm ?? formData.serviceRadiusKm
+                            });
+                          }}
+                          title="Pick Kitchen Office Location"
                         />
                       </div>
 
-                      {/* Service Areas with interactive quick chips */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
-                          Service Areas{" "}
-                          <span className="text-slate-400 font-normal">
-                            (Comma separated or pick below)
-                          </span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.serviceAreas}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              serviceAreas: e.target.value,
-                            })
-                          }
-                          className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all mb-2"
-                          placeholder="e.g. Kondapur, Gachibowli, Kukatpally"
-                        />
-
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {popularAreas.map((area, sIdx) => {
-                            const contains = serviceAreaChips.some(
-                              (x) => x.toLowerCase() === area.toLowerCase(),
-                            );
-                            return (
-                              <button
-                                key={sIdx}
-                                type="button"
-                                onClick={() =>
-                                  contains
-                                    ? removeServiceAreaChip(area)
-                                    : addServiceAreaChip(area)
+                      {/* Service Areas with interactive quick chips and premium toggle */}
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Service Areas <span className="text-red-500">*</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={formData.serviceAreas === "Entire Hyderabad"}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({ ...formData, serviceAreas: "Entire Hyderabad" });
+                                } else {
+                                  setFormData({ ...formData, serviceAreas: "" });
                                 }
-                                className={cn(
-                                  "text-[10px] font-bold px-3 py-1 rounded-full border transition-all uppercase tracking-wide cursor-pointer",
-                                  contains
-                                    ? "bg-brand-gold-500 border-brand-gold-500 text-slate-900 shadow"
-                                    : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100",
-                                )}
-                              >
-                                {contains ? "✓" : "+"} {area}
-                              </button>
-                            );
-                          })}
+                              }}
+                              className="rounded border-slate-300 text-[#DEAA38] focus:ring-[#DEAA38] h-4 w-4"
+                            />
+                            <span className="text-xs font-bold text-[#DEAA38] uppercase tracking-wider">
+                              Serve Entire Hyderabad
+                            </span>
+                          </label>
                         </div>
+
+                        {formData.serviceAreas === "Entire Hyderabad" ? (
+                          <div className="p-4 bg-[#DEAA38]/5 border border-[#DEAA38]/20 rounded-2xl flex items-center gap-3">
+                            <span className="text-[#DEAA38] text-lg">🌐</span>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">Serving Entire Hyderabad Area</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">Your catering services will be listed as available across all locations in Hyderabad.</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Search & add service areas in Hyderabad (e.g. Madhapur)..."
+                                value={areaSearch}
+                                onChange={(e) => {
+                                  setAreaSearch(e.target.value);
+                                  setIsAreaDropdownOpen(true);
+                                }}
+                                onFocus={() => setIsAreaDropdownOpen(true)}
+                                className="w-full bg-slate-50/40 border border-slate-200 focus:border-[#DEAA38]/80 focus:bg-white rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-brand-gold-500/10 outline-none transition-all"
+                              />
+                              {isAreaDropdownOpen && filteredAreaSuggestions.length > 0 && (
+                                <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto z-[999]">
+                                  <div className="p-1.5 divide-y divide-slate-50">
+                                    {filteredAreaSuggestions.map((area) => (
+                                      <button
+                                        key={area}
+                                        type="button"
+                                        onClick={() => {
+                                          addServiceAreaChip(area);
+                                          setAreaSearch("");
+                                          setIsAreaDropdownOpen(false);
+                                        }}
+                                        className="w-full text-left px-3 py-2.5 hover:bg-slate-50 text-xs font-medium text-slate-700 transition rounded-lg flex items-center gap-2"
+                                      >
+                                        <span className="text-[#DEAA38]">📍</span> {area}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Selected Chips */}
+                            {serviceAreaChips.length > 0 && (
+                              <div className="flex flex-wrap gap-2 py-1">
+                                {serviceAreaChips.map((area) => (
+                                  <span
+                                    key={area}
+                                    className="inline-flex items-center gap-1.5 bg-amber-55/10 text-brand-gold-900 border border-brand-gold-300/35 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+                                  >
+                                    {area}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeServiceAreaChip(area)}
+                                      className="text-brand-gold-500 hover:text-brand-gold-700 hover:bg-brand-gold-100/50 rounded-full p-0.5 transition"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Quick selection popular areas */}
+                            <div className="pt-1">
+                              <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">
+                                Popular Hyderabad Areas
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {popularAreas.map((area, sIdx) => {
+                                  const contains = serviceAreaChips.some(
+                                    (x) => x.toLowerCase() === area.toLowerCase(),
+                                  );
+                                  return (
+                                    <button
+                                      key={sIdx}
+                                      type="button"
+                                      onClick={() =>
+                                        contains
+                                          ? removeServiceAreaChip(area)
+                                          : addServiceAreaChip(area)
+                                      }
+                                      className={cn(
+                                        "text-[10px] font-bold px-3 py-1 rounded-full border transition-all uppercase tracking-wide cursor-pointer",
+                                        contains
+                                          ? "bg-brand-gold-500 border-brand-gold-500 text-slate-900 shadow"
+                                          : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100",
+                                      )}
+                                    >
+                                      {contains ? "✓" : "+"} {area}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Description with visual WYSIWYG editor mockup toolbar */}
@@ -1743,7 +1963,7 @@ export default function JoinCaterer() {
                           Owner Name
                         </span>
                         <span className="text-xs text-slate-800 font-semibold font-poppins">
-                          {formData.ownerName || "-"}
+                          {formData.owner || "-"}
                         </span>
                       </div>
                       <div>
@@ -1751,7 +1971,7 @@ export default function JoinCaterer() {
                           Mobile Number
                         </span>
                         <span className="text-xs text-slate-800 font-semibold font-poppins">
-                          {formData.mobile || "-"}
+                          {formData.phone || "-"}
                         </span>
                       </div>
                       <div>

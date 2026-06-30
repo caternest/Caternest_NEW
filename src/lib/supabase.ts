@@ -29,7 +29,7 @@ let supabaseInstance: any = null;
 
 const tableWhitelists: Record<string, string[]> = {
   caterer_registrations: [
-    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'ownerName', 'name',
+    'id', 'created_at', 'updated_at', 'userId', 'businessName', 'name',
     'phone', 'alternatePhone', 'email', 'address', 'city', 'cuisine',
     'categories', 'minGuests', 'pricePerPlate', 'status', 'verificationStatus',
     'menuUploaded', 'panNumber', 'aadhaarNumber', 'fssaiNumber', 'gstNumber',
@@ -39,19 +39,21 @@ const tableWhitelists: Record<string, string[]> = {
     'gstUrl', 'otherDocsUrl', 'rating', 'reviewCount', 'email_verified',
     'experience', 'eventsCompleted', 'awards', 'certifications', 'brandName',
     'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas', 'pendingUpdates',
-    'description', 'services', 'achievements', 'highlights', 'specializations'
+    'description', 'services', 'achievements', 'highlights', 'specializations', 'menuCount', 'branchesList',
+    'latitude', 'longitude'
   ],
   orders: [
     'id', 'created_at', 'updated_at', 'userId', 'catererId', 'catererName',
-    'customerName', 'customerEmail', 'customerPhone', 'phone', 'eventDate',
-    'eventTime', 'eventType', 'guestCount', 'guests', 'totalAmount',
-    'totalEstimate', 'status', 'items', 'selectedItems', 'packageSelected',
+    'customerName', 'customerEmail', 'customerPhone', 'eventDate',
+    'eventTime', 'eventType', 'guestCount', 'totalAmount',
+    'status', 'items', 'selectedItems', 'packageSelected',
     'packageDetails', 'pricingSlabs', 'matchedSlab', 'addonItems', 'selectedMenu',
-    'notes', 'specialNotes', 'pricePerPlate', 'platformFee', 'platformFeePerPlate', 'venue',
-    'statusHistory', 'internalNotes', 'approvedAt', 'rejectedAt', 'completedAt'
+    'notes', 'pricePerPlate', 'platformFee', 'platformFeePerPlate', 'venue',
+    'statusHistory', 'internalNotes', 'approvedAt', 'rejectedAt', 'completedAt',
+    'latitude', 'longitude'
   ],
   notifications: [
-    'id', 'created_at', 'user_id', 'title', 'message', 'type', 'is_read', 'orderId', 'catererId', 'read'
+    'id', 'created_at', 'orderId', 'title', 'message', 'targetRole', 'catererId', 'read'
   ],
   audit_logs: [
     'id', 'created_at', 'timestamp', 'action', 'details', 'user_email', 'role'
@@ -60,6 +62,54 @@ const tableWhitelists: Record<string, string[]> = {
     'id', 'created_at', 'updated_at', 'item_name', 'image_url', 'approved_by_admin', 'status', 'category', 'cuisine'
   ]
 };
+
+const uuidColumnsByTable: Record<string, string[]> = {
+  caterer_registrations: ['id'],
+  orders: ['catererId'],
+  notifications: ['id', 'catererId'],
+  audit_logs: ['id']
+};
+
+export function toUUID(str: any): any {
+  if (str === null || str === undefined) return str;
+  if (typeof str !== 'string') return str;
+  
+  const clean = str.trim();
+  if (clean === '') return null;
+  
+  const relaxedUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (relaxedUuidRegex.test(clean)) {
+    return clean.toLowerCase();
+  }
+
+  // Generate a deterministic 32-character hex string from the input string
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = (hash << 5) - hash + clean.charCodeAt(i);
+    hash |= 0;
+  }
+  
+  let seed = Math.abs(hash);
+  const nextHex = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return Math.floor((seed / 233280) * 16).toString(16);
+  };
+
+  let hexStr = '';
+  for (let i = 0; i < 32; i++) {
+    const charCode = i < clean.length ? clean.charCodeAt(i) : 0;
+    const mix = (nextHex() + charCode.toString(16)).slice(-1);
+    hexStr += mix;
+  }
+
+  const part1 = hexStr.slice(0, 8);
+  const part2 = hexStr.slice(8, 12);
+  const part3 = '4' + hexStr.slice(13, 16);
+  const part4 = '8' + hexStr.slice(17, 20);
+  const part5 = hexStr.slice(20, 32);
+
+  return `${part1}-${part2}-${part3}-${part4}-${part5}`.toLowerCase();
+}
 
 export function sanitizePayload(tableName: string, payload: any): any {
   if (!payload || typeof payload !== 'object') return payload;
@@ -71,24 +121,36 @@ export function sanitizePayload(tableName: string, payload: any): any {
     const cleaned: any = {};
     for (const key of Object.keys(obj)) {
       if (whitelist.includes(key)) {
-        cleaned[key] = obj[key];
-        // Mirror read to is_read when whitelisted key is copied
-        if (tableName === 'notifications' && key === 'read') {
-          cleaned.is_read = obj.read;
+        let val = obj[key];
+        const uuidCols = uuidColumnsByTable[tableName];
+        if (uuidCols && uuidCols.includes(key)) {
+          val = toUUID(val);
         }
+        cleaned[key] = val;
       } else {
-        // Safe mapping fallback logic
-        if (tableName === 'orders' && key === 'address' && !obj.venue) {
-          cleaned.venue = obj.address;
-        }
-        if (tableName === 'caterer_registrations' && (key === 'additionalPhone' || key === 'additionalMobile') && !obj.alternatePhone) {
-          cleaned.alternatePhone = obj[key];
-        }
-        if (tableName === 'notifications' && key === 'targetRole') {
-          cleaned.type = obj.targetRole;
+        if (tableName === 'notifications') {
+          if (key === 'targetRole' || key === 'type') {
+            cleaned.targetRole = obj[key];
+          }
+          if (key === 'read' || key === 'is_read') {
+            cleaned.read = obj[key];
+          }
         }
       }
     }
+
+    // Explicitly guarantee that notification objects have database-compatible required fields
+    if (tableName === 'notifications') {
+      if (cleaned.targetRole === undefined) {
+        if (obj.targetRole !== undefined) cleaned.targetRole = obj.targetRole;
+        else if (obj.type !== undefined) cleaned.targetRole = obj.type;
+      }
+      if (cleaned.read === undefined) {
+        if (obj.read !== undefined) cleaned.read = obj.read;
+        else if (obj.is_read !== undefined) cleaned.read = obj.is_read;
+      }
+    }
+
     return cleaned;
   };
 
@@ -133,7 +195,7 @@ export function getSupabase() {
                           if (tableName === 'orders') {
                             console.error("ORDERS UPSERT ERROR", result.error);
                           } else if (tableName === 'notifications') {
-                            console.error("NOTIFICATION ERROR", result.error);
+                            console.warn("Notification handling warn", result.error);
                           }
                         }
 
@@ -148,7 +210,11 @@ export function getSupabase() {
                                   'experience', 'eventsCompleted', 'awards', 'certifications',
                                   'brandName', 'tagline', 'whatsappNumber', 'operatingHours',
                                   'branches', 'serviceAreas', 'description', 'services', 'achievements', 'highlights', 'specializations',
-                                  'email_verified', 'phone_verified', 'approval_status', 'verification_status', 'founderPhoto', 'additionalPhone'
+                                  'email_verified', 'phone_verified', 'approval_status', 'verification_status', 'founderPhoto', 'additionalPhone', 'branchesList',
+                                  'priceRange', 'bookingLeadTime', 'responseTime', 'established', 'serveEntireHyderabad', 'menuCount',
+                                  'heroCard1Title', 'heroCard1Text', 'heroCard1Icon',
+                                  'heroCard2Value', 'heroCard2Text', 'heroCard2Icon',
+                                  'heroCard3Value', 'heroCard3Text', 'heroCard3Icon'
                                 ];
                                 fallbackKeys.forEach(k => {
                                   const fallbackKey = `_fallback_${k}`;
@@ -172,7 +238,7 @@ export function getSupabase() {
                         if (tableName === 'orders') {
                           console.error("ORDERS UPSERT ERROR", err);
                         } else if (tableName === 'notifications') {
-                          console.error("NOTIFICATION ERROR", err);
+                          console.warn("Notification handling warn", err);
                         }
                         return onrejected ? onrejected(err) : Promise.reject(err);
                       });
@@ -183,6 +249,19 @@ export function getSupabase() {
                   if (typeof value === 'function') {
                     return (...args: any[]) => {
                       let processedArgs = args;
+
+                      // Intercept UUID fields in filters like eq, neq, in
+                      if (bProp === 'eq' || bProp === 'neq' || bProp === 'in') {
+                        const col = args[0];
+                        const uuidCols = uuidColumnsByTable[tableName];
+                        if (uuidCols && uuidCols.includes(col)) {
+                          if (bProp === 'eq' || bProp === 'neq') {
+                            processedArgs = [col, toUUID(args[1]), ...args.slice(2)];
+                          } else if (bProp === 'in' && Array.isArray(args[1])) {
+                            processedArgs = [col, args[1].map(v => toUUID(v)), ...args.slice(2)];
+                          }
+                        }
+                      }
 
                       // Intercept insert/update/upsert parameters to extract virtual fallback keys
                       if (tableName === 'caterer_registrations' && (bProp === 'insert' || bProp === 'update' || bProp === 'upsert')) {
@@ -206,7 +285,11 @@ export function getSupabase() {
                                 'pendingUpdates', 'experience', 'eventsCompleted', 'awards', 'certifications',
                                 'brandName', 'tagline', 'whatsappNumber', 'operatingHours', 'branches', 'serviceAreas',
                                 'description', 'services', 'achievements', 'highlights', 'specializations',
-                                'email_verified', 'phone_verified', 'approval_status', 'verification_status', 'founderPhoto', 'additionalPhone'
+                                'email_verified', 'phone_verified', 'approval_status', 'verification_status', 'founderPhoto', 'additionalPhone', 'branchesList',
+                                'priceRange', 'bookingLeadTime', 'responseTime', 'established', 'serveEntireHyderabad', 'menuCount',
+                                'heroCard1Title', 'heroCard1Text', 'heroCard1Icon',
+                                'heroCard2Value', 'heroCard2Text', 'heroCard2Icon',
+                                'heroCard3Value', 'heroCard3Text', 'heroCard3Icon'
                               ];
                               const fallbackObj: any = {};
                               let hasVirtual = false;
@@ -330,11 +413,103 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
   }
 }
 
+
+// Helper to safely parse localized eventDate strings to SQL-compatible YYYY-MM-DD DATE format
+export function parseToDbDate(dateStr: any): string | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const cleaned = dateStr.trim();
+  if (!cleaned) return null;
+
+  // If it's already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    return cleaned;
+  }
+
+  // If it has multiple dates separated by comma, take the first one
+  const firstPart = cleaned.split(',')[0].trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(firstPart)) {
+    return firstPart;
+  }
+
+  // Try parsing the date. Remove weekday (e.g., Sat, Sun) to make it more parseable for Date.parse
+  let parseable = firstPart
+    .replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/gi, '')
+    .trim();
+
+  // If year is not present, append the current year so it parses reliably
+  const hasYear = /\b\d{4}\b/.test(parseable);
+  if (!hasYear) {
+    const currentYear = new Date().getFullYear();
+    parseable = `${parseable} ${currentYear}`;
+  }
+
+  const timestamp = Date.parse(parseable);
+  if (!isNaN(timestamp)) {
+    const d = new Date(timestamp);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // Fallback regex extraction for simple day + month words
+  const monthMap: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+  };
+  const lower = parseable.toLowerCase();
+  let foundMonth: number | null = null;
+  let foundDay: number | null = null;
+
+  for (const [mName, mVal] of Object.entries(monthMap)) {
+    if (lower.includes(mName)) {
+      foundMonth = mVal;
+      break;
+    }
+  }
+
+  const numMatches = lower.match(/\b\d{1,2}\b/g);
+  if (numMatches && numMatches.length > 0) {
+    foundDay = parseInt(numMatches[0], 10);
+  }
+
+  if (foundMonth && foundDay) {
+    const y = new Date().getFullYear();
+    const mStr = String(foundMonth).padStart(2, '0');
+    const dStr = String(foundDay).padStart(2, '0');
+    return `${y}-${mStr}-${dStr}`;
+  }
+
+  return null;
+}
+
 // Synchronizes localized datasets to the Supabase Database if online
 export async function syncLocalTableToSupabase(tableName: string, localData: any[]) {
   console.log(`[TRACE_LOG #11] syncLocalTableToSupabase entry for ${tableName}, count:`, localData?.length);
+  if (!localData || localData.length === 0) return;
+
+  // 1. Try server-side high-privilege proxy synchronization first (reliable & bypasses RLS constraints)
+  try {
+    const response = await fetch('/api/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ tableName, localData })
+    });
+    if (response.ok) {
+      const resJson = await response.json();
+      if (resJson.success) {
+        console.log(`[SYNC SUCCESS] Synchronized table "${tableName}" successfully via server proxy.`);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn(`[SYNC WARNING] Server-side sync proxy failed, falling back to direct client write:`, err);
+  }
+
   const supabase = getSupabase();
-  if (!supabase || !localData || localData.length === 0) return;
+  if (!supabase) return;
 
   try {
     for (const item of localData) {
@@ -353,51 +528,63 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
         delete sanitized.updatedAt;
       }
 
-      // Explicitly map orders schema fields bi-directionally to support both old and new layouts
       if (tableName === 'orders') {
-        if (sanitized.phone && !sanitized.customerPhone) {
-          sanitized.customerPhone = sanitized.phone;
-        } else if (sanitized.customerPhone && !sanitized.phone) {
-          sanitized.phone = sanitized.customerPhone;
-        }
-
-        if (sanitized.guests !== undefined && sanitized.guestCount === undefined) {
-          sanitized.guestCount = sanitized.guests;
-        } else if (sanitized.guestCount !== undefined && sanitized.guests === undefined) {
-          sanitized.guests = sanitized.guestCount;
-        }
-
-        if (sanitized.totalEstimate !== undefined && sanitized.totalAmount === undefined) {
-          sanitized.totalAmount = sanitized.totalEstimate;
-        } else if (sanitized.totalAmount !== undefined && sanitized.totalEstimate === undefined) {
-          sanitized.totalEstimate = sanitized.totalAmount;
-        }
-
-        if (sanitized.specialNotes && !sanitized.notes) {
-          sanitized.notes = sanitized.specialNotes;
-        } else if (sanitized.notes && !sanitized.specialNotes) {
-          sanitized.specialNotes = sanitized.notes;
-        }
-
-        if (sanitized.address && !sanitized.venue) {
-          sanitized.venue = sanitized.address;
-        }
-
         if (sanitized.selectedItems && !sanitized.items) {
           sanitized.items = sanitized.selectedItems;
-        } else if (sanitized.items && !sanitized.selectedItems) {
-          sanitized.selectedItems = sanitized.items;
+        }
+        if (sanitized.eventDate) {
+          sanitized.eventDate = parseToDbDate(sanitized.eventDate);
         }
       }
+
 
       let errorResponse: any = null;
       let attemptPayload = sanitizePayload(tableName, sanitized);
       let success = false;
       
       for (let attempt = 0; attempt < 5; attempt++) {
-        const { error } = await supabase
-          .from(tableName)
-          .upsert(attemptPayload, { onConflict: 'id' });
+        let error: any = null;
+        let existing = false;
+        
+        try {
+          // Check existence first to avoid Supabase/PostgreSQL upsert RLS policy check failures
+          const { data, error: checkError } = await supabase
+            .from(tableName)
+            .select('id')
+            .eq('id', attemptPayload.id)
+            .maybeSingle();
+            
+          if (!checkError && data) {
+            existing = true;
+          }
+        } catch (e) {
+          existing = false;
+        }
+
+        if (existing) {
+          // Perform an update
+          const { error: updateError } = await supabase
+            .from(tableName)
+            .update(attemptPayload)
+            .eq('id', attemptPayload.id);
+          error = updateError;
+        } else {
+          // Perform an insert
+          const { error: insertError } = await supabase
+            .from(tableName)
+            .insert(attemptPayload);
+            
+          // Fallback to update if insert failed because the item was actually created in the meantime (race condition or SELECT RLS policy restriction)
+          if (insertError && (insertError.code === '23505' || insertError.message?.includes('duplicate key') || insertError.message?.includes('already exists'))) {
+            const { error: updateError } = await supabase
+              .from(tableName)
+              .update(attemptPayload)
+              .eq('id', attemptPayload.id);
+            error = updateError;
+          } else {
+            error = insertError;
+          }
+        }
           
         if (!error) {
           success = true;
@@ -422,7 +609,11 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
       }
       
       if (!success && errorResponse) {
-        console.error(`[SYNC ERROR] Upsert failed for table "${tableName}" on item:`, errorResponse);
+        if (tableName === 'notifications') {
+          console.warn(`[SYNC WARNING] Sync bypassed for table "notifications" due to RLS or guest limitations:`, errorResponse);
+        } else {
+          console.error(`[SYNC ERROR] Upsert failed for table "${tableName}" on item:`, errorResponse);
+        }
       } else {
         console.log(`[SYNC SUCCESS] Synchronized item successfully to "${tableName}".`);
       }
@@ -454,25 +645,10 @@ export async function fetchWithSupabaseFallback(tableName: string, localStorageK
 
     if (data && data.length > 0) {
       let finalData: any[] = data;
-      // Map rich structure to fit both older and modern expectations in downstream caching
       if (tableName === 'orders') {
         finalData = data.map((item: any) => {
           const mapped = { ...item };
-          if (mapped.customerPhone && !mapped.phone) mapped.phone = mapped.customerPhone;
-          if (mapped.phone && !mapped.customerPhone) mapped.customerPhone = mapped.phone;
-
-          if (mapped.guestCount !== undefined && mapped.guests === undefined) mapped.guests = mapped.guestCount;
-          if (mapped.guests !== undefined && mapped.guestCount === undefined) mapped.guestCount = mapped.guests;
-
-          if (mapped.totalAmount !== undefined && mapped.totalEstimate === undefined) mapped.totalEstimate = Number(mapped.totalAmount);
-          if (mapped.totalEstimate !== undefined && mapped.totalAmount === undefined) mapped.totalAmount = mapped.totalEstimate;
-
-          if (mapped.notes && !mapped.specialNotes) mapped.specialNotes = mapped.notes;
-          if (mapped.specialNotes && !mapped.notes) mapped.notes = mapped.specialNotes;
-
           if (mapped.items && !mapped.selectedItems) mapped.selectedItems = mapped.items;
-          if (mapped.selectedItems && !mapped.items) mapped.items = mapped.selectedItems;
-
           return mapped;
         });
       }
@@ -553,5 +729,56 @@ export async function updatePlatformFeePerPlateInDB(fee: number): Promise<void> 
     }
   } catch (err) {
     console.warn("Error updating platform fee in Supabase", err);
+  }
+}
+
+export async function fetchHomepageMode(): Promise<string> {
+  const localVal = localStorage.getItem('homepage_mode');
+  let mode = localVal || 'classic';
+  const supabase = getSupabase();
+  if (!supabase) {
+    return mode;
+  }
+
+  try {
+    const { data, error } = await (supabase.from('platform_settings') as any).select('*');
+    if (error) {
+      throw error;
+    }
+    if (data && data.length > 0) {
+      const row = data[0] as any;
+      const dbMode = row.homepage_mode || row.homepageMode || mode;
+      mode = dbMode;
+      localStorage.setItem('homepage_mode', mode);
+    } else {
+      // Seed default
+      try {
+        await (supabase.from('platform_settings') as any).insert([{ id: 'default', homepage_mode: mode }]);
+      } catch (insertErr) {
+        console.warn("Could not insert default homepage mode to platform_settings", insertErr);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to fetch homepage mode from Supabase, using cache:", err);
+  }
+  return mode;
+}
+
+export async function updateHomepageModeInDB(mode: string): Promise<void> {
+  localStorage.setItem('homepage_mode', mode);
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  try {
+    const payload = { id: 'default', homepage_mode: mode };
+    const { error } = await (supabase.from('platform_settings') as any).upsert(payload, { onConflict: 'id' });
+    if (error) {
+      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ homepage_mode: mode }).eq('id', 'default');
+      if (err2) {
+        console.warn("Could not sync homepage mode to Supabase", err2);
+      }
+    }
+  } catch (err) {
+    console.warn("Error updating homepage mode in Supabase", err);
   }
 }

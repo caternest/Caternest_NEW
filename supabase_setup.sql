@@ -68,7 +68,23 @@ CREATE TABLE IF NOT EXISTS public.caterer_registrations (
     "reviewCount" INTEGER DEFAULT 0,
     "email_verified" BOOLEAN DEFAULT FALSE,
     "otp" TEXT,
-    "otp_expiry" TIMESTAMPTZ
+    "otp_expiry" TIMESTAMPTZ,
+    "experience" INTEGER,
+    "eventsCompleted" INTEGER,
+    "awards" TEXT,
+    "certifications" TEXT,
+    "brandName" TEXT,
+    "tagline" TEXT,
+    "whatsappNumber" TEXT,
+    "operatingHours" TEXT,
+    "branches" INTEGER,
+    "serviceAreas" TEXT,
+    "pendingUpdates" JSONB,
+    "menuCount" INTEGER,
+    "branchesList" JSONB DEFAULT '[]'::jsonb,
+    "achievements" JSONB DEFAULT '[]'::jsonb,
+    "latitude" NUMERIC,
+    "longitude" NUMERIC
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_active_username
@@ -132,7 +148,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     "rejected_at" TIMESTAMPTZ,
     "rejectedAt" TIMESTAMPTZ,
     "completed_at" TIMESTAMPTZ,
-    "completedAt" TIMESTAMPTZ
+    "completedAt" TIMESTAMPTZ,
+    "latitude" NUMERIC,
+    "longitude" NUMERIC
 );
 
 -- Platform settings table
@@ -140,8 +158,11 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     id TEXT PRIMARY KEY DEFAULT 'default',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    "platformFeePerPlate" NUMERIC DEFAULT 2
+    "platformFeePerPlate" NUMERIC DEFAULT 2,
+    "homepage_mode" TEXT DEFAULT 'classic'
 );
+
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS "homepage_mode" TEXT DEFAULT 'classic';
 
 -- Notifications table
 CREATE TABLE IF NOT EXISTS public.notifications (

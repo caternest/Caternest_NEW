@@ -309,20 +309,20 @@ export default function CatererDashboard() {
           setCaterer(cat);
           setDraftPackages(cat.draftMenuPackages || cat.menuPackages || cat.packages || []);
           setProfileFormData({
-              ownerName: cat.owner || cat.ownerName || '',
+              owner: cat.owner || '',
               businessName: cat.businessName || '',
-              mobile: cat.phone || '',
-              alternateMobile: cat.alternatePhone || '',
+              phone: cat.phone || '',
+              alternatePhone: cat.alternatePhone || '',
               email: cat.email || '',
-              location: cat.address || cat.location || '',
+              address: cat.address || '',
               city: cat.city || '',
               description: cat.description || '',
-              fssai: cat.fssaiNumber || cat.fssai || '',
-              gst: cat.gstNumber || cat.gst || '',
-              pan: cat.panNumber || cat.pan || '',
+              fssaiNumber: cat.fssaiNumber || '',
+              gstNumber: cat.gstNumber || '',
+              panNumber: cat.panNumber || '',
               logo: cat.logo || '',
               coverBanner: cat.coverBanner || '',
-              ownerPhoto: cat.ownerPhoto || cat.founderImageUrl || '',
+              ownerPhoto: cat.ownerPhoto || '',
               branchPhoto: cat.branchPhoto || '',
               experience: cat.experience || '',
               eventsCompleted: cat.eventsCompleted || '',
@@ -330,7 +330,8 @@ export default function CatererDashboard() {
               tagline: cat.tagline || '',
               whatsappNumber: cat.whatsappNumber || '',
               branches: cat.branches || '',
-              serviceAreas: cat.serviceAreas || ''
+              serviceAreas: cat.serviceAreas || '',
+              serveEntireHyderabad: cat.serveEntireHyderabad !== undefined ? cat.serveEntireHyderabad : (cat.serviceAreas === "All Hyderabad" || (Array.isArray(cat.serviceAreas) && cat.serviceAreas.length === 1 && cat.serviceAreas[0] === "All Hyderabad"))
           });
           setIsProfilePending(!!cat.pendingUpdates);
           
@@ -353,20 +354,20 @@ export default function CatererDashboard() {
                setCaterer(found);
                setDraftPackages(found.draftMenuPackages || found.menuPackages || found.packages || []);
                setProfileFormData({
-                   ownerName: found.owner || found.ownerName || '',
+                   owner: found.owner || '',
                    businessName: found.businessName || '',
-                   mobile: found.phone || '',
-                   alternateMobile: found.alternatePhone || '',
+                   phone: found.phone || '',
+                   alternatePhone: found.alternatePhone || '',
                    email: found.email || '',
-                   location: found.address || found.location || '',
+                   address: found.address || '',
                    city: found.city || '',
                    description: found.description || '',
-                   fssai: found.fssaiNumber || found.fssai || '',
-                   gst: found.gstNumber || found.gst || '',
-                   pan: found.panNumber || found.pan || '',
+                   fssaiNumber: found.fssaiNumber || '',
+                   gstNumber: found.gstNumber || '',
+                   panNumber: found.panNumber || '',
                    logo: found.logo || '',
                    coverBanner: found.coverBanner || '',
-                   ownerPhoto: found.ownerPhoto || found.founderImageUrl || '',
+                   ownerPhoto: found.ownerPhoto || '',
                    branchPhoto: found.branchPhoto || '',
                    experience: found.experience || '',
                    eventsCompleted: found.eventsCompleted || '',
@@ -374,7 +375,8 @@ export default function CatererDashboard() {
                    tagline: found.tagline || '',
                    whatsappNumber: found.whatsappNumber || '',
                    branches: found.branches || '',
-                   serviceAreas: found.serviceAreas || ''
+                   serviceAreas: found.serviceAreas || '',
+                   serveEntireHyderabad: found.serveEntireHyderabad !== undefined ? found.serveEntireHyderabad : (found.serviceAreas === "All Hyderabad" || (Array.isArray(found.serviceAreas) && found.serviceAreas.length === 1 && found.serviceAreas[0] === "All Hyderabad"))
                });
                setIsProfilePending(!!found.pendingUpdates);
             }
@@ -713,14 +715,14 @@ export default function CatererDashboard() {
       if (!cid || !caterer) return;
 
       const sensitivePayload = {
-          ownerName: profileFormData.ownerName || '',
+          owner: profileFormData.owner || '',
           businessName: profileFormData.businessName || '',
-          mobile: profileFormData.mobile || '',
-          alternateMobile: profileFormData.alternateMobile || '',
+          phone: profileFormData.phone || '',
+          alternatePhone: profileFormData.alternatePhone || '',
           email: profileFormData.email || '',
-          fssai: profileFormData.fssai || '',
-          gst: profileFormData.gst || '',
-          pan: profileFormData.pan || '',
+          fssaiNumber: profileFormData.fssaiNumber || '',
+          gstNumber: profileFormData.gstNumber || '',
+          panNumber: profileFormData.panNumber || '',
           logo: profileFormData.logo || '',
           coverBanner: profileFormData.coverBanner || '',
           ownerPhoto: profileFormData.ownerPhoto || '',
@@ -728,17 +730,17 @@ export default function CatererDashboard() {
       };
 
       const hasSensitiveChanges = 
-          sensitivePayload.ownerName !== (caterer.owner || caterer.ownerName || '') ||
+          sensitivePayload.owner !== (caterer.owner || '') ||
           sensitivePayload.businessName !== (caterer.businessName || '') ||
-          sensitivePayload.mobile !== (caterer.phone || '') ||
-          sensitivePayload.alternateMobile !== (caterer.alternatePhone || '') ||
+          sensitivePayload.phone !== (caterer.phone || '') ||
+          sensitivePayload.alternatePhone !== (caterer.alternatePhone || '') ||
           sensitivePayload.email !== (caterer.email || '') ||
-          sensitivePayload.fssai !== (caterer.fssaiNumber || caterer.fssai || '') ||
-          sensitivePayload.gst !== (caterer.gstNumber || caterer.gst || '') ||
-          sensitivePayload.pan !== (caterer.panNumber || caterer.pan || '') ||
+          sensitivePayload.fssaiNumber !== (caterer.fssaiNumber || '') ||
+          sensitivePayload.gstNumber !== (caterer.gstNumber || '') ||
+          sensitivePayload.panNumber !== (caterer.panNumber || '') ||
           sensitivePayload.logo !== (caterer.logo || '') ||
           sensitivePayload.coverBanner !== (caterer.coverBanner || '') ||
-          sensitivePayload.ownerPhoto !== (caterer.ownerPhoto || caterer.founderImageUrl || '') ||
+          sensitivePayload.ownerPhoto !== (caterer.ownerPhoto || '') ||
           sensitivePayload.branchPhoto !== (caterer.branchPhoto || '');
 
       const finalPendingUpdates = hasSensitiveChanges ? {
@@ -755,8 +757,9 @@ export default function CatererDashboard() {
           eventsCompleted: profileFormData.eventsCompleted ? parseInt(profileFormData.eventsCompleted) : null,
           branches: profileFormData.branches ? parseInt(profileFormData.branches) : null,
           serviceAreas: profileFormData.serviceAreas || null,
+          serveEntireHyderabad: profileFormData.serveEntireHyderabad || (profileFormData.serviceAreas === "All Hyderabad" || (Array.isArray(profileFormData.serviceAreas) && profileFormData.serviceAreas.length === 1 && profileFormData.serviceAreas[0] === "All Hyderabad")),
           whatsappNumber: profileFormData.whatsappNumber || null,
-          address: profileFormData.location || null,
+          address: profileFormData.address || null,
           city: profileFormData.city || null,
           services: caterer.services || null,
           achievements: caterer.achievements || null,
@@ -788,27 +791,21 @@ export default function CatererDashboard() {
       });
 
       const sensitiveKeysMapping = [
-          { name: "Founder Name", field: "ownerName", col: "owner" },
+          { name: "Founder Name", field: "owner", col: "owner" },
           { name: "Legal Business Name", field: "businessName", col: "businessName" },
-          { name: "Phone/Mobile", field: "mobile", col: "phone" },
-          { name: "Alternate Phone", field: "alternateMobile", col: "alternatePhone" },
+          { name: "Phone/Mobile", field: "phone", col: "phone" },
+          { name: "Alternate Phone", field: "alternatePhone", col: "alternatePhone" },
           { name: "Email", field: "email", col: "email" },
-          { name: "FSSAI", field: "fssai", col: "fssaiNumber" },
-          { name: "GST", field: "gst", col: "gstNumber" },
-          { name: "PAN", field: "pan", col: "panNumber" },
+          { name: "FSSAI", field: "fssaiNumber", col: "fssaiNumber" },
+          { name: "GST", field: "gstNumber", col: "gstNumber" },
+          { name: "PAN", field: "panNumber", col: "panNumber" },
           { name: "Logo", field: "logo", col: "logo" },
           { name: "Cover Banner", field: "coverBanner", col: "coverBanner" },
           { name: "Founder Photo", field: "ownerPhoto", col: "ownerPhoto" },
           { name: "Branch Photo", field: "branchPhoto", col: "branchPhoto" }
       ];
       sensitiveKeysMapping.forEach(({ name, field, col }) => {
-          const oldVal = field === "ownerPhoto" ? (caterer.ownerPhoto || caterer.founderImageUrl) :
-                         field === "mobile" ? caterer.phone :
-                         field === "alternateMobile" ? caterer.alternatePhone :
-                         field === "fssai" ? (caterer.fssaiNumber || caterer.fssai) :
-                         field === "gst" ? (caterer.gstNumber || caterer.gst) :
-                         field === "pan" ? (caterer.panNumber || caterer.pan) :
-                         (caterer as any)[field];
+          const oldVal = (caterer as any)[field];
           const newVal = (sensitivePayload as any)[field];
           if (oldVal !== newVal) {
               console.log(`[SYNC DEBUG] Field: "${name}" (SENSITIVE), Old Value: ${JSON.stringify(oldVal)}, New Value: ${JSON.stringify(newVal)}, Database Column Updated: "pendingUpdates.${field} (Admin review required)"`);
@@ -837,8 +834,7 @@ export default function CatererDashboard() {
                   return {
                       ...c,
                       ...directPayload,
-                      address: profileFormData.location || c.address,
-                      location: profileFormData.location || c.location,
+                      address: profileFormData.address || c.address,
                       pendingUpdates: finalPendingUpdates
                   };
               }
@@ -1280,7 +1276,7 @@ export default function CatererDashboard() {
                           </div>
                       </div>
                       
-                      <div className="overflow-x-auto flex-1">
+                      <div className="overflow-x-auto flex-1 hidden md:block">
                           <table className="w-full text-left text-sm whitespace-nowrap">
                               <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 border-b border-slate-200 z-10">
                                   <tr>
@@ -1329,6 +1325,58 @@ export default function CatererDashboard() {
                                   )}
                               </tbody>
                           </table>
+                      </div>
+
+                      {/* Mobile view cards (Zomato/Swiggy-style usability) */}
+                      <div className="block md:hidden divide-y divide-slate-150 max-h-[calc(100vh-220px)] overflow-y-auto p-4 space-y-4">
+                          {filteredOrderList.map((ord) => (
+                              <div key={ord.id} className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3 shadow-2xs hover:border-brand-gold-500/40 transition-colors">
+                                  <div className="flex justify-between items-start">
+                                      <span className="font-mono text-[10px] font-semibold text-slate-500">#{ord.id.substring(0, 8)}</span>
+                                      <span className={cn("px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", getStatusColor(ord.status))}>
+                                          {ord.status}
+                                      </span>
+                                  </div>
+                                  
+                                  <div>
+                                      <div className="font-bold text-slate-800 text-sm leading-tight">{ord.customerName || 'Test User'}</div>
+                                      <div className="text-[10px] text-slate-400 font-medium mt-0.5">{new Date(ord.created_at).toLocaleDateString()} {new Date(ord.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                      {(ord.venue || ord.address) && (
+                                          <p className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-1">
+                                              📍 {ord.venue || ord.address}
+                                          </p>
+                                      )}
+                                  </div>
+
+                                  <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-left">
+                                      <div className="flex flex-col">
+                                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Package</span>
+                                          <span className="text-xs font-bold text-slate-700">{ord.packageDetails?.packageName || 'Custom'}</span>
+                                      </div>
+                                      <div className="flex flex-col text-right">
+                                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Guests</span>
+                                          <span className="text-xs font-bold text-slate-700">{ord.guests}</span>
+                                      </div>
+                                      <div className="flex flex-col text-right">
+                                          <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider">Amount</span>
+                                          <span className="text-xs font-black text-brand-green-900">₹{ord.totalEstimate?.toLocaleString()}</span>
+                                      </div>
+                                  </div>
+
+                                  <div className="flex justify-end gap-2 pt-1">
+                                      <button 
+                                          type="button"
+                                          onClick={() => setSelectedOrder(ord)} 
+                                          className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg text-xs font-black uppercase tracking-widest transition-colors text-center"
+                                      >
+                                          View Details
+                                      </button>
+                                  </div>
+                              </div>
+                          ))}
+                          {filteredOrderList.length === 0 && (
+                              <div className="p-8 text-center text-slate-500 italic font-medium text-xs">No orders found.</div>
+                          )}
                       </div>
                   </div>
                )}
@@ -1427,31 +1475,31 @@ export default function CatererDashboard() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Owner Name</label>
-                                  <input type="text" value={profileFormData.ownerName} onChange={(e) => setProfileFormData({...profileFormData, ownerName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
+                                  <input type="text" value={profileFormData.owner || ''} onChange={(e) => setProfileFormData({...profileFormData, owner: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
                               </div>
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Business Name</label>
-                                  <input type="text" value={profileFormData.businessName} onChange={(e) => setProfileFormData({...profileFormData, businessName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
+                                  <input type="text" value={profileFormData.businessName || ''} onChange={(e) => setProfileFormData({...profileFormData, businessName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
                               </div>
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Mobile Number</label>
-                                  <input type="tel" value={profileFormData.mobile} onChange={(e) => setProfileFormData({...profileFormData, mobile: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
+                                  <input type="tel" value={profileFormData.phone || ''} onChange={(e) => setProfileFormData({...profileFormData, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
                               </div>
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Email Address</label>
-                                  <input type="email" value={profileFormData.email} onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
+                                  <input type="email" value={profileFormData.email || ''} onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
                               </div>
                               <div className="col-span-1 md:col-span-2">
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Business Description</label>
-                                  <textarea value={profileFormData.description} onChange={(e) => setProfileFormData({...profileFormData, description: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none h-24 resize-none" placeholder="Tell customers about your catering service..." required></textarea>
+                                  <textarea value={profileFormData.description || ''} onChange={(e) => setProfileFormData({...profileFormData, description: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none h-24 resize-none" placeholder="Tell customers about your catering service..." required></textarea>
                               </div>
                               <div className="col-span-1 md:col-span-2">
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Full Address</label>
-                                  <textarea value={profileFormData.location} onChange={(e) => setProfileFormData({...profileFormData, location: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none h-24 resize-none" required></textarea>
+                                  <textarea value={profileFormData.address || ''} onChange={(e) => setProfileFormData({...profileFormData, address: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none h-24 resize-none" required></textarea>
                               </div>
                               <div>
                                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Base City</label>
-                                  <input type="text" value={profileFormData.city} onChange={(e) => setProfileFormData({...profileFormData, city: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
+                                  <input type="text" value={profileFormData.city || ''} onChange={(e) => setProfileFormData({...profileFormData, city: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none" required />
                               </div>
                           </div>
 
@@ -1633,15 +1681,15 @@ export default function CatererDashboard() {
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                   <div>
                                       <label className="block text-sm font-bold text-slate-700 mb-1.5">FSSAI Number</label>
-                                      <input type="text" value={profileFormData.fssai} onChange={(e) => setProfileFormData({...profileFormData, fssai: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none uppercase" placeholder="14-digit number" />
+                                      <input type="text" value={profileFormData.fssaiNumber || ''} onChange={(e) => setProfileFormData({...profileFormData, fssaiNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none uppercase" placeholder="14-digit number" />
                                   </div>
                                   <div>
                                       <label className="block text-sm font-bold text-slate-700 mb-1.5">GSTIN</label>
-                                      <input type="text" value={profileFormData.gst} onChange={(e) => setProfileFormData({...profileFormData, gst: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none uppercase" placeholder="15-character GSTIN" />
+                                      <input type="text" value={profileFormData.gstNumber || ''} onChange={(e) => setProfileFormData({...profileFormData, gstNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none uppercase" placeholder="15-character GSTIN" />
                                   </div>
                                   <div>
                                       <label className="block text-sm font-bold text-slate-700 mb-1.5">PAN Number</label>
-                                      <input type="text" value={profileFormData.pan} onChange={(e) => setProfileFormData({...profileFormData, pan: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none uppercase" placeholder="10-character PAN" />
+                                      <input type="text" value={profileFormData.panNumber || ''} onChange={(e) => setProfileFormData({...profileFormData, panNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-brand-gold-500 outline-none uppercase" placeholder="10-character PAN" />
                                   </div>
                               </div>
                           </div>
@@ -1760,7 +1808,12 @@ export default function CatererDashboard() {
                                        <p><span className="text-slate-500 w-20 inline-block font-medium">Name:</span> <span className="font-bold text-slate-700">{selectedOrder.customerName || 'N/A'}</span></p>
                                        <p><span className="text-slate-500 w-20 inline-block font-medium">Phone:</span> <span className="text-slate-700">{selectedOrder.customerPhone || selectedOrder.phone || 'N/A'}</span></p>
                                        <p><span className="text-slate-500 w-20 inline-block font-medium">Email:</span> <span className="text-slate-700">{selectedOrder.customerEmail || 'N/A'}</span></p>
-                                       <p><span className="text-slate-500 w-20 inline-block font-medium flex items-start gap-1"><MapPin size={14}/> Venue:</span> <span className="text-slate-700 block mt-1">{selectedOrder.venue || selectedOrder.address || 'N/A'}</span></p>
+                                       <p><span className="text-slate-500 w-20 inline-block font-medium flex items-start gap-1"><MapPin size={14}/> Venue:</span> <span className="text-slate-700 block mt-1">{selectedOrder.venue || selectedOrder.address || 'N/A'}{' '}
+                                        {(selectedOrder.latitude && selectedOrder.longitude) ? (
+                                            <a href={`https://www.google.com/maps/search/?api=1&query=${selectedOrder.latitude},${selectedOrder.longitude}`} target="_blank" rel="noopener noreferrer" className="text-brand-gold-600 hover:underline font-bold ml-1 inline-flex items-center">🗺️ Open Venue in Maps</a>
+                                        ) : (selectedOrder.venue || selectedOrder.address) ? (
+                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedOrder.venue || selectedOrder.address)}`} target="_blank" rel="noopener noreferrer" className="text-brand-gold-600 hover:underline font-bold ml-1 inline-flex items-center">🗺️ Open Venue in Maps</a>
+                                        ) : null}</span></p>
                                    </div>
                                </div>
 

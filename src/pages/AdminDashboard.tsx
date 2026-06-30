@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders } from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '../components/Toast';
-import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB } from '../lib/supabase';
+import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB, fetchHomepageMode, updateHomepageModeInDB } from '../lib/supabase';
 import { generateUUID } from '../lib/orderUtils';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -15,7 +15,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings'>('overview');
   const [foodItemImages, setFoodItemImages] = useState<any[]>([]);
   const [platformFeePerPlate, setPlatformFeePerPlate] = useState<number>(2);
+  const [homepageMode, setHomepageMode] = useState<'classic' | 'marketplace'>('classic');
   const [savingFee, setSavingFee] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeImageFilter, setActiveImageFilter] = useState<'All' | 'Pending Admin Review' | 'Approved' | 'Rejected' | 'No Image'>('All');
   const [showAddMappingModal, setShowAddMappingModal] = useState(false);
@@ -36,8 +38,10 @@ export default function AdminDashboard() {
   const [adminEventDateFilter, setAdminEventDateFilter] = useState('');
   const [selectedAdminOrder, setSelectedAdminOrder] = useState<any | null>(null);
   const [adminMemoText, setAdminMemoText] = useState('');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fetchFoodImages = () => {
     fetch('/api/food-images')
@@ -60,8 +64,11 @@ export default function AdminDashboard() {
     try {
       const fee = await fetchPlatformFeePerPlate();
       setPlatformFeePerPlate(fee);
+      
+      const mode = await fetchHomepageMode();
+      setHomepageMode(mode as 'classic' | 'marketplace');
     } catch (err) {
-      console.warn("Failed fetching platform fee in fetchSupabaseData", err);
+      console.warn("Failed fetching platform settings in fetchSupabaseData", err);
     }
 
     const supabase = getSupabase() as any;
@@ -109,18 +116,18 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSavePlatformFee = async (fee: number) => {
-    setSavingFee(true);
+  const handleSavePlatformSettings = async () => {
+    setSavingSettings(true);
     try {
-      await updatePlatformFeePerPlateInDB(fee);
-      setPlatformFeePerPlate(fee);
-      await logAudit("Update Platform Fee", `Set fee per plate to ₹${fee}`);
-      toast(`Platform Fee Per Plate updated to ₹${fee} successfully!`, "success");
+      await updatePlatformFeePerPlateInDB(platformFeePerPlate);
+      await updateHomepageModeInDB(homepageMode);
+      await logAudit("Update Platform Settings", `Set fee per plate to ₹${platformFeePerPlate} and homepage mode to ${homepageMode === 'classic' ? 'Classic' : 'Marketplace'}`);
+      toast("Platform settings updated successfully!", "success");
     } catch (err) {
       console.error(err);
-      toast("Failed to update Platform Fee", "error");
+      toast("Failed to update Platform Settings", "error");
     } finally {
-      setSavingFee(false);
+      setSavingSettings(false);
     }
   };
 
@@ -140,9 +147,33 @@ export default function AdminDashboard() {
         setAuditLogs(JSON.parse(rawLogs));
     }
 
+    const rawMode = localStorage.getItem('homepage_mode');
+    if (rawMode) {
+      setHomepageMode(rawMode as 'classic' | 'marketplace');
+    }
+
+    // Dynamic routing/tab syncing from URL pathname
+    if (location.pathname === '/admin/orders') {
+      setActiveTab('orders');
+    } else if (location.pathname === '/admin/partners') {
+      setActiveTab('partners');
+    } else {
+      const stateTab = location.state?.tab;
+      if (stateTab) {
+        setActiveTab(stateTab);
+      } else {
+        setActiveTab('overview');
+      }
+    }
+
+    // Reset stale states on navigation
+    setSelectedAdminOrder(null);
+    setAdminMemoText('');
+
+    // Force refresh / reload live database data
     fetchSupabaseData();
     fetchFoodImages();
-  }, []);
+  }, [location]);
 
   const logAudit = async (action: string, entityName: string) => {
       const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
@@ -662,19 +693,19 @@ export default function AdminDashboard() {
       console.log("- Pending Updates Payload to merge:", JSON.stringify(payloadPending));
 
       const mergedPayload = {
-          owner: payloadPending.ownerName || item.owner,
-          ownerName: payloadPending.ownerName || item.owner || item.ownerName,
+          owner: payloadPending.owner || payloadPending.ownerName || item.owner,
+          ownerName: payloadPending.owner || payloadPending.ownerName || item.owner || item.ownerName,
           businessName: payloadPending.businessName || item.businessName,
-          phone: payloadPending.mobile || payloadPending.phone || item.phone,
-          alternatePhone: payloadPending.alternateMobile || payloadPending.alternatePhone || item.alternatePhone,
+          phone: payloadPending.phone || payloadPending.mobile || item.phone,
+          alternatePhone: payloadPending.alternatePhone || payloadPending.alternateMobile || item.alternatePhone,
           whatsappNumber: payloadPending?.whatsappNumber || item.whatsappNumber,
           email: payloadPending.email || item.email,
-          address: payloadPending.location || payloadPending.address || item.location || item.address,
+          address: payloadPending.address || payloadPending.location || item.address || item.location,
           city: payloadPending.city || item.city,
           description: payloadPending.description || item.description,
-          fssaiNumber: payloadPending.fssai || payloadPending.fssaiNumber || item.fssai || item.fssaiNumber,
-          gstNumber: payloadPending.gst || payloadPending.gstNumber || item.gst || item.gstNumber,
-          panNumber: payloadPending.pan || payloadPending.panNumber || item.pan || item.panNumber,
+          fssaiNumber: payloadPending.fssaiNumber || payloadPending.fssai || item.fssaiNumber || item.fssai,
+          gstNumber: payloadPending.gstNumber || payloadPending.gst || item.gstNumber || item.gst,
+          panNumber: payloadPending.panNumber || payloadPending.pan || item.panNumber || item.pan,
           logo: payloadPending.logo || item.logo,
           coverBanner: payloadPending.coverBanner || item.coverBanner,
           ownerPhoto: payloadPending.ownerPhoto || item.ownerPhoto,
@@ -686,6 +717,7 @@ export default function AdminDashboard() {
           awards: payloadPending.awards || item.awards,
           certifications: payloadPending.certifications || item.certifications,
           serviceAreas: payloadPending.serviceAreas || item.serviceAreas,
+          serveEntireHyderabad: payloadPending.serveEntireHyderabad !== undefined ? payloadPending.serveEntireHyderabad : item.serveEntireHyderabad,
           operatingHours: payloadPending.operatingHours || item.operatingHours,
           branches: payloadPending.branches || item.branches,
           pendingUpdates: null
@@ -825,16 +857,109 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <div className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex flex-col fixed h-full z-10 pt-20 shadow-2xl">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      {/* Mobile Header Bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 flex items-center justify-between px-4 text-slate-300 z-50 shadow-md border-b border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="font-display font-extrabold text-base tracking-tight text-brand-gold-400">Command Center</span>
+        </div>
+        <button 
+          onClick={() => setIsMobileSidebarOpen(true)}
+          className="p-2 rounded-lg hover:bg-slate-800 text-slate-300 active:scale-95 transition-all cursor-pointer"
+        >
+          <MenuIcon size={24} />
+        </button>
+      </div>
+
+      {/* Mobile Drawer Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-[100] lg:hidden backdrop-blur-xs"
+        />
+      )}
+
+      {/* Mobile Drawer Sidebar */}
+      <div 
+        className={cn(
+          "fixed top-0 bottom-0 left-0 w-72 bg-slate-900 text-slate-300 flex flex-col h-full z-[101] pt-6 shadow-2xl transition-transform duration-300 ease-in-out lg:hidden",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between px-6 pb-4 border-b border-slate-800">
+          <span className="font-display font-extrabold text-lg tracking-tight text-brand-gold-500">CaterNest Admin</span>
+          <button onClick={() => setIsMobileSidebarOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+            <XCircle size={20} />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Management</p>
+          <nav className="space-y-1.5">
+             <button onClick={() => { navigate('/admin-dashboard'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'overview' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <FileText size={18} /> Overview
+             </button>
+             <button onClick={() => { navigate('/admin/partners'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'partners' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <Building size={18} /> 
+                <div className="flex-1 flex justify-between items-center">
+                    Partner Registrations
+                    {activeRegistrations.filter(r => r.status === 'Pending Approval').length > 0 && (
+                        <span className="bg-brand-gold-500 text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            {activeRegistrations.filter(r => r.status === 'Pending Approval').length}
+                        </span>
+                    )}
+                </div>
+             </button>
+             <button onClick={() => { setActiveTab('requests'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'requests' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <AlertCircle size={18} /> 
+                <div className="flex-1 flex justify-between items-center">
+                    Change Requests
+                    {registrations.filter(r => r.pendingUpdates).length > 0 && (
+                        <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">
+                            {registrations.filter(r => r.pendingUpdates).length}
+                        </span>
+                    )}
+                </div>
+             </button>
+             <button onClick={() => { navigate('/admin/orders'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <CreditCard size={18} /> All Orders
+             </button>
+             <button onClick={() => { setActiveTab('users'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'users' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <Users size={18} /> Users & Accounts
+             </button>
+             
+             <div className="pt-6 mt-6 border-t border-slate-800">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">System</p>
+                 <button onClick={() => { setActiveTab('trash'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'trash' ? "bg-red-500/10 text-red-500" : "hover:bg-slate-800 hover:text-red-400 text-slate-400")}>
+                    <Trash2 size={18} /> 
+                    <div className="flex-1 flex justify-between items-center">
+                        Trash
+                        {deletedRegistrations.length > 0 && (
+                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", activeTab === 'trash' ? "bg-red-500 text-white" : "bg-red-500/20 text-red-400")}>
+                                {deletedRegistrations.length}
+                            </span>
+                        )}
+                    </div>
+                 </button>
+                 <button onClick={() => { setActiveTab('audit'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm mt-1.5", activeTab === 'audit' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
+                    <Clock size={18} /> Audit Log
+                 </button>
+                 <button onClick={() => { setActiveTab('settings'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm mt-1.5", activeTab === 'settings' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
+                    <Sliders size={18} /> Platform Settings
+                 </button>
+             </div>
+          </nav>
+        </div>
+      </div>
+
+      {/* Desktop Sidebar (unchanged visually, hidden on mobile/tablet) */}
+      <div className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 hidden lg:flex flex-col fixed h-full z-10 pt-20 shadow-2xl">
          <div className="p-6">
              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Management</p>
              <nav className="space-y-1.5">
-                <button onClick={() => setActiveTab('overview')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'overview' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <button onClick={() => navigate('/admin-dashboard')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'overview' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <FileText size={18} /> Overview
                 </button>
-                <button onClick={() => setActiveTab('partners')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'partners' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <button onClick={() => navigate('/admin/partners')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'partners' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <Building size={18} /> 
                    <div className="flex-1 flex justify-between items-center">
                        Partner Registrations
@@ -856,7 +981,7 @@ export default function AdminDashboard() {
                        )}
                    </div>
                 </button>
-                <button onClick={() => setActiveTab('orders')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
+                <button onClick={() => navigate('/admin/orders')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <CreditCard size={18} /> All Orders
                 </button>
                 {false && <button onClick={() => setActiveTab('images')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'images' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
@@ -891,13 +1016,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 ml-72 pt-28 px-10 pb-12 w-full max-w-[1600px]">
-          <div className="mb-10 flex justify-between items-end">
+      <div className="flex-1 lg:ml-72 pt-24 lg:pt-28 px-4 sm:px-6 md:px-10 pb-12 w-full max-w-[1600px] overflow-x-hidden">
+          <div className="mb-6 lg:mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
              <div>
-                 <h1 className="text-4xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
                      Command Center
                  </h1>
-                 <p className="text-slate-500 font-medium mt-2 text-lg">Platform performance and operations management.</p>
+                 <p className="text-slate-500 font-medium mt-1 lg:mt-2 text-sm sm:text-base lg:text-lg">Platform performance and operations management.</p>
              </div>
           </div>
 
@@ -922,7 +1047,7 @@ export default function AdminDashboard() {
                   <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-10">
                      <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                         <h2 className="font-bold text-xl text-slate-900">Recent Partner Registrations</h2>
-                        <button onClick={() => setActiveTab('partners')} className="text-sm font-bold text-brand-gold-600 hover:text-brand-gold-700 flex items-center gap-1 transition-colors">View All <ChevronRight size={16} /></button>
+                        <button onClick={() => navigate('/admin/partners')} className="text-sm font-bold text-brand-gold-600 hover:text-brand-gold-700 flex items-center gap-1 transition-colors">View All <ChevronRight size={16} /></button>
                      </div>
                      <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -1496,15 +1621,59 @@ export default function AdminDashboard() {
                           </div>
                       </div>
 
-                      {/* We keep space to introduce addition of future settings here */}
+                      {/* Homepage Mode Subsection */}
+                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 shadow-sm space-y-4">
+                          <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+                              <Sliders className="text-brand-green-900" size={20} />
+                              <h3 className="text-base font-bold text-slate-800">Homepage Mode</h3>
+                          </div>
+                          
+                          <div>
+                              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                                  Select which layout will act as the homepage when a user visits the website root URL ("/"):
+                              </p>
+                              
+                              <div className="flex flex-col gap-3">
+                                  <label className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 cursor-pointer hover:bg-slate-50 transition-all">
+                                      <input
+                                          type="radio"
+                                          name="homepageMode"
+                                          value="classic"
+                                          checked={homepageMode === 'classic'}
+                                          onChange={() => setHomepageMode('classic')}
+                                          className="text-slate-900 focus:ring-slate-900 h-4 w-4"
+                                      />
+                                      <div>
+                                          <span className="block text-sm font-bold text-slate-800">Classic Landing Page</span>
+                                          <span className="block text-xs text-slate-500 mt-0.5">Show the default landing page (Hero Banner, Search bar, Premium sections).</span>
+                                      </div>
+                                  </label>
+                                  
+                                  <label className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 cursor-pointer hover:bg-slate-50 transition-all">
+                                      <input
+                                          type="radio"
+                                          name="homepageMode"
+                                          value="marketplace"
+                                          checked={homepageMode === 'marketplace'}
+                                          onChange={() => setHomepageMode('marketplace')}
+                                          className="text-slate-900 focus:ring-slate-900 h-4 w-4"
+                                      />
+                                      <div>
+                                          <span className="block text-sm font-bold text-slate-800">Catering Marketplace</span>
+                                          <span className="block text-xs text-slate-500 mt-0.5">Directly render the existing Explore Caterers page as the homepage.</span>
+                                      </div>
+                                  </label>
+                              </div>
+                          </div>
+                      </div>
 
                       <div className="pt-4 border-t border-slate-100 flex justify-end">
                           <button
-                              onClick={() => handleSavePlatformFee(platformFeePerPlate)}
-                              disabled={savingFee}
+                              onClick={handleSavePlatformSettings}
+                              disabled={savingSettings}
                               className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm"
                           >
-                              {savingFee ? 'Saving...' : 'Save Settings'}
+                              {savingSettings ? 'Saving...' : 'Save Settings'}
                           </button>
                       </div>
                   </div>
@@ -1989,8 +2158,31 @@ export default function AdminDashboard() {
                           <div>
                               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Customer Details</p>
                               <p className="font-bold text-slate-900 mt-1">{selectedAdminOrder.customerName}</p>
-                              <p className="text-xs text-slate-500">{selectedAdminOrder.phone || 'No phone recorded'}</p>
-                              <p className="text-xs text-slate-500 font-mono mt-1">ID: {selectedAdminOrder.userId || 'N/A'}</p>
+                              <p className="text-xs text-slate-500">Phone: {selectedAdminOrder.customerPhone || selectedAdminOrder.phone || 'No phone recorded'}</p>
+                              <p className="text-xs text-slate-500">Email: {selectedAdminOrder.customerEmail || 'No email recorded'}</p>
+                              <p className="text-xs text-slate-500">
+                                Venue: {selectedAdminOrder.venue || selectedAdminOrder.address || 'N/A'}{' '}
+                                {(selectedAdminOrder.latitude && selectedAdminOrder.longitude) ? (
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${selectedAdminOrder.latitude},${selectedAdminOrder.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#DEAA38] hover:underline font-bold ml-1"
+                                  >
+                                    🗺️ Open Venue in Maps
+                                  </a>
+                                ) : (selectedAdminOrder.venue || selectedAdminOrder.address) ? (
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedAdminOrder.venue || selectedAdminOrder.address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#DEAA38] hover:underline font-bold ml-1"
+                                  >
+                                    🗺️ Open Venue in Maps
+                                  </a>
+                                ) : null}
+                              </p>
+                              <p className="text-xs text-slate-400 font-mono mt-1 text-[10px]">Account ID: {selectedAdminOrder.userId || 'N/A'}</p>
                           </div>
                           <div>
                               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Caterer details</p>

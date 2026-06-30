@@ -274,7 +274,10 @@ ALTER TABLE public.caterer_registrations
   ADD COLUMN IF NOT EXISTS "operatingHours" TEXT,
   ADD COLUMN IF NOT EXISTS "branches" INTEGER,
   ADD COLUMN IF NOT EXISTS "serviceAreas" TEXT,
-  ADD COLUMN IF NOT EXISTS "pendingUpdates" JSONB;
+  ADD COLUMN IF NOT EXISTS "pendingUpdates" JSONB,
+  ADD COLUMN IF NOT EXISTS "menuCount" INTEGER,
+  ADD COLUMN IF NOT EXISTS "branchesList" JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS "achievements" JSONB DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.orders 
   ADD COLUMN IF NOT EXISTS "platformFeePerPlate" NUMERIC;
@@ -283,11 +286,22 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     id TEXT PRIMARY KEY DEFAULT 'default',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    "platformFeePerPlate" NUMERIC DEFAULT 2
+    "platformFeePerPlate" NUMERIC DEFAULT 2,
+    "homepage_mode" TEXT DEFAULT 'classic'
 );
 
-INSERT INTO public.platform_settings (id, "platformFeePerPlate")
-VALUES ('default', 2)
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS "homepage_mode" TEXT DEFAULT 'classic';
+
+ALTER TABLE public.caterer_registrations 
+  ADD COLUMN IF NOT EXISTS "latitude" NUMERIC,
+  ADD COLUMN IF NOT EXISTS "longitude" NUMERIC;
+
+ALTER TABLE public.orders 
+  ADD COLUMN IF NOT EXISTS "latitude" NUMERIC,
+  ADD COLUMN IF NOT EXISTS "longitude" NUMERIC;
+
+INSERT INTO public.platform_settings (id, "platformFeePerPlate", "homepage_mode")
+VALUES ('default', 2, 'classic')
 ON CONFLICT (id) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';

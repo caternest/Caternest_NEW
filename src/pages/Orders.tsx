@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Users, MapPin, Search, Check, Clock, ArrowRight, ChevronRight, Filter, X, ChevronLeft, BookOpen, Sparkles, Eye, Archive } from 'lucide-react';
+import { Calendar, Users, MapPin, Search, Check, Clock, ArrowRight, ChevronRight, Filter, X, ChevronLeft, BookOpen, Sparkles, Eye, Archive, User, Phone, ShoppingBag, Star, AlertCircle, Sparkle, DollarSign, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, saveWithSupabaseSync } from '../lib/supabase';
 import { normalizeStatus, getStatusLabel, getStatusBadgeColor, performOrderStatusUpdate, storeNotification } from '../lib/orderUtils';
+import { AddressAutocomplete } from '../components/AddressAutocomplete';
+import { MapPickerModal } from '../components/MapPickerModal';
 
 
 // Helper to check if event date has passed
@@ -205,6 +207,7 @@ export default function Orders() {
 
   // Edit state for changes_requested workflow
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>({
     eventDate: '',
     eventType: '',
@@ -683,21 +686,21 @@ export default function Orders() {
   const rejectedOrdersCount = orders.filter(o => normalizeStatus(o.status) === 'rejected').length;
 
   return (
-    <div className="pt-24 pb-20 min-h-screen bg-slate-50 font-sans">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="pt-24 pb-20 min-h-screen bg-[#FFFEFB] font-sans text-slate-800">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         
         {/* Toggle headers and dynamic title */}
-        <div id="orders-dashboard-header" className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 pb-4 border-b border-slate-200">
+        <div id="orders-dashboard-header" className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4 pb-2">
             <div>
-               <h1 className="text-3xl font-sans font-black text-slate-900 tracking-tight">
+               <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#0F3D2E] tracking-tight">
                    {user.roles.includes('admin') ? 'All Orders Platform' : user.roles.includes('partner') ? 'My Orders & Inquiries' : 'My Bookings'}
                </h1>
-               <p className="text-xs text-slate-500 mt-1 font-medium">Coordinate catering menus, track dynamic milestones, and monitor quote revisions</p>
+               <p className="text-xs text-[#0F3D2E]/70 mt-1 font-medium italic">Coordinate catering menus, track dynamic milestones, and monitor quote revisions</p>
             </div>
             
             {/* Customer notification toggle buttons */}
             {!user.roles.includes('admin') && !user.roles.includes('partner') && (
-                <div id="customer-alert-segment-toggles" className="flex gap-2 bg-slate-200/60 p-1 rounded-xl border border-slate-250 shrink-0">
+                <div id="customer-alert-segment-toggles" className="flex gap-1 bg-[#FCF8F0] p-1 rounded-xl border border-[#E8D7A5]/60 shrink-0">
                     <button 
                         id="btn-active-bookings-section"
                         type="button"
@@ -705,8 +708,8 @@ export default function Orders() {
                         className={cn(
                             "px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2",
                             activeSegment === 'bookings' 
-                                ? "bg-white text-slate-900 shadow-xs" 
-                                : "text-slate-500 hover:text-slate-800"
+                                ? "bg-[#0F3D2E] text-[#FFFEFB] shadow-xs" 
+                                : "text-[#0F3D2E]/70 hover:text-[#0F3D2E]"
                         )}
                     >
                         My Bookings ({orders.length})
@@ -718,13 +721,13 @@ export default function Orders() {
                         className={cn(
                             "px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 relative",
                             activeSegment === 'notifications' 
-                                ? "bg-white text-slate-900 shadow-xs" 
-                                : "text-slate-500 hover:text-slate-800"
+                                ? "bg-[#0F3D2E] text-[#FFFEFB] shadow-xs" 
+                                : "text-[#0F3D2E]/70 hover:text-[#0F3D2E]"
                         )}
                     >
                         Notifications Inbox
                         {unreadCustCount > 0 && (
-                            <span className="bg-rose-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                            <span className="bg-rose-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
                                 {unreadCustCount}
                             </span>
                         )}
@@ -733,78 +736,117 @@ export default function Orders() {
             )}
         </div>
 
+        {/* Decorative gold flourish separator line */}
+        <div className="relative flex items-center justify-center my-6">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-[#E8D7A5]"></div>
+          </div>
+          <div className="relative flex justify-center text-xs bg-[#FFFEFB] px-4 text-[#D4AF37] gap-2">
+            <span>✦</span>
+            <span className="text-sm font-serif">❦</span>
+            <span>✦</span>
+          </div>
+        </div>
+
         {/* Dynamic Bento Summary Counters on Dashboard (Visible during bookings tab) */}
         {activeSegment === 'bookings' && (
           <>
             {/* KPI Cards Grid */}
             <div id="orders-kpi-cards-grid" className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
-                  <Clock size={16} />
+              {/* Active Orders */}
+              <div className="bg-white p-5 rounded-2xl border border-[#E8D7A5]/50 shadow-[0_10px_35px_rgba(15,61,46,0.02)] flex items-center gap-4 hover:border-[#D4AF37]/50 transition-all relative overflow-hidden group">
+                <div className="w-12 h-12 rounded-full bg-[#0F3D2E] text-white flex items-center justify-center shadow-md border border-[#D4AF37]/30 shrink-0">
+                  <ShoppingBag size={18} className="text-[#D4AF37]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Orders</p>
-                  <h4 className="text-xl font-bold font-sans text-slate-800">{activeOrdersCount}</h4>
+                  <p className="text-[9px] font-extrabold text-slate-450 uppercase tracking-widest font-mono">Active Orders</p>
+                  <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-0.5 leading-none">{activeOrdersCount}</h4>
                 </div>
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#0F3D2E] to-[#D4AF37]" />
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-55 bg-indigo-50 text-indigo-600">
-                  <Calendar size={16} />
+              {/* Upcoming Events */}
+              <div className="bg-white p-5 rounded-2xl border border-[#E8D7A5]/50 shadow-[0_10px_35px_rgba(15,61,46,0.02)] flex items-center gap-4 hover:border-[#D4AF37]/50 transition-all relative overflow-hidden group">
+                <div className="w-12 h-12 rounded-full bg-[#D4AF37] text-white flex items-center justify-center shadow-md border border-white/20 shrink-0">
+                  <Calendar size={18} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Upcoming Events</p>
-                  <h4 className="text-xl font-bold font-sans text-slate-800">{upcomingEventsCount}</h4>
+                  <p className="text-[9px] font-extrabold text-slate-450 uppercase tracking-widest font-mono">Upcoming Events</p>
+                  <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-0.5 leading-none">{upcomingEventsCount}</h4>
                 </div>
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#D4AF37]" />
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600">
-                  <Check size={16} />
+              {/* Completed Events */}
+              <div className="bg-white p-5 rounded-2xl border border-[#E8D7A5]/50 shadow-[0_10px_35px_rgba(15,61,46,0.02)] flex items-center gap-4 hover:border-[#D4AF37]/50 transition-all relative overflow-hidden group">
+                <div className="w-12 h-12 rounded-full bg-[#EAFDF5] text-[#0F3D2E] flex items-center justify-center shadow-md border border-emerald-100 shrink-0">
+                  <Check size={18} className="text-[#0F3D2E] stroke-[3]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Completed Events</p>
-                  <h4 className="text-xl font-bold font-sans text-slate-800">{completedEventsCount}</h4>
+                  <p className="text-[9px] font-extrabold text-slate-450 uppercase tracking-widest font-mono">Completed Events</p>
+                  <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-0.5 leading-none">{completedEventsCount}</h4>
                 </div>
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500" />
               </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-rose-50 text-rose-600">
-                  <X size={16} />
+              {/* Rejected Orders */}
+              <div className="bg-white p-5 rounded-2xl border border-[#E8D7A5]/50 shadow-[0_10px_35px_rgba(15,61,46,0.02)] flex items-center gap-4 hover:border-[#D4AF37]/50 transition-all relative overflow-hidden group">
+                <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shadow-md border border-rose-100 shrink-0">
+                  <X size={18} className="text-rose-600 stroke-[3]" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rejected Orders</p>
-                  <h4 className="text-xl font-bold font-sans text-slate-800">{rejectedOrdersCount}</h4>
+                  <p className="text-[9px] font-extrabold text-slate-450 uppercase tracking-widest font-mono">Rejected Orders</p>
+                  <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-0.5 leading-none">{rejectedOrdersCount}</h4>
                 </div>
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-rose-500" />
               </div>
             </div>
 
-            <div id="orders-bento-grid-dashboard" className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <div id="orders-bento-grid-dashboard" className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
 
             <button
               id="recent-bookings-bento-card"
               onClick={() => setBookingSubTab('recent')}
               className={cn(
-                "p-5 rounded-2xl border text-left transition-all relative overflow-hidden group hover:scale-[1.01]",
+                "p-6 rounded-3xl border text-left transition-all relative overflow-hidden group hover:scale-[1.01] shadow-[0_12px_40px_rgba(15,61,46,0.03)] cursor-pointer",
                 bookingSubTab === 'recent'
-                  ? "bg-white border-brand-green-900 shadow-md ring-2 ring-brand-green-900/10"
-                  : "bg-white border-slate-200 hover:border-slate-300 shadow-xs"
+                  ? "bg-[#0F3D2E] border-[#D4AF37] ring-1 ring-[#D4AF37]"
+                  : "bg-white border-[#E8D7A5]/60 hover:border-[#D4AF37]"
               )}
             >
-              <div className="flex justify-between items-center">
+              {/* Gold watermark mandala element */}
+              <div className="absolute right-0 bottom-0 opacity-15 pointer-events-none transform translate-x-4 translate-y-4">
+                <svg width="150" height="150" viewBox="0 0 100 100" fill="none" stroke="#D4AF37" strokeWidth="0.5">
+                  <circle cx="50" cy="50" r="40" />
+                  <circle cx="50" cy="50" r="30" />
+                  <circle cx="50" cy="50" r="20" />
+                  <path d="M 50 0 L 50 100 M 0 50 L 100 50 M 15 15 L 85 85 M 15 85 L 85 15" />
+                </svg>
+              </div>
+
+              <div className="flex justify-between items-center relative z-10">
                 <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent &amp; Active Bookings</p>
-                  <h3 className="text-3xl font-sans font-black text-slate-800 mt-1">{recentOrdersList.length}</h3>
+                  <p className={cn(
+                    "text-[10px] font-extrabold uppercase tracking-widest font-mono",
+                    bookingSubTab === 'recent' ? "text-[#E8D7A5]" : "text-slate-400"
+                  )}>Recent &amp; Active Bookings</p>
+                  <h3 className={cn(
+                    "text-4xl font-serif font-black mt-2",
+                    bookingSubTab === 'recent' ? "text-white" : "text-[#0F3D2E]"
+                  )}>{recentOrdersList.length}</h3>
                 </div>
                 <div className={cn(
-                  "p-3 rounded-xl transition-colors",
-                  bookingSubTab === 'recent' ? "bg-brand-green-900 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"
+                  "w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-sm shrink-0",
+                  bookingSubTab === 'recent' ? "bg-[#FCF8F0]/15 border-[#D4AF37]/40 text-[#D4AF37]" : "bg-[#FCF8F0] border-[#E8D7A5]/60 text-[#D4AF37]"
                 )}>
                   <Clock size={20} />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 mt-3 flex items-center gap-1 font-semibold">
-                View ongoing estimates, changes requested &amp; approved states <ChevronRight size={12} />
+              <p className={cn(
+                "text-[11px] mt-5 flex items-center gap-1 font-semibold relative z-10 font-sans",
+                bookingSubTab === 'recent' ? "text-[#E8D7A5]/90" : "text-slate-500"
+              )}>
+                View ongoing estimates, changes requested &amp; approved states <ChevronRight size={12} className={bookingSubTab === 'recent' ? "text-[#D4AF37]" : "text-slate-400"} />
               </p>
             </button>
 
@@ -812,26 +854,45 @@ export default function Orders() {
               id="history-bookings-bento-card"
               onClick={() => setBookingSubTab('history')}
               className={cn(
-                "p-5 rounded-2xl border text-left transition-all relative overflow-hidden group hover:scale-[1.01]",
+                "p-6 rounded-3xl border text-left transition-all relative overflow-hidden group hover:scale-[1.01] shadow-[0_12px_40px_rgba(15,61,46,0.03)] cursor-pointer",
                 bookingSubTab === 'history'
-                  ? "bg-white border-brand-green-900 shadow-md ring-2 ring-brand-green-900/10"
-                  : "bg-white border-slate-200 hover:border-slate-300 shadow-xs"
+                  ? "bg-[#0F3D2E] border-[#D4AF37] ring-1 ring-[#D4AF37]"
+                  : "bg-white border-[#E8D7A5]/60 hover:border-[#D4AF37]"
               )}
             >
-              <div className="flex justify-between items-center">
+              {/* Gold watermark mandala element */}
+              <div className="absolute right-0 bottom-0 opacity-15 pointer-events-none transform translate-x-4 translate-y-4">
+                <svg width="150" height="150" viewBox="0 0 100 100" fill="none" stroke="#D4AF37" strokeWidth="0.5">
+                  <circle cx="50" cy="50" r="40" />
+                  <circle cx="50" cy="50" r="30" />
+                  <circle cx="50" cy="50" r="20" />
+                  <path d="M 50 0 L 50 100 M 0 50 L 100 50 M 15 15 L 85 85 M 15 85 L 85 15" />
+                </svg>
+              </div>
+
+              <div className="flex justify-between items-center relative z-10">
                 <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Archived Booking History</p>
-                  <h3 className="text-3xl font-sans font-black text-slate-800 mt-1">{historyOrdersList.length}</h3>
+                  <p className={cn(
+                    "text-[10px] font-extrabold uppercase tracking-widest font-mono",
+                    bookingSubTab === 'history' ? "text-[#E8D7A5]" : "text-slate-400"
+                  )}>Archived Booking History</p>
+                  <h3 className={cn(
+                    "text-4xl font-serif font-black mt-2",
+                    bookingSubTab === 'history' ? "text-white" : "text-[#0F3D2E]"
+                  )}>{historyOrdersList.length}</h3>
                 </div>
                 <div className={cn(
-                  "p-3 rounded-xl transition-colors",
-                  bookingSubTab === 'history' ? "bg-brand-green-900 text-white" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200"
+                  "w-12 h-12 rounded-full flex items-center justify-center border transition-all shadow-sm shrink-0",
+                  bookingSubTab === 'history' ? "bg-[#FCF8F0]/15 border-[#D4AF37]/40 text-[#D4AF37]" : "bg-[#FCF8F0] border-[#E8D7A5]/60 text-[#D4AF37]"
                 )}>
                   <BookOpen size={20} />
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 mt-3 flex items-center gap-1 font-semibold">
-                Review past event recipes, billing settlements &amp; concluded orders <ChevronRight size={12} />
+              <p className={cn(
+                "text-[11px] mt-5 flex items-center gap-1 font-semibold relative z-10 font-sans",
+                bookingSubTab === 'history' ? "text-[#E8D7A5]/90" : "text-slate-500"
+              )}>
+                Review past event recipes, billing settlements &amp; concluded orders <ChevronRight size={12} className={bookingSubTab === 'history' ? "text-[#D4AF37]" : "text-slate-400"} />
               </p>
             </button>
           </div>
@@ -840,14 +901,16 @@ export default function Orders() {
 
         {/* Segment 1: Notifications Inbox */}
         {activeSegment === 'notifications' && !user.roles.includes('admin') && !user.roles.includes('partner') ? (
-            <div id="notifications-inbox" className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+            <div id="notifications-inbox" className="bg-white rounded-3xl border border-[#E8D7A5]/85 shadow-[0_4px_30px_rgba(15,61,46,0.02)] p-6 sm:p-8 max-w-4xl mx-auto">
+                <div className="flex justify-between items-center border-b border-[#E8D7A5]/40 pb-4 mb-6">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">🔔 Alerts &amp; Status Logs</h2>
+                        <h2 className="text-xl font-serif font-bold text-[#0F3D2E] flex items-center gap-2">
+                           <span className="text-[#D4AF37]">✦</span> Alerts &amp; Status Logs
+                        </h2>
                         <p className="text-xs text-slate-500 mt-1">Direct confirmations and pricing revisions from caterer partners</p>
                     </div>
                     {customerNotifications.length > 0 && (
-                        <button onClick={handleClearAllCustNotifications} className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-xl text-xs transition-colors">
+                        <button onClick={handleClearAllCustNotifications} className="px-4 py-2 bg-[#FCF8F0] text-[#D4AF37] hover:bg-[#F6EAD4] font-bold rounded-xl text-xs transition-colors border border-[#E8D7A5]/40">
                             Clear All
                         </button>
                     )}
@@ -855,11 +918,11 @@ export default function Orders() {
 
                 <div className="space-y-3">
                     {customerNotifications.map((n) => (
-                        <div key={n.id} className={cn("p-4 rounded-xl border transition-all flex justify-between items-start gap-4", n.read ? "bg-slate-50 border-slate-150" : "bg-brand-gold-50/25 border-brand-gold-200 shadow-xs")}>
+                        <div key={n.id} className={cn("p-4 rounded-xl border transition-all flex justify-between items-start gap-4", n.read ? "bg-slate-50 border-slate-200" : "bg-[#FCF8F0]/40 border-[#E8D7A5] shadow-xs")}>
                             <div className="space-y-1 w-full">
                                 <div className="flex items-center gap-2">
-                                    <span className={cn("w-2 h-2 rounded-full shrink-0", n.read ? "bg-slate-300" : "bg-brand-gold-500")} />
-                                    <h4 className="font-bold text-slate-900 text-xs">{n.title}</h4>
+                                    <span className={cn("w-2 h-2 rounded-full shrink-0", n.read ? "bg-slate-300" : "bg-[#D4AF37]")} />
+                                    <h4 className="font-bold text-[#0F3D2E] text-xs">{n.title}</h4>
                                 </div>
                                 <p className="text-[11px] text-slate-600 pl-4 font-semibold">{n.message}</p>
                                 {n.orderId && (
@@ -867,7 +930,7 @@ export default function Orders() {
                                         <p className="text-[10px] text-slate-400 font-mono">ID: {n.orderId}</p>
                                         <button 
                                             onClick={() => { setActiveSegment('bookings'); setBookingSubTab('recent'); setSearchQuery(n.orderId); }} 
-                                            className="text-[10px] text-brand-green-900 hover:underline font-bold"
+                                            className="text-[10px] text-[#0F3D2E] hover:text-[#D4AF37] hover:underline font-bold"
                                         >
                                             View Booking Details →
                                         </button>
@@ -875,7 +938,7 @@ export default function Orders() {
                                 )}
                             </div>
                             {!n.read && (
-                                <button onClick={() => handleMarkCustNotificationRead(n.id)} className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-650 rounded-lg text-[10px] font-bold transition-all shrink-0">
+                                <button onClick={() => handleMarkCustNotificationRead(n.id)} className="px-2.5 py-1 bg-white hover:bg-[#FCF8F0] border border-[#E8D7A5] text-[#D4AF37] rounded-lg text-[10px] font-bold transition-all shrink-0">
                                     Mark Read
                                 </button>
                             )}
@@ -883,10 +946,10 @@ export default function Orders() {
                     ))}
                     {customerNotifications.length === 0 && (
                         <div className="text-center py-16 text-slate-500">
-                            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <div className="w-12 h-12 bg-[#FCF8F0] text-[#D4AF37] rounded-full flex items-center justify-center mx-auto mb-3 text-lg">
                                 🔔
                             </div>
-                            <p className="font-bold text-slate-700 text-sm">No new alerts</p>
+                            <p className="font-serif font-bold text-[#0F3D2E] text-sm">No new alerts</p>
                             <p className="text-xs text-slate-500 mt-1">Any status changes or revised estimates will appear instantly in this feed.</p>
                         </div>
                     )}
@@ -900,33 +963,36 @@ export default function Orders() {
                   <div id="recent-bookings-tab-panel">
                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                         <div>
-                           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                              ✨ Active Event Plans
-                           </h2>
-                           <p className="text-xs text-slate-400">Current proposals requiring your review or scheduled event executions</p>
+                           <div className="flex items-center gap-2">
+                              <span className="text-[#D4AF37] text-lg">✦</span>
+                              <h2 className="text-2xl font-serif font-bold text-[#0F3D2E]">
+                                 Active Event Plans
+                              </h2>
+                           </div>
+                           <p className="text-xs text-slate-400 italic">Current proposals requiring your review or scheduled event executions</p>
                         </div>
                         <div className="relative w-full sm:w-auto">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4AF37]" />
                             <input 
                               id="input-recent-search"
                               type="text" 
                               placeholder="Search recent orders..." 
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-xs font-bold outline-none focus:border-brand-green-900 w-full sm:w-64" 
+                              className="bg-white border border-[#E8D7A5] rounded-full pl-10 pr-4 py-2 text-xs font-bold text-[#0F3D2E] placeholder-[#0F3D2E]/40 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] w-full sm:w-64 shadow-xs" 
                             />
                         </div>
                      </div>
 
                      {filteredRecentOrders.length === 0 ? (
-                        <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm max-w-3xl mx-auto">
-                            <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">⚡</div>
-                            <h3 className="text-lg font-bold text-slate-850 mb-1">No Active Bookings</h3>
+                        <div className="bg-white rounded-3xl p-16 text-center border border-[#E8D7A5]/60 shadow-sm max-w-3xl mx-auto">
+                            <div className="w-16 h-16 bg-[#FCF8F0] text-[#D4AF37] rounded-full flex items-center justify-center mx-auto mb-4 text-xl">✦</div>
+                            <h3 className="text-xl font-serif font-bold text-[#0F3D2E] mb-1">No Active Bookings</h3>
                             <p className="text-slate-500 text-xs mb-6 max-w-md mx-auto">
                               {searchQuery ? 'No pending bookings match your search parameters.' : "You do not have any upcoming bookings, live quotes, or modifications in progress."}
                             </p>
                             {!searchQuery && (
-                              <Link to="/explore" className="bg-brand-green-900 text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-brand-green-900/90 transition-colors shadow-xs">
+                              <Link to="/explore" className="bg-[#0F3D2E] text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-[#051410] transition-colors shadow-xs border border-[#0F3D2E]">
                                 Find a Caterer Partner
                               </Link>
                             )}
@@ -936,71 +1002,114 @@ export default function Orders() {
                            {filteredRecentOrders.map((o) => (
                               <div 
                                 key={o.id} 
-                                className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col lg:flex-row gap-6 hover:shadow-md transition-shadow relative overflow-hidden group"
+                                className="bg-white rounded-3xl border border-[#E8D7A5] shadow-[0_12px_40px_rgba(15,61,46,0.04)] hover:border-[#D4AF37] hover:shadow-[0_15px_50px_rgba(15,61,46,0.06)] transition-all duration-300 relative overflow-hidden group grid grid-cols-1 lg:grid-cols-10"
                               >
-                                {/* Side bar accent */}
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-green-900 rounded-r-md"></div>
-                                
-                                <div className="flex-1 pl-2">
-                                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
-                                        <div>
-                                           <div className="text-[9px] text-slate-400 font-mono tracking-wider font-bold mb-0.5">BOOKING REFERENCE: {o.id}</div>
-                                           <h3 className="text-xl font-black text-slate-800 tracking-tight">
-                                               {user.roles.includes('partner') && o.customerName ? o.customerName + ' (Customer)' : o.catererName}
-                                           </h3>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            {normalizeStatus(o.status) === 'approved' && (() => {
-                                                const badge = getEventCountdownBadge(o.eventDate);
-                                                return badge ? (
-                                                    <span className={cn("px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide rounded-lg border", badge.color)}>
-                                                        ⏱️ {badge.text}
-                                                    </span>
-                                                ) : null;
-                                            })()}
-                                            <span className={cn("px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg border w-fit font-mono text-[9px]", getStatusColor(o.status))}>
-                                                {getStatusLabel(o.status)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-b border-slate-100 py-3 mb-4">
-                                       <span className="flex items-center gap-2 text-xs font-bold text-slate-650"><Calendar size={15} className="text-brand-green-900 shrink-0"/> {o.eventDate || 'Not specified'}</span>
-                                       <span className="flex items-center gap-2 text-xs font-bold text-slate-650"><Users size={15} className="text-brand-green-900 shrink-0"/> {o.guests} Guests</span>
-                                       <span className="flex items-center gap-2 text-xs font-bold text-slate-650 truncate"><MapPin size={15} className="text-brand-green-900 shrink-0"/> {o.venue || 'Venue TBD'}</span>
-                                    </div>
+                                 {/* Left side gold luxury accent bar */}
+                                 <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#D4AF37] z-10"></div>
+                                 
+                                 {/* Left content column */}
+                                 <div className="lg:col-span-7 p-6 sm:p-8 pl-8 sm:pl-10 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-[#E8D7A5]/50">
+                                     <div>
+                                         {/* Top Row: Reference & Status */}
+                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FCF8F0] border border-[#E8D7A5]/40 rounded-lg shrink-0">
+                                               <Sparkle size={10} className="text-[#D4AF37] animate-pulse" />
+                                               <span className="text-[9px] text-[#D4AF37] font-mono tracking-widest font-extrabold uppercase font-bold">Catering Reference: #{o.id.substring(0, 8).toUpperCase()}...</span>
+                                            </div>
+                                            <div>
+                                                <span className={cn("px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border font-mono", getStatusColor(o.status))}>
+                                                    {getStatusLabel(o.status)}
+                                                </span>
+                                            </div>
+                                         </div>
+                                         {/* Name Header */}
+                                         <h3 className="text-2xl sm:text-3xl font-serif font-black text-[#0F3D2E] tracking-tight leading-tight mb-3">
+                                             {user.roles.includes('partner') && o.customerName ? o.customerName + ' (Client)' : o.catererName}
+                                         </h3>
+                                         
+                                         {/* Event Details Row */}
+                                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pb-3 mb-4 border-b border-[#E8D7A5]/30 text-xs text-slate-600 font-sans">
+                                            <div className="flex items-center gap-2">
+                                               <Calendar size={14} className="text-[#D4AF37]" />
+                                               <span className="font-bold text-[#0F3D2E]">{o.eventDate || 'TBD'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                               <Users size={14} className="text-[#D4AF37]" />
+                                               <span className="font-bold text-[#0F3D2E]">{o.guests} Guests</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 truncate max-w-xs">
+                                               <MapPin size={14} className="text-[#D4AF37] shrink-0" />
+                                               <span className="font-bold text-[#0F3D2E] truncate" title={o.venue || 'Venue TBD'}>{o.venue || 'Venue TBD'}</span>
+                                               {(o.latitude && o.longitude) ? (
+                                                 <a
+                                                   href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}
+                                                   target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   className="text-[#D4AF37] hover:underline font-bold text-[10px] shrink-0 inline-flex items-center ml-1"
+                                                   title="View Venue on Map"
+                                                 >
+                                                   🗺️ View on Map
+                                                 </a>
+                                               ) : (o.venue || o.address) ? (
+                                                 <a
+                                                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.venue || o.address)}`}
+                                                   target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   className="text-[#D4AF37] hover:underline font-bold text-[10px] shrink-0 inline-flex items-center ml-1"
+                                                   title="View Venue on Map"
+                                                 >
+                                                   🗺️ View on Map
+                                                 </a>
+                                               ) : null}
+                                            </div>
+                                         </div>
 
-                                    <div className="text-xs text-slate-500 mb-2">
-                                        <span className="font-extrabold text-slate-705">Event Category:</span> {o.eventType} | <span className="font-extrabold text-slate-705">Platter:</span> {o.packageDetails?.packageName || 'Customized Selection'}
-                                    </div>
+                                         {/* Category & Package Details Row */}
+                                         <div className="text-xs text-slate-500 mb-4 bg-white/50 px-1 font-sans">
+                                             <span>Event Category:</span> <span className="text-[#0F3D2E] font-bold">{o.eventType}</span>
+                                             <span className="mx-2 text-[#E8D7A5]">|</span>
+                                             <span>Platter:</span> <span className="text-[#D4AF37] font-bold">{o.packageDetails?.packageName || 'Customized Selection'}</span>
+                                         </div>
 
-                                    {/* Platter details list */}
-                                    <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-4">
-                                        <h4 className="font-bold text-slate-800 mb-2 border-b border-slate-200 pb-2">Platter Checklist &amp; Contact:</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                           <div>
-                                              <p className="font-bold text-slate-700">Contact Details</p>
-                                              <p className="mt-1">Lead: {o.customerName || 'Registered Member'}</p>
-                                              <p>Phone: {o.phone || o.customerPhone || 'N/A'}</p>
-                                              <p>Event Scale: {o.guests} Pax</p>
-                                              <p>Slab Rate: {o.matchedSlab ? `${o.matchedSlab.minGuests}-${o.matchedSlab.maxGuests || '1000+'} Guests` : 'Standard Price'}</p>
-                                           </div>
-                                           <div>
-                                              <p className="font-bold text-slate-700">Detailed Menu Items</p>
-                                              <ul className="list-disc pl-4 text-[11px] space-y-0.5 mt-1">
-                                                  {o.selectedItems?.length > 0 ? o.selectedItems.map((item: string, i: number) => (
-                                                      <li key={i} className="text-slate-600 font-semibold">{item}</li>
-                                                  )) : <li className="text-slate-400 italic">No custom selections provided</li>}
-                                              </ul>
-                                           </div>
-                                        </div>
-                                    </div>
+                                         {/* Platter Checklist Container */}
+                                         <div className="text-xs text-[#0F3D2E]/90 bg-[#FCF8F0]/25 p-5 rounded-2xl border border-[#E8D7A5]/40 mt-4">
+                                             <h4 className="font-serif font-bold text-xs text-[#0F3D2E] uppercase tracking-wider mb-3 border-b border-[#E8D7A5]/30 pb-2 flex items-center gap-1.5">
+                                                <span className="text-[#D4AF37]">✦</span> Platter Checklist &amp; Client Details:
+                                             </h4>
+                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                                                <div>
+                                                   <p className="font-extrabold text-[#0F3D2E] border-b border-[#E8D7A5]/15 pb-1 mb-2 uppercase text-[9px] tracking-widest font-mono flex items-center gap-1"><User size={10} className="text-[#D4AF37]" /> Contact Details</p>
+                                                   <div className="space-y-1 text-slate-700 font-medium font-sans">
+                                                      <p className="flex items-center gap-1.5">Lead: {o.customerName || 'Registered Member'}</p>
+                                                      <p className="flex items-center gap-1.5">Phone: {o.phone || o.customerPhone || 'N/A'}</p>
+                                                      <p className="flex items-center gap-1.5">Scale Rate: {o.matchedSlab ? `${o.matchedSlab.minGuests}-${o.matchedSlab.maxGuests || '1000+'} Guests` : 'Standard Rate'}</p>
+                                                   </div>
+                                                </div>
+                                                <div>
+                                                   <p className="font-extrabold text-[#0F3D2E] border-b border-[#E8D7A5]/15 pb-1 mb-2 uppercase text-[9px] tracking-widest font-mono flex items-center gap-1"><BookOpen size={10} className="text-[#D4AF37]" /> Detailed Menu Selection</p>
+                                                   <ul className="space-y-1 text-slate-700 font-medium pl-1 font-sans">
+                                                       {o.selectedItems?.length > 0 ? o.selectedItems.map((item, i) => (
+                                                           <li key={i} className="flex items-start gap-1.5 hover:text-[#D4AF37] transition-colors">
+                                                              <span className="text-[#D4AF37]">•</span>
+                                                              <span>{item}</span>
+                                                           </li>
+                                                       )) : <li className="text-slate-400 italic list-none">No custom selections provided</li>}
+                                                   </ul>
+                                                </div>
+                                             </div>
+                                         </div>
 
-                                    {o.specialNotes && (
-                                        <div className="text-xs bg-amber-50/50 p-3 rounded-lg text-slate-600 border border-amber-100 mt-3">
-                                            <span className="font-bold text-slate-800">Note: </span>{o.specialNotes}
-                                        </div>
-                                    )}
+                                         {/* Special Notes Instructions */}
+                                         {o.specialNotes && (
+                                             <div className="text-xs bg-[#FCF8F0]/50 p-4 rounded-xl text-slate-700 border border-[#E8D7A5]/50 mt-4 italic font-medium flex items-start gap-2.5 font-sans">
+                                                 <AlertCircle size={14} className="text-[#D4AF37] shrink-0 mt-0.5" />
+                                                 <div>
+                                                     <span className="font-extrabold text-[#0F3D2E] not-italic uppercase text-[9px] tracking-widest block mb-1 font-mono">Special Instructions:</span>
+                                                     "{o.specialNotes}"
+                                                 </div>
+                                             </div>
+                                         )}
+                                     </div>
 
                                     {/* Actions based on state */}
                                     {!user.roles.includes('partner') && !user.roles.includes('admin') && (() => {
@@ -1068,12 +1177,49 @@ export default function Orders() {
 
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                                     <div>
-                                                                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Venue Address</label>
-                                                                        <textarea 
+                                                                        <div className="flex justify-between items-center mb-1">
+                                                                            <label className="block text-[10px] font-bold text-slate-400 uppercase">Venue Address</label>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setIsMapOpen(true)}
+                                                                                className="text-[10px] font-bold text-[#DEAA38] hover:text-[#b08427] transition flex items-center gap-0.5 cursor-pointer"
+                                                                            >
+                                                                                <span>🗺️ Select Location</span>
+                                                                            </button>
+                                                                        </div>
+                                                                        <AddressAutocomplete
+                                                                            useTextarea={true}
                                                                             rows={2} 
                                                                             className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-800 focus:border-amber-400 outline-none hover:border-slate-350"
                                                                             value={editForm.venue} 
-                                                                            onChange={(e) => setEditForm({...editForm, venue: e.target.value})}
+                                                                            onChange={(val) => setEditForm({...editForm, venue: val})}
+                                                                            onSelect={(data) => {
+                                                                                setEditForm({
+                                                                                    ...editForm,
+                                                                                    venue: data.address,
+                                                                                    latitude: data.latitude,
+                                                                                    longitude: data.longitude
+                                                                                });
+                                                                            }}
+                                                                            theme="gold"
+                                                                            leftIcon={<MapPin className="text-[#DEAA38] w-4 h-4 hover:text-[#b08427] transition-colors" />}
+                                                                            onIconClick={() => setIsMapOpen(true)}
+                                                                        />
+                                                                        <MapPickerModal
+                                                                            isOpen={isMapOpen}
+                                                                            onClose={() => setIsMapOpen(false)}
+                                                                            initialLat={editForm.latitude}
+                                                                            initialLng={editForm.longitude}
+                                                                            initialAddress={editForm.venue}
+                                                                            onSave={(data) => {
+                                                                                setEditForm({
+                                                                                    ...editForm,
+                                                                                    venue: data.address,
+                                                                                    latitude: data.latitude,
+                                                                                    longitude: data.longitude
+                                                                                });
+                                                                            }}
+                                                                            title="Select Event Location"
                                                                         />
                                                                     </div>
                                                                     <div>
@@ -1160,487 +1306,524 @@ export default function Orders() {
                                            currentTrackingIdx = 3;
                                         }
 
-                                        return (
-                                            <div className="mt-8 pt-4 border-t border-slate-100">
-                                                <div className="flex items-center justify-between relative max-w-sm mx-auto">
-                                                    <div className="absolute left-3 right-3 top-4 h-1 bg-slate-100 -translate-y-1/2 z-0 rounded-full">
-                                                        <div 
-                                                            className="h-full bg-brand-green-900 rounded-full transition-all duration-700" 
-                                                            style={{ width: `${(currentTrackingIdx / (trackingSteps.length - 1)) * 100}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    
-                                                    {trackingSteps.map((step, index) => {
-                                                        const isPassed = index <= currentTrackingIdx;
-                                                        const isActive = index === currentTrackingIdx;
-                                                        
-                                                        return (
-                                                            <div key={step.key} className="relative z-10 flex flex-col items-center gap-2">
-                                                                <div className={cn(
-                                                                    "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 border-2",
-                                                                    isActive 
-                                                                        ? "bg-brand-green-905 border-brand-green-905 text-white shadow-md scale-105" 
-                                                                        : isPassed
-                                                                            ? "bg-brand-green-900 border-brand-green-900 text-white"
-                                                                            : "bg-white border-slate-200 text-slate-400"
-                                                                )}>
-                                                                    {isPassed ? <Check size={12} className="stroke-[3]" /> : index + 1}
-                                                                </div>
-                                                                <span className={cn(
-                                                                    "text-[9px] tracking-wider font-extrabold uppercase transition-all duration-300", 
-                                                                    isActive ? "text-brand-green-900" : isPassed ? "text-slate-600" : "text-slate-400"
-                                                                )}>
-                                                                    {step.key === 'pending_review' ? 'Review' : step.label}
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-
-                                <div className="lg:w-64 flex flex-col justify-between items-start lg:items-end border-t lg:border-t-0 lg:border-l border-slate-150 pt-4 lg:pt-0 lg:pl-6 shrink-0 font-medium">
-                                    <div className="text-left lg:text-right mb-4 lg:mb-0 w-full">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pricing Breakdown</p>
-                                        <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-500 mb-1">
-                                            <span>Base Quote (₹{o.pricePerPlate} × {o.guests})</span>
-                                            <span>₹{((o.pricePerPlate || 0) * (o.guests || 0)).toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-500 mb-3">
-                                            <span>Platform Surcharges</span>
-                                            <span>₹{o.platformFee || 0}</span>
-                                        </div>
-                                        
-                                        <div className="flex justify-between lg:justify-end gap-4 border-t border-slate-100 pt-3">
-                                            <p className="text-xs font-bold text-slate-450 uppercase tracking-widest self-end">Total</p>
-                                            <p className="text-2xl font-display font-black text-brand-green-900 leading-none">₹{o.totalEstimate?.toLocaleString()}</p>
-                                        </div>
-
-                                        {(user.roles.includes('partner') || user.roles.includes('admin')) && normalizeStatus(o.status) === 'approved' && (
-                                            <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-150 text-left">
-                                                <p className="text-[10px] font-bold text-green-800 uppercase tracking-widest mb-1">Settlement info</p>
-                                                <p className="text-xs text-slate-650">Platform Fee Earned: ₹{o.platformFee || 0}</p>
-                                                <p className="text-xs font-bold text-brand-green-909 mt-1">Caterer Profit share: ₹{(((o.pricePerPlate || 0) * (o.guests || 0)) * 0.9).toFixed(0)}</p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {(user.roles.includes('admin') || user.roles.includes('partner')) && (
-                                        <div className="flex flex-col gap-3 w-full">
-                                             <select 
-                                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-705 outline-none focus:border-brand-green-909"
-                                                 value={o.status}
-                                                 onChange={(e) => updateStatus(o.id, e.target.value)}
-                                             >
-                                                 <option value="Submitted">Submitted</option>
-                                                 <option value="Pending Caterer Review">Pending Caterer Review</option>
-                                                 <option value="Modified">Modified</option>
-                                                 <option value="Approved">Approved</option>
-                                                 <option value="Completed">Completed</option>
-                                                 <option value="Cancelled">Cancelled</option>
-                                                 <option value="Rejected">Rejected</option>
-                                             </select>
-
-                                             {o.status === 'Pending Caterer Review' && user.roles.includes('partner') && (
-                                                 <div className="flex gap-1.5">
-                                                    <button onClick={() => updateStatus(o.id, 'Approved')} className="flex-1 bg-brand-green-900 text-white py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-brand-green-950 transition-colors">Approve</button>
-                                                    <button onClick={() => updateStatus(o.id, 'Rejected')} className="flex-1 bg-rose-50 text-rose-650 border border-rose-200 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-rose-100 transition-colors">Reject</button>
+                                                                                 return (
+                                             <div className="mt-8 pt-6 border-t border-[#E8D7A5]/30">
+                                                 <div className="flex items-center justify-between relative max-w-sm mx-auto">
+                                                     <div className="absolute left-3 right-3 top-4.5 h-[2px] bg-[#FCF8F0] -translate-y-1/2 z-0 rounded-full border border-[#E8D7A5]/20">
+                                                         <div 
+                                                             className="h-full bg-[#0F3D2E] rounded-full transition-all duration-700" 
+                                                             style={{ width: `${(currentTrackingIdx / (trackingSteps.length - 1)) * 100}%` }}
+                                                         ></div>
+                                                     </div>
+                                                     
+                                                     {trackingSteps.map((step, index) => {
+                                                         const isPassed = index <= currentTrackingIdx;
+                                                         const isActive = index === currentTrackingIdx;
+                                                         
+                                                         return (
+                                                             <div key={step.key} className="relative z-10 flex flex-col items-center gap-2">
+                                                                 <div className={cn(
+                                                                     "w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 border-2",
+                                                                     isActive 
+                                                                         ? "bg-[#0F3D2E] border-[#D4AF37] text-white shadow-sm scale-105" 
+                                                                         : isPassed
+                                                                             ? "bg-[#FCF8F0] border-[#0F3D2E] text-[#0F3D2E]"
+                                                                             : "bg-white border-slate-200 text-slate-400"
+                                                                 )}>
+                                                                     {isPassed ? <Check size={13} className="stroke-[3] text-[#D4AF37]" /> : index + 1}
+                                                                 </div>
+                                                                 <span className={cn(
+                                                                     "text-[9px] tracking-widest font-extrabold uppercase transition-all duration-300 font-mono", 
+                                                                     isActive ? "text-[#0F3D2E]" : isPassed ? "text-slate-600" : "text-slate-400"
+                                                                 )}>
+                                                                     {step.key === 'pending_review' ? 'Review' : step.label}
+                                                                 </span>
+                                                             </div>
+                                                         );
+                                                     })}
                                                  </div>
-                                             )}
-                                        </div>
-                                    )}
+                                             </div>
+                                         );})()}
                                 </div>
+
+                                 <div className="lg:col-span-3 p-6 sm:p-8 bg-[#FCF8F0]/15 flex flex-col justify-between relative border-t lg:border-t-0 lg:border-l border-[#E8D7A5]/50">
+                                     <div className="text-left lg:text-right mb-4 lg:mb-0 w-full">
+                                         <p className="text-[10px] font-extrabold text-[#D4AF37] uppercase tracking-widest mb-1.5 font-mono">Pricing Breakdown</p>
+                                         <div className="w-10 h-[2px] bg-[#D4AF37]/50 lg:ml-auto mb-4"></div>
+                                         <div className="space-y-2 mb-4">
+                                             <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-600">
+                                                 <span className="text-slate-400">Base Quote (₹{o.pricePerPlate} × {o.guests})</span>
+                                                 <span className="font-bold text-[#0F3D2E]">₹{((o.pricePerPlate || 0) * (o.guests || 0)).toLocaleString()}</span>
+                                             </div>
+                                             <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-600">
+                                                 <span className="text-slate-400">Platform Surcharges</span>
+                                                 <span className="font-bold text-[#0F3D2E]">₹{o.platformFee || 0}</span>
+                                             </div>
+                                         </div>
+                                         
+                                         <div className="flex justify-between lg:justify-end gap-4 border-t border-[#E8D7A5]/40 pt-4 mb-4">
+                                             <p className="text-xs font-bold text-slate-450 uppercase tracking-widest self-end font-mono">Total Estimate</p>
+                                             <p className="text-3xl font-serif font-black text-[#0F3D2E] leading-none">₹{o.totalEstimate?.toLocaleString()}</p>
+                                         </div>
+
+                                         {(user.roles.includes('partner') || user.roles.includes('admin')) && normalizeStatus(o.status) === 'approved' && (
+                                             <div className="mt-4 p-4 bg-white/80 rounded-xl border border-[#E8D7A5]/40 text-left">
+                                                 <p className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest mb-2 font-mono">✦ Settlement details</p>
+                                                 <p className="text-xs text-slate-650 flex justify-between"><span>Platform Fee:</span> <span className="font-semibold">₹{o.platformFee || 0}</span></p>
+                                                 <p className="text-xs font-bold text-[#0F3D2E] mt-1.5 pt-1.5 border-t border-[#E8D7A5]/30 flex justify-between"><span>Partner Profit Share:</span> <span>₹{(((o.pricePerPlate || 0) * (o.guests || 0)) * 0.9).toFixed(0)}</span></p>
+                                             </div>
+                                         )}
+                                     </div>
+
+                                     {/* Bottom select/button actions in pricing column */}
+                                     <div className="relative z-10 w-full mt-6">
+                                         {(user.roles.includes('admin') || user.roles.includes('partner')) ? (
+                                             <div className="flex flex-col gap-3 w-full">
+                                                 <p className="text-[10px] font-extrabold text-[#D4AF37] uppercase tracking-widest font-mono text-left lg:text-right">Manage Status</p>
+                                                 <div className="relative w-full">
+                                                      <select 
+                                                          className="w-full bg-white border border-[#E8D7A5] rounded-xl pl-4 pr-10 py-2.5 text-xs font-bold text-[#0F3D2E] outline-none hover:border-[#D4AF37] focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] shadow-xs cursor-pointer appearance-none font-mono"
+                                                          value={o.status}
+                                                          onChange={(e) => updateStatus(o.id, e.target.value)}
+                                                      >
+                                                          <option value="Submitted">Submitted</option>
+                                                          <option value="Pending Caterer Review">Pending Caterer Review</option>
+                                                          <option value="Modified">Modified</option>
+                                                          <option value="Approved">Approved</option>
+                                                          <option value="Completed">Completed</option>
+                                                          <option value="Cancelled">Cancelled</option>
+                                                          <option value="Rejected">Rejected</option>
+                                                      </select>
+                                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#D4AF37]">
+                                                         <ChevronRight size={14} className="rotate-90" />
+                                                      </div>
+                                                 </div>
+
+                                                 {o.status === 'Pending Caterer Review' && user.roles.includes('partner') && (
+                                                     <div className="flex gap-2 mt-1">
+                                                        <button onClick={() => updateStatus(o.id, 'Approved')} className="flex-1 bg-[#0F3D2E] text-white py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#051410] transition-colors border border-[#0F3D2E]">Approve</button>
+                                                        <button onClick={() => updateStatus(o.id, 'Rejected')} className="flex-1 bg-white text-rose-700 border border-rose-200 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-rose-50 transition-colors">Reject</button>
+                                                     </div>
+                                                 )}
+                                             </div>
+                                         ) : (
+                                             <div className="w-full">
+                                                 <button 
+                                                    onClick={() => setSelectedQuickViewOrder(o)}
+                                                    className="w-full bg-white text-[#D4AF37] hover:bg-[#FCF8F0] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#E8D7A5] flex items-center justify-center gap-2 font-sans"
+                                                 >
+                                                    <Eye size={14} /> View History logs
+                                                 </button>
+                                             </div>
+                                         )}
+                                     </div>
+                                 </div>
                               </div>
-                           ))}
-                        </div>
-                     )}
+                         )
+                      )})
+                   </div>
+                )}
+             </div>
+          )}
+
+          {/* Tab 2B: Archived Booking History */}
+          {bookingSubTab === 'history' && (
+             <div id="history-bookings-tab-panel" className="space-y-6 animate-fade-in-rapid">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                   <div>
+                      <div className="flex items-center gap-2">
+                         <span className="text-[#D4AF37] text-lg">✦</span>
+                         <h2 className="text-2xl font-serif font-bold text-[#0F3D2E]">
+                            Booking History Archives
+                         </h2>
+                      </div>
+                      <p className="text-xs text-slate-400 italic font-medium font-sans">Review past event recipes, billing settlements &amp; concluded orders</p>
+                   </div>
+                   <div className="relative w-full sm:w-auto">
+                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4AF37]" />
+                       <input 
+                         id="input-history-search"
+                         type="text" 
+                         placeholder="Search archived bookings..." 
+                         value={searchQuery}
+                         onChange={(e) => setSearchQuery(e.target.value)}
+                         className="bg-white border border-[#E8D7A5] rounded-full pl-10 pr-4 py-2 text-xs font-bold text-[#0F3D2E] placeholder-[#0F3D2E]/40 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] w-full sm:w-64 shadow-xs" 
+                       />
+                   </div>
+                </div>
+
+                {paginatedHistoryOrders.length === 0 ? (
+                   <div className="bg-white rounded-3xl p-16 text-center border border-[#E8D7A5]/60 shadow-sm max-w-3xl mx-auto">
+                       <div className="w-16 h-16 bg-[#FCF8F0] text-[#D4AF37] rounded-full flex items-center justify-center mx-auto mb-4 text-xl">✦</div>
+                       <h3 className="text-xl font-serif font-bold text-[#0F3D2E] mb-1">No Archived Bookings</h3>
+                       <p className="text-slate-500 text-xs max-w-md mx-auto font-sans">
+                          {searchQuery ? 'No past bookings match your search parameters.' : "Your past event bookings and concluded history will be indexed here."}
+                       </p>
+                   </div>
+                ) : (
+                   <div className="space-y-6">
+                      {paginatedHistoryOrders.map((o) => {
+                         const norm = normalizeStatus(o.status);
+                         return (
+                            <div 
+                              key={o.id} 
+                              className="bg-white rounded-3xl border border-[#E8D7A5] shadow-[0_12px_40px_rgba(15,61,46,0.04)] hover:border-[#D4AF37] hover:shadow-[0_15px_50px_rgba(15,61,46,0.06)] transition-all duration-300 relative overflow-hidden group grid grid-cols-1 lg:grid-cols-10"
+                            >
+                              {/* Left side gold luxury accent bar */}
+                              <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#D4AF37]/55 z-10"></div>
+                              
+                              {/* Left content column */}
+                              <div className="lg:col-span-7 p-6 sm:p-8 pl-8 sm:pl-10 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-[#E8D7A5]/50">
+                                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5 pb-3 border-b border-[#E8D7A5]/30">
+                                      <div>
+                                         <div className="text-[10px] text-[#D4AF37] font-mono tracking-widest font-bold mb-1 uppercase">Archived ID: #{o.id.substring(0, 8)}...</div>
+                                         <h3 className="text-2xl font-serif font-bold text-[#0F3D2E]">
+                                             {user.roles.includes('partner') && o.customerName ? o.customerName + ' (Client)' : o.catererName}
+                                         </h3>
+                                      </div>
+                                      <div>
+                                          <span className={cn("px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full border font-mono", getStatusColor(o.status))}>
+                                              {getStatusLabel(o.status)}
+                                          </span>
+                                      </div>
+                                  </div>
+                                  
+                                  {/* Event Details Grid */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#FCF8F0]/30 border border-[#E8D7A5]/30 rounded-2xl p-4 mb-5">
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-full bg-[#FCF8F0] text-[#0F3D2E] flex items-center justify-center border border-[#E8D7A5]/40 shrink-0">
+                                           <Calendar size={15} />
+                                        </div>
+                                        <div>
+                                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Event Date</p>
+                                           <p className="text-xs font-bold text-[#0F3D2E]">{o.eventDate || 'TBD'}</p>
+                                        </div>
+                                     </div>
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-full bg-[#FCF8F0] text-[#0F3D2E] flex items-center justify-center border border-[#E8D7A5]/40 shrink-0">
+                                           <Users size={15} />
+                                        </div>
+                                        <div>
+                                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Guest List</p>
+                                           <p className="text-xs font-bold text-[#0F3D2E]">{o.guests} Pax</p>
+                                        </div>
+                                     </div>
+                                     <div className="flex items-center gap-3 truncate">
+                                        <div className="w-9 h-9 rounded-full bg-[#FCF8F0] text-[#0F3D2E] flex items-center justify-center border border-[#E8D7A5]/40 shrink-0">
+                                           <MapPin size={15} />
+                                        </div>
+                                        <div className="truncate">
+                                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Venue</p>
+                                           <p className="text-xs font-bold text-[#0F3D2E] truncate" title={o.venue || 'Venue TBD'}>{o.venue || 'Venue TBD'}</p>
+                                            {(o.latitude && o.longitude) ? (
+                                              <a
+                                                href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[#D4AF37] hover:underline font-bold text-[10px] block mt-0.5"
+                                              >
+                                                🗺️ View on Map
+                                              </a>
+                                            ) : (o.venue || o.address) ? (
+                                              <a
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.venue || o.address)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[#D4AF37] hover:underline font-bold text-[10px] block mt-0.5"
+                                              >
+                                                🗺️ View on Map
+                                              </a>
+                                            ) : null}
+                                        </div>
+                                     </div>
+                                  </div>
+
+                                  <div className="text-xs text-slate-600 mb-4 bg-white px-1">
+                                      <span className="font-bold text-[#0F3D2E]">Event Type:</span> <span className="text-slate-800 font-medium">{o.eventType}</span> | <span className="font-bold text-[#0F3D2E]">Gastronomy Package:</span> <span className="text-slate-800 font-medium">{o.packageDetails?.packageName || 'Customized Selection'}</span>
+                                  </div>
+
+                                  {/* Platter Checklist Container */}
+                                  <div className="text-xs text-[#0F3D2E]/90 bg-[#FCF8F0]/25 p-5 rounded-2xl border border-[#E8D7A5]/40 mt-4">
+                                      <h4 className="font-serif font-bold text-xs text-[#0F3D2E] uppercase tracking-wider mb-3 border-b border-[#E8D7A5]/30 pb-2 flex items-center gap-1.5">
+                                         <span className="text-[#D4AF37]">✦</span> Platter Checklist &amp; Client Details:
+                                      </h4>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                                         <div>
+                                            <p className="font-extrabold text-[#0F3D2E] border-b border-[#E8D7A5]/15 pb-1 mb-2 uppercase text-[9px] tracking-widest font-mono flex items-center gap-1"><User size={10} className="text-[#D4AF37]" /> Contact Details</p>
+                                            <div className="space-y-1 text-slate-700 font-medium font-sans">
+                                               <p className="flex items-center gap-1.5">Lead: {o.customerName || 'Registered Member'}</p>
+                                               <p className="flex items-center gap-1.5">Phone: {o.phone || o.customerPhone || 'N/A'}</p>
+                                               <p className="flex items-center gap-1.5">Scale Rate: {o.matchedSlab ? (o.matchedSlab.minGuests + '-' + (o.matchedSlab.maxGuests || '1000+') + ' Guests') : 'Standard Rate'}</p>
+                                            </div>
+                                         </div>
+                                         <div>
+                                            <p className="font-extrabold text-[#0F3D2E] border-b border-[#E8D7A5]/15 pb-1 mb-2 uppercase text-[9px] tracking-widest font-mono flex items-center gap-1"><BookOpen size={10} className="text-[#D4AF37]" /> Detailed Menu Selection</p>
+                                            <ul className="space-y-1 text-slate-700 font-medium pl-1 font-sans">
+                                                {o.selectedItems?.length > 0 ? o.selectedItems.map((item, i) => (
+                                                    <li key={i} className="flex items-start gap-1.5 hover:text-[#D4AF37] transition-colors">
+                                                       <span className="text-[#D4AF37]">•</span>
+                                                       <span>{item}</span>
+                                                    </li>
+                                                )) : <li className="text-slate-400 italic list-none">No custom selections provided</li>}
+                                            </ul>
+                                         </div>
+                                      </div>
+                                  </div>
+
+                                  {o.specialNotes && (
+                                      <div className="text-xs bg-[#FCF8F0]/50 p-4 rounded-xl text-slate-700 border border-[#E8D7A5]/50 mt-4 italic font-medium">
+                                          <span className="font-bold text-[#0F3D2E] not-italic uppercase text-[10px] tracking-wider block mb-1">Catering Instructions:</span>
+                                          "{o.specialNotes}"
+                                      </div>
+                                  )}
+                              </div>
+
+                              {/* Right Column - Pricing Summary */}
+                              <div className="lg:col-span-3 p-6 sm:p-8 bg-[#FCF8F0]/15 flex flex-col justify-between relative border-t lg:border-t-0 lg:border-l border-[#E8D7A5]/50">
+                                  <div className="text-left lg:text-right mb-4 lg:mb-0 w-full">
+                                      <p className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest mb-3 font-mono">Concluded Invoice</p>
+                                      <div className="space-y-2 mb-4">
+                                          <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-600">
+                                              <span className="text-slate-400">Base Quote (₹{o.pricePerPlate} × {o.guests})</span>
+                                              <span className="font-bold text-[#0F3D2E]">₹{((o.pricePerPlate || 0) * (o.guests || 0)).toLocaleString()}</span>
+                                          </div>
+                                          <div className="flex justify-between lg:justify-end gap-4 text-xs text-slate-600">
+                                              <span className="text-slate-400">Platform Surcharges</span>
+                                              <span className="font-bold text-[#0F3D2E]">₹{o.platformFee || 0}</span>
+                                          </div>
+                                      </div>
+                                      
+                                      <div className="flex justify-between lg:justify-end gap-4 border-t border-[#E8D7A5]/40 pt-4 mb-4">
+                                          <p className="text-xs font-bold text-slate-450 uppercase tracking-widest self-end font-mono">Concluded Total</p>
+                                          <p className="text-3xl font-serif font-black text-[#0F3D2E] leading-none">₹{o.totalEstimate?.toLocaleString()}</p>
+                                      </div>
+                                  </div>
+
+                                  <div className="w-full">
+                                      {user.roles.includes('admin') || user.roles.includes('partner') ? (
+                                         <button 
+                                            onClick={() => setSelectedQuickViewOrder(o)}
+                                            className="w-full bg-[#FCF8F0] text-[#D4AF37] hover:bg-[#F6EAD4] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#E8D7A5]/50 flex items-center justify-center gap-2"
+                                         >
+                                            View Logs
+                                         </button>
+                                      ) : (
+                                         <button 
+                                            onClick={() => handleRepeatBookingInitiate(o)}
+                                            className="w-full bg-[#0F3D2E] text-white hover:bg-[#051410] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#0F3D2E] flex items-center justify-center gap-2"
+                                         >
+                                            Repeat Booking
+                                         </button>
+                                      )}
+                                  </div>
+                              </div>
+                            </div>
+                         );
+                      })}
+                   </div>
+                )}
+
+                {/* Pagination Controls */}
+                {totalHistoryPages > 1 && (
+                   <div className="flex justify-between items-center bg-white border border-[#E8D7A5]/50 p-4 rounded-2xl shadow-xs max-w-sm mx-auto mt-8">
+                       <button 
+                         disabled={historyPage === 1}
+                         onClick={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
+                         className="px-4 py-2 bg-[#FCF8F0] border border-[#E8D7A5]/40 text-[#D4AF37] disabled:opacity-40 disabled:pointer-events-none rounded-xl text-xs font-bold transition-all"
+                       >
+                          Previous
+                       </button>
+                       <span className="text-xs font-bold text-[#0F3D2E] font-mono">
+                          Page {historyPage} of {totalHistoryPages}
+                       </span>
+                       <button 
+                         disabled={historyPage === totalHistoryPages}
+                         onClick={() => setHistoryPage(prev => Math.min(prev + 1, totalHistoryPages))}
+                         className="px-4 py-2 bg-[#FCF8F0] border border-[#E8D7A5]/40 text-[#D4AF37] disabled:opacity-40 disabled:pointer-events-none rounded-xl text-xs font-bold transition-all"
+                       >
+                          Next
+                       </button>
+                   </div>
+                )}
+             </div>
+          )}
+          </>
+         )}
+
+         {/* Segment 3: Modal sheets for admin audit logs */}
+         {selectedQuickViewOrder && (
+            <div id="modal-quick-view" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F3D2E]/45 backdrop-blur-xs">
+               <div className="bg-white rounded-3xl border border-[#E8D7A5] max-w-2xl w-full p-6 sm:p-8 shadow-[0_20px_50px_rgba(15,61,46,0.15)] animate-fade-in-rapid relative">
+                  <div className="absolute right-6 top-6">
+                     <button 
+                       onClick={() => setSelectedQuickViewOrder(null)}
+                       className="w-8 h-8 rounded-full bg-[#FCF8F0] hover:bg-[#F6EAD4] border border-[#E8D7A5]/50 flex items-center justify-center text-[#D4AF37] font-bold transition-all"
+                     >
+                       ✕
+                     </button>
                   </div>
-               )}
 
-               {/* Tab 2B: Booking History Archives */}
-               {bookingSubTab === 'history' && (
-                  <div id="booking-history-tab-panel">
-                     {/* History Filtering Bar Panel */}
-                     <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-xs">
-                        <div className="flex items-center gap-2 mb-4 border-b border-slate-105 pb-2">
-                           <Filter size={15} className="text-brand-green-900" />
-                           <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider">Search History Archives</h3>
+                  <div className="mb-6 border-b border-[#E8D7A5]/40 pb-4">
+                     <span className="text-[10px] text-[#D4AF37] font-mono font-bold tracking-widest block mb-1">AUDIT MANAGEMENT SHEET</span>
+                     <h3 className="text-2xl font-serif font-bold text-[#0F3D2E]">Order Reference #{selectedQuickViewOrder.id.substring(0, 8)}</h3>
+                     <p className="text-xs text-slate-500 mt-1">Concluded state: {selectedQuickViewOrder.status}</p>
+                  </div>
+
+                  <div className="space-y-6">
+                     <div className="grid grid-cols-2 gap-4 bg-[#FCF8F0]/30 border border-[#E8D7A5]/30 rounded-2xl p-4">
+                        <div>
+                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Client</p>
+                           <p className="text-xs font-bold text-[#0F3D2E]">{selectedQuickViewOrder.customerName || 'N/A'}</p>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                           {/* Text Query */}
-                           <div className="relative">
-                              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Search Keyword</label>
-                              <div className="relative">
-                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                 <input
-                                    id="input-history-search"
-                                    type="text"
-                                    placeholder="ID, partner, address..."
-                                    value={searchQueryHistory}
-                                    onChange={(e) => setSearchQueryHistory(e.target.value)}
-                                    className="bg-slate-50 border border-slate-250 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-brand-green-900 w-full"
-                                 />
-                              </div>
-                           </div>
-
-                           {/* Status Filter */}
-                           <div>
-                              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Milestone Category</label>
-                              <select
-                                 id="select-history-status"
-                                 value={filterStatus}
-                                 onChange={(e) => setFilterStatus(e.target.value)}
-                                 className="bg-slate-50 border border-slate-250 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-brand-green-900 w-full h-[32px]"
-                              >
-                                 <option value="all">All Concluded Orders</option>
-                                 <option value="completed">Completed Events</option>
-                                 <option value="approved">Approved &amp; Concluded</option>
-                                 <option value="rejected">Rejected Bookings</option>
-                                 <option value="cancelled">Cancelled Inquiries</option>
-                              </select>
-                           </div>
-
-                           {/* Start Date */}
-                           <div>
-                              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">From Date</label>
-                              <input
-                                 id="input-history-start"
-                                 type="date"
-                                 value={filterStartDate}
-                                 onChange={(e) => setFilterStartDate(e.target.value)}
-                                 className="bg-slate-50 border border-slate-250 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-brand-green-900 w-full h-[32px]"
-                              />
-                           </div>
-
-                           {/* End Date */}
-                           <div>
-                              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">To Date</label>
-                              <input
-                                 id="input-history-end"
-                                 type="date"
-                                 value={filterEndDate}
-                                 onChange={(e) => setFilterEndDate(e.target.value)}
-                                 className="bg-slate-50 border border-slate-250 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-brand-green-900 w-full h-[32px]"
-                              />
-                           </div>
+                        <div>
+                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Caterer Partner</p>
+                           <p className="text-xs font-bold text-[#0F3D2E]">{selectedQuickViewOrder.catererName || 'N/A'}</p>
                         </div>
-
-                        {/* Reset Filters button */}
-                        {(searchQueryHistory || filterStatus !== 'all' || filterStartDate || filterEndDate) && (
-                          <div className="flex justify-end mt-4">
-                             <button
-                               onClick={() => {
-                                 setSearchQueryHistory('');
-                                 setFilterStatus('all');
-                                 setFilterStartDate('');
-                                 setFilterEndDate('');
-                               }}
-                               className="text-xs text-rose-600 font-extrabold hover:underline py-1 px-3 bg-rose-50 rounded-lg transition-colors"
-                             >
-                               Reset Search Specifications
-                             </button>
-                          </div>
-                        )}
+                        <div>
+                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Event Details</p>
+                           <p className="text-xs font-bold text-[#0F3D2E]">{selectedQuickViewOrder.eventType} on {selectedQuickViewOrder.eventDate}</p>
+                        </div>
+                        <div>
+                           <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Concluded Total Price</p>
+                           <p className="text-sm font-bold text-[#D4AF37]">₹{selectedQuickViewOrder.totalEstimate?.toLocaleString()}</p>
+                        </div>
                      </div>
 
-                     {/* Table vs compact mobile list layout */}
-                     {filteredHistoryOrders.length === 0 ? (
-                        <div className="bg-white rounded-3xl p-16 text-center border border-slate-200 shadow-sm max-w-3xl mx-auto animate-fade-in-rapid">
-                            <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">📂</div>
-                            <h3 className="text-md font-bold text-slate-800 mb-1">No Booking Logs Found</h3>
-                            <p className="text-slate-500 text-xs">There are no archived past bookings corresponding to your search specifications.</p>
-                        </div>
-                     ) : (
-                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                           
-                           {/* Desktop Table */}
-                           <div className="hidden md:block overflow-x-auto">
-                              <table className="w-full text-left border-collapse">
-                                 <thead>
-                                    <tr className="bg-slate-55/75 border-b border-slate-200 text-slate-450 text-[10px] font-black uppercase tracking-wider">
-                                       <th className="py-4 px-5">Archive Reference</th>
-                                       <th className="py-4 px-5">Service Provider</th>
-                                       <th className="py-4 px-5 text-center">Attendees</th>
-                                       <th className="py-4 px-5 text-right">Invoice Payout</th>
-                                       <th className="py-4 px-5 text-center">Status badge</th>
-                                       <th className="py-4 px-5 text-center">Verify Row</th>
-                                    </tr>
-                                 </thead>
-                                 <tbody className="divide-y divide-slate-100 text-xs font-semibold">
-                                    {paginatedHistoryOrders.map((o) => (
-                                       <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
-                                          <td className="py-4 px-5">
-                                             <p className="font-mono text-[9px] text-slate-400">ID: #{o.id.slice(0, 8)}...</p>
-                                             <p className="font-bold text-slate-700 mt-0.5">{o.eventDate || 'Concluded Event'}</p>
-                                          </td>
-                                          <td className="py-4 px-5 font-bold text-slate-800">
-                                             <p className="truncate max-w-[170px]">{user.roles.includes('partner') && o.customerName ? o.customerName : o.catererName}</p>
-                                             <p className="text-[10px] font-medium text-slate-400 mt-0.5">{o.eventType}</p>
-                                          </td>
-                                          <td className="py-4 px-5 text-center text-slate-600">
-                                             {o.guests} Pax
-                                          </td>
-                                          <td className="py-4 px-5 text-right font-black text-brand-green-900 font-mono">
-                                             ₹{o.totalEstimate?.toLocaleString()}
-                                          </td>
-                                          <td className="py-4 px-5 text-center">
-                                             <span className={cn("px-2 py-1 text-[9px] font-extrabold uppercase rounded-lg border", getStatusColor(o.status))}>
-                                                {getStatusLabel(o.status)}
-                                             </span>
-                                          </td>
-                                          <td className="py-4 px-5 text-center">
-                                             <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                   onClick={() => setSelectedQuickViewOrder(o)}
-                                                   className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
-                                                >
-                                                   <Eye size={12} />
-                                                   Quick View
-                                                </button>
-                                                {!user.roles.includes('partner') && !user.roles.includes('admin') && (
-                                                   <button
-                                                      id={`btn-repeat-booking-${o.id}`}
-                                                      onClick={() => handleRepeatBookingInitiate(o)}
-                                                      className="inline-flex items-center gap-1 bg-brand-green-900 hover:bg-brand-green-900/90 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-xs"
-                                                   >
-                                                      🔄 Repeat
-                                                   </button>
-                                                )}
-                                             </div>
-                                          </td>
-                                       </tr>
-                                    ))}
-                                 </tbody>
-                              </table>
-                           </div>
-
-                           {/* Mobile Stack Cards List */}
-                           <div className="block md:hidden divide-y divide-slate-100">
-                              {paginatedHistoryOrders.map((o) => (
-                                 <div key={o.id} className="p-4 space-y-3">
-                                    <div className="flex justify-between items-start">
-                                       <div>
-                                          <p className="text-[9px] font-mono text-slate-400">REF ID: #{o.id}</p>
-                                          <h4 className="font-bold text-slate-850 mt-0.5">{user.roles.includes('partner') && o.customerName ? o.customerName : o.catererName}</h4>
-                                       </div>
-                                       <span className={cn("px-2 py-0.5 text-[9px] font-bold uppercase rounded border", getStatusColor(o.status))}>
-                                          {getStatusLabel(o.status)}
-                                       </span>
+                     {/* Timeline status update audit trail */}
+                     {selectedQuickViewOrder.statusHistory && selectedQuickViewOrder.statusHistory.length > 0 && (
+                        <div className="p-5 bg-[#FCF8F0]/40 rounded-2xl border border-[#E8D7A5]/30">
+                           <p className="text-[#D4AF37] text-[10px] uppercase mb-3 font-mono font-bold">✦ Timeline Audit Trail Logs</p>
+                           <div className="space-y-3 max-h-[160px] overflow-y-auto pr-2">
+                              {selectedQuickViewOrder.statusHistory.map((h: any, idx: number) => (
+                                 <div key={idx} className="border-l-2 border-[#D4AF37] pl-3 py-0.5 text-xs">
+                                    <div className="flex items-center gap-2 text-[9px] text-[#0F3D2E] font-bold uppercase font-mono">
+                                       <span>Action: {h.action || 'Updated'}</span>
+                                       <span className="text-[#D4AF37]">•</span>
+                                       <span>Signed: {h.actor || 'User'}</span>
                                     </div>
-
-                                    <div className="grid grid-cols-2 gap-2 text-xs font-medium text-slate-500 bg-slate-50 p-2.5 rounded-xl">
-                                       <p>Scheduled: <span className="font-bold text-slate-705">{o.eventDate}</span></p>
-                                       <p>Guests: <span className="font-bold text-slate-755">{o.guests} Pax</span></p>
-                                       <p className="col-span-2 text-brand-green-909 font-bold">Payout total: ₹{o.totalEstimate?.toLocaleString()}</p>
-                                    </div>
-
-                                    <div className="flex justify-end">
-                                       <button
-                                          onClick={() => setSelectedQuickViewOrder(o)}
-                                          className="text-xs text-brand-green-900 font-extrabold flex items-center gap-1 bg-brand-green-900/5 px-2.5 py-1.5 rounded-lg transition-colors"
-                                       >
-                                          Retrieve Sheets <ChevronRight size={13} />
-                                        </button>
-                                        {!user.roles.includes('partner') && !user.roles.includes('admin') && (
-                                           <button
-                                              id={`btn-repeat-booking-mobile-${o.id}`}
-                                              onClick={() => handleRepeatBookingInitiate(o)}
-                                              className="text-xs text-white font-extrabold flex items-center gap-1 bg-brand-green-900 px-2.5 py-1.5 rounded-lg transition-colors ml-2"
-                                           >
-                                              🔄 Repeat
-                                           </button>
-                                                                                 )}
-                                    </div>
+                                    <p className="text-slate-700 font-semibold text-[11px] mt-1">{h.note}</p>
+                                    {h.timestamp && (
+                                      <p className="text-[9px] text-slate-400 mt-1 font-mono">{new Date(h.timestamp).toLocaleString()}</p>
+                                    )}
                                  </div>
                               ))}
                            </div>
-
-                           {/* Dynamic Table Pagination */}
-                           {totalHistoryPages > 1 && (
-                              <div className="bg-slate-50 border-t border-slate-100 py-3 px-5 flex justify-between items-center text-xs">
-                                 <span className="text-slate-500 font-bold">
-                                    Displaying Page <span className="text-slate-755 font-black">{historyPage}</span> of {totalHistoryPages}
-                                 </span>
-                                 <div className="flex gap-1.5">
-                                    <button
-                                       disabled={historyPage === 1}
-                                       onClick={() => setHistoryPage(prev => prev - 1)}
-                                       className="p-1 px-2.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold"
-                                    >
-                                       Prev
-                                    </button>
-                                    <button
-                                       disabled={historyPage === totalHistoryPages}
-                                       onClick={() => setHistoryPage(prev => prev + 1)}
-                                       className="p-1 px-2.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold"
-                                    >
-                                       Next
-                                    </button>
-                                 </div>
-                              </div>
-                           )}
-
                         </div>
                      )}
                   </div>
-               )}
-            </>
-        )}
 
-        {/* Float Modal details card sheet drawer */}
-        {selectedQuickViewOrder && (
-           <div id="quickview-modal-backdrop" className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in-rapid">
-              <div 
-                id="quickview-modal-content" 
-                className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col p-6 relative"
-              >
-                 {/* Close drawer */}
-                 <button 
-                   onClick={() => setSelectedQuickViewOrder(null)} 
-                   className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-all"
-                 >
-                    <X size={15} />
-                 </button>
+                  <div className="mt-8 pt-4 border-t border-[#E8D7A5]/40 flex justify-end gap-2">
+                     <button
+                       onClick={() => setSelectedQuickViewOrder(null)}
+                       className="px-5 py-2.5 bg-[#FCF8F0] hover:bg-[#F6EAD4] border border-[#E8D7A5]/40 text-[#D4AF37] rounded-xl text-xs font-bold transition-all"
+                     >
+                        Close Sheet
+                     </button>
+                     {(user.roles.includes('admin') || user.roles.includes('partner')) && (
+                        <div className="flex gap-1.5">
+                           {normalizeStatus(selectedQuickViewOrder.status) === 'pending' && (
+                              <button
+                                onClick={() => updateStatus(selectedQuickViewOrder.id, 'approved')}
+                                className="px-4 py-2.5 bg-[#0F3D2E] text-white rounded-xl text-xs font-bold hover:bg-[#051410] transition-all"
+                              >
+                                Approve Platter
+                              </button>
+                           )}
+                           {normalizeStatus(selectedQuickViewOrder.status) === 'approved' && (
+                              <button
+                                onClick={() => updateStatus(selectedQuickViewOrder.id, 'completed')}
+                                className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all"
+                              >
+                                Mark Completed
+                              </button>
+                           )}
+                        </div>
+                     )}
+                  </div>
 
-                 <div className="border-b border-slate-100 pb-4 mb-4">
-                    <span className="bg-slate-100 text-slate-500 font-mono text-[9px] font-bold py-1 px-2 rounded-md uppercase">Ref DB ID: {selectedQuickViewOrder.id}</span>
-                    <h2 className="text-lg font-black text-slate-900 mt-2 tracking-tight">Catering Summary Sheet</h2>
-                    <p className="text-xs text-slate-500 font-medium">Receipt parameters, item listings, and payout audit trail logs</p>
-                 </div>
+               </div>
+            </div>
+         )}
 
-                 <div className="space-y-4 text-xs font-semibold">
-                    {/* Visual Badge Card */}
-                    <div className="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                       <div>
-                          <p className="text-slate-400 text-[10px] uppercase">Service Provider</p>
-                          <p className="text-sm font-bold text-slate-800 mt-0.5">
-                             {user.roles.includes('partner') && selectedQuickViewOrder.customerName ? selectedQuickViewOrder.customerName : selectedQuickViewOrder.catererName}
-                          </p>
-                       </div>
-                       <span className={cn("px-3 py-1 rounded-lg text-xs font-bold uppercase", getStatusColor(selectedQuickViewOrder.status))}>
-                          {getStatusLabel(selectedQuickViewOrder.status)}
-                       </span>
-                    </div>
+         {/* Segment 4: Repeat Booking Dialog */}
+         {repeatOrderSource && (
+            <div id="modal-repeat-booking" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F3D2E]/40 backdrop-blur-xs">
+               <div className="bg-white rounded-3xl border border-[#E8D7A5] max-w-lg w-full p-6 sm:p-8 shadow-[0_20px_50px_rgba(15,61,46,0.15)] animate-fade-in-rapid relative">
+                  <div className="absolute right-6 top-6">
+                     <button 
+                       onClick={() => setRepeatOrderSource(null)}
+                       className="w-8 h-8 rounded-full bg-[#FCF8F0] hover:bg-[#F6EAD4] border border-[#E8D7A5]/50 flex items-center justify-center text-[#D4AF37] font-bold transition-all"
+                     >
+                       ✕
+                     </button>
+                  </div>
 
-                    {/* Metadata column fields */}
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                          <p className="text-slate-400 text-[10px] uppercase">Event Category</p>
-                          <p className="text-xs text-slate-755 font-black mt-1">{selectedQuickViewOrder.eventType}</p>
-                       </div>
-                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                          <p className="text-slate-400 text-[10px] uppercase">Concluded Date</p>
-                          <p className="text-xs text-slate-755 font-black mt-1">{selectedQuickViewOrder.eventDate || 'N/A'}</p>
-                       </div>
-                    </div>
+                  <div className="mb-6 border-b border-[#E8D7A5]/40 pb-4">
+                     <span className="text-[10px] text-[#D4AF37] font-mono font-bold tracking-widest block mb-1">✦ GOLD MEMBER PRIVILEGES</span>
+                     <h3 className="text-2xl font-serif font-bold text-[#0F3D2E]">Repeat Event Plan</h3>
+                     <p className="text-xs text-slate-500 mt-1">Re-initiate a past successful recipe platter with {repeatOrderSource.catererName}</p>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                          <p className="text-slate-400 text-[10px] uppercase">Scale / Guest Pax</p>
-                          <p className="text-xs text-slate-755 font-black mt-1">{selectedQuickViewOrder.guests} Attendees</p>
-                       </div>
-                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                          <p className="text-slate-400 text-[10px] uppercase">Venue location</p>
-                          <p className="text-xs text-slate-755 font-black mt-1 truncate">{selectedQuickViewOrder.venue || 'TBD Address'}</p>
-                       </div>
-                    </div>
+                  <div className="space-y-4">
+                     <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 font-mono">New Event Date</label>
+                        <input 
+                           type="date" 
+                           value={repeatForm.eventDate}
+                           onChange={(e) => setRepeatForm({...repeatForm, eventDate: e.target.value})}
+                           className="w-full bg-[#FCF8F0]/35 border border-[#E8D7A5] rounded-xl px-3 py-2.5 text-xs font-bold text-[#0F3D2E] outline-none focus:border-[#D4AF37] shadow-xs"
+                        />
+                     </div>
 
-                    {/* Menu items listing */}
-                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                       <p className="text-slate-400 text-[10px] uppercase mb-2 font-bold">Platter Items selection</p>
-                       <ul className="list-disc pl-4 text-xs space-y-1 text-slate-650">
-                          {selectedQuickViewOrder.selectedItems?.length > 0 ? (
-                             selectedQuickViewOrder.selectedItems.map((item: string, i: number) => (
-                                <li key={i}>{item}</li>
-                             ))
-                          ) : (
-                             <li className="text-slate-405 italic">No selections specified</li>
-                          )}
-                       </ul>
-                    </div>
+                     <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 font-mono">Guest Count (Pax)</label>
+                        <input 
+                           type="number" 
+                           value={repeatForm.guests || ''}
+                           onChange={(e) => setRepeatForm({...repeatForm, guests: parseInt(e.target.value) || 0})}
+                           className="w-full bg-[#FCF8F0]/35 border border-[#E8D7A5] rounded-xl px-3 py-2.5 text-xs font-bold text-[#0F3D2E] outline-none focus:border-[#D4AF37] shadow-xs"
+                        />
+                     </div>
 
-                    {/* Settlement calculations */}
-                    <div className="p-4 bg-brand-green-909/5 rounded-xl border border-brand-green-900/10">
-                       <p className="text-slate-650 text-[10px] uppercase font-bold mb-3">Invoice &amp; Settlement breakdown</p>
-                       <div className="space-y-1.5 text-xs font-semibold">
-                          <div className="flex justify-between text-slate-500">
-                             <span>Platter Rate Unit Price</span>
-                             <span>₹{selectedQuickViewOrder.pricePerPlate}/plate</span>
-                          </div>
-                          <div className="flex justify-between text-slate-500 font-medium">
-                             <span>Raw Food Cost ({selectedQuickViewOrder.guests} Pax)</span>
-                             <span>₹{((selectedQuickViewOrder.pricePerPlate || 0) * (selectedQuickViewOrder.guests || 0)).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between text-slate-500 font-medium">
-                             <span>Platform Security Surcharges</span>
-                             <span>₹{selectedQuickViewOrder.platformFee || 0}</span>
-                          </div>
-                          <div className="flex justify-between border-t border-slate-200/60 pt-2 font-bold text-brand-green-900 text-sm">
-                             <span>Settled Total Invoice</span>
-                             <span>₹{selectedQuickViewOrder.totalEstimate?.toLocaleString()}</span>
-                          </div>
-                       </div>
-                    </div>
+                     <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 font-mono">Venue Address</label>
+                        <textarea 
+                           rows={2}
+                           value={repeatForm.venue}
+                           onChange={(e) => setRepeatForm({...repeatForm, venue: e.target.value})}
+                           className="w-full bg-[#FCF8F0]/35 border border-[#E8D7A5] rounded-xl px-3 py-2.5 text-xs font-bold text-[#0F3D2E] outline-none focus:border-[#D4AF37] shadow-xs"
+                        />
+                     </div>
 
-                    {/* Timeline status update audit trail */}
-                    {selectedQuickViewOrder.statusHistory && selectedQuickViewOrder.statusHistory.length > 0 && (
-                       <div className="p-4 bg-slate-50 rounded-xl border border-slate-105">
-                          <p className="text-slate-400 text-[10px] uppercase mb-2 font-bold">Timeline Audit trail logs</p>
-                          <div className="space-y-1.5 max-h-[140px] overflow-y-auto">
-                             {selectedQuickViewOrder.statusHistory.map((h: any, idx: number) => (
-                                <div key={idx} className="border-l-2 border-slate-200 pl-3 py-0.5 text-xs">
-                                   <div className="flex items-center gap-1 text-[9px] text-slate-400 font-bold uppercase">
-                                      <span>Action: {h.action || 'Updated'}</span>
-                                      <span>•</span>
-                                      <span>Signed: {h.actor || 'User'}</span>
-                                   </div>
-                                   <p className="text-slate-600 font-semibold text-[11px] mt-0.5">{h.note}</p>
-                                   {h.timestamp && (
-                                     <p className="text-[9px] text-slate-400 mt-0.5">{new Date(h.timestamp).toLocaleString()}</p>
-                                   )}
-                                </div>
-                             ))}
-                          </div>
-                       </div>
-                    )}
+                     <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 font-mono">Special Instructions</label>
+                        <textarea 
+                           rows={2}
+                           value={repeatForm.specialNotes}
+                           onChange={(e) => setRepeatForm({...repeatForm, specialNotes: e.target.value})}
+                           className="w-full bg-[#FCF8F0]/35 border border-[#E8D7A5] rounded-xl px-3 py-2.5 text-xs font-bold text-[#0F3D2E] outline-none focus:border-[#D4AF37] shadow-xs"
+                        />
+                     </div>
+                  </div>
 
-                 </div>
+                  <div className="mt-8 pt-4 border-t border-[#E8D7A5]/40 flex justify-end gap-2">
+                     <button
+                       onClick={() => setRepeatOrderSource(null)}
+                       className="px-5 py-2.5 bg-[#FCF8F0] hover:bg-[#F6EAD4] border border-[#E8D7A5]/40 text-[#D4AF37] rounded-xl text-xs font-bold transition-all"
+                     >
+                        Cancel
+                     </button>
+                     <button
+                       onClick={handleRepeatBookingConfirm}
+                       className="px-6 py-2.5 bg-[#0F3D2E] hover:bg-[#051410] border border-[#0F3D2E] text-white rounded-xl text-xs font-bold transition-all"
+                     >
+                        Re-Submit Quote
+                     </button>
+                  </div>
 
-                 <div className="mt-6 pt-4 border-t border-slate-150 flex justify-end gap-2">
-                    <button
-                      onClick={() => setSelectedQuickViewOrder(null)}
-                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
-                    >
-                       Close Sheets
-                    </button>
-                    {(user.roles.includes('admin') || user.roles.includes('partner')) && (
-                       <div className="flex gap-1.5">
-                          {normalizeStatus(selectedQuickViewOrder.status) === 'pending' && (
-                             <button
-                               onClick={() => updateStatus(selectedQuickViewOrder.id, 'approved')}
-                               className="px-4 py-2.5 bg-brand-green-900 hover:bg-brand-green-950 text-white rounded-xl text-xs font-bold transition-all animate-pulse-once"
-                             >
-                               Approve Platter
-                             </button>
-                          )}
-                          {normalizeStatus(selectedQuickViewOrder.status) === 'approved' && (
-                             <button
-                               onClick={() => updateStatus(selectedQuickViewOrder.id, 'completed')}
-                               className="px-4 py-2.5 bg-slate-900 hover:bg-slate-950 text-white rounded-xl text-xs font-bold transition-all"
-                             >
-                               Mark Completed
-                             </button>
-                          )}
-                       </div>
-                    )}
-                 </div>
-
-              </div>
-           </div>
-        )}
+               </div>
+            </div>
+         )}
 
       </div>
     </div>
