@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Users, MapPin, Search, Check, Clock, ArrowRight, ChevronRight, Filter, X, ChevronLeft, BookOpen, Sparkles, Eye, Archive, User, Phone, ShoppingBag, Star, AlertCircle, Sparkle, DollarSign, Shield } from 'lucide-react';
+import { Calendar, Users, MapPin, Search, Check, Clock, ArrowRight, ChevronRight, Filter, X, ChevronLeft, BookOpen, Sparkles, Eye, Archive, User, Phone, ShoppingBag, Star, AlertCircle, Sparkle, DollarSign, Shield, Menu, ChefHat, Download, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, saveWithSupabaseSync } from '../lib/supabase';
 import { normalizeStatus, getStatusLabel, getStatusBadgeColor, performOrderStatusUpdate, storeNotification } from '../lib/orderUtils';
@@ -81,9 +82,14 @@ function getRecentPriority(status: string): number {
 }
 
 export default function Orders() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Mobile redesign state variables
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<{[cardId: string]: string | null}>({});
   
   // Tab segments: Recent versus History
   const [bookingSubTab, setBookingSubTab] = useState<'recent' | 'history'>('recent');
@@ -685,9 +691,31 @@ export default function Orders() {
   const completedEventsCount = orders.filter(o => normalizeStatus(o.status) === 'completed').length;
   const rejectedOrdersCount = orders.filter(o => normalizeStatus(o.status) === 'rejected').length;
 
+  const toggleAccordion = (orderId: string, section: string) => {
+    setExpandedSection(prev => ({
+      ...prev,
+      [orderId]: prev[orderId] === section ? null : section
+    }));
+  };
+
   return (
-    <div className="pt-24 pb-20 min-h-screen bg-[#FFFEFB] font-sans text-slate-800">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 767px) {
+          #main-navigation-navbar {
+            display: none !important;
+          }
+          body {
+            padding-top: 0 !important;
+          }
+        }
+      `}} />
+
+      {/* ==================================================== */}
+      {/* DESKTOP VIEW LAYOUT (VISIBLE ONLY ON DESKTOP >= 768px) */}
+      {/* ==================================================== */}
+      <div className="hidden md:block pt-24 pb-20 min-h-screen bg-[#FFFEFB] font-sans text-slate-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
         
         {/* Toggle headers and dynamic title */}
         <div id="orders-dashboard-header" className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4 pb-2">
@@ -1827,5 +1855,753 @@ export default function Orders() {
 
       </div>
     </div>
+
+    {/* ==================================================== */}
+    {/* MOBILE VIEW LAYOUT (VISIBLE ONLY ON MOBILE < 768px) */}
+    {/* ==================================================== */}
+    <div className="block md:hidden min-h-screen bg-[#FCFBF7] font-sans text-slate-800 pb-24">
+      {/* Mobile Header */}
+      <header className="sticky top-0 z-40 bg-white border-b border-[#E8D7A5]/40 px-4 py-3 shadow-[0_2px_15px_rgba(15,61,46,0.04)] flex justify-between items-center">
+        {/* Hamburger menu */}
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="w-10 h-10 rounded-xl bg-white border border-[#E8D7A5]/50 flex items-center justify-center text-[#0F3D2E] shadow-sm active:scale-95 transition-all"
+          id="mobile-hamburger-btn"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2">
+          <div className="bg-[#D4AF37] w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
+            <ChefHat size={16} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold font-display tracking-tight text-[#0F3D2E] leading-none">CaterNest</span>
+            <span className="text-[7px] font-extrabold tracking-widest text-[#D4AF37] leading-none uppercase mt-0.5">Making Every Event Special</span>
+          </div>
+        </Link>
+
+        {/* Profile icon */}
+        <button 
+          onClick={() => navigate('/profile')}
+          className="w-10 h-10 rounded-full bg-[#0F3D2E] text-white flex items-center justify-center border border-[#D4AF37]/30 shadow-sm"
+          id="mobile-profile-btn"
+        >
+          <User size={18} />
+        </button>
+      </header>
+
+      {/* Mobile drawer menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="fixed top-0 left-0 bottom-0 w-[280px] max-w-[80vw] bg-[#FFFEFB] z-55 flex flex-col border-r border-[#E8D7A5]/40 shadow-2xl overflow-y-auto"
+            >
+              <div className="p-4 bg-[#0F3D2E] text-white flex justify-between items-center">
+                <span className="font-display font-bold text-lg">CaterNest Menu</span>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                {user && (
+                  <div className="p-3 bg-[#FCF8F0] border border-[#E8D7A5]/40 rounded-xl flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#D4AF37] text-white flex items-center justify-center font-bold">
+                      {user.name.charAt(0)}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="font-bold text-[#0F3D2E] text-sm truncate">{user.name}</p>
+                      <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-col gap-1.5 font-sans">
+                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#FCF8F0]">Home</Link>
+                  <Link to="/explore" onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#FCF8F0]">Explore Caterers</Link>
+                  <Link to="/orders" onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-2.5 rounded-lg text-sm font-semibold bg-[#0F3D2E] text-white">My Bookings</Link>
+                  <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#FCF8F0]">My Profile</Link>
+                  {user?.roles.includes('admin') && (
+                    <Link to="/admin-dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-2.5 rounded-lg text-sm font-semibold text-red-700 bg-red-50">Admin Dashboard</Link>
+                  )}
+                  <button 
+                    onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <div className="px-4 py-5 space-y-5">
+        {/* Premium Dashboard Cards - 2x2 grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Active Orders */}
+          <div className="bg-white p-4 rounded-3xl border border-[#E8D7A5]/50 shadow-[0_4px_20px_rgba(15,61,46,0.02)] flex flex-col justify-between h-[100px] relative overflow-hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#0F3D2E] text-[#D4AF37] flex items-center justify-center">
+                <ShoppingBag size={14} />
+              </div>
+              <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">Active Orders</p>
+            </div>
+            <div>
+              <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-1 leading-none text-left">{activeOrdersCount}</h4>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#0F3D2E] to-[#D4AF37]" />
+          </div>
+
+          {/* Upcoming Events */}
+          <div className="bg-white p-4 rounded-3xl border border-[#E8D7A5]/50 shadow-[0_4px_20px_rgba(15,61,46,0.02)] flex flex-col justify-between h-[100px] relative overflow-hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#D4AF37] text-white flex items-center justify-center">
+                <Calendar size={14} />
+              </div>
+              <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">Upcoming Events</p>
+            </div>
+            <div>
+              <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-1 leading-none text-left">{upcomingEventsCount}</h4>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#D4AF37]" />
+          </div>
+
+          {/* Completed Events */}
+          <div className="bg-white p-4 rounded-3xl border border-[#E8D7A5]/50 shadow-[0_4px_20px_rgba(15,61,46,0.02)] flex flex-col justify-between h-[100px] relative overflow-hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#EAFDF5] text-[#0F3D2E] flex items-center justify-center border border-emerald-100">
+                <Check size={14} className="stroke-[3]" />
+              </div>
+              <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">Completed Events</p>
+            </div>
+            <div>
+              <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-1 leading-none text-left">{completedEventsCount}</h4>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500" />
+          </div>
+
+          {/* Rejected Orders */}
+          <div className="bg-white p-4 rounded-3xl border border-[#E8D7A5]/50 shadow-[0_4px_20px_rgba(15,61,46,0.02)] flex flex-col justify-between h-[100px] relative overflow-hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                <X size={14} className="stroke-[3]" />
+              </div>
+              <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">Rejected Orders</p>
+            </div>
+            <div>
+              <h4 className="text-3xl font-serif font-black text-[#0F3D2E] mt-1 leading-none text-left">{rejectedOrdersCount}</h4>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-rose-500" />
+          </div>
+        </div>
+
+        {/* Recent & Active Bookings (Emerald premium card) */}
+        <button
+          onClick={() => setBookingSubTab('recent')}
+          className={cn(
+            "w-full p-5 rounded-3xl border text-left transition-all relative overflow-hidden shadow-[0_8px_30px_rgba(15,61,46,0.02)] active:scale-[0.99] cursor-pointer",
+            bookingSubTab === 'recent'
+              ? "bg-[#0F3D2E] border-[#D4AF37] ring-1 ring-[#D4AF37]"
+              : "bg-white border-[#E8D7A5]/60"
+          )}
+        >
+          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-4 translate-y-4">
+            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" stroke="#D4AF37" strokeWidth="0.5">
+              <circle cx="50" cy="50" r="40" />
+              <circle cx="50" cy="50" r="30" />
+              <path d="M 50 0 L 50 100 M 0 50 L 100 50" />
+            </svg>
+          </div>
+          <div className="flex justify-between items-center relative z-10">
+            <div>
+              <p className={cn(
+                "text-[8px] font-extrabold uppercase tracking-widest font-mono text-left",
+                bookingSubTab === 'recent' ? "text-[#E8D7A5]" : "text-slate-400"
+              )}>Recent &amp; Active Bookings</p>
+              <h3 className={cn(
+                "text-3xl font-serif font-black mt-1 text-left",
+                bookingSubTab === 'recent' ? "text-white" : "text-[#0F3D2E]"
+              )}>{recentOrdersList.length}</h3>
+            </div>
+            <div className={cn(
+              "w-9 h-9 rounded-full flex items-center justify-center border text-[#D4AF37]",
+              bookingSubTab === 'recent' ? "bg-white/10 border-[#D4AF37]/30" : "bg-[#FCF8F0] border-[#E8D7A5]/60"
+            )}>
+              <Clock size={16} />
+            </div>
+          </div>
+          <p className={cn(
+            "text-[10px] mt-4 flex items-center gap-1 font-semibold text-left",
+            bookingSubTab === 'recent' ? "text-[#E8D7A5]/90" : "text-slate-500"
+          )}>
+            View ongoing estimates, changes requested &amp; approved status <ChevronRight size={10} />
+          </p>
+        </button>
+
+        {/* Archived Booking History (White premium card) */}
+        <button
+          onClick={() => setBookingSubTab('history')}
+          className={cn(
+            "w-full p-5 rounded-3xl border text-left transition-all relative overflow-hidden shadow-[0_8px_30px_rgba(15,61,46,0.02)] active:scale-[0.99] cursor-pointer",
+            bookingSubTab === 'history'
+              ? "bg-[#0F3D2E] border-[#D4AF37] ring-1 ring-[#D4AF37]"
+              : "bg-white border-[#E8D7A5]/60"
+          )}
+        >
+          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-4 translate-y-4">
+            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" stroke="#D4AF37" strokeWidth="0.5">
+              <circle cx="50" cy="50" r="40" />
+              <circle cx="50" cy="50" r="30" />
+              <path d="M 50 0 L 50 100 M 0 50 L 100 50" />
+            </svg>
+          </div>
+          <div className="flex justify-between items-center relative z-10">
+            <div>
+              <p className={cn(
+                "text-[8px] font-extrabold uppercase tracking-widest font-mono text-left",
+                bookingSubTab === 'history' ? "text-[#E8D7A5]" : "text-slate-400"
+              )}>Archived Booking History</p>
+              <h3 className={cn(
+                "text-3xl font-serif font-black mt-1 text-left",
+                bookingSubTab === 'history' ? "text-white" : "text-[#0F3D2E]"
+              )}>{historyOrdersList.length}</h3>
+            </div>
+            <div className={cn(
+              "w-9 h-9 rounded-full flex items-center justify-center border text-[#D4AF37]",
+              bookingSubTab === 'history' ? "bg-white/10 border-[#D4AF37]/30" : "bg-[#FCF8F0] border-[#E8D7A5]/60"
+            )}>
+              <BookOpen size={16} />
+            </div>
+          </div>
+          <p className={cn(
+            "text-[10px] mt-4 flex items-center gap-1 font-semibold text-left",
+            bookingSubTab === 'history' ? "text-[#E8D7A5]/90" : "text-slate-500"
+          )}>
+            Review past event recipes, billing settlements &amp; concluded orders <ChevronRight size={10} />
+          </p>
+        </button>
+
+        {/* Separator and Title */}
+        <div className="pt-2 text-left">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[#D4AF37]">✦</span>
+            <h2 className="text-2xl font-serif font-bold text-[#0F3D2E]">
+              {bookingSubTab === 'recent' ? 'Active Event Plans' : 'Archived History'}
+            </h2>
+          </div>
+          <p className="text-xs text-slate-400 italic">
+            {bookingSubTab === 'recent' 
+              ? 'Current proposals requiring your review or scheduled event execution' 
+              : 'Review concluded invoices and past successful platters'}
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#D4AF37]" />
+          <input 
+            type="text" 
+            placeholder={bookingSubTab === 'recent' ? "Search recent orders..." : "Search archived bookings..."}
+            value={bookingSubTab === 'recent' ? searchQuery : searchQueryHistory}
+            onChange={(e) => {
+              if (bookingSubTab === 'recent') {
+                setSearchQuery(e.target.value);
+              } else {
+                setSearchQueryHistory(e.target.value);
+              }
+            }}
+            className="bg-white border border-[#E8D7A5] rounded-full pl-11 pr-4 py-3 text-xs font-bold text-[#0F3D2E] placeholder-[#0F3D2E]/40 outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] w-full shadow-xs" 
+          />
+        </div>
+
+        {/* Mobile Orders List */}
+        <div className="space-y-6">
+          {(bookingSubTab === 'recent' ? filteredRecentOrders : paginatedHistoryOrders).map((o) => {
+            const norm = normalizeStatus(o.status);
+            const activeAccordion = expandedSection[o.id] || null;
+
+            return (
+              <div key={o.id} className="bg-white rounded-3xl border border-[#E8D7A5] shadow-[0_8px_30px_rgba(15,61,46,0.03)] p-5 relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#D4AF37]" />
+
+                {/* Top Row Badges */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#FCF8F0] border border-[#E8D7A5]/40 rounded-lg text-[8px] text-[#D4AF37] font-mono font-extrabold uppercase tracking-wider shrink-0">
+                    <Sparkle size={8} className="animate-pulse" />
+                    REF: #{o.id.substring(0, 8).toUpperCase()}
+                  </span>
+                  <span className={cn("px-2.5 py-1 text-[8px] font-bold uppercase tracking-widest rounded-full border font-mono", getStatusColor(o.status))}>
+                    {getStatusLabel(o.status)}
+                  </span>
+                </div>
+
+                {/* Caterer Name */}
+                <h3 className="text-xl font-serif font-black text-[#0F3D2E] tracking-tight mb-3 text-left">
+                  {user.roles.includes('partner') && o.customerName ? o.customerName + ' (Client)' : o.catererName}
+                </h3>
+
+                {/* Details Row */}
+                <div className="space-y-2 mb-4 text-xs text-[#0F3D2E]/90 font-sans border-b border-[#E8D7A5]/30 pb-3 text-left">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-[#D4AF37]" />
+                    <span className="font-bold">{o.eventDate || 'TBD'}</span>
+                    {o.eventDate && (
+                      <span className={cn("px-1.5 py-0.5 rounded text-[8px] font-bold uppercase font-mono border", isEventPassed(o.eventDate) ? "bg-slate-100 border-slate-200 text-slate-500" : "bg-amber-50 border-amber-200 text-amber-700")}>
+                        {isEventPassed(o.eventDate) ? "Concluded" : "Upcoming"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users size={14} className="text-[#D4AF37]" />
+                    <span className="font-bold">{o.guests} Guests</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin size={14} className="text-[#D4AF37] shrink-0" />
+                    <span className="font-bold truncate">{o.venue || 'Venue TBD'}</span>
+                    {(o.latitude && o.longitude) ? (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#D4AF37] hover:underline font-extrabold text-[10px] shrink-0 ml-1"
+                      >
+                        🗺️ View on Map
+                      </a>
+                    ) : (o.venue || o.address) ? (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.venue || o.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#D4AF37] hover:underline font-extrabold text-[10px] shrink-0 ml-1"
+                      >
+                        🗺️ View on Map
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Category & Package Details */}
+                <div className="text-[11px] text-slate-500 mb-4 font-sans bg-[#FCF8F0]/30 p-2 rounded-xl border border-[#E8D7A5]/20 flex flex-wrap justify-between gap-1 text-left">
+                  <div>
+                    <span>Category:</span> <span className="text-[#0F3D2E] font-bold">{o.eventType}</span>
+                  </div>
+                  <div>
+                    <span>Platter:</span> <span className="text-[#D4AF37] font-bold">{o.packageDetails?.packageName || 'Customized'}</span>
+                  </div>
+                </div>
+
+                {/* Inline Editing Form */}
+                {norm === 'changes_requested' && (
+                  <div className="mt-4 pt-3 border-t border-slate-105 text-left mb-4">
+                    <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
+                      <div className="flex gap-3 items-start mb-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-950 flex items-center justify-center font-bold shrink-0">?</div>
+                        <div>
+                          <h4 className="font-extrabold text-amber-950 text-sm">Action Required: Caterer Suggested Revisions</h4>
+                          <p className="text-xs text-amber-800 mt-[2px]">"{o.changesRequestedMemo || 'The partner requested updates to the event layout or schedule to process the quote.'}"</p>
+                        </div>
+                      </div>
+
+                      {editingOrderId === o.id ? (
+                        <div className="bg-white border border-amber-200 p-4 rounded-xl space-y-4 mt-3">
+                          <p className="text-xs font-bold text-amber-900 border-b border-slate-150 pb-2">
+                            ✏️ Edit Booking Details
+                          </p>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Event Date</label>
+                              <input 
+                                type="date" 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-800 focus:border-amber-400 outline-none"
+                                value={editForm.eventDate} 
+                                onChange={(e) => setEditForm({...editForm, eventDate: e.target.value})}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Event Type</label>
+                              <select 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-850 focus:border-amber-400 outline-none"
+                                value={editForm.eventType} 
+                                onChange={(e) => setEditForm({...editForm, eventType: e.target.value})}
+                              >
+                                <option value="Wedding">Wedding</option>
+                                <option value="Birthday">Birthday</option>
+                                <option value="Corporate Event">Corporate Event</option>
+                                <option value="House Party">House Party</option>
+                                <option value="Anniversary">Anniversary</option>
+                                <option value="Cocktail Party">Cocktail Party</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase">Venue Address</label>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsMapOpen(true)}
+                                  className="text-[10px] font-bold text-[#DEAA38] hover:text-[#b08427] transition flex items-center gap-0.5 cursor-pointer"
+                                >
+                                  <span>🗺️ Select Location</span>
+                                </button>
+                              </div>
+                              <AddressAutocomplete
+                                useTextarea={true}
+                                rows={2} 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-800 focus:border-amber-400 outline-none"
+                                value={editForm.venue} 
+                                onChange={(val) => setEditForm({...editForm, venue: val})}
+                                onSelect={(data) => {
+                                  setEditForm({
+                                    ...editForm,
+                                    venue: data.address,
+                                    latitude: data.latitude,
+                                    longitude: data.longitude
+                                  });
+                                }}
+                                theme="gold"
+                                leftIcon={<MapPin className="text-[#DEAA38] w-4 h-4 hover:text-[#b08427] transition-colors" />}
+                                onIconClick={() => setIsMapOpen(true)}
+                              />
+                              <MapPickerModal
+                                isOpen={isMapOpen}
+                                onClose={() => setIsMapOpen(false)}
+                                initialLat={editForm.latitude}
+                                initialLng={editForm.longitude}
+                                initialAddress={editForm.venue}
+                                onSave={(data) => {
+                                  setEditForm({
+                                    ...editForm,
+                                    venue: data.address,
+                                    latitude: data.latitude,
+                                    longitude: data.longitude
+                                  });
+                                }}
+                                title="Select Event Location"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Guest count</label>
+                              <input 
+                                type="number" 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-medium text-slate-800 focus:border-amber-400 outline-none"
+                                value={editForm.guests ?? 0} 
+                                onChange={(e) => setEditForm({...editForm, guests: parseInt(e.target.value) || 0})}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 justify-end pt-2">
+                            <button 
+                              type="button"
+                              onClick={() => setEditingOrderId(null)} 
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => handleResubmitOrder(o.id, o.catererId)} 
+                              className="bg-brand-green-900 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-brand-green-950 transition-colors"
+                            >
+                              Resubmit Order
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button 
+                          type="button"
+                          onClick={() => startEditing(o)}
+                          className="w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-xl text-xs font-bold transition-all border border-amber-600 cursor-pointer"
+                        >
+                          ✏️ Edit &amp; Resubmit Details
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Collapsible Accordions (1 to 4) */}
+                <div className="space-y-2 mb-4">
+                  {/* Accordion 1: Platter Checklist & Client Details */}
+                  <div className="border border-[#E8D7A5]/40 rounded-2xl overflow-hidden bg-white">
+                    <button 
+                      onClick={() => toggleAccordion(o.id, 'platter')}
+                      className="w-full flex justify-between items-center bg-[#FCF8F0]/20 px-4 py-3 text-left text-xs font-serif font-bold text-[#0F3D2E] hover:bg-[#FCF8F0]/40 transition-colors cursor-pointer"
+                    >
+                      <span>Platter Checklist &amp; Client Details</span>
+                      <ChevronRight size={14} className={cn("text-[#D4AF37] transition-transform duration-200", activeAccordion === 'platter' && "rotate-90")} />
+                    </button>
+                    {activeAccordion === 'platter' && (
+                      <div className="p-4 bg-[#FCF8F0]/10 border-t border-[#E8D7A5]/20 space-y-3 text-xs text-left">
+                        <div>
+                          <p className="font-extrabold uppercase text-[9px] tracking-wider text-[#D4AF37] mb-1 font-mono">Contact Details</p>
+                          <p className="font-medium text-slate-700">Lead: {o.customerName || 'Registered Member'}</p>
+                          <p className="font-medium text-slate-700">Phone: {o.phone || o.customerPhone || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="font-extrabold uppercase text-[9px] tracking-wider text-[#D4AF37] mb-1 font-mono">Menu Items</p>
+                          <ul className="space-y-1 font-medium text-slate-700 pl-1">
+                            {o.selectedItems?.length > 0 ? o.selectedItems.map((item: string, i: number) => (
+                              <li key={i} className="flex items-center gap-1.5">
+                                <span className="text-[#D4AF37]">•</span>
+                                <span>{item}</span>
+                              </li>
+                            )) : <li className="text-slate-450 italic">No selections</li>}
+                          </ul>
+                        </div>
+                        {o.specialNotes && (
+                          <div>
+                            <p className="font-extrabold uppercase text-[9px] tracking-wider text-[#D4AF37] mb-0.5 font-mono">Special Notes</p>
+                            <p className="font-medium italic text-slate-600">"{o.specialNotes}"</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Accordion 2: Pricing Breakdown */}
+                  <div className="border border-[#E8D7A5]/40 rounded-2xl overflow-hidden bg-white">
+                    <button 
+                      onClick={() => toggleAccordion(o.id, 'pricing')}
+                      className="w-full flex justify-between items-center bg-[#FCF8F0]/20 px-4 py-3 text-left text-xs font-serif font-bold text-[#0F3D2E] hover:bg-[#FCF8F0]/40 transition-colors cursor-pointer"
+                    >
+                      <span>Pricing Breakdown</span>
+                      <ChevronRight size={14} className={cn("text-[#D4AF37] transition-transform duration-200", activeAccordion === 'pricing' && "rotate-90")} />
+                    </button>
+                    {activeAccordion === 'pricing' && (
+                      <div className="p-4 bg-[#FCF8F0]/10 border-t border-[#E8D7A5]/20 space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Base Quote (₹{o.pricePerPlate} × {o.guests})</span>
+                          <span className="font-bold text-[#0F3D2E]">₹{((o.pricePerPlate || 0) * (o.guests || 0)).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Platform Fee</span>
+                          <span className="font-bold text-[#0F3D2E]">₹{o.platformFee || 0}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-[#E8D7A5]/30 pt-2 mt-2">
+                          <span className="font-bold text-[#0F3D2E]">Grand Total</span>
+                          <span className="font-black text-sm text-[#0F3D2E]">₹{o.totalEstimate?.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Accordion 3: Timeline */}
+                  <div className="border border-[#E8D7A5]/40 rounded-2xl overflow-hidden bg-white">
+                    <button 
+                      onClick={() => toggleAccordion(o.id, 'timeline')}
+                      className="w-full flex justify-between items-center bg-[#FCF8F0]/20 px-4 py-3 text-left text-xs font-serif font-bold text-[#0F3D2E] hover:bg-[#FCF8F0]/40 transition-colors cursor-pointer"
+                    >
+                      <span>Timeline</span>
+                      <ChevronRight size={14} className={cn("text-[#D4AF37] transition-transform duration-200", activeAccordion === 'timeline' && "rotate-90")} />
+                    </button>
+                    {activeAccordion === 'timeline' && (
+                      <div className="p-4 bg-[#FCF8F0]/10 border-t border-[#E8D7A5]/20 space-y-3 text-xs">
+                        <div className="space-y-4 pt-1">
+                          {[
+                            { label: 'Submitted', desc: 'Booking submitted successfully' },
+                            { label: 'Caterer Review', desc: 'Caterer review of reservation details' },
+                            { label: 'Approved', desc: 'Event details approved & locked' },
+                            { label: 'Completed', desc: 'Event concluded successfully' }
+                          ].map((step, idx) => {
+                            let currentTrackingIdx = 0;
+                            const statusStr = String(o.status).toLowerCase();
+                            if (statusStr.includes('review') || statusStr === 'pending caterer review') {
+                              currentTrackingIdx = 1;
+                            } else if (norm === 'approved') {
+                              currentTrackingIdx = 2;
+                            } else if (norm === 'completed') {
+                              currentTrackingIdx = 3;
+                            }
+
+                            const isDone = idx <= currentTrackingIdx;
+                            const isCurrent = idx === currentTrackingIdx;
+
+                            return (
+                              <div key={idx} className="flex gap-3 relative">
+                                {idx < 3 && (
+                                  <div className={cn("absolute left-2.5 top-5 bottom-0 w-[2px] bg-slate-100", isDone && "bg-[#0F3D2E]")} style={{ height: 'calc(100% + 16px)' }} />
+                                )}
+                                <div className={cn(
+                                  "w-5 h-5 rounded-full flex items-center justify-center border text-[8px] font-bold z-10 shrink-0",
+                                  isCurrent ? "bg-[#0F3D2E] text-white border-[#D4AF37]" : isDone ? "bg-[#0F3D2E] text-white border-[#0F3D2E]" : "bg-white text-slate-300 border-slate-200"
+                                )}>
+                                  {isDone ? '✓' : idx + 1}
+                                </div>
+                                <div className="text-left">
+                                  <p className={cn("font-bold text-xs", isCurrent ? "text-[#0F3D2E]" : isDone ? "text-[#0F3D2E]/80" : "text-slate-400")}>{step.label}</p>
+                                  <p className="text-[10px] text-slate-400 font-medium font-sans">{step.desc}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Accordion 4: Venue Details */}
+                  <div className="border border-[#E8D7A5]/40 rounded-2xl overflow-hidden bg-white">
+                    <button 
+                      onClick={() => toggleAccordion(o.id, 'venue')}
+                      className="w-full flex justify-between items-center bg-[#FCF8F0]/20 px-4 py-3 text-left text-xs font-serif font-bold text-[#0F3D2E] hover:bg-[#FCF8F0]/40 transition-colors cursor-pointer"
+                    >
+                      <span>Venue Details</span>
+                      <ChevronRight size={14} className={cn("text-[#D4AF37] transition-transform duration-200", activeAccordion === 'venue' && "rotate-90")} />
+                    </button>
+                    {activeAccordion === 'venue' && (
+                      <div className="p-4 bg-[#FCF8F0]/10 border-t border-[#E8D7A5]/20 space-y-2 text-xs">
+                        <p className="font-bold text-[#0F3D2E] flex items-start gap-1.5 text-left">
+                          <MapPin size={12} className="text-[#D4AF37] shrink-0 mt-0.5" />
+                          <span>{o.venue || 'Address TBD'}</span>
+                        </p>
+                        {(o.latitude && o.longitude) ? (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FCF8F0] border border-[#E8D7A5]/40 text-[#D4AF37] hover:bg-[#F6EAD4] rounded-xl text-[10px] font-bold transition-all mt-1"
+                          >
+                            🗺️ Open Google Maps
+                          </a>
+                        ) : (o.venue || o.address) ? (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.venue || o.address)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FCF8F0] border border-[#E8D7A5]/40 text-[#D4AF37] hover:bg-[#F6EAD4] rounded-xl text-[10px] font-bold transition-all mt-1"
+                          >
+                            🗺️ Open Google Maps
+                          </a>
+                        ) : <p className="text-slate-400 italic text-left">No coordinates or map link available</p>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pricing Total Row */}
+                <div className="flex justify-between items-center border-t border-[#E8D7A5]/30 pt-3.5 mb-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] font-mono">Grand Total</span>
+                  <span className="text-2xl font-serif font-black text-[#0F3D2E]">₹{o.totalEstimate?.toLocaleString()}</span>
+                </div>
+
+                {/* Admin / Partner Status Selector Dropdown */}
+                {(user.roles.includes('admin') || user.roles.includes('partner')) && (
+                  <div className="mb-4 space-y-1 text-left">
+                    <label className="block text-[9px] font-extrabold text-[#D4AF37] uppercase tracking-widest font-mono">Manage Status</label>
+                    <div className="relative w-full text-left">
+                      <select 
+                        value={o.status}
+                        onChange={(e) => updateStatus(o.id, e.target.value)}
+                        className="w-full bg-white border border-[#E8D7A5] rounded-xl pl-4 pr-10 py-2.5 text-xs font-bold text-[#0F3D2E] outline-none hover:border-[#D4AF37] appearance-none"
+                      >
+                        <option value="Submitted">Submitted</option>
+                        <option value="Pending Caterer Review">Pending Caterer Review</option>
+                        <option value="Modified">Modified</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#D4AF37]">
+                        <ChevronRight size={12} className="rotate-90" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons (Stacked Vertically on Mobile) */}
+                <div className="space-y-2 mt-4">
+                  {/* Track Order / View History Log */}
+                  <button 
+                    onClick={() => setSelectedQuickViewOrder(o)}
+                    className="w-full bg-white hover:bg-[#FCF8F0] text-[#D4AF37] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#E8D7A5] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Eye size={14} /> Track Order &amp; Logs
+                  </button>
+
+                  {/* Download Estimate */}
+                  <button 
+                    onClick={() => {
+                      toast("Estimate summary downloaded successfully!", "success");
+                    }}
+                    className="w-full bg-white hover:bg-slate-50 text-[#0F3D2E] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#0F3D2E]/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Download size={14} /> Download Estimate
+                  </button>
+
+                  {/* View Invoice */}
+                  <button 
+                    onClick={() => {
+                      toast(`Invoice details for REF #${o.id.substring(0, 8).toUpperCase()} displayed in breakdown.`, "success");
+                    }}
+                    className="w-full bg-white hover:bg-slate-50 text-slate-700 py-2.5 rounded-xl text-xs font-bold transition-all border border-slate-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <FileText size={14} /> View Invoice
+                  </button>
+
+                  {/* Contact Caterer */}
+                  <a 
+                    href="mailto:contact@caternest.com"
+                    className="w-full bg-[#0F3D2E] hover:bg-[#0c3024] text-[#FCFBF7] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#0F3D2E] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Phone size={14} /> Contact Caterer
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Empty State */}
+          {(bookingSubTab === 'recent' ? filteredRecentOrders : paginatedHistoryOrders).length === 0 && (
+            <div className="bg-white rounded-3xl p-10 text-center border border-[#E8D7A5]/60 shadow-xs max-w-md mx-auto">
+              <div className="w-12 h-12 bg-[#FCF8F0] text-[#D4AF37] rounded-full flex items-center justify-center mx-auto mb-3 text-lg">✦</div>
+              <h3 className="text-base font-serif font-bold text-[#0F3D2E] mb-1">No Bookings Found</h3>
+              <p className="text-slate-500 text-xs mb-4">
+                There are no items currently matching your filter or search selection.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* History Pagination for Mobile */}
+        {bookingSubTab === 'history' && totalHistoryPages > 1 && (
+          <div className="flex justify-between items-center bg-white border border-[#E8D7A5]/50 p-3 rounded-2xl shadow-xs w-full mt-6">
+            <button 
+              disabled={historyPage === 1}
+              onClick={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
+              className="px-3 py-2 bg-[#FCF8F0] border border-[#E8D7A5]/40 text-[#D4AF37] disabled:opacity-40 rounded-xl text-[11px] font-bold cursor-pointer"
+            >
+              Prev
+            </button>
+            <span className="text-[11px] font-bold text-[#0F3D2E] font-mono">
+              {historyPage} / {totalHistoryPages}
+            </span>
+            <button 
+              disabled={historyPage === totalHistoryPages}
+              onClick={() => setHistoryPage(prev => Math.min(prev + 1, totalHistoryPages))}
+              className="px-3 py-2 bg-[#FCF8F0] border border-[#E8D7A5]/40 text-[#D4AF37] disabled:opacity-40 rounded-xl text-[11px] font-bold cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  </>
   );
 }

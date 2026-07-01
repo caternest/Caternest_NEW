@@ -37,8 +37,21 @@ function ScrollToTop() {
 }
 
 function Layout() {
+  const { pathname } = useLocation();
+  const isCatererDashboard = 
+    pathname.startsWith('/caterer-dashboard') || 
+    pathname.startsWith('/partner') || 
+    pathname.startsWith('/businesses') || 
+    pathname.startsWith('/edit-business');
+
+  const isAdminDashboard = 
+    pathname.startsWith('/admin-dashboard') || 
+    pathname.startsWith('/admin/');
+
+  const isDashboardRoute = isCatererDashboard || isAdminDashboard;
+
   return (
-    <div className="flex flex-col min-h-screen pb-16 md:pb-0">
+    <div className={`flex flex-col min-h-screen md:pb-0 ${isDashboardRoute ? 'pb-0' : 'pb-16'}`}>
       <ScrollToTop />
       <Navbar />
       <main className="flex-1">
@@ -134,9 +147,8 @@ export default function App() {
             <Route path="edit-business/:id" element={<ProtectedRoute allowedRoles={['caterer', 'admin']}><EditCaterer /></ProtectedRoute>} />
             <Route path="admin/caterers/view/:id" element={<ProtectedRoute allowedRoles={['admin']}><CatererDetails /></ProtectedRoute>} />
             <Route path="admin/caterers/edit/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminEditCaterer /></ProtectedRoute>} />
+            <Route path="order/:id" element={<OrderFlow />} />
           </Route>
-          {/* Order flow doesn't use the standard footer/header layout strictly */}
-          <Route path="/order/:id" element={<OrderFlow />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

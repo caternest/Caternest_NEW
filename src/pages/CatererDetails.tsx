@@ -5005,6 +5005,7 @@ export default function CatererDetails() {
           </div>
 
         </div>
+      </div>
 
         {/* ==================================================== */}
         {/* MOBILE VIEW LAYOUT (VISIBLE ONLY ON MOBILE < 768px) */}
@@ -5869,7 +5870,6 @@ export default function CatererDetails() {
 
       </div>
     </div>
-  </div>
   );
 }
 

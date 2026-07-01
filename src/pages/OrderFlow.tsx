@@ -1392,12 +1392,7 @@ export default function OrderFlow() {
   return (
     <div
       className={cn(
-        "min-h-screen flex flex-col font-poppins transition-colors duration-300",
-        viewMode === "custom" ||
-          viewMode === "checkout" ||
-          viewMode === "package_detail"
-          ? "bg-[#FAF6EE] pt-0"
-          : "bg-slate-50 text-slate-800 pt-[72px]",
+        "min-h-screen flex flex-col font-poppins transition-colors duration-300 bg-[#FAF8F3] pt-[88px] md:pt-[104px]"
       )}
     >
       {/* Build Header */}
@@ -1480,37 +1475,50 @@ export default function OrderFlow() {
         </div>
       ) : viewMode === "package_detail" ? (
         <div className="bg-transparent py-5 sm:py-6 z-20 relative select-none">
-          <div className="max-w-[620px] mx-auto px-4.5 sm:px-6 flex items-center justify-start gap-3 sm:gap-4">
-            {/* Elegant Back Arrow button */}
-            <button
-              onClick={() => {
-                navigate(`/caterer/${id}`, { state: { fromOrder: true, selectedPackageId: selectedPackage?.id, guests: guests } });
-              }}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#D5A859]/12 text-[#C2BB8B] active:scale-95 transition-all bg-transparent cursor-pointer shrink-0"
-              title="Back to Caterer"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#BB9C4A"
-                strokeWidth="2.8"
-                className="transition-transform hover:-translate-x-0.5"
-              >
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-              </svg>
-            </button>
+          <div className="max-w-[620px] mx-auto px-4.5 sm:px-6 flex flex-col gap-4.5">
+            {/* Breadcrumbs */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-stone-500 font-sans tracking-wide">
+              <Link to="/" className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600">Home</Link>
+              <ChevronRight size={12} className="text-stone-400 shrink-0" />
+              <Link to="/explore" className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600">Explore Caterers</Link>
+              <ChevronRight size={12} className="text-stone-400 shrink-0" />
+              <Link to={`/caterer/${id}`} className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600 truncate max-w-[140px] sm:max-w-[180px]">{caterer?.name}</Link>
+              <ChevronRight size={12} className="text-stone-400 shrink-0" />
+              <span className="text-[#BB9C4A] font-extrabold truncate max-w-[140px] sm:max-w-[180px]">{selectedPackage?.packageName || selectedPackage?.name || "Gold Package"}</span>
+            </div>
 
-            {/* Brand Title with elegant styling to match template */}
-            <div className="flex flex-col text-left">
-              <h1 className="font-display font-bold text-[36px] sm:text-[56px] tracking-[-1px] text-[#0B1F17] uppercase leading-none">
-                {selectedPackage?.packageName || "Veg Silver"}
-              </h1>
-              <span className="text-[9.5px] sm:text-[11px] font-sans font-semibold text-[#B8860B] uppercase tracking-[0.25em] mt-3">
-                {caterer.name} • {caterer.location}
-              </span>
+            <div className="flex items-center justify-start gap-3 sm:gap-4">
+              {/* Elegant Back Arrow button */}
+              <button
+                onClick={() => {
+                  navigate(`/caterer/${id}`, { state: { fromOrder: true, selectedPackageId: selectedPackage?.id, guests: guests } });
+                }}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#D5A859]/12 text-[#C2BB8B] active:scale-95 transition-all bg-transparent cursor-pointer shrink-0"
+                title="Back to Caterer"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#BB9C4A"
+                  strokeWidth="2.8"
+                  className="transition-transform hover:-translate-x-0.5"
+                >
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+              </button>
+
+              {/* Brand Title with elegant styling to match template */}
+              <div className="flex flex-col text-left">
+                <h1 className="font-display font-bold text-[36px] sm:text-[56px] tracking-[-1px] text-[#0B1F17] uppercase leading-none">
+                  {selectedPackage?.packageName || "Veg Silver"}
+                </h1>
+                <span className="text-[9.5px] sm:text-[11px] font-sans font-semibold text-[#B8860B] uppercase tracking-[0.25em] mt-3">
+                  {caterer.name} • {caterer.location}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -3630,12 +3638,12 @@ export default function OrderFlow() {
       )}
 
       {viewMode === "checkout" && (
-        <div className="flex-1 max-w-7xl mx-auto w-full px-3 xs:px-4 sm:px-6 lg:px-8 py-4 sm:py-10 pb-24 md:pb-10 flex flex-col-reverse lg:flex-row gap-6 lg:gap-10 items-start">
+        <div className="flex-1 max-w-7xl mx-auto w-full px-3 xs:px-4 sm:px-6 lg:px-8 py-4 sm:py-10 pb-24 md:pb-10 flex flex-col lg:flex-row gap-6 lg:gap-10 items-start">
           {/* Left Column: Event Details Form */}
-          <div className="flex-1 w-full bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-10 text-left animate-fade-in">
+          <div className="flex-1 w-full bg-transparent md:bg-white md:rounded-3xl md:border md:border-stone-200/60 md:shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-0 md:p-8 space-y-5 md:space-y-10 text-left animate-fade-in">
             
             {/* Form Section 1: Event Details */}
-            <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-6 md:bg-transparent md:border-none md:shadow-none md:p-0">
               <div className="flex items-start gap-4 border-b border-stone-100 pb-5">
                 {/* Rotated gold squares badge */}
                 <div className="relative w-11 h-11 flex items-center justify-center shrink-0 mt-0.5 select-none">
@@ -3649,7 +3657,7 @@ export default function OrderFlow() {
                 {/* Title & Subtitle */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center flex-wrap gap-2">
-                    <h2 className="text-[20px] sm:text-[24px] font-serif font-bold text-[#8C6512] tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8C6512] tracking-tight leading-tight">
                       Event Details
                     </h2>
                     <svg className="h-3 w-16 sm:w-24 text-[#C29D38]/50 shrink-0" viewBox="0 0 120 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -3657,7 +3665,7 @@ export default function OrderFlow() {
                       <path d="M45,10 C50,6 55,6 60,10 C55,14 50,14 45,10" fill="currentColor" />
                     </svg>
                   </div>
-                  <p className="text-[12px] sm:text-[13px] text-stone-500 mt-1 font-medium font-sans">
+                  <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
                     Specify your occasion and date preferences. We support multiple dates.
                   </p>
                 </div>
@@ -3666,21 +3674,21 @@ export default function OrderFlow() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Occasion Dropdown */}
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Select Occasion
                   </label>
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setIsOccasionDropdownOpen(!isOccasionDropdownOpen)}
-                      className="w-full flex items-center justify-between border border-stone-200 hover:border-stone-400 bg-white rounded-xl px-4 py-3.5 shadow-sm transition-all text-left cursor-pointer"
+                      className="w-full flex items-center justify-between border border-stone-200 hover:border-stone-400 bg-white rounded-xl px-5 py-4 shadow-sm transition-all text-left cursor-pointer h-14"
                     >
                       <div className="flex items-center gap-2.5">
                         <svg className="w-5 h-5 text-[#C29D38] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                           <circle cx="9" cy="12" r="4" />
                           <circle cx="15" cy="12" r="4" />
                         </svg>
-                        <span className="text-sm font-semibold text-stone-800">
+                        <span className="text-base font-semibold text-stone-800">
                           {orderForm.type || "Select Occasion"}
                         </span>
                       </div>
@@ -3734,7 +3742,7 @@ export default function OrderFlow() {
 
                 {/* Event Dates Selector */}
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Event Dates
                   </label>
                   <div className="relative z-25">
@@ -3744,7 +3752,7 @@ export default function OrderFlow() {
                         console.log("Toggle custom calendar popup:", !isCalendarOpen);
                         setIsCalendarOpen(!isCalendarOpen);
                       }}
-                      className="w-full flex items-center gap-3 border border-stone-200 hover:border-stone-400 bg-white rounded-xl px-4 py-3.5 shadow-sm transition-all cursor-pointer relative z-10 text-left"
+                      className="w-full flex items-center gap-3 border border-stone-200 hover:border-stone-400 bg-white rounded-xl px-5 py-4 shadow-sm transition-all cursor-pointer relative z-10 text-left h-14"
                     >
                       <svg className="w-5 h-5 text-[#C29D38] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -3753,7 +3761,7 @@ export default function OrderFlow() {
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                       </svg>
                       <div className="flex-1 text-left overflow-hidden">
-                        <span className="text-sm font-semibold text-stone-800 truncate block">
+                        <span className="text-base font-semibold text-stone-800 truncate block">
                           {selectedDates.length > 0 ? selectedDates[0] : "Select Date"}
                         </span>
                       </div>
@@ -3884,7 +3892,7 @@ export default function OrderFlow() {
             </div>
 
             {/* Form Section 2: Meal Selection & Timings */}
-            <div className="space-y-6 pt-2">
+            <div className="bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-6 md:bg-transparent md:border-none md:shadow-none md:p-0 pt-2">
               <div className="flex items-start gap-4 border-b border-stone-100 pb-5">
                 {/* Rotated gold squares badge */}
                 <div className="relative w-11 h-11 flex items-center justify-center shrink-0 mt-0.5 select-none">
@@ -3898,7 +3906,7 @@ export default function OrderFlow() {
                 {/* Title & Subtitle */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center flex-wrap gap-2">
-                    <h2 className="text-[20px] sm:text-[24px] font-serif font-bold text-[#8C6512] tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8C6512] tracking-tight leading-tight">
                       Meal Selection & Timing
                     </h2>
                     <svg className="h-3 w-16 sm:w-24 text-[#C29D38]/50 shrink-0" viewBox="0 0 120 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -3906,7 +3914,7 @@ export default function OrderFlow() {
                       <path d="M45,10 C50,6 55,6 60,10 C55,14 50,14 45,10" fill="currentColor" />
                     </svg>
                   </div>
-                  <p className="text-[12px] sm:text-[13px] text-stone-500 mt-1 font-medium font-sans">
+                  <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
                     Select which meals will be served. You can specify exact times for each meal.
                   </p>
                 </div>
@@ -3934,16 +3942,16 @@ export default function OrderFlow() {
                         }
                       }}
                       className={cn(
-                        "flex items-center justify-center gap-2 px-3 py-3 rounded-xl border transition-all font-bold text-xs sm:text-sm cursor-pointer",
+                        "flex items-center justify-center gap-2.5 px-3 py-4 rounded-xl border transition-all font-bold text-sm cursor-pointer min-h-[48px]",
                         isSelected
                           ? "bg-[#0F3D2E] border-transparent text-white shadow-md shadow-[#0F3D2E]/20"
                           : "bg-white border-stone-200 hover:border-stone-300 text-stone-700"
                       )}
                     >
-                      {meal === "Breakfast" && <Coffee size={15} className="shrink-0" />}
-                      {meal === "Lunch" && <Utensils size={15} className="shrink-0" />}
-                      {meal === "Evening Snacks" && <Pizza size={15} className="shrink-0" />}
-                      {meal === "Dinner" && <Soup size={15} className="shrink-0" />}
+                      {meal === "Breakfast" && <Coffee size={16} className="shrink-0" />}
+                      {meal === "Lunch" && <Utensils size={16} className="shrink-0" />}
+                      {meal === "Evening Snacks" && <Pizza size={16} className="shrink-0" />}
+                      {meal === "Dinner" && <Soup size={16} className="shrink-0" />}
                       <span>{meal}</span>
                       {isSelected && <Check size={12} className="ml-1 text-white shrink-0" />}
                     </button>
@@ -3955,9 +3963,9 @@ export default function OrderFlow() {
               {selectedMeals.length > 0 && (
                 <div className="space-y-5 bg-[#FAF8F5] border border-stone-200/40 rounded-2xl p-4 sm:p-5 animate-fade-in">
                   {selectedMeals.map((meal) => (
-                    <div key={meal} className="space-y-2.5">
-                      <label className="block text-[11px] font-black text-[#0F3D2E] uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                        <svg className="w-4.5 h-4.5 text-[#C29D38] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <div key={meal} className="space-y-3">
+                      <label className="block text-sm font-semibold text-[#0F3D2E] uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                        <svg className="w-5 h-5 text-[#C29D38] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <circle cx="12" cy="12" r="10"></circle>
                           <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
@@ -3972,14 +3980,14 @@ export default function OrderFlow() {
                               type="button"
                               onClick={() => setMealTimings(prev => ({ ...prev, [meal]: time }))}
                               className={cn(
-                                "px-3.5 py-2.5 rounded-lg border text-xs font-bold transition-all cursor-pointer",
+                                "px-4 py-3 rounded-xl border text-xs sm:text-sm font-bold transition-all cursor-pointer min-h-[40px]",
                                 isTimeSelected
                                   ? "bg-[#0F3D2E] border-transparent text-white shadow-sm"
                                   : "bg-white border-stone-200 hover:border-stone-300 text-stone-600"
                               )}
                             >
                               {time}
-                              {isTimeSelected && <Check size={11} className="inline ml-1.5 text-white" />}
+                              {isTimeSelected && <Check size={12} className="inline ml-1.5 text-white" />}
                             </button>
                           );
                         })}
@@ -3991,7 +3999,7 @@ export default function OrderFlow() {
             </div>
 
             {/* Form Section 3: Guest Count */}
-            <div className="space-y-4 pt-2">
+            <div className="bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-6 md:bg-transparent md:border-none md:shadow-none md:p-0 pt-2">
               <div className="flex items-start gap-4 border-b border-stone-100 pb-5">
                 {/* Rotated gold squares badge */}
                 <div className="relative w-11 h-11 flex items-center justify-center shrink-0 mt-0.5 select-none">
@@ -4005,7 +4013,7 @@ export default function OrderFlow() {
                 {/* Title & Subtitle */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center flex-wrap gap-2">
-                    <h2 className="text-[20px] sm:text-[24px] font-serif font-bold text-[#8C6512] tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8C6512] tracking-tight leading-tight">
                       Guest Count
                     </h2>
                     <svg className="h-3 w-16 sm:w-24 text-[#C29D38]/50 shrink-0" viewBox="0 0 120 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -4013,44 +4021,44 @@ export default function OrderFlow() {
                       <path d="M45,10 C50,6 55,6 60,10 C55,14 50,14 45,10" fill="currentColor" />
                     </svg>
                   </div>
-                  <p className="text-[12px] sm:text-[13px] text-stone-500 mt-1 font-medium font-sans">
+                  <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
                     Adjust your total guests. Prices adapt based on dynamic volume slabs.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 bg-stone-50/50 border border-stone-200/50 rounded-2xl p-1.5 w-full max-w-xs select-none shadow-sm">
+              <div className="flex items-center gap-4 bg-stone-50/50 border border-stone-200/50 rounded-2xl p-2 w-full max-w-sm select-none shadow-sm">
                 <button
                   type="button"
                   onClick={() => setGuests(Math.max(selectedPackage?.minimumGuests || 50, guests - 10))}
-                  className="w-11 h-11 flex items-center justify-center bg-white border border-stone-200 hover:border-stone-400 rounded-xl text-[#0F3D2E] hover:bg-stone-50 transition-all font-black shadow-sm cursor-pointer shrink-0"
+                  className="w-14 h-14 flex items-center justify-center bg-white border border-stone-200 hover:border-stone-400 rounded-xl text-[#0F3D2E] hover:bg-stone-50 transition-all font-black shadow-sm cursor-pointer shrink-0 active:scale-95"
                 >
-                  <Minus size={15} strokeWidth={2.5} />
+                  <Minus size={18} strokeWidth={2.5} />
                 </button>
                 <div className="flex-1 text-center flex flex-col justify-center">
-                  <span className="font-serif text-[19px] font-black text-stone-800 leading-none">
+                  <span className="font-serif text-2xl font-black text-stone-800 leading-none">
                     {guests}
                   </span>
-                  <span className="text-[9px] text-stone-500 uppercase tracking-widest font-sans font-bold mt-1">
+                  <span className="text-[11px] text-stone-500 uppercase tracking-widest font-sans font-bold mt-1">
                     Guests
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setGuests(guests + 10)}
-                  className="w-11 h-11 flex items-center justify-center bg-white border border-stone-200 hover:border-stone-400 rounded-xl text-[#0F3D2E] hover:bg-stone-50 transition-all font-black shadow-sm cursor-pointer shrink-0"
+                  className="w-14 h-14 flex items-center justify-center bg-white border border-stone-200 hover:border-stone-400 rounded-xl text-[#0F3D2E] hover:bg-stone-50 transition-all font-black shadow-sm cursor-pointer shrink-0 active:scale-95"
                 >
-                  <Plus size={15} strokeWidth={2.5} />
+                  <Plus size={18} strokeWidth={2.5} />
                 </button>
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#0F3D2E] mt-3">
-                <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-[#0F3D2E] text-white text-[10px] font-serif font-black select-none shrink-0">i</span>
+              <div className="flex items-center gap-2.5 text-sm font-semibold text-[#0F3D2E] mt-3 bg-[#EAF2EE]/50 border border-[#D4E4DC] rounded-xl p-3.5">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#0F3D2E] text-white text-xs font-serif font-black select-none shrink-0">i</span>
                 <span>Min. guests required for {selectedPackage?.packageName || "this package"} is <span className="font-bold text-[#0F3D2E]">{selectedPackage?.minimumGuests || 50}</span>.</span>
               </div>
             </div>
 
             {/* Form Section 4: Venue Location & Type */}
-            <div className="space-y-6 pt-2">
+            <div className="bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-6 md:bg-transparent md:border-none md:shadow-none md:p-0 pt-2">
               <div className="flex items-start gap-4 border-b border-stone-100 pb-5">
                 {/* Rotated gold squares badge */}
                 <div className="relative w-11 h-11 flex items-center justify-center shrink-0 mt-0.5 select-none">
@@ -4064,7 +4072,7 @@ export default function OrderFlow() {
                 {/* Title & Subtitle */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center flex-wrap gap-2">
-                    <h2 className="text-[20px] sm:text-[24px] font-serif font-bold text-[#8C6512] tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8C6512] tracking-tight leading-tight">
                       Venue Details
                     </h2>
                     <svg className="h-3 w-16 sm:w-24 text-[#C29D38]/50 shrink-0" viewBox="0 0 120 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -4072,7 +4080,7 @@ export default function OrderFlow() {
                       <path d="M45,10 C50,6 55,6 60,10 C55,14 50,14 45,10" fill="currentColor" />
                     </svg>
                   </div>
-                  <p className="text-[12px] sm:text-[13px] text-stone-500 mt-1 font-medium font-sans">
+                  <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
                     Tell us where the feast takes place.
                   </p>
                 </div>
@@ -4080,7 +4088,7 @@ export default function OrderFlow() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Venue Name
                   </label>
                   <input
@@ -4088,11 +4096,11 @@ export default function OrderFlow() {
                     value={venueName}
                     onChange={(e) => setVenueName(e.target.value)}
                     placeholder="e.g. Kondapur, Taj Krishna, or Residence"
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl px-5 py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white h-14"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Google Map Location (Optional)
                   </label>
                   <AddressAutocomplete
@@ -4106,7 +4114,7 @@ export default function OrderFlow() {
                       if (data.address) {
                         const parts = data.address.split(",");
                         if (parts.length > 0 && parts[0].trim()) {
-                          setVenueName(parts[0].trim());
+                           setVenueName(parts[0].trim());
                         }
                       }
                       setMapLocation(data.address);
@@ -4115,18 +4123,18 @@ export default function OrderFlow() {
                     theme="green"
                     leftIcon={<MapPin className="text-[#0F3D2E] w-4 h-4 hover:text-[#1F5C46] transition-colors" />}
                     onIconClick={() => setIsVenueMapOpen(true)}
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white h-14"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1.5 mb-1.5">
+                    <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide">
                       Venue Address
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={handleUseCurrentLocation}
@@ -4134,7 +4142,7 @@ export default function OrderFlow() {
                       >
                         📍 Use Current Location
                       </button>
-                      <span className="text-stone-300 text-xs">|</span>
+                      <span className="text-stone-300 text-xs hidden sm:inline">|</span>
                       <button
                         type="button"
                         onClick={() => setIsVenueMapOpen(true)}
@@ -4165,7 +4173,7 @@ export default function OrderFlow() {
                     theme="green"
                     leftIcon={<MapPin className="text-[#0F3D2E] w-4 h-4 hover:text-[#1F5C46] transition-colors" />}
                     onIconClick={() => setIsVenueMapOpen(true)}
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl px-5 py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
                   />
                   <MapPickerModal
                     isOpen={isVenueMapOpen}
@@ -4189,15 +4197,15 @@ export default function OrderFlow() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Venue Type
                   </label>
-                  <div className="grid grid-cols-2 gap-3 h-[86px] items-center">
+                  <div className="grid grid-cols-2 gap-3 h-auto sm:h-[86px] items-center">
                     <button
                       type="button"
                       onClick={() => setVenueType("Indoor")}
                       className={cn(
-                        "h-12 flex items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all cursor-pointer",
+                        "h-14 flex items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all cursor-pointer",
                         venueType === "Indoor"
                           ? "bg-[#0F3D2E] border-transparent text-white shadow-md shadow-[#0F3D2E]/15"
                           : "bg-white border-stone-200 hover:border-stone-300 text-stone-700"
@@ -4209,7 +4217,7 @@ export default function OrderFlow() {
                       type="button"
                       onClick={() => setVenueType("Outdoor")}
                       className={cn(
-                        "h-12 flex items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all cursor-pointer",
+                        "h-14 flex items-center justify-center gap-2 rounded-xl border text-sm font-bold transition-all cursor-pointer",
                         venueType === "Outdoor"
                           ? "bg-[#0F3D2E] border-transparent text-white shadow-md shadow-[#0F3D2E]/15"
                           : "bg-white border-stone-200 hover:border-stone-300 text-stone-700"
@@ -4223,7 +4231,7 @@ export default function OrderFlow() {
             </div>
 
             {/* Form Section 5: Special Instructions */}
-            <div className="space-y-6 pt-2">
+            <div className="bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-6 md:bg-transparent md:border-none md:shadow-none md:p-0 pt-2">
               <div className="flex items-start gap-4 border-b border-stone-100 pb-5">
                 {/* Rotated gold squares badge */}
                 <div className="relative w-11 h-11 flex items-center justify-center shrink-0 mt-0.5 select-none">
@@ -4237,7 +4245,7 @@ export default function OrderFlow() {
                 {/* Title & Subtitle */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center flex-wrap gap-2">
-                    <h2 className="text-[20px] sm:text-[24px] font-serif font-bold text-[#8C6512] tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8C6512] tracking-tight leading-tight">
                       Special Instructions
                     </h2>
                     <svg className="h-3 w-16 sm:w-24 text-[#C29D38]/50 shrink-0" viewBox="0 0 120 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -4245,7 +4253,7 @@ export default function OrderFlow() {
                       <path d="M45,10 C50,6 55,6 60,10 C55,14 50,14 45,10" fill="currentColor" />
                     </svg>
                   </div>
-                  <p className="text-[12px] sm:text-[13px] text-stone-500 mt-1 font-medium font-sans">
+                  <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
                     Specify dietary needs, spices, or separate serving request tag filters.
                   </p>
                 </div>
@@ -4259,13 +4267,13 @@ export default function OrderFlow() {
                     value={orderForm.notes}
                     onChange={(e) => setOrderForm({ ...orderForm, notes: e.target.value })}
                     placeholder="Any special requests, preferences or notes for the chef..."
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all pr-12 placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl px-5 py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all pr-12 placeholder:text-stone-400 bg-white"
                   ></textarea>
-                  <span className="absolute bottom-3 right-4 text-[10px] font-bold font-mono text-stone-400">
+                  <span className="absolute bottom-3 right-4 text-[11px] font-bold font-mono text-stone-400">
                     {orderForm.notes.length}/250
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-2 select-none">
+                <div className="flex flex-wrap gap-2 mt-2 select-none">
                   {["No Onion", "Jain Food", "Less Spice", "Kids Menu", "Separate Serving"].map((tag) => {
                     const isTagSelected = orderForm.notes.toLowerCase().includes(tag.toLowerCase());
                     return (
@@ -4289,7 +4297,7 @@ export default function OrderFlow() {
                           }
                         }}
                         className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer",
+                          "px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all border cursor-pointer min-h-[36px] flex items-center justify-center",
                           isTagSelected
                             ? "bg-[#EAF2EE] border-[#0F3D2E]/20 text-[#0F3D2E]"
                             : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
@@ -4304,7 +4312,7 @@ export default function OrderFlow() {
             </div>
 
             {/* Form Section 6: Contact Information */}
-            <div className="space-y-6 pt-2">
+            <div className="bg-white rounded-3xl border border-stone-200/60 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-5 sm:p-8 space-y-6 md:bg-transparent md:border-none md:shadow-none md:p-0 pt-2">
               <div className="flex items-start gap-4 border-b border-stone-100 pb-5">
                 {/* Rotated gold squares badge */}
                 <div className="relative w-11 h-11 flex items-center justify-center shrink-0 mt-0.5 select-none">
@@ -4318,7 +4326,7 @@ export default function OrderFlow() {
                 {/* Title & Subtitle */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center flex-wrap gap-2">
-                    <h2 className="text-[20px] sm:text-[24px] font-serif font-bold text-[#8C6512] tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-3xl font-serif font-extrabold text-[#8C6512] tracking-tight leading-tight">
                       Contact Information
                     </h2>
                     <svg className="h-3 w-16 sm:w-24 text-[#C29D38]/50 shrink-0" viewBox="0 0 120 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -4326,7 +4334,7 @@ export default function OrderFlow() {
                       <path d="M45,10 C50,6 55,6 60,10 C55,14 50,14 45,10" fill="currentColor" />
                     </svg>
                   </div>
-                  <p className="text-[12px] sm:text-[13px] text-stone-500 mt-1 font-medium font-sans">
+                  <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
                     How can we contact you regarding customization?
                   </p>
                 </div>
@@ -4334,7 +4342,7 @@ export default function OrderFlow() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Your Full Name
                   </label>
                   <input
@@ -4343,11 +4351,11 @@ export default function OrderFlow() {
                     value={orderForm.name}
                     onChange={(e) => setOrderForm({ ...orderForm, name: e.target.value })}
                     placeholder="e.g. Himaja"
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl px-5 py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white h-14"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Phone Number
                   </label>
                   <input
@@ -4356,11 +4364,11 @@ export default function OrderFlow() {
                     value={orderForm.phone}
                     onChange={(e) => setOrderForm({ ...orderForm, phone: e.target.value })}
                     placeholder="e.g. 9180121-281-2"
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl px-5 py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white h-14"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-[11px] font-black text-stone-500 uppercase tracking-wider font-sans">
+                  <label className="block text-sm font-semibold text-stone-700 font-sans tracking-wide mb-1.5">
                     Email (Optional)
                   </label>
                   <input
@@ -4368,7 +4376,7 @@ export default function OrderFlow() {
                     value={orderForm.email || ""}
                     onChange={(e) => setOrderForm({ ...orderForm, email: e.target.value })}
                     placeholder="e.g. himaja@example.com"
-                    className="w-full border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-3.5 text-sm focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white"
+                    className="w-full border border-stone-200 hover:border-stone-400 rounded-xl px-5 py-4 text-base focus:border-[#0F3D2E] focus:ring-1 focus:ring-[#0F3D2E] outline-none transition-all placeholder:text-stone-400 bg-white h-14"
                   />
                 </div>
               </div>
@@ -4474,13 +4482,13 @@ export default function OrderFlow() {
                 </div>
 
                 {appliedCoupon !== "NEW" ? (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="Coupon Code? (Try 'NEW')"
-                      className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-[#0F3D2E] uppercase font-bold text-stone-800"
+                      className="w-full bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#0F3D2E] uppercase font-bold text-stone-800 h-12"
                     />
                     <button
                       type="button"
@@ -4492,7 +4500,7 @@ export default function OrderFlow() {
                           toast("Invalid coupon code", "error");
                         }
                       }}
-                      className="bg-[#0F3D2E] hover:bg-[#0B2F22] text-white px-5 py-2.5 rounded-xl text-xs font-black transition-colors cursor-pointer shrink-0"
+                      className="bg-[#0F3D2E] hover:bg-[#0B2F22] text-white px-5 py-3 rounded-xl text-sm font-black transition-colors cursor-pointer shrink-0 h-12 flex items-center justify-center"
                     >
                       Apply
                     </button>
@@ -4539,11 +4547,11 @@ export default function OrderFlow() {
               {/* Total Summary Block */}
               <div className="space-y-2 pt-2">
                 <div className="flex justify-between items-end">
-                  <span className="font-serif text-[17px] font-bold text-[#8C6512] pb-0.5">
+                  <span className="font-serif text-[18px] sm:text-[20px] font-bold text-[#8C6512] pb-0.5">
                     Total Estimate
                   </span>
                   <div className="text-right">
-                    <span className="font-serif text-[28px] sm:text-[32px] font-black text-[#0F3D2E] tracking-tight block">
+                    <span className="font-serif text-3xl sm:text-4xl font-black text-[#0F3D2E] tracking-tight block">
                       ₹
                       {(
                         currentPerPlatePrice * guests +
@@ -4552,7 +4560,7 @@ export default function OrderFlow() {
                     </span>
                   </div>
                 </div>
-                <div className="flex justify-between items-center text-[10px] text-stone-400 uppercase tracking-widest font-black pt-1">
+                <div className="flex justify-between items-center text-[10px] sm:text-xs text-stone-500 uppercase tracking-widest font-black pt-1">
                   <span>Inclusive of taxes</span>
                   <span>(No hidden charges)</span>
                 </div>
@@ -4566,10 +4574,10 @@ export default function OrderFlow() {
                     console.log("[TRACE_LOG #1] Confirm Booking button clicked (isQuote = false)");
                     handleBooking(false);
                   }}
-                  className="w-full bg-[#0F3D2E] hover:bg-[#0B2F22] text-white py-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#0F3D2E]/10 select-none text-sm"
+                  className="w-full bg-[#0F3D2E] hover:bg-[#0B2F22] text-white py-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#0F3D2E]/10 select-none text-base min-h-[52px]"
                 >
                   Confirm Booking
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                     <polyline points="12 5 19 12 12 19"></polyline>
                   </svg>
@@ -4580,7 +4588,7 @@ export default function OrderFlow() {
                     console.log("[TRACE_LOG #1] Request Quote button clicked (isQuote = true)");
                     handleBooking(true);
                   }}
-                  className="w-full bg-white border border-[#C29D38] hover:bg-stone-50 text-[#8C6512] py-3.5 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer select-none text-sm"
+                  className="w-full bg-white border border-[#C29D38] hover:bg-stone-50 text-[#8C6512] py-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer select-none text-base min-h-[52px]"
                 >
                   Request Quote
                 </button>

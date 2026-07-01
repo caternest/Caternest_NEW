@@ -78,3 +78,24 @@
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+/* Custom Modern Scrollbar for Sidebar */
+.custom-sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #D4AF37 transparent;
+  scroll-behavior: smooth;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #D4AF37;
+  border-radius: 9999px;
+}
+

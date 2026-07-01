@@ -1621,8 +1621,16 @@ const SEED_FOOD_ITEMS = [
 function getFoodImages() {
   try {
     if (fs.existsSync(IMAGES_FILE_PATH)) {
-      const data = fs.readFileSync(IMAGES_FILE_PATH, "utf-8");
-      return JSON.parse(data);
+      const data = fs.readFileSync(IMAGES_FILE_PATH, "utf-8").trim();
+      if (!data) {
+        return [];
+      }
+      try {
+        return JSON.parse(data);
+      } catch (parseErr) {
+        console.error("SyntaxError parsing food images JSON. Recovering with empty list...", parseErr);
+        return [];
+      }
     }
   } catch (error) {
     console.error("Error reading food images:", error);
@@ -1632,6 +1640,10 @@ function getFoodImages() {
 
 function saveFoodImages(images: any[]) {
   try {
+    const dir = path.dirname(IMAGES_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     fs.writeFileSync(
       IMAGES_FILE_PATH,
       JSON.stringify(images, null, 2),

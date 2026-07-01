@@ -7,6 +7,21 @@ export default function BottomNavigation() {
   const location = useLocation();
   const currentPath = location.pathname;
 
+  // Hide customer bottom navigation on dashboard/portal routes
+  const isCatererDashboard = 
+    currentPath.startsWith('/caterer-dashboard') || 
+    currentPath.startsWith('/partner') || 
+    currentPath.startsWith('/businesses') || 
+    currentPath.startsWith('/edit-business');
+
+  const isAdminDashboard = 
+    currentPath.startsWith('/admin-dashboard') || 
+    currentPath.startsWith('/admin/');
+
+  if (isCatererDashboard || isAdminDashboard) {
+    return null;
+  }
+
   const navItems = [
     {
       label: 'Home',

@@ -5,6 +5,7 @@ import { cn, compressImageFile } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../components/Toast';
 import CatererMenuBuilder from '../components/CatererMenuBuilder';
+import CatererMobileDashboard from '../components/CatererMobileDashboard';
 import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
 import { 
   performOrderStatusUpdate, 
@@ -163,7 +164,7 @@ const ImageUploaderField: React.FC<ImageUploaderProps> = ({ label, value, onChan
 };
 
 export default function CatererDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [partnerOrders, setPartnerOrders] = useState<any[]>([]);
   const [caterer, setCaterer] = useState<any>(null);
@@ -1030,11 +1031,66 @@ export default function CatererDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-20">
-      <div className="flex h-[calc(100vh-80px)]">
+    <div className="min-h-screen bg-slate-50 pt-16 md:pt-20">
+      {/* Hide global navbar on mobile */}
+      <style>{`
+        @media (max-width: 768px) {
+          #main-navigation-navbar {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* MOBILE PREMIUM VIEW */}
+      <CatererMobileDashboard
+        user={user}
+        caterer={caterer}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        partnerOrders={partnerOrders}
+        localNotifications={localNotifications}
+        unreadNotificationsCount={unreadNotificationsCount}
+        totalOrders={totalOrders}
+        pendingOrders={pendingOrders}
+        approvedOrders={approvedOrders}
+        completedOrders={completedOrders}
+        rejectedOrders={rejectedOrders}
+        revenue={revenue}
+        eventFilter={eventFilter}
+        setEventFilter={setEventFilter}
+        customStartDate={customStartDate}
+        setCustomStartDate={setCustomStartDate}
+        customEndDate={customEndDate}
+        setCustomEndDate={setCustomEndDate}
+        getFilteredUpcomingEvents={getFilteredUpcomingEvents}
+        handleOpenOrderDetails={handleOpenOrderDetails}
+        getStatusColor={getStatusColor}
+        navItems={navItems}
+        logout={logout}
+        orderListFilter={orderListFilter}
+        setOrderListFilter={setOrderListFilter}
+        filteredOrderList={filteredOrderList}
+        setSelectedOrder={setSelectedOrder}
+        handleApprove={handleApprove}
+        setShowRejectModal={setShowRejectModal}
+        openModifyModal={openModifyModal}
+        profileFormData={profileFormData}
+        setProfileFormData={setProfileFormData}
+        isProfilePending={isProfilePending}
+        handleProfileSubmit={handleProfileSubmit}
+        dashboardNewAreaText={dashboardNewAreaText}
+        setDashboardNewAreaText={setDashboardNewAreaText}
+        handleClearAllNotifications={handleClearAllNotifications}
+        handleMarkNotificationRead={handleMarkNotificationRead}
+      />
+
+      <div className="hidden md:flex h-[calc(100vh-80px)]">
         
         {/* Sidebar */}
-        <div className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col hidden md:flex h-full">
+        <div 
+          className="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col hidden md:flex fixed left-0 top-20 z-20"
+          style={{ height: 'calc(100vh - 80px)' }}
+        >
             <div className="p-6">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Caterer Portal</p>
                 <h2 className="text-xl font-display font-medium text-white truncate">{caterer?.businessName || 'My Business'}</h2>
@@ -1043,7 +1099,7 @@ export default function CatererDashboard() {
                 </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto w-full px-4 space-y-1">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden w-full px-4 space-y-1 custom-sidebar-scrollbar">
                {navItems.map(item => (
                    <button 
                        key={item.id}
@@ -1060,11 +1116,11 @@ export default function CatererDashboard() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-            <div className="p-8">
+        <div className="flex-1 overflow-y-auto md:pl-64">
+            <div className="p-4 md:p-8 pb-32 md:pb-8">
                
                {activeTab === 'dashboard' && (
-                 <>
+                 <div className="hidden md:block">
                     <h1 className="text-3xl font-display font-bold text-slate-900 mb-8">Dashboard Overview</h1>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -1241,7 +1297,7 @@ export default function CatererDashboard() {
                            {partnerOrders.length === 0 && <div className="p-8 text-center text-sm text-slate-500">No recent notifications.</div>}
                         </div>
                     </div>
-                 </>
+                 </div>
                )}
 
                {activeTab === 'orders' && (

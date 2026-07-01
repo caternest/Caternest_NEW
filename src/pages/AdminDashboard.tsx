@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders } from 'lucide-react';
+import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut } from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '../components/Toast';
 import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB, fetchHomepageMode, updateHomepageModeInDB } from '../lib/supabase';
 import { generateUUID } from '../lib/orderUtils';
 import { useAuth } from '../contexts/AuthContext';
+import AdminMobileDashboard from '../components/AdminMobileDashboard';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const adminEmail = user?.email || 'admin@caternest.com';
 
   const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings'>('overview');
@@ -39,6 +40,16 @@ export default function AdminDashboard() {
   const [selectedAdminOrder, setSelectedAdminOrder] = useState<any | null>(null);
   const [adminMemoText, setAdminMemoText] = useState('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // New mobile-specific layout states
+  const [isMobileNotificationsOpen, setIsMobileNotificationsOpen] = useState(false);
+  const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
+  const [mobileFilterValue, setMobileFilterValue] = useState('All');
+  const [mobileSortValue, setMobileSortValue] = useState('Newest');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Record<string, boolean>>({});
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -174,6 +185,12 @@ export default function AdminDashboard() {
     fetchSupabaseData();
     fetchFoodImages();
   }, [location]);
+
+  useEffect(() => {
+    setMobileSearchQuery('');
+    setMobileFilterValue('All');
+    setMobileSortValue('Newest');
+  }, [activeTab]);
 
   const logAudit = async (action: string, entityName: string) => {
       const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
@@ -856,9 +873,144 @@ export default function AdminDashboard() {
     { title: 'Est. Revenue', value: `₹${revenue.toLocaleString('en-IN')}`, icon: CreditCard, color: 'text-white', bg: 'bg-gradient-to-br from-brand-gold-400 to-brand-gold-600', shadow: 'shadow-brand-gold-500/20' },
   ];
 
+  // Derived users list
+  const derivedUsers = React.useMemo(() => {
+    const list: any[] = [];
+    
+    // Add primary admin
+    list.push({
+      id: 'user-admin',
+      name: 'Primary Admin',
+      email: adminEmail,
+      phone: '+91 99999 88888',
+      role: 'Administrator',
+      status: 'Active',
+      avatar: 'A'
+    });
+
+    // Add partners from registrations
+    registrations.forEach((r, idx) => {
+      if (r.status !== 'Deleted' && r.status !== 'Trashed') {
+        list.push({
+          id: r.id || `partner-${idx}`,
+          name: r.owner || r.businessName || 'Unnamed Partner',
+          email: r.email || `${(r.businessName || 'partner').toLowerCase().replace(/\s+/g, '')}@caternest.com`,
+          phone: r.phone || '+91 98765 43210',
+          role: 'Partner',
+          status: r.status === 'Suspended' ? 'Disabled' : 'Active',
+          avatar: (r.owner ? r.owner.charAt(0) : (r.businessName ? r.businessName.charAt(0) : 'P')).toUpperCase(),
+          businessName: r.businessName,
+          logo: r.logo
+        });
+      }
+    });
+
+    // Add unique customers from orders
+    const customerNames = new Set();
+    orders.forEach((o, idx) => {
+      if (o.customerName && !customerNames.has(o.customerName)) {
+        customerNames.add(o.customerName);
+        list.push({
+          id: o.userId || `customer-${idx}`,
+          name: o.customerName,
+          email: o.customerEmail || `${o.customerName.toLowerCase().replace(/\s+/g, '')}@example.com`,
+          phone: o.customerPhone || o.phone || '+91 91234 56789',
+          role: 'Customer',
+          status: 'Active',
+          avatar: o.customerName.charAt(0).toUpperCase()
+        });
+      }
+    });
+
+    return list;
+  }, [registrations, orders, adminEmail]);
+
+  // Filtered lists for mobile module tabs
+  const filteredPartners = React.useMemo(() => {
+    return activeRegistrations.filter((p) => {
+      const query = mobileSearchQuery.toLowerCase();
+      const matchesSearch = 
+        (p.businessName || '').toLowerCase().includes(query) ||
+        (p.owner || '').toLowerCase().includes(query) ||
+        (p.email || '').toLowerCase().includes(query) ||
+        (p.phone || '').includes(query);
+      const matchesFilter = mobileFilterValue === 'All' || p.status === mobileFilterValue;
+      return matchesSearch && matchesFilter;
+    }).sort((a, b) => {
+      if (mobileSortValue === 'NameA-Z') {
+        return (a.businessName || '').localeCompare(b.businessName || '');
+      }
+      if (mobileSortValue === 'NameZ-A') {
+        return (b.businessName || '').localeCompare(a.businessName || '');
+      }
+      // Default: newest registration first
+      return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
+    });
+  }, [activeRegistrations, mobileSearchQuery, mobileFilterValue, mobileSortValue]);
+
+  const filteredOrders = React.useMemo(() => {
+    return orders.filter((o) => {
+      const query = mobileSearchQuery.toLowerCase();
+      const matchesSearch = 
+        (o.customerName || '').toLowerCase().includes(query) ||
+        (o.catererName || '').toLowerCase().includes(query) ||
+        o.id.toLowerCase().includes(query);
+      
+      const orderStatusNorm = (o.status || '').toLowerCase();
+      const filterNorm = mobileFilterValue.toLowerCase();
+      const matchesFilter = mobileFilterValue === 'All' || orderStatusNorm === filterNorm;
+      return matchesSearch && matchesFilter;
+    }).sort((a, b) => {
+      if (mobileSortValue === 'TotalHighLow') {
+        return (b.totalEstimate || 0) - (a.totalEstimate || 0);
+      }
+      if (mobileSortValue === 'TotalLowHigh') {
+        return (a.totalEstimate || 0) - (b.totalEstimate || 0);
+      }
+      if (mobileSortValue === 'EventDate') {
+        return new Date(a.eventDate || 0).getTime() - new Date(b.eventDate || 0).getTime();
+      }
+      // Default: newest order first
+      return new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime();
+    });
+  }, [orders, mobileSearchQuery, mobileFilterValue, mobileSortValue]);
+
+  const filteredRequests = React.useMemo(() => {
+    return registrations.filter(r => r.pendingUpdates).filter((p) => {
+      const query = mobileSearchQuery.toLowerCase();
+      return (p.businessName || '').toLowerCase().includes(query) ||
+             (p.owner || '').toLowerCase().includes(query);
+    });
+  }, [registrations, mobileSearchQuery]);
+
+  const filteredUsers = React.useMemo(() => {
+    return derivedUsers.filter((u) => {
+      const query = mobileSearchQuery.toLowerCase();
+      const matchesSearch = 
+        u.name.toLowerCase().includes(query) || 
+        u.email.toLowerCase().includes(query) ||
+        u.phone.includes(query);
+      const matchesFilter = mobileFilterValue === 'All' || u.role === mobileFilterValue;
+      return matchesSearch && matchesFilter;
+    }).sort((a, b) => {
+      if (mobileSortValue === 'NameA-Z') {
+        return a.name.localeCompare(b.name);
+      }
+      if (mobileSortValue === 'Role') {
+        return a.role.localeCompare(b.role);
+      }
+      return 0;
+    });
+  }, [derivedUsers, mobileSearchQuery, mobileFilterValue, mobileSortValue]);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-      {/* Mobile Header Bar */}
+    <div className="min-h-screen bg-[#FCFBF7] text-slate-900 selection:bg-brand-gold-200">
+      
+      {/* ==========================================
+          DESKTOP LAYOUT (100% UNCHANGED)
+          ========================================== */}
+      <div className="hidden lg:flex flex-row min-h-screen bg-slate-50 text-slate-800 w-full">
+        {/* Mobile Header Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 flex items-center justify-between px-4 text-slate-300 z-50 shadow-md border-b border-slate-800">
         <div className="flex items-center gap-2">
           <span className="font-display font-extrabold text-base tracking-tight text-brand-gold-400">Command Center</span>
@@ -1874,7 +2026,63 @@ export default function AdminDashboard() {
                   </div>
               </div>
           )}
-      </div>
+      </div> {/* Closes original desktop dashboard main container */}
+      </div> {/* Closes hidden lg:flex wrapper */}
+
+      {/* ==========================================
+          MOBILE REDESIGN LAYOUT
+          ========================================== */}
+      <AdminMobileDashboard
+        adminEmail={adminEmail}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        logout={logout}
+        navigate={navigate}
+        registrations={registrations}
+        activeRegistrations={activeRegistrations}
+        deletedRegistrations={deletedRegistrations}
+        orders={orders}
+        auditLogs={auditLogs}
+        stats={stats}
+        platformFeePerPlate={platformFeePerPlate}
+        setPlatformFeePerPlate={setPlatformFeePerPlate}
+        homepageMode={homepageMode}
+        setHomepageMode={setHomepageMode}
+        savingSettings={savingSettings}
+        handleSavePlatformSettings={handleSavePlatformSettings}
+        handleAction={handleAction}
+        setDeleteConfirm={setDeleteConfirm}
+        handleRestore={handleRestore}
+        setPermanentDeleteConfirm={setPermanentDeleteConfirm}
+        handleApproveProfileUpdate={handleApproveProfileUpdate}
+        handleRejectProfileUpdate={handleRejectProfileUpdate}
+        setSelectedAdminOrder={setSelectedAdminOrder}
+        setAdminMemoText={setAdminMemoText}
+        toast={toast}
+        filteredPartners={filteredPartners}
+        filteredOrders={filteredOrders}
+        filteredRequests={filteredRequests}
+        filteredUsers={filteredUsers}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+        isMobileNotificationsOpen={isMobileNotificationsOpen}
+        setIsMobileNotificationsOpen={setIsMobileNotificationsOpen}
+        isMobileProfileOpen={isMobileProfileOpen}
+        setIsMobileProfileOpen={setIsMobileProfileOpen}
+        mobileSearchQuery={mobileSearchQuery}
+        setMobileSearchQuery={setMobileSearchQuery}
+        mobileFilterValue={mobileFilterValue}
+        setMobileFilterValue={setMobileFilterValue}
+        mobileSortValue={mobileSortValue}
+        setMobileSortValue={setMobileSortValue}
+        isFilterOpen={isFilterOpen}
+        setIsFilterOpen={setIsFilterOpen}
+        isSortOpen={isSortOpen}
+        setIsSortOpen={setIsSortOpen}
+        expandedOrderIds={expandedOrderIds}
+        setExpandedOrderIds={setExpandedOrderIds}
+      />
 
       {/* Add Custom Mapping Modal */}
       {showAddMappingModal && (
