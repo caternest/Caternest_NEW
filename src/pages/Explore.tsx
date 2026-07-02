@@ -413,6 +413,7 @@ export default function Explore() {
   const [openGuests, setOpenGuests] = useState(true);
   const [openMoreFilters, setOpenMoreFilters] = useState(true);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [ratingFilter, setRatingFilter] = useState<number>(0);
 
   // Fetch active customer orders
   const fetchCustomerActiveOrders = async () => {
@@ -706,6 +707,11 @@ export default function Explore() {
       result = result.filter(c => c.isVerified);
     }
 
+    // Rating filter
+    if (ratingFilter > 0) {
+      result = result.filter(c => (c.rating || 5) >= ratingFilter);
+    }
+
     // Search keyword pre-filter if typed in search panel
     if (searchKeyword.trim() !== '') {
       const kw = searchKeyword.toLowerCase();
@@ -744,7 +750,7 @@ export default function Explore() {
     }
 
     setFilteredCaterers(result);
-  }, [caterers, cuisineFilter, occasionFilter, budgetFilter, isLiveCounters, isVerifiedOnly, sortOption, searchKeyword, customerLat, customerLng]);
+  }, [caterers, cuisineFilter, occasionFilter, budgetFilter, isLiveCounters, isVerifiedOnly, ratingFilter, sortOption, searchKeyword, customerLat, customerLng]);
 
   const toggleOccasionFilter = (occName: string) => {
     setOccasionFilter((prev) => 
@@ -759,6 +765,7 @@ export default function Explore() {
     setGuestsFilter([]);
     setIsLiveCounters(false);
     setIsVerifiedOnly(false);
+    setRatingFilter(0);
     setSearchKeyword('');
   };
 
@@ -790,7 +797,7 @@ export default function Explore() {
     return (
       <div className="w-full bg-[#FFFDFB] font-sans overflow-x-hidden min-h-screen pb-20 px-4 text-left">
         
-        {/* Mobile Header with Location selector */}
+        {/* 1. Mobile Header with Location selector */}
         <div className="pt-6 pb-4">
           <div className="flex items-center justify-between mb-2">
             <div>
@@ -815,287 +822,392 @@ export default function Explore() {
               <ChefHat size={16} className="text-[#DEAA38]" />
             </div>
           </div>
-
-          <h1 
-            className="text-2xl font-bold text-slate-900 leading-tight mt-3"
-            style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
-          >
-            Explore <span className="text-[#DEAA38]">Caterers</span>
-          </h1>
-          <p className="text-slate-400 text-xs mt-1">
-            Discover verified culinary masters for your perfect event.
-          </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative flex items-center bg-white rounded-2xl border border-slate-200/80 px-4.5 py-3 shadow-[0_4px_16px_rgba(3,19,14,0.02)]">
-            <Search size={16} className="text-slate-400 mr-2 shrink-0" />
-            <input 
-              type="text" 
-              placeholder="Search by name, cuisine, or dish..."
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              className="w-full text-xs focus:outline-none bg-transparent font-medium text-slate-800"
-            />
-            {searchKeyword && (
-              <button 
-                type="button"
-                onClick={() => setSearchKeyword('')} 
-                className="text-slate-400 hover:text-slate-600 ml-1.5"
-              >
-                <X size={14} />
-              </button>
-            )}
+        {/* 2. Premium Hero Banner */}
+        <div 
+          className="relative w-full rounded-3xl overflow-hidden mb-6 shadow-md"
+          style={{
+            backgroundImage: `linear-gradient(rgba(2, 27, 20, 0.82), rgba(2, 27, 20, 0.65)), url(${heroBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            height: '260px'
+          }}
+        >
+          <div className="absolute inset-0 p-6 flex flex-col justify-end text-left">
+            <h1 className="text-2xl font-display font-bold text-white tracking-tight leading-tight mb-2">
+              Premium <br />
+              <span className="text-[#DEAA38]">Catering Marketplace</span>
+            </h1>
+            <p className="text-white/80 text-[11px] max-w-xs font-sans leading-relaxed">
+              Discover top verified caterers, customized menus and unforgettable experiences for every occasion.
+            </p>
           </div>
         </div>
 
-        {/* Filter Chips Row (Veg / Non-Veg / Both) */}
-        <div className="mb-4">
-          <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none">
-            {[
-              { label: 'Both', value: 'Both', color: 'bg-amber-500' },
-              { label: 'Veg Only', value: 'Veg', color: 'bg-emerald-500' },
-              { label: 'Non-Veg Only', value: 'Non-Veg', color: 'bg-rose-500' },
-              { label: 'Pure Veg', value: 'Pure Veg', color: 'bg-green-500' }
-            ].map((chip) => {
-              const isActive = cuisineFilter === chip.value;
-              return (
-                <button
-                  key={chip.value}
-                  type="button"
-                  onClick={() => setCuisineFilter(chip.value)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 shrink-0 cursor-pointer shadow-3xs",
-                    isActive
-                      ? "bg-[#032a1e] text-white border-[#032a1e]"
-                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                  )}
-                >
-                  <span className={cn("w-1.5 h-1.5 rounded-full", chip.color)} />
-                  <span>{chip.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Sort & Filter Controls Row */}
-        <div className="mb-5 flex items-center justify-between gap-3">
-          {/* Sort Selector */}
-          <div className="relative flex items-center bg-white border border-slate-200/80 rounded-xl px-3.5 py-2.5 flex-1 shadow-3xs">
-            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mr-1.5 leading-none">Sort:</span>
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-              className="text-xs font-bold text-slate-700 focus:outline-none bg-transparent cursor-pointer flex-1 appearance-none pr-5"
+        {/* 3. Floating Search Card */}
+        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-[0_12px_30px_rgba(3,19,14,0.08)] p-5 mb-6 flex flex-col gap-4 text-left">
+          {/* Location field */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Event Location</label>
+            <button 
+              type="button"
+              onClick={() => setIsExploreMapOpen(true)}
+              className="flex items-center gap-2 w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-3 text-left hover:bg-slate-100/50 transition-all cursor-pointer"
             >
-              <option value="Popularity">Popularity</option>
-              <option value="Price: Low to High">Price: Low-High</option>
-              <option value="Price: High to Low">Price: High-Low</option>
-              <option value="Rating">Top Rated</option>
-            </select>
-            <ChevronRight size={10} className="absolute right-3.5 rotate-90 text-slate-400 pointer-events-none" />
+              <MapPin size={14} className="text-[#DEAA38] shrink-0" />
+              <span className="text-xs font-bold text-slate-700 truncate">
+                {searchLocation || "Select Location"}
+              </span>
+            </button>
           </div>
 
-          {/* Filter Button */}
-          <button
+          {/* Occasion select */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Occasion</label>
+            <div className="relative flex items-center">
+              <Sparkles size={14} className="absolute left-4 text-[#DEAA38] pointer-events-none" />
+              <select 
+                value={searchOccasion} 
+                onChange={(e) => {
+                  setSearchOccasion(e.target.value);
+                  if (e.target.value) {
+                    setOccasionFilter([e.target.value]);
+                  } else {
+                    setOccasionFilter([]);
+                  }
+                }}
+                className="w-full bg-slate-50 border border-slate-150 rounded-xl pl-10 pr-10 py-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer appearance-none"
+              >
+                <option value="">Select Occasion</option>
+                {['Wedding', 'Reception', 'Birthday Party', 'Corporate Events', 'House Warming', 'Engagement', 'Baby Shower', 'Festival'].map(occ => (
+                  <option key={occ} value={occ}>{occ}</option>
+                ))}
+              </select>
+              <ChevronRight size={12} className="absolute right-4 rotate-90 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Grid for Guests & Budget side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Guests Capacity */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Guests</label>
+              <div className="relative flex items-center">
+                <Users size={14} className="absolute left-4.5 text-[#DEAA38] pointer-events-none" />
+                <select 
+                  value={searchGuests} 
+                  onChange={(e) => {
+                    setSearchGuests(e.target.value);
+                    if (e.target.value) {
+                      setGuestsFilter([e.target.value]);
+                    } else {
+                      setGuestsFilter([]);
+                    }
+                  }}
+                  className="w-full bg-slate-50 border border-slate-150 rounded-xl pl-10 pr-9 py-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                >
+                  <option value="">Guests</option>
+                  {['Upto 50', '50 - 105', '100 - 200', '200 - 500', '500 - 1000', '1000+'].map(cap => (
+                    <option key={cap} value={cap}>{cap}</option>
+                  ))}
+                </select>
+                <ChevronRight size={10} className="absolute right-3.5 rotate-90 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Budget Per Plate */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Budget</label>
+              <div className="relative flex items-center">
+                <Tag size={14} className="absolute left-4.5 text-[#DEAA38] pointer-events-none" />
+                <select 
+                  value={searchBudget} 
+                  onChange={(e) => {
+                    setSearchBudget(e.target.value);
+                    if (e.target.value === '300-400') setBudgetFilter(400);
+                    else if (e.target.value === '400-600') setBudgetFilter(600);
+                    else if (e.target.value === '600-800') setBudgetFilter(800);
+                    else if (e.target.value === '800+') setBudgetFilter(1000);
+                    else setBudgetFilter(1000);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-150 rounded-xl pl-10 pr-9 py-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                >
+                  <option value="">Budget</option>
+                  <option value="300-400">₹300 - ₹400</option>
+                  <option value="400-600">₹400 - ₹600</option>
+                  <option value="600-800">₹600 - ₹800</option>
+                  <option value="800+">₹800+</option>
+                </select>
+                <ChevronRight size={10} className="absolute right-3.5 rotate-90 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Large Find Caterers Button */}
+          <button 
             type="button"
-            onClick={() => setIsMobileFiltersOpen(true)}
-            className="px-4.5 py-2.5 bg-[#DEAA38]/10 hover:bg-[#DEAA38]/15 border border-[#DEAA38]/30 text-[#032a1e] rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-3xs cursor-pointer h-full"
+            onClick={() => {
+              const el = document.getElementById('explore-marketplace');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="w-full mt-2 bg-[#051410] hover:bg-[#102e25] text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
-            <Filter size={13} className="text-[#DEAA38]" />
-            <span>Filters</span>
-            {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters) && (
-              <span className="w-4 h-4 bg-[#032a1e] text-white rounded-full text-[9px] font-black flex items-center justify-center">
-                {Number(occasionFilter.length > 0) + Number(budgetFilter < 1000) + Number(isVerifiedOnly) + Number(isLiveCounters)}
-              </span>
-            )}
+            <span>Find Caterers</span>
+            <Search size={14} className="text-[#DEAA38]" />
           </button>
         </div>
 
-        {/* Active Filters Summary row if any */}
-        {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters) && (
-          <div className="flex flex-wrap items-center gap-1.5 mb-4">
-            {occasionFilter.map((occ) => (
-              <span key={occ} className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
-                {occ}
-                <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
-              </span>
-            ))}
-            {budgetFilter < 1000 && (
-              <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
-                ≤ ₹{budgetFilter}
-                <button type="button" onClick={() => setBudgetFilter(1000)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
-              </span>
-            )}
-            {isVerifiedOnly && (
-              <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
-                Verified
-                <button type="button" onClick={() => setIsVerifiedOnly(false)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
-              </span>
-            )}
-            {isLiveCounters && (
-              <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
-                Live Counters
-                <button type="button" onClick={() => setIsLiveCounters(false)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
-              </span>
-            )}
-            <button 
-              type="button" 
-              onClick={clearAllFilters} 
-              className="text-[10px] font-black text-rose-600 hover:underline px-2.5 py-1 cursor-pointer"
-            >
-              Clear All
-            </button>
-          </div>
-        )}
-
-        {/* Results Count Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-            {filteredCaterers.length} {filteredCaterers.length === 1 ? 'Caterer' : 'Caterers'} found
-          </span>
-        </div>
-
-        {/* Caterer Cards Listing */}
-        <div className="space-y-5">
-          {filteredCaterers.length === 0 ? (
-            <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 max-w-sm mx-auto shadow-3xs">
-              <ChefHat className="text-slate-300 w-10 h-10 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-900 mb-1">No matching caterers</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">Try adjusting filters or typing a different search term.</p>
-              <button 
+        {/* 4. Popular Searches */}
+        <div className="mb-6 text-left">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2.5">Popular Searches</span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { name: 'Wedding Catering', keyword: 'Wedding' },
+              { name: 'Birthday Party', keyword: 'Birthday' },
+              { name: 'Corporate Events', keyword: 'Corporate' },
+              { name: 'House Warming', keyword: 'Housewarming' },
+              { name: 'Engagement', keyword: 'Engagement' }
+            ].map((chip) => (
+              <button
+                key={chip.name}
                 type="button"
-                onClick={clearAllFilters} 
-                className="mt-4 px-4.5 py-2 bg-[#032a1e] text-white font-bold text-xs rounded-xl active:bg-[#05402e] transition-colors"
+                onClick={() => {
+                  setSearchKeyword(chip.keyword);
+                  toggleOccasionFilter(chip.keyword);
+                  const el = document.getElementById('explore-marketplace');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/60 rounded-full text-[11px] font-bold text-slate-600 transition-colors cursor-pointer"
               >
-                Reset Filters
+                {chip.name}
               </button>
+            ))}
+          </div>
+        </div>
+        {/* 7. Premium Caterers Listing Section */}
+        <div id="explore-marketplace" className="py-4 border-t border-slate-100 text-left">
+          <div className="flex flex-col gap-1.5 mb-5">
+            <h2 className="text-xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-1.5">
+              Explore <span className="text-[#DEAA38]">Premium</span> Caterers
+            </h2>
+            <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+              <span>Hyderabad, Telangana, India</span>
+              <span className="text-slate-500">{filteredCaterers.length} Caterers Found</span>
             </div>
-          ) : (
-            filteredCaterers.map((caterer) => (
-              <div 
-                key={caterer.id}
-                className="bg-white rounded-3xl border border-slate-150/70 shadow-[0_8px_30px_rgba(3,19,14,0.03)] overflow-hidden relative flex flex-col mb-4 text-left active:shadow-md transition-all duration-300"
+          </div>
+
+          {/* Sticky Filter & Sort Row on Mobile */}
+          <div className="flex gap-2.5 mb-5">
+            {/* Filter Toggle Button */}
+            <button 
+              type="button"
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="flex-1 py-3 bg-[#051410] hover:bg-[#112921] text-white rounded-xl font-bold text-xs tracking-wider transition-all shadow-md flex items-center justify-center gap-2 border border-[#DEAA38]/10 cursor-pointer active:scale-95"
+            >
+              <Filter size={14} className="text-[#DEAA38]" />
+              <span>FILTERS</span>
+              {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && (
+                <span className="w-4.5 h-4.5 bg-[#DEAA38] text-[#051410] rounded-full text-[9px] font-black flex items-center justify-center">
+                  {Number(occasionFilter.length > 0) + Number(budgetFilter < 1000) + Number(isVerifiedOnly) + Number(isLiveCounters) + Number(ratingFilter > 0)}
+                </span>
+              )}
+            </button>
+
+            {/* Sort Selector */}
+            <div className="relative flex items-center bg-white border border-slate-200 rounded-xl px-3 flex-1 shadow-3xs">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase mr-1 whitespace-nowrap">Sort:</span>
+              <select 
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="text-xs font-bold text-slate-700 focus:outline-none bg-transparent cursor-pointer flex-1 appearance-none pr-5 py-3"
               >
-                {/* Image Section */}
-                <div className="relative h-[200px] w-full overflow-hidden">
-                  <CardImageSlider images={caterer.images} name={caterer.name} />
-                  
-                  {/* Floating tags */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1 z-10">
-                    {caterer.isVerified && (
-                      <span className="bg-emerald-500/90 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
-                        ✓ Verified
-                      </span>
-                    )}
-                    {caterer.isPremium && (
-                      <span className="bg-[#DEAA38]/95 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
-                        ✦ Premium
-                      </span>
-                    )}
+                <option value="Popularity">Popularity</option>
+                <option value="Price: Low to High">Price: Low to High</option>
+                <option value="Price: High to Low">Price: High to Low</option>
+                <option value="Highest Rated">Highest Rated</option>
+              </select>
+              <ChevronRight size={10} className="absolute right-3 rotate-90 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Active Filter Badges */}
+          {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {occasionFilter.map((occ) => (
+                <span key={occ} className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                  {occ} <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+                </span>
+              ))}
+              {budgetFilter < 1000 && (
+                <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                  ≤ ₹{budgetFilter} <button type="button" onClick={() => setBudgetFilter(1000)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+                </span>
+              )}
+              {isVerifiedOnly && (
+                <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                  Verified <button type="button" onClick={() => setIsVerifiedOnly(false)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+                </span>
+              )}
+              {isLiveCounters && (
+                <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                  Live Counter <button type="button" onClick={() => setIsLiveCounters(false)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+                </span>
+              )}
+              {ratingFilter > 0 && (
+                <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                  ⭐️ {ratingFilter}+ <button type="button" onClick={() => setRatingFilter(0)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+                </span>
+              )}
+              <button type="button" onClick={clearAllFilters} className="text-[10px] font-bold text-rose-600 hover:underline">Clear All</button>
+            </div>
+          )}
+
+          {/* Caterers Cards List */}
+          <div className="space-y-5">
+            {filteredCaterers.length === 0 ? (
+              <div className="bg-white rounded-3xl p-10 text-center border border-slate-150 max-w-sm mx-auto shadow-3xs">
+                <ChefHat className="text-slate-300 w-10 h-10 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-slate-900 mb-1">No matching caterers</h3>
+                <p className="text-slate-400 text-xs leading-relaxed">Try adjusting filters or typing a different search term.</p>
+                <button 
+                  type="button"
+                  onClick={clearAllFilters} 
+                  className="mt-4 px-4.5 py-2 bg-[#051410] text-white font-bold text-xs rounded-xl active:bg-[#0f2922] transition-colors"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              filteredCaterers.map((caterer) => (
+                <div 
+                  key={caterer.id}
+                  className="bg-white rounded-3xl border border-slate-150 hover:border-[#DEAA38]/40 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden relative"
+                >
+                  {/* Image/Slider Header */}
+                  <div className="relative h-[200px] w-full overflow-hidden shrink-0">
+                    <CardImageSlider images={caterer.images} name={caterer.name} />
+                    
+                    {/* Brand logo overlapping on bottom-left */}
+                    <div className="absolute bottom-3 left-3 w-12 h-12 bg-white rounded-full p-0.5 border border-[#DEAA38] shadow-md z-10 flex items-center justify-center overflow-hidden">
+                      {caterer.logo ? (
+                        <SafeImage src={caterer.logo} alt="Logo" className="w-full h-full object-contain rounded-full" fallbackType="avatar" />
+                      ) : (
+                        <div className="w-full h-full bg-amber-50 rounded-full flex items-center justify-center">
+                          <span className="font-display font-black text-[#DEAA38] text-xs uppercase">
+                            {(caterer.name || 'CR').substring(0, 2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Verified/Premium badges */}
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1 z-10">
+                      {caterer.isVerified && (
+                        <span className="bg-emerald-500/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
+                          ✓ Verified
+                        </span>
+                      )}
+                      {caterer.isPremium && (
+                        <span className="bg-[#DEAA38]/95 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
+                          ✦ Premium
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Wishlist button */}
+                    <button type="button" className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-slate-400 hover:text-rose-500 transition-colors shadow-sm z-10">
+                      <Heart size={14} />
+                    </button>
                   </div>
 
-                  <button 
-                    type="button" 
-                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-slate-400 hover:text-rose-500 transition-colors shadow-sm z-10"
-                  >
-                    <Heart size={14} />
-                  </button>
+                  {/* Body Content */}
+                  <div className="p-4 pt-5 text-left flex flex-col justify-between flex-1">
+                    <div>
+                      {/* Name & Rating Row */}
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <h3 className="text-base font-display font-extrabold text-slate-900 leading-snug flex items-center gap-1">
+                          {caterer.name}
+                          <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[7px] font-bold shrink-0">✓</span>
+                        </h3>
+                        <div className="flex items-center gap-0.5 text-xs font-bold text-slate-800 shrink-0">
+                          <Star size={12} className="text-[#DEAA38] fill-[#DEAA38]" />
+                          <span>{Number(caterer.rating).toFixed(1)}</span>
+                          <span className="text-slate-400 font-normal">({caterer.reviewCount})</span>
+                        </div>
+                      </div>
 
-                  {/* Overlapping circular brand logo */}
-                  <div className="absolute -bottom-5 left-5 w-14 h-14 bg-white rounded-full p-0.5 border-2 border-white shadow-md z-10 flex items-center justify-center overflow-hidden">
-                    {caterer.logo ? (
-                      <SafeImage src={caterer.logo} alt="Logo" className="w-full h-full object-contain rounded-full" fallbackType="avatar" />
-                    ) : (
-                      <div className="w-full h-full bg-amber-50 rounded-full flex items-center justify-center">
-                        <span className="font-display font-black text-[#DEAA38] text-xs uppercase">
-                          {(caterer.name || 'CR').substring(0, 2)}
+                      {/* Location & Distance */}
+                      <div className="flex items-center gap-1 text-slate-500 text-xs mb-3">
+                        <MapPin size={11} className="text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[180px]">{caterer.location}</span>
+                        {caterer.distanceKm !== undefined && caterer.distanceKm !== null && (
+                          <span className="text-[#b47a00] bg-amber-500/5 px-1.5 py-0.5 rounded font-mono text-[9px] shrink-0">
+                            📍 {caterer.distanceKm.toFixed(1)} KM
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Dietary tags */}
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Veg
+                        </span>
+                        <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Veg
+                        </span>
+                        <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#DEAA38]" /> Live Counter
                         </span>
                       </div>
-                    )}
+
+                      {/* Events/Years performance metrics */}
+                      <div className="flex items-center gap-3.5 text-[11px] font-bold text-slate-500 mb-3 border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-1"><Users size={11} className="text-slate-400" /> 800+ Events</div>
+                        <div className="flex items-center gap-1"><Award size={11} className="text-slate-400" /> {caterer.years || '5+ Years'}</div>
+                      </div>
+                    </div>
+
+                    {/* Bottom CTA Row: Starting Price & Stacking Buttons */}
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-0.5">Starting from</p>
+                          <p className="font-extrabold text-base text-slate-900 leading-none">
+                            ₹{caterer.startingPrice} <span className="text-[10px] font-normal text-slate-400">/ plate</span>
+                          </p>
+                        </div>
+                        <p className="text-[9px] text-slate-400 font-bold">Min. {caterer.minimumGuests || 50} Plates</p>
+                      </div>
+
+                      {/* Stacked CTA Buttons */}
+                      <div className="grid grid-cols-2 gap-2 w-full">
+                        <button 
+                          type="button"
+                          onClick={() => navigate(`/caterer/${caterer.id}`)}
+                          className="w-full py-3 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold bg-white active:bg-slate-50 transition-colors cursor-pointer"
+                        >
+                          Quick View
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => navigate(`/caterer/${caterer.id}?tab=menu`)}
+                          className="w-full py-3 bg-[#051410] text-white rounded-lg text-xs font-bold hover:bg-[#112921] transition-colors shadow-sm flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                        >
+                          <span>View Menu</span>
+                          <ArrowRight size={11} className="text-[#DEAA38]" />
+                        </button>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-
-                {/* Card Content */}
-                <div className="p-5 pt-7">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1 leading-tight">
-                      {caterer.name}
-                      <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[7px] font-bold">✓</span>
-                    </h3>
-                    <div className="flex items-center gap-0.5 text-xs font-bold text-slate-800 shrink-0">
-                      <Star size={12} className="text-[#DEAA38] fill-[#DEAA38]" />
-                      <span>{Number(caterer.rating).toFixed(1)}</span>
-                      <span className="text-slate-400 font-normal">({caterer.reviewCount})</span>
-                    </div>
-                  </div>
-
-                  {/* Location & Distance */}
-                  <div className="flex items-center gap-1 text-slate-500 text-xs mb-3">
-                    <MapPin size={11} className="text-slate-400 shrink-0" />
-                    <span className="truncate">{caterer.location}</span>
-                    {caterer.distanceKm !== undefined && (
-                      <span className="text-[#b47a00] bg-amber-500/5 px-1.5 py-0.5 rounded font-mono text-[9px]">
-                        • {caterer.distanceKm.toFixed(1)} KM
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Performance Indicators */}
-                  <div className="flex items-center gap-3.5 text-[11px] font-bold text-slate-500 mb-3 border-b border-slate-100 pb-2.5">
-                    <div className="flex items-center gap-1"><Users size={11} className="text-slate-400" /> 800+ Events</div>
-                    <div className="flex items-center gap-1"><Award size={11} className="text-slate-400" /> {caterer.years || '5+ Years'}</div>
-                  </div>
-
-                  {/* Dietary tags */}
-                  <div className="flex flex-wrap gap-1 mb-3.5">
-                    <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Veg
-                    </span>
-                    <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Veg
-                    </span>
-                    <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#DEAA38]" /> Live Counter
-                    </span>
-                  </div>
-
-                  {/* Price and CTA Grid Row */}
-                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-50">
-                    <div>
-                      <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none mb-0.5">Starting from</p>
-                      <p className="font-extrabold text-base text-slate-800 leading-none">
-                        ₹{caterer.startingPrice} <span className="text-[10px] font-normal text-slate-400">/ plate</span>
-                      </p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button 
-                        type="button"
-                        onClick={() => navigate(`/caterer/${caterer.id}`)}
-                        className="px-3.5 h-10 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold bg-white active:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        Details
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => navigate(`/caterer/${caterer.id}?tab=menu`)}
-                        className="px-4 h-10 bg-[#032a1e] text-white rounded-xl text-xs font-bold hover:bg-[#05402e] transition-colors shadow-sm flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <span>View Menu</span>
-                        <ArrowRight size={12} className="text-[#DEAA38]" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
 
-        {/* Floating/Drawer Filter Sheet */}
+        {/* 8. Filters Bottom Sheet / Drawer */}
         <AnimatePresence>
           {isMobileFiltersOpen && (
             <>
@@ -1133,7 +1245,32 @@ export default function Explore() {
 
                 {/* Content list */}
                 <div className="space-y-6 flex-1 overflow-y-auto pb-6 pr-1">
-                  {/* 1. Occasions */}
+                  {/* 1. Cuisine Preference */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Cuisine Preference</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {['Veg', 'Non-Veg', 'Both', 'Pure Veg'].map((option) => {
+                        const isSelected = cuisineFilter === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => setCuisineFilter(option)}
+                            className={cn(
+                              "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer",
+                              isSelected 
+                                ? "bg-[#032a1e] text-white border-[#032a1e]" 
+                                : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100/50"
+                            )}
+                          >
+                            {option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 2. Occasion */}
                   <div>
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Occasion</h4>
                     <div className="flex flex-wrap gap-2">
@@ -1158,10 +1295,10 @@ export default function Explore() {
                     </div>
                   </div>
 
-                  {/* 2. Budget slider */}
+                  {/* 3. Budget slider */}
                   <div>
                     <div className="flex justify-between items-center mb-2.5">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Max Budget per plate</h4>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Max Budget (per plate)</h4>
                       <span className="text-xs font-extrabold text-slate-800">₹{budgetFilter === 1000 ? "Any" : `≤ ₹${budgetFilter}`}</span>
                     </div>
                     <input 
@@ -1171,16 +1308,130 @@ export default function Explore() {
                       step="50"
                       value={budgetFilter}
                       onChange={(e) => setBudgetFilter(Number(e.target.value))}
-                      className="w-full accent-[#DEAA38] cursor-pointer"
+                      className="w-full accent-[#DEAA38] cursor-pointer mb-2"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-1 leading-none">
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold leading-none mb-3">
                       <span>₹300</span>
                       <span>₹650</span>
                       <span>₹1000+</span>
                     </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[400, 600, 800, 1000].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setBudgetFilter(v)}
+                          className={cn(
+                            "py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center",
+                            budgetFilter === v 
+                              ? "bg-[#032a1e] border-transparent text-white" 
+                              : "bg-slate-50 border-slate-150 text-slate-600 hover:border-slate-300"
+                          )}
+                        >
+                          ₹{v}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* 3. Verified Only and Live Counters */}
+                  {/* 4. Guests Capacity */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Guests Capacity</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {['Upto 50', '50 - 105', '100 - 200', '200 - 500', '500 - 1000', '1000+'].map((cap) => {
+                        const isSelected = guestsFilter.includes(cap);
+                        return (
+                          <button
+                            key={cap}
+                            type="button"
+                            onClick={() => {
+                              setGuestsFilter(prev => prev.includes(cap) ? prev.filter(g => g !== cap) : [...prev, cap]);
+                            }}
+                            className={cn(
+                              "px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer",
+                              isSelected 
+                                ? "bg-[#032a1e] text-white border-[#032a1e]" 
+                                : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100/50"
+                            )}
+                          >
+                            {cap}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 5. Cuisines */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Cuisines</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {CUISINES.map((cui) => {
+                        const isSelected = searchKeyword === cui.name;
+                        return (
+                          <button
+                            key={cui.name}
+                            type="button"
+                            onClick={() => setSearchKeyword(isSelected ? '' : cui.name)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer",
+                              isSelected 
+                                ? "bg-[#032a1e] text-white border-[#032a1e]" 
+                                : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100/50"
+                            )}
+                          >
+                            {cui.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 6. Rating Filter */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Minimum Rating</h4>
+                    <div className="flex gap-2">
+                      {[0, 4.0, 4.5, 4.8].map((ratingVal) => (
+                        <button
+                          key={ratingVal}
+                          type="button"
+                          onClick={() => setRatingFilter(ratingVal)}
+                          className={cn(
+                            "flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1",
+                            ratingFilter === ratingVal
+                              ? "bg-[#032a1e] border-transparent text-white"
+                              : "bg-slate-50 border-slate-150 text-slate-600 hover:border-slate-300"
+                          )}
+                        >
+                          {ratingVal === 0 ? "Any" : (
+                            <>
+                              <span>{ratingVal}</span>
+                              <Star size={10} className="fill-[#DEAA38] text-[#DEAA38]" />
+                            </>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 7. Sort Options */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Sort By</h4>
+                    <div className="relative flex items-center">
+                      <select
+                        value={sortOption}
+                        onChange={(e) => setSortOption(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer appearance-none"
+                      >
+                        <option value="Popularity">Popularity</option>
+                        <option value="Price: Low to High">Price: Low to High</option>
+                        <option value="Price: High to Low">Price: High to Low</option>
+                        <option value="Highest Rated">Highest Rated</option>
+                      </select>
+                      <ChevronRight size={12} className="absolute right-4 rotate-90 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* 8. More toggle options (Verified / Live counters) */}
                   <div className="space-y-4 pt-4 border-t border-slate-100">
                     <label className="flex items-center justify-between cursor-pointer select-none">
                       <div>

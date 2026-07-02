@@ -1297,6 +1297,17 @@ export default function OrderFlow() {
     selectedPackage?.categories?.map((c: any) => c.categoryName) || [];
 
   const [activeCategory, setActiveCategory] = useState(menuCategories[0] || "");
+  const [highlightIncomplete, setHighlightIncomplete] = useState(false);
+  const [validationTriggered, setValidationTriggered] = useState(false);
+
+  useEffect(() => {
+    if (highlightIncomplete) {
+      const timer = setTimeout(() => {
+        setHighlightIncomplete(false);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightIncomplete]);
 
   useEffect(() => {
     // Reset active category when package changes
@@ -1353,6 +1364,31 @@ export default function OrderFlow() {
       (i: string) => selectedItems[i],
     ).length;
     return selectedCount >= limit;
+  };
+
+  const getCategoryRemainingCount = (catName: string) => {
+    if (!selectedPackage) return 0;
+    const cat = selectedPackage.categories?.find(
+      (c: any) => c.categoryName === catName,
+    );
+    if (!cat) return 0;
+    const match = cat.selectionRule?.match(/\d+/);
+    const limit = match ? parseInt(match[0], 10) : 0;
+    if (limit === 0) return 0;
+
+    const itemsInCat = cat.items || [];
+    const selectedCount = itemsInCat.filter(
+      (i: string) => selectedItems[i],
+    ).length;
+    return Math.max(0, limit - selectedCount);
+  };
+
+  const navigateToCategory = (catName: string) => {
+    setActiveCategory(catName);
+    const middlePanel = document.getElementById("middle-dishes-panel");
+    if (middlePanel) {
+      middlePanel.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   };
 
   const allCategoriesComplete =
@@ -2566,7 +2602,7 @@ export default function OrderFlow() {
             </div>
 
             {/* LEFT PANEL - Categories (Desktop) */}
-            <div className="hidden lg:block lg:w-[185px] xl:w-[200px] shrink-0">
+            <div className="hidden lg:block lg:w-[245px] xl:w-[265px] shrink-0">
               <div className="bg-[#FDFBF6] rounded-[1.5rem] border border-[#D5A859]/22 p-3.5 sticky top-28 shadow-[0_10px_30px_rgba(120,90,40,0.04)] max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar">
                 {/* Completed Categories Circular Progress Indicator */}
                 {(() => {
@@ -2670,21 +2706,24 @@ export default function OrderFlow() {
                     const isDone = selectedCount >= catLimit;
                     const isActive = activeCategory === cat;
 
+                    const isHighlighted = highlightIncomplete && !isDone;
+
                     return (
                       <button
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
                         className={cn(
-                          "w-full text-left px-3 py-2 rounded-xl transition-all border text-[11.5px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
+                          "w-full text-left px-2 py-2.5 rounded-xl transition-all border text-[11px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
                           isActive
                             ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_6px_18px_rgba(11,31,23,0.15)]"
                             : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 hover:border-[#D4AF37]/40 hover:bg-[#FAF4E5] shadow-[0_2px_6px_rgba(120,90,40,0.02)]",
+                          isHighlighted && "border-red-500 bg-red-50/70 text-red-950 shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-pulse"
                         )}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-1">
                           <span
                             className={cn(
-                              "shrink-0 transition-transform duration-300 group-hover:scale-110",
+                              "shrink-0 transition-transform duration-300 group-hover:scale-110 [&_svg]:w-[15px] [&_svg]:h-[15px]",
                               isActive
                                 ? "text-[#E6C77D]"
                                 : "text-[#123326] transition-colors group-hover:text-[#D5A859]",
@@ -2692,12 +2731,12 @@ export default function OrderFlow() {
                           >
                             {getCategoryIcon(cat)}
                           </span>
-                          <span className="truncate leading-none font-sans font-bold tracking-tight">
+                          <span className="leading-none font-sans font-bold tracking-tight text-[11px] xl:text-[11.5px] break-words whitespace-normal leading-tight text-left">
                             {cat}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {catLimit > 0 ? (
                             isDone ? (
                               <span
@@ -2717,6 +2756,7 @@ export default function OrderFlow() {
                                   isActive
                                     ? "bg-white/15 text-white border-transparent"
                                     : "bg-slate-50 text-slate-500 border-slate-200/85",
+                                  isHighlighted && "bg-red-100 text-red-700 border-red-300"
                                 )}
                               >
                                 {selectedCount}/{catLimit}
@@ -2736,11 +2776,11 @@ export default function OrderFlow() {
                           )}
 
                           {isActive ? (
-                            <span className="text-[#E6C77D] translate-x-0.5 transition-transform">
+                            <span className="text-[#E6C77D] translate-x-0.5 transition-transform shrink-0">
                               <ChevronRight size={11} strokeWidth={3} />
                             </span>
                           ) : (
-                            <span className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#D5A859]/70">
+                            <span className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#D5A859]/70 shrink-0">
                               <ChevronRight size={11} strokeWidth={2} />
                             </span>
                           )}
@@ -2773,12 +2813,15 @@ export default function OrderFlow() {
 
             {/* MIDDLE PANEL - Available Dishes */}
             <div
-              className="hidden lg:flex flex-1 min-w-0 flex-col lg:overflow-hidden mb-24 lg:mb-6 rounded-[24px] lg:rounded-[28px] min-h-[400px] lg:min-h-[650px]"
+              id="middle-dishes-panel"
+              className={cn(
+                "hidden lg:flex flex-1 min-w-0 flex-col lg:overflow-hidden mb-24 lg:mb-6 rounded-[24px] lg:rounded-[28px] min-h-[400px] lg:min-h-[650px] transition-all duration-300",
+                highlightIncomplete && !isCategoryComplete(activeCategory)
+                  ? "border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.25)] animate-pulse"
+                  : "border border-[#D5A859]/35 shadow-[0_15px_30px_rgba(120,90,40,0.06)]"
+              )}
               style={{
                 backgroundColor: "#FDFBF6",
-                border: "1px solid rgba(212,175,55,0.35)",
-                boxShadow:
-                  "0 15px 30px rgba(120,90,40,0.06), inset 0 0 0 1px rgba(255,240,200,0.3)",
               }}
             >
               {/* Category Header Area */}
@@ -2808,33 +2851,50 @@ export default function OrderFlow() {
                     </div>
 
                     {limitPerCategory > 0 && (
-                      <div className="mt-4 flex items-center gap-2">
-                        {(() => {
-                          const catData = selectedPackage.categories?.find(
-                            (c: any) => c.categoryName === activeCategory,
-                          );
-                          const itemsInCat = catData?.items || [];
-                          const selectedCount = itemsInCat.filter(
-                            (i: string) => selectedItems[i],
-                          ).length;
-                          const isFull = selectedCount >= limitPerCategory;
-                          return isFull ? (
-                            <span className="inline-flex items-center gap-1.5 bg-[#1E8E5A]/8 border border-[#1E8E5A]/25 text-[#1E8E5A] font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
-                              <Check
-                                size={11}
-                                strokeWidth={3.5}
-                                className="text-[#1E8E5A]"
-                              />{" "}
-                              Completed selection ({selectedCount}/
-                              {limitPerCategory})
+                      <div className="mt-4 flex flex-col gap-2.5">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const catData = selectedPackage.categories?.find(
+                              (c: any) => c.categoryName === activeCategory,
+                            );
+                            const itemsInCat = catData?.items || [];
+                            const selectedCount = itemsInCat.filter(
+                              (i: string) => selectedItems[i],
+                            ).length;
+                            const isFull = selectedCount >= limitPerCategory;
+                            return isFull ? (
+                              <span className="inline-flex items-center gap-1.5 bg-[#1E8E5A]/8 border border-[#1E8E5A]/25 text-[#1E8E5A] font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
+                                <Check
+                                  size={11}
+                                  strokeWidth={3.5}
+                                  className="text-[#1E8E5A]"
+                                />{" "}
+                                Completed selection ({selectedCount}/
+                                {limitPerCategory})
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 bg-[#FFF8EC] border border-[#D5A859]/30 text-amber-850 font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
+                                Requires any {limitPerCategory} ({selectedCount}{" "}
+                                selected)
+                              </span>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Validation Alert Message inside Middle Panel */}
+                        {!isCategoryComplete(activeCategory) && (
+                          <div className={cn(
+                            "px-4 py-2.5 rounded-xl border flex items-center gap-2 text-[11px] font-bold font-sans transition-all duration-300 max-w-md",
+                            highlightIncomplete
+                              ? "bg-red-50 border-red-200 text-red-800 shadow-[0_4px_12px_rgba(239,68,68,0.1)]"
+                              : "bg-[#FFF8EC] border-[#D5A859]/25 text-amber-900"
+                          )}>
+                            <span className="text-xs">⚠️</span>
+                            <span>
+                              Please select {getCategoryRemainingCount(activeCategory)} more item{getCategoryRemainingCount(activeCategory) > 1 ? "s" : ""} from {activeCategory}.
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 bg-[#FFF8EC] border border-[#D5A859]/30 text-amber-850 font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
-                              Requires any {limitPerCategory} ({selectedCount}{" "}
-                              selected)
-                            </span>
-                          );
-                        })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3274,16 +3334,16 @@ export default function OrderFlow() {
                   {/* Proceed CTA button */}
                   <button
                     onClick={() => {
-                      if (allCategoriesComplete) {
+                      const incomplete = menuCategories.filter(cat => !isCategoryComplete(cat));
+                      if (incomplete.length === 0) {
                         setViewMode("checkout");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                       } else {
-                        // Soft scroll indicator to guide luxury experience completion
-                        const catProgress =
-                          document.getElementById("completed-categories-box") ||
-                          document.querySelector(".progress-header");
-                        if (catProgress) {
-                          catProgress.scrollIntoView({ behavior: "smooth" });
-                        }
+                        const firstIncomplete = incomplete[0];
+                        navigateToCategory(firstIncomplete);
+                        setHighlightIncomplete(true);
+                        setValidationTriggered(true);
+                        toast("Please complete all required menu selections before proceeding.", "error");
                       }
                     }}
                     className="w-full py-5 rounded-[18px] font-extrabold shadow-lg transition-all flex items-center justify-between px-7 uppercase tracking-wider text-xs duration-300 relative group overflow-hidden cursor-pointer text-[#0B1F17] hover:opacity-95 hover:shadow-[0_8px_25px_rgba(212,175,55,0.42)] border-[1.5px] border-white/40"
@@ -3303,8 +3363,36 @@ export default function OrderFlow() {
                   </button>
 
                   {!allCategoriesComplete && (
-                    <div className="mt-4 bg-white/[0.04] text-[#FCE6A9] border border-[#D5A859]/20 px-4 py-3 rounded-xl text-[11px] font-semibold text-center flex items-center justify-center gap-2">
-                      <span>ℹ️</span> Please complete all categories to proceed.
+                    <div className="mt-4 bg-white/[0.04] text-[#FCE6A9] border border-[#D5A859]/20 px-4 py-3.5 rounded-[16px] text-[11px] font-semibold relative z-10 text-left space-y-2">
+                      <div className="text-center font-bold text-xs text-[#FFF8EC] border-b border-white/10 pb-2 flex items-center justify-center gap-1.5">
+                        <span className="text-amber-400">⚠️</span> Menu Selections Incomplete
+                      </div>
+                      <p className="text-[10px] text-slate-300 font-medium">
+                        Please complete the following required categories before proceeding:
+                      </p>
+                      <ul className="space-y-1.5 mt-2">
+                        {menuCategories.map((cat: string) => {
+                          const isDone = isCategoryComplete(cat);
+                          if (isDone) return null;
+                          const remaining = getCategoryRemainingCount(cat);
+                          return (
+                            <li key={cat}>
+                              <button
+                                type="button"
+                                onClick={() => navigateToCategory(cat)}
+                                className="w-full text-left flex items-center justify-between text-[11px] text-[#FCE6A9] hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-all border border-[#D5A859]/10 hover:border-[#D5A859]/30"
+                              >
+                                <span className="font-bold flex items-center gap-1">
+                                  <span className="text-red-400">•</span> {cat}
+                                </span>
+                                <span className="text-[9.5px] bg-red-950/40 text-red-300 px-2 py-0.5 rounded-full font-sans font-bold border border-red-900/30">
+                                  {remaining} item{remaining > 1 ? "s" : ""} remaining
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   )}
                 </div>

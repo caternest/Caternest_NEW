@@ -312,10 +312,10 @@ export const MapPickerModal: React.FC<MapPickerModalProps> = ({
   const reverseGeocode = async (lat: number, lng: number) => {
     setIsGeocoding(true);
     try {
-      const display_name = await libReverseGeocode(lat, lng);
-      if (display_name) {
-        setAddress(display_name);
-        setSearchQuery(display_name);
+      const result = await libReverseGeocode(lat, lng);
+      if (result && result.address) {
+        setAddress(result.address);
+        setSearchQuery(result.address);
       }
     } catch (err) {
       console.warn('Reverse geocoding failed, using local/manual details', err);
