@@ -5,8 +5,10 @@ import { cn, safeSaveRegistrations } from '../lib/utils';
 import { ChefHat, Menu, X, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabase } from '../lib/supabase';
+import { usePlatformSettings } from '../contexts/PlatformSettingsContext';
 
-export default function Navbar() {
+export default function Navbar({ homepageMode: _unused }: { homepageMode?: string }) {
+  const { homepageMode } = usePlatformSettings();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -79,7 +81,7 @@ export default function Navbar() {
   ];
 
   const handleExploreCaterersClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    const mode = localStorage.getItem('homepage_mode') || 'classic';
+    const mode = homepageMode;
     if (mode === 'marketplace') {
       const isCurrentlyExplorePage = ['/', '/explore', '/explore-caterers'].includes(location.pathname);
       if (isCurrentlyExplorePage) {
@@ -293,7 +295,7 @@ export default function Navbar() {
             <div className="flex items-center gap-6">
               {navLinks.map((link) => {
                 const isExplore = link.name === 'Explore Caterers';
-                const isMarketplace = localStorage.getItem('homepage_mode') === 'marketplace';
+                const isMarketplace = homepageMode === 'marketplace';
                 
                 // Determine destination URL
                 const toPath = isExplore && isMarketplace ? '/explore?scroll=true' : link.path;
@@ -609,20 +611,20 @@ export default function Navbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                      (location.pathname === "/" && localStorage.getItem('homepage_mode') !== 'marketplace') ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                      (location.pathname === "/" && homepageMode !== 'marketplace') ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
                     Home
                   </Link>
                   <Link
-                    to={localStorage.getItem('homepage_mode') === 'marketplace' ? '/explore?scroll=true' : '/explore'}
+                    to={homepageMode === 'marketplace' ? '/explore?scroll=true' : '/explore'}
                     onClick={(e) => {
                       setIsMobileMenuOpen(false);
                       handleExploreCaterersClick(e);
                     }}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                      (location.pathname === "/explore" || location.pathname === "/explore-caterers" || (location.pathname === "/" && localStorage.getItem('homepage_mode') === 'marketplace')) ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                      (location.pathname === "/explore" || location.pathname === "/explore-caterers" || (location.pathname === "/" && homepageMode === 'marketplace')) ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
                     Explore Caterers

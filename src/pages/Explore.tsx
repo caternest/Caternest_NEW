@@ -774,6 +774,490 @@ export default function Explore() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Check if viewport is mobile (< 768px)
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <div className="w-full bg-[#FFFDFB] font-sans overflow-x-hidden min-h-screen pb-20 px-4 text-left">
+        
+        {/* Mobile Header with Location selector */}
+        <div className="pt-6 pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none block mb-1">
+                Event Location
+              </span>
+              <button 
+                type="button"
+                onClick={() => setIsExploreMapOpen(true)}
+                className="flex items-center gap-1.5 text-left bg-slate-50 border border-slate-200/60 rounded-full px-3.5 py-1.5 shadow-2xs hover:bg-slate-100/50 transition-all cursor-pointer"
+              >
+                <MapPin size={14} className="text-[#DEAA38] shrink-0" />
+                <span className="text-xs font-bold text-slate-800 max-w-[200px] truncate">
+                  {searchLocation || "Select Location"}
+                </span>
+                <ChevronRight size={10} className="rotate-90 text-slate-400 shrink-0" />
+              </button>
+            </div>
+
+            {/* Premium Logo / Subtitle avatar */}
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#051410] to-[#032a1e] flex items-center justify-center border border-[#DEAA38]/30">
+              <ChefHat size={16} className="text-[#DEAA38]" />
+            </div>
+          </div>
+
+          <h1 
+            className="text-2xl font-bold text-slate-900 leading-tight mt-3"
+            style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+          >
+            Explore <span className="text-[#DEAA38]">Caterers</span>
+          </h1>
+          <p className="text-slate-400 text-xs mt-1">
+            Discover verified culinary masters for your perfect event.
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-4">
+          <div className="relative flex items-center bg-white rounded-2xl border border-slate-200/80 px-4.5 py-3 shadow-[0_4px_16px_rgba(3,19,14,0.02)]">
+            <Search size={16} className="text-slate-400 mr-2 shrink-0" />
+            <input 
+              type="text" 
+              placeholder="Search by name, cuisine, or dish..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              className="w-full text-xs focus:outline-none bg-transparent font-medium text-slate-800"
+            />
+            {searchKeyword && (
+              <button 
+                type="button"
+                onClick={() => setSearchKeyword('')} 
+                className="text-slate-400 hover:text-slate-600 ml-1.5"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Chips Row (Veg / Non-Veg / Both) */}
+        <div className="mb-4">
+          <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none">
+            {[
+              { label: 'Both', value: 'Both', color: 'bg-amber-500' },
+              { label: 'Veg Only', value: 'Veg', color: 'bg-emerald-500' },
+              { label: 'Non-Veg Only', value: 'Non-Veg', color: 'bg-rose-500' },
+              { label: 'Pure Veg', value: 'Pure Veg', color: 'bg-green-500' }
+            ].map((chip) => {
+              const isActive = cuisineFilter === chip.value;
+              return (
+                <button
+                  key={chip.value}
+                  type="button"
+                  onClick={() => setCuisineFilter(chip.value)}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 shrink-0 cursor-pointer shadow-3xs",
+                    isActive
+                      ? "bg-[#032a1e] text-white border-[#032a1e]"
+                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                  )}
+                >
+                  <span className={cn("w-1.5 h-1.5 rounded-full", chip.color)} />
+                  <span>{chip.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sort & Filter Controls Row */}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          {/* Sort Selector */}
+          <div className="relative flex items-center bg-white border border-slate-200/80 rounded-xl px-3.5 py-2.5 flex-1 shadow-3xs">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mr-1.5 leading-none">Sort:</span>
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              className="text-xs font-bold text-slate-700 focus:outline-none bg-transparent cursor-pointer flex-1 appearance-none pr-5"
+            >
+              <option value="Popularity">Popularity</option>
+              <option value="Price: Low to High">Price: Low-High</option>
+              <option value="Price: High to Low">Price: High-Low</option>
+              <option value="Rating">Top Rated</option>
+            </select>
+            <ChevronRight size={10} className="absolute right-3.5 rotate-90 text-slate-400 pointer-events-none" />
+          </div>
+
+          {/* Filter Button */}
+          <button
+            type="button"
+            onClick={() => setIsMobileFiltersOpen(true)}
+            className="px-4.5 py-2.5 bg-[#DEAA38]/10 hover:bg-[#DEAA38]/15 border border-[#DEAA38]/30 text-[#032a1e] rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-3xs cursor-pointer h-full"
+          >
+            <Filter size={13} className="text-[#DEAA38]" />
+            <span>Filters</span>
+            {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters) && (
+              <span className="w-4 h-4 bg-[#032a1e] text-white rounded-full text-[9px] font-black flex items-center justify-center">
+                {Number(occasionFilter.length > 0) + Number(budgetFilter < 1000) + Number(isVerifiedOnly) + Number(isLiveCounters)}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Active Filters Summary row if any */}
+        {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters) && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            {occasionFilter.map((occ) => (
+              <span key={occ} className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                {occ}
+                <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+              </span>
+            ))}
+            {budgetFilter < 1000 && (
+              <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                ≤ ₹{budgetFilter}
+                <button type="button" onClick={() => setBudgetFilter(1000)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+              </span>
+            )}
+            {isVerifiedOnly && (
+              <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                Verified
+                <button type="button" onClick={() => setIsVerifiedOnly(false)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+              </span>
+            )}
+            {isLiveCounters && (
+              <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                Live Counters
+                <button type="button" onClick={() => setIsLiveCounters(false)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+              </span>
+            )}
+            <button 
+              type="button" 
+              onClick={clearAllFilters} 
+              className="text-[10px] font-black text-rose-600 hover:underline px-2.5 py-1 cursor-pointer"
+            >
+              Clear All
+            </button>
+          </div>
+        )}
+
+        {/* Results Count Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+            {filteredCaterers.length} {filteredCaterers.length === 1 ? 'Caterer' : 'Caterers'} found
+          </span>
+        </div>
+
+        {/* Caterer Cards Listing */}
+        <div className="space-y-5">
+          {filteredCaterers.length === 0 ? (
+            <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 max-w-sm mx-auto shadow-3xs">
+              <ChefHat className="text-slate-300 w-10 h-10 mx-auto mb-3" />
+              <h3 className="text-sm font-bold text-slate-900 mb-1">No matching caterers</h3>
+              <p className="text-slate-400 text-xs leading-relaxed">Try adjusting filters or typing a different search term.</p>
+              <button 
+                type="button"
+                onClick={clearAllFilters} 
+                className="mt-4 px-4.5 py-2 bg-[#032a1e] text-white font-bold text-xs rounded-xl active:bg-[#05402e] transition-colors"
+              >
+                Reset Filters
+              </button>
+            </div>
+          ) : (
+            filteredCaterers.map((caterer) => (
+              <div 
+                key={caterer.id}
+                className="bg-white rounded-3xl border border-slate-150/70 shadow-[0_8px_30px_rgba(3,19,14,0.03)] overflow-hidden relative flex flex-col mb-4 text-left active:shadow-md transition-all duration-300"
+              >
+                {/* Image Section */}
+                <div className="relative h-[200px] w-full overflow-hidden">
+                  <CardImageSlider images={caterer.images} name={caterer.name} />
+                  
+                  {/* Floating tags */}
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-1 z-10">
+                    {caterer.isVerified && (
+                      <span className="bg-emerald-500/90 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
+                        ✓ Verified
+                      </span>
+                    )}
+                    {caterer.isPremium && (
+                      <span className="bg-[#DEAA38]/95 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
+                        ✦ Premium
+                      </span>
+                    )}
+                  </div>
+
+                  <button 
+                    type="button" 
+                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-slate-400 hover:text-rose-500 transition-colors shadow-sm z-10"
+                  >
+                    <Heart size={14} />
+                  </button>
+
+                  {/* Overlapping circular brand logo */}
+                  <div className="absolute -bottom-5 left-5 w-14 h-14 bg-white rounded-full p-0.5 border-2 border-white shadow-md z-10 flex items-center justify-center overflow-hidden">
+                    {caterer.logo ? (
+                      <SafeImage src={caterer.logo} alt="Logo" className="w-full h-full object-contain rounded-full" fallbackType="avatar" />
+                    ) : (
+                      <div className="w-full h-full bg-amber-50 rounded-full flex items-center justify-center">
+                        <span className="font-display font-black text-[#DEAA38] text-xs uppercase">
+                          {(caterer.name || 'CR').substring(0, 2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="p-5 pt-7">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1 leading-tight">
+                      {caterer.name}
+                      <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[7px] font-bold">✓</span>
+                    </h3>
+                    <div className="flex items-center gap-0.5 text-xs font-bold text-slate-800 shrink-0">
+                      <Star size={12} className="text-[#DEAA38] fill-[#DEAA38]" />
+                      <span>{Number(caterer.rating).toFixed(1)}</span>
+                      <span className="text-slate-400 font-normal">({caterer.reviewCount})</span>
+                    </div>
+                  </div>
+
+                  {/* Location & Distance */}
+                  <div className="flex items-center gap-1 text-slate-500 text-xs mb-3">
+                    <MapPin size={11} className="text-slate-400 shrink-0" />
+                    <span className="truncate">{caterer.location}</span>
+                    {caterer.distanceKm !== undefined && (
+                      <span className="text-[#b47a00] bg-amber-500/5 px-1.5 py-0.5 rounded font-mono text-[9px]">
+                        • {caterer.distanceKm.toFixed(1)} KM
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Performance Indicators */}
+                  <div className="flex items-center gap-3.5 text-[11px] font-bold text-slate-500 mb-3 border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-1"><Users size={11} className="text-slate-400" /> 800+ Events</div>
+                    <div className="flex items-center gap-1"><Award size={11} className="text-slate-400" /> {caterer.years || '5+ Years'}</div>
+                  </div>
+
+                  {/* Dietary tags */}
+                  <div className="flex flex-wrap gap-1 mb-3.5">
+                    <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Veg
+                    </span>
+                    <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Veg
+                    </span>
+                    <span className="px-2 py-0.5 text-[8px] font-black tracking-wider uppercase bg-slate-50 text-slate-500 rounded border border-slate-150 flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#DEAA38]" /> Live Counter
+                    </span>
+                  </div>
+
+                  {/* Price and CTA Grid Row */}
+                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-50">
+                    <div>
+                      <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none mb-0.5">Starting from</p>
+                      <p className="font-extrabold text-base text-slate-800 leading-none">
+                        ₹{caterer.startingPrice} <span className="text-[10px] font-normal text-slate-400">/ plate</span>
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => navigate(`/caterer/${caterer.id}`)}
+                        className="px-3.5 h-10 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold bg-white active:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        Details
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => navigate(`/caterer/${caterer.id}?tab=menu`)}
+                        className="px-4 h-10 bg-[#032a1e] text-white rounded-xl text-xs font-bold hover:bg-[#05402e] transition-colors shadow-sm flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <span>View Menu</span>
+                        <ArrowRight size={12} className="text-[#DEAA38]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Floating/Drawer Filter Sheet */}
+        <AnimatePresence>
+          {isMobileFiltersOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileFiltersOpen(false)}
+                className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs"
+              />
+              {/* Sheet */}
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] max-h-[85vh] overflow-y-auto z-50 p-6 shadow-2xl flex flex-col text-left"
+              >
+                {/* Header indicator */}
+                <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-5 shrink-0" />
+
+                <div className="flex justify-between items-center mb-6 shrink-0">
+                  <h3 className="text-lg font-bold text-slate-800" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>
+                    Filter <span className="text-[#DEAA38]">Caterers</span>
+                  </h3>
+                  <button 
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Content list */}
+                <div className="space-y-6 flex-1 overflow-y-auto pb-6 pr-1">
+                  {/* 1. Occasions */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Occasion</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {['Wedding', 'Reception', 'Birthday Party', 'Corporate Events', 'House Warming', 'Engagement', 'Baby Shower', 'Festival'].map((occ) => {
+                        const isSelected = occasionFilter.includes(occ);
+                        return (
+                          <button
+                            key={occ}
+                            type="button"
+                            onClick={() => toggleOccasionFilter(occ)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer",
+                              isSelected 
+                                ? "bg-[#032a1e] text-white border-[#032a1e]" 
+                                : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100/50"
+                            )}
+                          >
+                            {occ}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 2. Budget slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2.5">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-none">Max Budget per plate</h4>
+                      <span className="text-xs font-extrabold text-slate-800">₹{budgetFilter === 1000 ? "Any" : `≤ ₹${budgetFilter}`}</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="300"
+                      max="1000"
+                      step="50"
+                      value={budgetFilter}
+                      onChange={(e) => setBudgetFilter(Number(e.target.value))}
+                      className="w-full accent-[#DEAA38] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-1 leading-none">
+                      <span>₹300</span>
+                      <span>₹650</span>
+                      <span>₹1000+</span>
+                    </div>
+                  </div>
+
+                  {/* 3. Verified Only and Live Counters */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <label className="flex items-center justify-between cursor-pointer select-none">
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 leading-tight">Verified Caterers Only</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 leading-none">Show only trusted and verified vendors</p>
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        checked={isVerifiedOnly}
+                        onChange={(e) => setIsVerifiedOnly(e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500/20 cursor-pointer"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between cursor-pointer select-none">
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 leading-tight">Live Counters Available</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 leading-none">Show vendors with live cooking stalls</p>
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        checked={isLiveCounters}
+                        onChange={(e) => setIsLiveCounters(e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500/20 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-4 border-t border-slate-100 flex gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearAllFilters();
+                      setIsMobileFiltersOpen(false);
+                    }}
+                    className="flex-1 py-3.5 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl active:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="flex-1 py-3.5 bg-[#032a1e] text-white font-bold text-xs rounded-xl hover:bg-[#05402e] transition-colors shadow-md cursor-pointer"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Map selection Modal */}
+        <MapPickerModal
+          isOpen={isExploreMapOpen}
+          onClose={() => setIsExploreMapOpen(false)}
+          initialLat={customerLat || 17.3850}
+          initialLng={customerLng || 78.4867}
+          initialAddress={searchLocation === 'Hyderabad' ? '' : searchLocation}
+          onSave={(data) => {
+            setSearchLocation(data.address);
+            setCustomerLat(data.latitude);
+            setCustomerLng(data.longitude);
+            if (data.latitude) localStorage.setItem('customer_lat', String(data.latitude));
+            if (data.longitude) localStorage.setItem('customer_lng', String(data.longitude));
+            if (data.address) localStorage.setItem('customer_address', data.address);
+            setIsExploreMapOpen(false);
+          }}
+          title="Choose Your Event Venue Location"
+        />
+
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans">
       

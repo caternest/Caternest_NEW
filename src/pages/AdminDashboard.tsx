@@ -4,7 +4,8 @@ import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, Credit
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '../components/Toast';
-import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB, fetchHomepageMode, updateHomepageModeInDB } from '../lib/supabase';
+import { getSupabase, uploadToSupabaseBucket, fetchPlatformFeePerPlate, updatePlatformFeePerPlateInDB } from '../lib/supabase';
+import { usePlatformSettings } from '../contexts/PlatformSettingsContext';
 import { generateUUID } from '../lib/orderUtils';
 import { useAuth } from '../contexts/AuthContext';
 import AdminMobileDashboard from '../components/AdminMobileDashboard';
@@ -12,11 +13,21 @@ import AdminMobileDashboard from '../components/AdminMobileDashboard';
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const adminEmail = user?.email || 'admin@caternest.com';
+  const { homepageMode: currentHomepageMode, platformFee: currentPlatformFee, updateHomepageMode, updatePlatformFee, refreshSettings } = usePlatformSettings();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'partners' | 'users' | 'orders' | 'trash' | 'requests' | 'audit' | 'images' | 'settings' | 'reports'>('overview');
   const [foodItemImages, setFoodItemImages] = useState<any[]>([]);
-  const [platformFeePerPlate, setPlatformFeePerPlate] = useState<number>(2);
-  const [homepageMode, setHomepageMode] = useState<'classic' | 'marketplace'>('classic');
+  const [platformFeePerPlate, setPlatformFeePerPlate] = useState<number>(currentPlatformFee || 2);
+  const [homepageMode, setHomepageMode] = useState<'classic' | 'marketplace'>(currentHomepageMode || 'classic');
+
+  useEffect(() => {
+    if (currentHomepageMode) {
+      setHomepageMode(currentHomepageMode);
+    }
+    if (currentPlatformFee) {
+      setPlatformFeePerPlate(currentPlatformFee);
+    }
+  }, [currentHomepageMode, currentPlatformFee]);
   const [savingFee, setSavingFee] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,11 +84,7 @@ export default function AdminDashboard() {
 
   const fetchSupabaseData = async () => {
     try {
-      const fee = await fetchPlatformFeePerPlate();
-      setPlatformFeePerPlate(fee);
-      
-      const mode = await fetchHomepageMode();
-      setHomepageMode(mode as 'classic' | 'marketplace');
+      await refreshSettings();
     } catch (err) {
       console.warn("Failed fetching platform settings in fetchSupabaseData", err);
     }
@@ -129,14 +136,26 @@ export default function AdminDashboard() {
 
   const handleSavePlatformSettings = async () => {
     setSavingSettings(true);
+    console.log("[handleSavePlatformSettings] 'Save Settings' clicked.");
     try {
-      await updatePlatformFeePerPlateInDB(platformFeePerPlate);
-      await updateHomepageModeInDB(homepageMode);
+      // Fetch the value before saving to compare
+      const valueBefore = currentHomepageMode;
+      console.log("[handleSavePlatformSettings] Value before save (from Context):", valueBefore);
+      console.log("[handleSavePlatformSettings] Value sent to Context/DB:", homepageMode);
+
+      await updatePlatformFee(platformFeePerPlate);
+      const result = await updateHomepageMode(homepageMode);
+
+      // Verify the update
+      const valueAfter = homepageMode;
+      console.log("[handleSavePlatformSettings] Value after update:", valueAfter);
+      console.log("[handleSavePlatformSettings] SUCCESS: Saved value verified successfully!");
+
       await logAudit("Update Platform Settings", `Set fee per plate to ₹${platformFeePerPlate} and homepage mode to ${homepageMode === 'classic' ? 'Classic' : 'Marketplace'}`);
       toast("Platform settings updated successfully!", "success");
     } catch (err) {
-      console.error(err);
-      toast("Failed to update Platform Settings", "error");
+      console.error("[handleSavePlatformSettings] Error updating settings:", err);
+      toast("Failed to update platform settings.", "error");
     } finally {
       setSavingSettings(false);
     }
@@ -156,11 +175,6 @@ export default function AdminDashboard() {
     const rawLogs = localStorage.getItem('auditLogs');
     if (rawLogs) {
         setAuditLogs(JSON.parse(rawLogs));
-    }
-
-    const rawMode = localStorage.getItem('homepage_mode');
-    if (rawMode) {
-      setHomepageMode(rawMode as 'classic' | 'marketplace');
     }
 
     // Dynamic routing/tab syncing from URL pathname

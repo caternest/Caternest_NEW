@@ -159,10 +159,15 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     "platformFeePerPlate" NUMERIC DEFAULT 2,
-    "homepage_mode" TEXT DEFAULT 'classic'
+    "homepage_mode" TEXT NOT NULL DEFAULT 'classic'
 );
 
-ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS "homepage_mode" TEXT DEFAULT 'classic';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS "homepage_mode" TEXT NOT NULL DEFAULT 'classic';
+ALTER TABLE public.platform_settings ALTER COLUMN "homepage_mode" SET DEFAULT 'classic';
+UPDATE public.platform_settings SET "homepage_mode" = 'classic' WHERE "homepage_mode" IS NULL;
+ALTER TABLE public.platform_settings ALTER COLUMN "homepage_mode" SET NOT NULL;
+
+ALTER TABLE public.platform_settings DISABLE ROW LEVEL SECURITY;
 
 -- Notifications table
 CREATE TABLE IF NOT EXISTS public.notifications (

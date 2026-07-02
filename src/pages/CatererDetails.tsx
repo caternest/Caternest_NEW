@@ -4409,7 +4409,7 @@ export default function CatererDetails() {
       <div className="w-full bg-[#FCFAF6] md:bg-[#e9f6e3] relative overflow-x-hidden min-h-screen pb-12">
 
         {/* TOP ROW: BREADCRUMBS & NAVIGATION BUTTONS */}
-        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-5 mt-[85px] sm:mt-[96px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 font-sans relative z-30 border-b border-[#D4AF37]/20">
+        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 pt-2 md:pt-8 pb-3 md:pb-5 mt-2 md:mt-[85px] lg:mt-[96px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 font-sans relative z-30 border-b border-[#D4AF37]/20">
           {/* Breadcrumbs */}
           <div className="hidden md:flex items-center gap-2 text-xs sm:text-sm text-stone-600 font-medium">
             <Link to="/" className="hover:text-[#D4AF37] transition-all">Home</Link>

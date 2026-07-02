@@ -169,6 +169,172 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/api/platform-settings", async (req: any, res: any) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return res.json({
+      success: true,
+      data: { id: "default", platformFeePerPlate: 2, homepage_mode: "classic" }
+    });
+  }
+
+  try {
+    // Fetch ONLY the same platform_settings row ('default')
+    const { data, error } = await supabase
+      .from("platform_settings")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (data) {
+      return res.json({ success: true, data });
+    } else {
+      // Seed default if row doesn't exist yet
+      const defaultRow = { id: "default", platformFeePerPlate: 2, homepage_mode: "classic" };
+      const { data: inserted, error: insertError } = await supabase
+        .from("platform_settings")
+        .insert([defaultRow])
+        .select()
+        .maybeSingle();
+
+      if (insertError) {
+        console.error("[SERVER] Failed to insert default platform settings row:", insertError);
+        return res.json({ success: true, data: defaultRow });
+      }
+
+      return res.json({ success: true, data: inserted || defaultRow });
+    }
+  } catch (err: any) {
+    console.error("[SERVER] Error in GET /api/platform-settings:", err);
+    return res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
+app.post("/api/platform-settings", async (req: any, res: any) => {
+  const supabase = getSupabaseClient();
+  const { platformFeePerPlate, homepage_mode } = req.body;
+
+  if (homepage_mode && homepage_mode !== "classic" && homepage_mode !== "marketplace") {
+    return res.status(400).json({ error: "Invalid homepage_mode. Must be 'classic' or 'marketplace'" });
+  }
+
+  if (!supabase) {
+    console.warn("[SERVER] Supabase not configured. Simulating platform settings save.");
+    return res.json({
+      success: true,
+      rowId: "default",
+      previousHomepageMode: "classic",
+      newHomepageMode: homepage_mode || "classic",
+      updateResponse: { message: "Simulated response" },
+      affectedRowCount: 1,
+      databaseValueAfter: homepage_mode || "classic"
+    });
+  }
+
+  try {
+    // 1. Fetch the existing row to get previous values
+    const { data: beforeData, error: beforeError } = await supabase
+      .from("platform_settings")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+
+    if (beforeError) {
+      throw beforeError;
+    }
+
+    const previousHomepageMode = beforeData?.homepage_mode || "classic";
+    const previousFee = beforeData?.platformFeePerPlate || 2;
+
+    const nextFee = platformFeePerPlate !== undefined ? Number(platformFeePerPlate) : previousFee;
+    const nextMode = homepage_mode || previousHomepageMode;
+
+    // 2. Perform the UPDATE query directly on the row where id = 'default' (ensures NO duplicate rows)
+    const updatePayload = {
+      platformFeePerPlate: nextFee,
+      homepage_mode: nextMode,
+      updated_at: new Date().toISOString()
+    };
+
+    const updateResponse = await supabase
+      .from("platform_settings")
+      .update(updatePayload)
+      .eq("id", "default")
+      .select();
+
+    const { data: afterUpdate, error: updateError } = updateResponse;
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    const affectedRowCount = afterUpdate ? afterUpdate.length : 0;
+
+    // 3. If update affected 0 rows, try inserting it (healing database) or return error
+    let finalAffectedCount = affectedRowCount;
+    let finalAfterUpdate = afterUpdate;
+
+    if (affectedRowCount === 0) {
+      console.warn("[SERVER] UPDATE affected 0 rows. Attempting to insert the row...");
+      const { data: inserted, error: insertError } = await supabase
+        .from("platform_settings")
+        .insert([{ id: "default", ...updatePayload }])
+        .select();
+
+      if (insertError) {
+        console.error("[SERVER] Failed to insert row after UPDATE affected 0 rows:", insertError);
+        return res.status(500).json({
+          error: "Database UPDATE affected 0 rows and self-healing INSERT failed.",
+          affectedRowCount: 0
+        });
+      }
+
+      if (inserted && inserted.length > 0) {
+        finalAffectedCount = inserted.length;
+        finalAfterUpdate = inserted;
+      }
+    }
+
+    // 4. Immediately query the database again and verify that homepage_mode has actually changed
+    const { data: verifyData, error: verifyError } = await supabase
+      .from("platform_settings")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+
+    if (verifyError) {
+      throw verifyError;
+    }
+
+    const databaseValueAfter = verifyData?.homepage_mode || "classic";
+
+    console.log("[SERVER] Platform Settings Save Flow complete:", {
+      rowId: "default",
+      previousHomepageMode,
+      newHomepageMode: nextMode,
+      affectedRowCount: finalAffectedCount,
+      databaseValueAfter
+    });
+
+    return res.json({
+      success: true,
+      rowId: "default",
+      previousHomepageMode,
+      newHomepageMode: nextMode,
+      updateResponse: updateResponse,
+      affectedRowCount: finalAffectedCount,
+      databaseValueAfter
+    });
+  } catch (err: any) {
+    console.error("[SERVER] Error in POST /api/platform-settings:", err);
+    return res.status(500).json({ error: err.message || err.toString() });
+  }
+});
+
 // Server-side robust database synchronization endpoint (bypasses RLS)
 app.post("/api/sync", async (req: any, res: any) => {
   const { tableName, localData } = req.body;

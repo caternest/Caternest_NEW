@@ -287,10 +287,13 @@ CREATE TABLE IF NOT EXISTS public.platform_settings (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     "platformFeePerPlate" NUMERIC DEFAULT 2,
-    "homepage_mode" TEXT DEFAULT 'classic'
+    "homepage_mode" TEXT NOT NULL DEFAULT 'classic'
 );
 
-ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS "homepage_mode" TEXT DEFAULT 'classic';
+ALTER TABLE public.platform_settings ADD COLUMN IF NOT EXISTS "homepage_mode" TEXT NOT NULL DEFAULT 'classic';
+ALTER TABLE public.platform_settings ALTER COLUMN "homepage_mode" SET DEFAULT 'classic';
+UPDATE public.platform_settings SET "homepage_mode" = 'classic' WHERE "homepage_mode" IS NULL;
+ALTER TABLE public.platform_settings ALTER COLUMN "homepage_mode" SET NOT NULL;
 
 ALTER TABLE public.caterer_registrations 
   ADD COLUMN IF NOT EXISTS "latitude" NUMERIC,
@@ -303,6 +306,8 @@ ALTER TABLE public.orders
 INSERT INTO public.platform_settings (id, "platformFeePerPlate", "homepage_mode")
 VALUES ('default', 2, 'classic')
 ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE public.platform_settings DISABLE ROW LEVEL SECURITY;
 
 NOTIFY pgrst, 'reload schema';
 

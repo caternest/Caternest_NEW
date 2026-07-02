@@ -170,8 +170,8 @@ export function getSupabase() {
       supabaseAnonKey,
       {
         auth: {
-          persistSession: false,
-          autoRefreshToken: false,
+          persistSession: true,
+          autoRefreshToken: true,
           detectSessionInUrl: true
         }
       }
@@ -685,100 +685,115 @@ export async function saveWithSupabaseSync(tableName: string, localStorageKey: s
 
 export async function fetchPlatformFeePerPlate(): Promise<number> {
   const localVal = localStorage.getItem('platformFeePerPlate');
-  let fee = localVal ? parseFloat(localVal) : 1;
-  const supabase = getSupabase();
-  if (!supabase) {
-    return fee;
-  }
-
+  let defaultFee = localVal ? parseFloat(localVal) : 2;
+  
   try {
-    const { data, error } = await (supabase.from('platform_settings') as any).select('*');
-    if (error) {
-      throw error;
+    const response = await fetch('/api/platform-settings');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    if (data && data.length > 0) {
-      const row = data[0] as any;
-      const dbFee = Number(row.platformFeePerPlate !== undefined ? row.platformFeePerPlate : fee);
-      if (!isNaN(dbFee)) {
-        fee = dbFee;
+    const result = await response.json();
+    if (result && result.success && result.data) {
+      const fee = Number(result.data.platformFeePerPlate);
+      if (!isNaN(fee)) {
         localStorage.setItem('platformFeePerPlate', fee.toString());
+        return fee;
       }
-    } else {
-      // Seed default
-      await (supabase.from('platform_settings') as any).insert([{ id: 'default', platformFeePerPlate: fee }]);
     }
   } catch (err) {
-    console.warn("Failed to fetch platform fee from Supabase, using cache:", err);
+    console.warn("Failed to fetch platform fee from API, falling back to cache:", err);
   }
-  return fee;
+  return defaultFee;
 }
 
 export async function updatePlatformFeePerPlateInDB(fee: number): Promise<void> {
-  localStorage.setItem('platformFeePerPlate', fee.toString());
-  const supabase = getSupabase();
-  if (!supabase) return;
-
   try {
-    const payload = { id: 'default', platformFeePerPlate: fee };
-    const { error } = await (supabase.from('platform_settings') as any).upsert(payload, { onConflict: 'id' });
-    if (error) {
-      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ platformFeePerPlate: fee }).eq('id', 'default');
-      if (err2) {
-        console.warn("Could not sync platform fee to Supabase", err2);
-      }
+    const response = await fetch('/api/platform-settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ platformFeePerPlate: fee })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Server returned error: ${errText}`);
+    }
+
+    const result = await response.json();
+    if (result && result.success) {
+      localStorage.setItem('platformFeePerPlate', fee.toString());
+    } else {
+      throw new Error("Failed to update platform fee on the server.");
     }
   } catch (err) {
-    console.warn("Error updating platform fee in Supabase", err);
+    console.error("Error in updatePlatformFeePerPlateInDB:", err);
+    throw err;
   }
 }
 
 export async function fetchHomepageMode(): Promise<string> {
-  const localVal = localStorage.getItem('homepage_mode');
-  let mode = localVal || 'classic';
-  const supabase = getSupabase();
-  if (!supabase) {
-    return mode;
-  }
-
   try {
-    const { data, error } = await (supabase.from('platform_settings') as any).select('*');
-    if (error) {
-      throw error;
+    const response = await fetch('/api/platform-settings');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    if (data && data.length > 0) {
-      const row = data[0] as any;
-      const dbMode = row.homepage_mode || row.homepageMode || mode;
-      mode = dbMode;
-      localStorage.setItem('homepage_mode', mode);
-    } else {
-      // Seed default
-      try {
-        await (supabase.from('platform_settings') as any).insert([{ id: 'default', homepage_mode: mode }]);
-      } catch (insertErr) {
-        console.warn("Could not insert default homepage mode to platform_settings", insertErr);
+    const result = await response.json();
+    if (result && result.success && result.data) {
+      const mode = result.data.homepage_mode;
+      if (mode === 'classic' || mode === 'marketplace') {
+        localStorage.setItem('homepage_mode', mode);
+        return mode;
       }
     }
+    throw new Error("Invalid response format or missing data");
   } catch (err) {
-    console.warn("Failed to fetch homepage mode from Supabase, using cache:", err);
+    console.warn("Failed to fetch homepage mode from API, falling back to cache:", err);
+    return localStorage.getItem('homepage_mode') || 'classic';
   }
-  return mode;
 }
 
-export async function updateHomepageModeInDB(mode: string): Promise<void> {
-  localStorage.setItem('homepage_mode', mode);
-  const supabase = getSupabase();
-  if (!supabase) return;
-
+export async function updateHomepageModeInDB(mode: string): Promise<any> {
   try {
-    const payload = { id: 'default', homepage_mode: mode };
-    const { error } = await (supabase.from('platform_settings') as any).upsert(payload, { onConflict: 'id' });
-    if (error) {
-      const { error: err2 } = await (supabase.from('platform_settings') as any).update({ homepage_mode: mode }).eq('id', 'default');
-      if (err2) {
-        console.warn("Could not sync homepage mode to Supabase", err2);
-      }
+    const response = await fetch('/api/platform-settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ homepage_mode: mode })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Server returned error: ${errText}`);
     }
-  } catch (err) {
-    console.warn("Error updating homepage mode in Supabase", err);
+
+    const result = await response.json();
+    if (result && result.success) {
+      // Log details only in development mode
+      if (import.meta.env.DEV) {
+        console.log("%c[DB UPDATE AUDIT LOG]", "color: #DEAA38; font-weight: bold; font-size: 12px;");
+        console.log("Current row id:", result.rowId);
+        console.log("Previous homepage_mode:", result.previousHomepageMode);
+        console.log("New homepage_mode:", result.newHomepageMode);
+        console.log("UPDATE response:", result.updateResponse);
+        console.log("affected row count:", result.affectedRowCount);
+        console.log("Database value after update:", result.databaseValueAfter);
+      }
+
+      if (result.affectedRowCount === 0) {
+        throw new Error("Update affected 0 rows on the database table 'platform_settings'!");
+      }
+
+      // Synchronize cache on success
+      localStorage.setItem('homepage_mode', result.databaseValueAfter);
+      return result;
+    } else {
+      throw new Error("Failed to update homepage mode on the server.");
+    }
+  } catch (err: any) {
+    console.error("Error in updateHomepageModeInDB:", err);
+    throw err;
   }
 }

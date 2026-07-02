@@ -48,7 +48,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans overflow-x-hidden">
       
-      {/* 1. HERO BANNER SECTION (Refined visual balance and typography wrapper as requested) */}
+      {/* 1. DESKTOP HERO BANNER SECTION (Completely untouched for Desktop & Tablet) */}
       <div 
         className="relative min-h-[550px] md:h-[580px] w-full flex flex-col justify-start pt-28 pb-28 overflow-visible"
         style={{

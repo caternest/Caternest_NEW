@@ -2,8 +2,10 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, ChefHat, Calendar, User } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { usePlatformSettings } from '../contexts/PlatformSettingsContext';
 
-export default function BottomNavigation() {
+export default function BottomNavigation({ homepageMode: _unused }: { homepageMode?: string }) {
+  const { homepageMode } = usePlatformSettings();
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -50,7 +52,7 @@ export default function BottomNavigation() {
       {navItems.map((item) => {
         const isActive =
           item.path === '/'
-            ? currentPath === '/' && localStorage.getItem('homepage_mode') !== 'marketplace'
+            ? currentPath === '/' && homepageMode !== 'marketplace'
             : currentPath.startsWith(item.path);
 
         return (
