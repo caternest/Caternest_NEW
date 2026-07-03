@@ -1374,6 +1374,108 @@ Strict Rules:
   }
 };
 
+const VALID_CATERER_REGISTRATION_COLUMNS = [
+  "id",
+  "created_at",
+  "updated_at",
+  "userId",
+  "businessName",
+  "ownerName",
+  "phone",
+  "alternatePhone",
+  "email",
+  "address",
+  "city",
+  "cuisine",
+  "categories",
+  "minGuests",
+  "pricePerPlate",
+  "status",
+  "verificationStatus",
+  "menuUploaded",
+  "panNumber",
+  "aadhaarNumber",
+  "fssaiNumber",
+  "gstNumber",
+  "logo",
+  "coverBanner",
+  "founderImageUrl",
+  "gallery",
+  "packages",
+  "addOns",
+  "includedItems",
+  "aadhaarUrl",
+  "panUrl",
+  "fssaiUrl",
+  "gstUrl",
+  "otherDocsUrl",
+  "rating",
+  "reviewCount",
+  "branchPhoto",
+  "username",
+  "password",
+  "owner",
+  "ownerPhoto",
+  "galleryPhotos",
+  "draftMenuPackages",
+  "additionalPhone",
+  "email_verified",
+  "pendingUpdates",
+  "brandName",
+  "tagline",
+  "whatsappNumber",
+  "operatingHours",
+  "serviceAreas",
+  "experience",
+  "eventsCompleted",
+  "awards",
+  "certifications"
+];
+
+function sanitizeCatererPayload(payload: any): any {
+  if (!payload || typeof payload !== "object") return payload;
+
+  const cleaned: any = {};
+  const fallbackObj: any = {};
+  let hasVirtual = false;
+
+  // Retrieve existing includedItems if provided
+  let currentIncluded: any = {};
+  if (payload.includedItems) {
+    if (typeof payload.includedItems === "string") {
+      try {
+        currentIncluded = JSON.parse(payload.includedItems);
+      } catch (e) {
+        currentIncluded = { _raw_string: payload.includedItems };
+      }
+    } else if (typeof payload.includedItems === "object" && !Array.isArray(payload.includedItems)) {
+      currentIncluded = { ...payload.includedItems };
+    } else {
+      currentIncluded = { _raw_array: payload.includedItems };
+    }
+  }
+
+  for (const key of Object.keys(payload)) {
+    if (VALID_CATERER_REGISTRATION_COLUMNS.includes(key)) {
+      cleaned[key] = payload[key];
+    } else {
+      fallbackObj[`_fallback_${key}`] = payload[key];
+      hasVirtual = true;
+    }
+  }
+
+  if (hasVirtual) {
+    cleaned.includedItems = {
+      ...currentIncluded,
+      ...fallbackObj
+    };
+  } else if (payload.includedItems !== undefined) {
+    cleaned.includedItems = currentIncluded;
+  }
+
+  return cleaned;
+}
+
 const saveMenuHandler = async (req: any, res: any) => {
   try {
     const { catererId, packages, addOns, includedItems, catererDetails } =
@@ -1414,9 +1516,12 @@ const saveMenuHandler = async (req: any, res: any) => {
       }
 
       console.log(`Updating caterer ${catererId} menu options on Supabase...`);
+      const sanitizedPayload = sanitizeCatererPayload(updatePayload);
+      console.log("[saveMenuHandler] Sanitized update payload:", JSON.stringify(sanitizedPayload, null, 2));
+
       const { data, error } = await supabase
         .from("caterer_registrations")
-        .update(updatePayload)
+        .update(sanitizedPayload)
         .eq("id", catererId)
         .select();
 
@@ -2524,11 +2629,12 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
       ]
     };
 
-    console.log("[FINALIZE] Inserting caterer_registrations record payload:", JSON.stringify(catererPayload, null, 2));
+    const sanitizedCatererPayload = sanitizeCatererPayload(catererPayload);
+    console.log("[FINALIZE] Final sanitized caterer_registrations record payload being inserted:", JSON.stringify(sanitizedCatererPayload, null, 2));
 
     const { data: insertedReg, error: regInsertErr } = await supabase
       .from("caterer_registrations")
-      .insert(catererPayload)
+      .insert(sanitizedCatererPayload)
       .select()
       .maybeSingle();
 
