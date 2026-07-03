@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           must_change_password: false
         };
 
-        console.log("[AUDIT LOG] Triggering upsert/insert of fallback profile row:", newProfile);
+        console.log("[AUDIT LOG] Triggering upsert of fallback profile row:", newProfile);
         try {
           const { data: inserted, error: insertErr } = await supabase
             .from('profiles')
-            .insert([newProfile])
+            .upsert(newProfile, { onConflict: 'id' })
             .select()
             .maybeSingle();
 

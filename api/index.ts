@@ -2358,19 +2358,7 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
     const canonicalEmail = email.toLowerCase().trim();
     const canonicalUsername = username.toLowerCase().trim();
 
-    // Check if email already registered in profiles or caterer_registrations
-    const { data: existingRegEmail } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", canonicalEmail)
-      .maybeSingle();
-
-    if (existingRegEmail) {
-      return res
-        .status(400)
-        .json({ error: "A user with this email address is already registered." });
-    }
-
+    // Check if username already registered in active/pending caterer_registrations
     const { data: existingRegUsername } = await supabase
       .from("caterer_registrations")
       .select("id")
@@ -2383,30 +2371,88 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
         .json({ error: "This username is already taken. Please choose another." });
     }
 
-    console.log(
-      `[FINALIZE] Success! Creating auth account on Supabase for email: ${canonicalEmail}`,
-    );
+    // Check if email already registered in active/pending caterer_registrations
+    const { data: existingRegEmail } = await supabase
+      .from("caterer_registrations")
+      .select("id")
+      .eq("email", canonicalEmail)
+      .maybeSingle();
 
-    // Create user in Supabase Auth via admin client
-    const { data: authData, error: signupErr } =
-      await supabase.auth.admin.createUser({
-        email: canonicalEmail,
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          role: "caterer",
-          full_name: ownerName || businessName,
-        },
-      });
-
-    if (signupErr) {
-      console.error("[FINALIZE] Auth creation error:", signupErr);
+    if (existingRegEmail) {
       return res
         .status(400)
-        .json({ error: "Auth registration failed: " + signupErr.message });
+        .json({ error: "A caterer with this email address is already registered." });
     }
 
-    const signupUserId = authData?.user?.id;
+    let signupUserId: string | null = null;
+
+    // Check if an existing profile already exists for this email
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", canonicalEmail)
+      .maybeSingle();
+
+    if (existingProfile) {
+      signupUserId = existingProfile.id;
+      console.log(`[FINALIZE] Found existing profile ID "${signupUserId}" for email "${canonicalEmail}". Reusing it.`);
+    } else {
+      // Check Supabase Auth for an existing user
+      try {
+        const { data: listResult } = await supabase.auth.admin.listUsers();
+        const foundUser = listResult?.users?.find((u: any) => u.email?.toLowerCase().trim() === canonicalEmail);
+        if (foundUser?.id) {
+          signupUserId = foundUser.id;
+          console.log(`[FINALIZE] Found existing auth user ID "${signupUserId}" for email "${canonicalEmail}". Reusing it.`);
+        }
+      } catch (err) {
+        console.warn("[FINALIZE] Error checking auth user by email:", err);
+      }
+    }
+
+    if (signupUserId) {
+      // Update existing auth user's password and metadata
+      console.log(`[FINALIZE] Reusing existing user account for ID: ${signupUserId}`);
+      const { error: updateAuthErr } = await supabase.auth.admin.updateUserById(
+        signupUserId,
+        {
+          password: password,
+          user_metadata: {
+            role: "caterer",
+            full_name: ownerName || businessName,
+          }
+        }
+      );
+      if (updateAuthErr) {
+        console.warn("[FINALIZE] Warning: Could not update existing auth user details:", updateAuthErr.message);
+      }
+    } else {
+      console.log(
+        `[FINALIZE] Success! Creating auth account on Supabase for email: ${canonicalEmail}`,
+      );
+
+      // Create user in Supabase Auth via admin client
+      const { data: authData, error: signupErr } =
+        await supabase.auth.admin.createUser({
+          email: canonicalEmail,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            role: "caterer",
+            full_name: ownerName || businessName,
+          },
+        });
+
+      if (signupErr) {
+        console.error("[FINALIZE] Auth creation error:", signupErr);
+        return res
+          .status(400)
+          .json({ error: "Auth registration failed: " + signupErr.message });
+      }
+
+      signupUserId = authData?.user?.id || null;
+    }
+
     if (!signupUserId) {
       return res
         .status(500)
@@ -2416,17 +2462,17 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
         });
     }
 
-    // Write Profile record
-    const { error: profileErr } = await supabase.from("profiles").insert({
+    // Write Profile record using safe upsert with onConflict: 'id'
+    const { error: profileErr } = await supabase.from("profiles").upsert({
       id: signupUserId,
       email: canonicalEmail,
       full_name: ownerName,
       role: "caterer",
       must_change_password: false,
-    });
+    }, { onConflict: 'id' });
 
     if (profileErr) {
-      console.error("[FINALIZE] Profile creation error:", profileErr);
+      console.error("[FINALIZE] Profile creation/update error:", profileErr);
       return res
         .status(500)
         .json({ error: "Profile creation failed: " + profileErr.message });
