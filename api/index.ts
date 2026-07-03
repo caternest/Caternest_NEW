@@ -2488,43 +2488,47 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
     ];
 
     // Write Caterer registration record
+    const catererPayload = {
+      userId: signupUserId,
+      email_verified: true,
+      businessName: businessName,
+      owner: ownerName,
+      ownerName: ownerName,
+      phone: phone,
+      alternatePhone: alternateMobile,
+      additionalPhone: additionalMobile,
+      username: canonicalUsername,
+      address: location,
+      city: city,
+      logo: catererLogo || null,
+      coverBanner: coverBanner || null,
+      founderImageUrl: founderPhoto || null,
+      ownerPhoto: founderPhoto || null,
+      branchPhoto: branchPhoto || null,
+      galleryPhotos: galleryPhotos || [],
+      gallery: galleryPhotos || [],
+      packages: menuPackages || [],
+      draftMenuPackages: menuPackages || [],
+      awards: JSON.stringify(defaultAchievements),
+      status: "Pending Approval",
+      email: canonicalEmail,
+      latitude: latitude || null,
+      longitude: longitude || null,
+      branchesList: [
+        {
+          name: "Main Branch",
+          address: location,
+          latitude: latitude || null,
+          longitude: longitude || null
+        }
+      ]
+    };
+
+    console.log("[FINALIZE] Inserting caterer_registrations record payload:", JSON.stringify(catererPayload, null, 2));
+
     const { data: insertedReg, error: regInsertErr } = await supabase
       .from("caterer_registrations")
-      .insert({
-        userId: signupUserId,
-        email_verified: true,
-        businessName: businessName,
-        owner: ownerName,
-        ownerName: ownerName,
-        phone: phone,
-        alternatePhone: alternateMobile,
-        additionalPhone: additionalMobile,
-        username: canonicalUsername,
-        address: location,
-        city: city,
-        logo: catererLogo || null,
-        coverBanner: coverBanner || null,
-        founderImageUrl: founderPhoto || null,
-        ownerPhoto: founderPhoto || null,
-        branchPhoto: branchPhoto || null,
-        galleryPhotos: galleryPhotos || [],
-        gallery: galleryPhotos || [],
-        packages: menuPackages || [],
-        draftMenuPackages: menuPackages || [],
-        achievements: defaultAchievements,
-        status: "Pending Approval",
-        email: canonicalEmail,
-        latitude: latitude || null,
-        longitude: longitude || null,
-        branchesList: [
-          {
-            name: "Main Branch",
-            address: location,
-            latitude: latitude || null,
-            longitude: longitude || null
-          }
-        ]
-      })
+      .insert(catererPayload)
       .select()
       .maybeSingle();
 
