@@ -12,6 +12,12 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  const isAuthorized = React.useMemo(() => {
+    if (!allowedRoles) return true;
+    if (!user) return false;
+    return allowedRoles.includes(user.role);
+  }, [allowedRoles, user?.role]);
+
   console.log("[DEBUG LOG] ProtectedRoute execution:", {
     pathname: location.pathname,
     loading,
@@ -49,11 +55,6 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     console.log("[DEBUG LOG] ProtectedRoute: user must change password, redirecting to /change-password");
     return <Navigate to="/change-password" replace />;
   }
-
-  const isAuthorized = React.useMemo(() => {
-    if (!allowedRoles) return true;
-    return allowedRoles.includes(user.role);
-  }, [allowedRoles, user.role]);
 
   console.log("[DEBUG LOG] ProtectedRoute: isAuthorized =", isAuthorized);
 

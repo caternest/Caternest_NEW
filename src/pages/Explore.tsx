@@ -47,7 +47,7 @@ export function getCatererImagesFallback(name: string, images?: string[]): strin
     img.trim() !== '' && 
     !img.includes('placeholder') && 
     !img.includes('broken') &&
-    img.startsWith('http')
+    (img.startsWith('http') || img.startsWith('data:image/'))
   );
 
   if (cleanImages.length > 0) {

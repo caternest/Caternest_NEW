@@ -26,7 +26,9 @@ import {
   Plus,
   Trash2,
   UploadCloud,
-  Check
+  Check,
+  ChevronLeft,
+  Star
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -77,6 +79,13 @@ interface CatererMobileDashboardProps {
   // New props for Notifications
   handleClearAllNotifications: () => void;
   handleMarkNotificationRead: (id: string) => void;
+
+  // New props for Gallery Management
+  handleDeletePhoto: (index: number) => void;
+  handleReplacePhoto: (index: number, file: File) => Promise<void>;
+  handleMovePhoto: (index: number, direction: 'left' | 'right') => void;
+  handleMakePrimary: (index: number) => void;
+  handleMultipleFiles: (files: FileList) => Promise<void>;
 }
 
 export default function CatererMobileDashboard({
@@ -125,7 +134,14 @@ export default function CatererMobileDashboard({
 
   // New props for Notifications
   handleClearAllNotifications,
-  handleMarkNotificationRead
+  handleMarkNotificationRead,
+
+  // New props for Gallery Management
+  handleDeletePhoto,
+  handleReplacePhoto,
+  handleMovePhoto,
+  handleMakePrimary,
+  handleMultipleFiles
 }: CatererMobileDashboardProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -1293,6 +1309,117 @@ export default function CatererMobileDashboard({
                 </div>
               </div>
 
+            </div>
+
+            {/* Gallery Photos Section */}
+            <div className="space-y-6 bg-white rounded-[20px] shadow-sm border border-slate-150 p-6">
+              <h3 className="font-display font-bold text-slate-900 text-lg border-b border-slate-100 pb-3">
+                Gallery Photos
+              </h3>
+              <p className="text-xs text-slate-500 -mt-2">
+                Manage the images shown on your Explore Caterers listing.
+              </p>
+
+              {/* Mobile 2-column grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {(profileFormData.galleryPhotos || []).map((imgUrl: string, idx: number) => (
+                  <div key={idx} className="bg-slate-50 rounded-2xl border border-slate-200 p-2.5 shadow-sm relative flex flex-col justify-between">
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200/50 mb-2 flex items-center justify-center">
+                      <img 
+                        src={imgUrl} 
+                        alt={`Gallery ${idx + 1}`} 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                      {idx === 0 && (
+                        <span className="absolute top-1 left-1 bg-brand-gold-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow uppercase tracking-wider">
+                          <Star size={8} fill="currentColor" /> Primary
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {idx > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={() => handleMakePrimary(idx)}
+                          className="w-full py-1 bg-brand-gold-50 hover:bg-brand-gold-100 text-[#DEAA38] font-bold rounded-lg text-[10px] transition-colors flex items-center justify-center gap-0.5 border border-brand-gold-100 uppercase tracking-wide"
+                        >
+                          <Star size={10} /> Primary
+                        </button>
+                      )}
+
+                      <div className="flex gap-1">
+                        <button 
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMovePhoto(idx, 'left')}
+                          className="flex-1 py-1 bg-white hover:bg-slate-100 disabled:opacity-30 border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center"
+                          title="Move Left"
+                        >
+                          <ChevronLeft size={14} />
+                        </button>
+                        <button 
+                          type="button"
+                          disabled={idx === (profileFormData.galleryPhotos || []).length - 1}
+                          onClick={() => handleMovePhoto(idx, 'right')}
+                          className="flex-1 py-1 bg-white hover:bg-slate-100 disabled:opacity-30 border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center"
+                          title="Move Right"
+                        >
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+
+                      <div className="flex gap-1.5">
+                        <label className="flex-1 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg text-[10px] transition-colors cursor-pointer text-center uppercase tracking-wide">
+                          Replace
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleReplacePhoto(idx, file);
+                              }
+                            }} 
+                          />
+                        </label>
+                        <button 
+                          type="button" 
+                          onClick={() => handleDeletePhoto(idx)}
+                          className="py-1 px-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 font-bold rounded-lg text-[10px] transition-colors"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Upload Button */}
+              <div className="border border-dashed border-[#DEAA38]/40 rounded-3xl p-5 bg-[#FAF9F5]/30 flex flex-col items-center justify-center min-h-[140px] text-center">
+                <div className="w-10 h-10 rounded-full bg-[#FAF6EC] text-amber-700 flex items-center justify-center mb-2 shadow-sm">
+                  <UploadCloud size={20} className="text-[#DEAA38]" />
+                </div>
+                <p className="text-xs font-bold text-slate-700 mb-0.5">Upload new images</p>
+                <p className="text-[10px] text-slate-400 mb-3">Supports JPG, PNG, WEBP</p>
+                <label className="cursor-pointer bg-[#DEAA38] text-slate-950 text-[10px] font-black px-4 py-2.5 rounded-xl hover:bg-amber-500 shadow-sm transition-all select-none uppercase tracking-wider">
+                  Upload Photos
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    className="hidden" 
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleMultipleFiles(e.target.files);
+                      }
+                    }} 
+                  />
+                </label>
+              </div>
             </div>
 
             {/* Legal Details Section */}

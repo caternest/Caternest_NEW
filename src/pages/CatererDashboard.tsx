@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Package, Activity, ChefHat, Bell, TrendingUp, CalendarDays, CheckCircle, CheckCircle2, XCircle, RefreshCw, Clock, Settings, ShoppingBag, CreditCard, User, Image as ImageIcon, MapPin, Search, Menu as MenuIcon, Edit, ChevronRight, X, Save, UploadCloud } from 'lucide-react';
+import { Package, Activity, ChefHat, Bell, TrendingUp, CalendarDays, CheckCircle, CheckCircle2, XCircle, RefreshCw, Clock, Settings, ShoppingBag, CreditCard, User, Image as ImageIcon, MapPin, Search, Menu as MenuIcon, Edit, ChevronRight, X, Save, UploadCloud, ChevronLeft, Star, Trash2 } from 'lucide-react';
 import { cn, compressImageFile } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../components/Toast';
@@ -332,6 +332,7 @@ export default function CatererDashboard() {
               whatsappNumber: cat.whatsappNumber || '',
               branches: cat.branches || '',
               serviceAreas: cat.serviceAreas || '',
+              galleryPhotos: cat.galleryPhotos || [],
               serveEntireHyderabad: cat.serveEntireHyderabad !== undefined ? cat.serveEntireHyderabad : (cat.serviceAreas === "All Hyderabad" || (Array.isArray(cat.serviceAreas) && cat.serviceAreas.length === 1 && cat.serviceAreas[0] === "All Hyderabad"))
           });
           setIsProfilePending(!!cat.pendingUpdates);
@@ -377,6 +378,7 @@ export default function CatererDashboard() {
                    whatsappNumber: found.whatsappNumber || '',
                    branches: found.branches || '',
                    serviceAreas: found.serviceAreas || '',
+                   galleryPhotos: found.galleryPhotos || [],
                    serveEntireHyderabad: found.serveEntireHyderabad !== undefined ? found.serveEntireHyderabad : (found.serviceAreas === "All Hyderabad" || (Array.isArray(found.serviceAreas) && found.serviceAreas.length === 1 && found.serviceAreas[0] === "All Hyderabad"))
                });
                setIsProfilePending(!!found.pendingUpdates);
@@ -762,6 +764,7 @@ export default function CatererDashboard() {
           whatsappNumber: profileFormData.whatsappNumber || null,
           address: profileFormData.address || null,
           city: profileFormData.city || null,
+          galleryPhotos: profileFormData.galleryPhotos || [],
           services: caterer.services || null,
           achievements: caterer.achievements || null,
           highlights: caterer.highlights || null,
@@ -888,6 +891,156 @@ export default function CatererDashboard() {
               }
           }
       }
+  };
+
+  const [galleryDragActive, setGalleryDragActive] = useState(false);
+
+  const handleGalleryDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setGalleryDragActive(true);
+    } else if (e.type === "dragleave") {
+      setGalleryDragActive(false);
+    }
+  };
+
+  const handleGalleryDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGalleryDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleMultipleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleDeletePhoto = (index: number) => {
+    const current = profileFormData.galleryPhotos || [];
+    const updated = current.filter((_: any, i: number) => i !== index);
+    setProfileFormData({
+      ...profileFormData,
+      galleryPhotos: updated
+    });
+  };
+
+  const handleReplacePhoto = async (index: number, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert("Please select an image file.");
+      return;
+    }
+    const supabase = getSupabase();
+    let uploadedUrl = "";
+    try {
+      if (supabase) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
+        const publicUrl = await uploadToSupabaseBucket('branding-images', fileName, file, file.type);
+        if (publicUrl) {
+          uploadedUrl = publicUrl;
+        }
+      }
+    } catch (err) {
+      console.warn("Supabase storage upload failed, fallback to local base64:", err);
+    }
+
+    if (!uploadedUrl) {
+      try {
+        uploadedUrl = await compressImageFile(file, 800, 800, 0.8) as string;
+      } catch (e) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          if (ev.target?.result) {
+            const current = [...(profileFormData.galleryPhotos || [])];
+            current[index] = ev.target.result as string;
+            setProfileFormData({ ...profileFormData, galleryPhotos: current });
+          }
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+
+    const current = [...(profileFormData.galleryPhotos || [])];
+    current[index] = uploadedUrl;
+    setProfileFormData({
+      ...profileFormData,
+      galleryPhotos: current
+    });
+  };
+
+  const handleMovePhoto = (index: number, direction: 'left' | 'right') => {
+    const current = [...(profileFormData.galleryPhotos || [])];
+    if (direction === 'left' && index > 0) {
+      const temp = current[index];
+      current[index] = current[index - 1];
+      current[index - 1] = temp;
+    } else if (direction === 'right' && index < current.length - 1) {
+      const temp = current[index];
+      current[index] = current[index + 1];
+      current[index + 1] = temp;
+    }
+    setProfileFormData({
+      ...profileFormData,
+      galleryPhotos: current
+    });
+  };
+
+  const handleMakePrimary = (index: number) => {
+    if (index === 0) return;
+    const current = [...(profileFormData.galleryPhotos || [])];
+    const item = current.splice(index, 1)[0];
+    current.unshift(item);
+    setProfileFormData({
+      ...profileFormData,
+      galleryPhotos: current
+    });
+  };
+
+  const handleMultipleFiles = async (files: FileList) => {
+    const newPhotos: string[] = [];
+    const supabase = getSupabase();
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith('image/')) continue;
+      
+      try {
+        if (supabase) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
+          const publicUrl = await uploadToSupabaseBucket('branding-images', fileName, file, file.type);
+          if (publicUrl) {
+            newPhotos.push(publicUrl);
+            continue;
+          }
+        }
+      } catch (err) {
+        console.warn("Supabase storage upload failed, fallback to local base64:", err);
+      }
+
+      // Fallback to Base64 compression
+      try {
+        const base64 = await compressImageFile(file, 800, 800, 0.8) as string;
+        newPhotos.push(base64);
+      } catch (e) {
+        // Fallback to FileReader
+        const p = new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+        const res = await p;
+        newPhotos.push(res);
+      }
+    }
+
+    if (newPhotos.length > 0) {
+      const current = profileFormData.galleryPhotos || [];
+      setProfileFormData({
+        ...profileFormData,
+        galleryPhotos: [...current, ...newPhotos]
+      });
+    }
   };
 
   const totalOrders = partnerOrders.length;
@@ -1082,6 +1235,11 @@ export default function CatererDashboard() {
         setDashboardNewAreaText={setDashboardNewAreaText}
         handleClearAllNotifications={handleClearAllNotifications}
         handleMarkNotificationRead={handleMarkNotificationRead}
+        handleDeletePhoto={handleDeletePhoto}
+        handleReplacePhoto={handleReplacePhoto}
+        handleMovePhoto={handleMovePhoto}
+        handleMakePrimary={handleMakePrimary}
+        handleMultipleFiles={handleMultipleFiles}
       />
 
       <div className="hidden md:flex h-[calc(100vh-80px)]">
@@ -1731,6 +1889,123 @@ export default function CatererDashboard() {
                                    />
                               </div>
                           </div>
+
+                          <div className="pt-6 border-t border-slate-100">
+                               <h3 className="font-bold text-slate-800 mb-1">Gallery Photos</h3>
+                               <p className="text-sm text-slate-500 mb-6">Manage the images shown on your Explore Caterers listing.</p>
+                               
+                               {/* Desktop Grid (4 images per row) */}
+                               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                                   {(profileFormData.galleryPhotos || []).map((imgUrl: string, idx: number) => (
+                                       <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm relative group hover:border-brand-gold-500 transition-all flex flex-col justify-between">
+                                           <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-50 border border-slate-100 mb-3 flex items-center justify-center">
+                                               <img 
+                                                   src={imgUrl} 
+                                                   alt={`Gallery ${idx + 1}`} 
+                                                   className="w-full h-full object-cover" 
+                                                   referrerPolicy="no-referrer"
+                                               />
+                                               {idx === 0 && (
+                                                   <span className="absolute top-2 left-2 bg-brand-gold-500 text-slate-900 text-[10px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm uppercase tracking-wider">
+                                                       <Star size={10} fill="currentColor" /> Primary
+                                                   </span>
+                                               )}
+                                           </div>
+                                           
+                                           <div className="space-y-2 mt-auto">
+                                               {idx > 0 && (
+                                                   <button 
+                                                       type="button" 
+                                                       onClick={() => handleMakePrimary(idx)}
+                                                       className="w-full py-1.5 bg-brand-gold-50 hover:bg-brand-gold-100 text-brand-gold-900 font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1 border border-brand-gold-100"
+                                                   >
+                                                       <Star size={12} /> Make Primary
+                                                   </button>
+                                               )}
+                                               
+                                               <div className="flex gap-2">
+                                                   <button 
+                                                       type="button"
+                                                       disabled={idx === 0}
+                                                       onClick={() => handleMovePhoto(idx, 'left')}
+                                                       className="flex-1 py-1 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center"
+                                                       title="Move Left"
+                                                   >
+                                                       <ChevronLeft size={16} />
+                                                   </button>
+                                                   <button 
+                                                       type="button"
+                                                       disabled={idx === (profileFormData.galleryPhotos || []).length - 1}
+                                                       onClick={() => handleMovePhoto(idx, 'right')}
+                                                       className="flex-1 py-1 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center"
+                                                       title="Move Right"
+                                                   >
+                                                       <ChevronRight size={16} />
+                                                   </button>
+                                               </div>
+
+                                               <div className="flex gap-2">
+                                                   <label className="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer text-center uppercase tracking-wider">
+                                                       Replace
+                                                       <input 
+                                                           type="file" 
+                                                           accept="image/*" 
+                                                           className="hidden" 
+                                                           onChange={(e) => {
+                                                               const file = e.target.files?.[0];
+                                                               if (file) {
+                                                                   handleReplacePhoto(idx, file);
+                                                               }
+                                                           }} 
+                                                       />
+                                                   </label>
+                                                   <button 
+                                                       type="button" 
+                                                       onClick={() => handleDeletePhoto(idx)}
+                                                       className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 font-bold rounded-lg text-xs transition-colors"
+                                                   >
+                                                       <Trash2 size={14} />
+                                                   </button>
+                                               </div>
+                                           </div>
+                                       </div>
+                                   ))}
+                               </div>
+                               
+                               {/* Upload Box with Drag & Drop */}
+                               <div 
+                                   onDragEnter={handleGalleryDrag}
+                                   onDragOver={handleGalleryDrag}
+                                   onDragLeave={handleGalleryDrag}
+                                   onDrop={handleGalleryDrop}
+                                   className={cn(
+                                       "border-2 border-dashed rounded-3xl p-8 transition-all flex flex-col items-center justify-center min-h-[180px] relative overflow-hidden bg-[#FAF9F5]/30",
+                                       galleryDragActive ? "border-brand-gold-500 bg-brand-gold-50/20 scale-[0.99]" : "border-[#DEAA38]/30"
+                                   )}
+                               >
+                                   <div className="text-center flex flex-col items-center">
+                                       <div className="w-12 h-12 rounded-full bg-[#FAF6EC] text-amber-700 flex items-center justify-center mb-3 shadow-sm">
+                                           <UploadCloud size={24} className="text-[#DEAA38]" />
+                                       </div>
+                                       <p className="text-sm font-bold text-slate-700 mb-1">Drag & drop your images here</p>
+                                       <p className="text-xs text-slate-400 mb-4">Supports JPG, PNG, WEBP (multiple select)</p>
+                                       <label className="cursor-pointer bg-[#DEAA38] text-slate-950 text-xs font-black px-6 py-3 rounded-xl hover:bg-amber-500 shadow-sm transition-all select-none uppercase tracking-wider">
+                                           Upload New Photos
+                                           <input 
+                                               type="file" 
+                                               accept="image/*" 
+                                               multiple 
+                                               className="hidden" 
+                                               onChange={(e) => {
+                                                   if (e.target.files && e.target.files.length > 0) {
+                                                       handleMultipleFiles(e.target.files);
+                                                   }
+                                               }} 
+                                           />
+                                       </label>
+                                   </div>
+                               </div>
+                           </div>
 
                           <div className="pt-6 border-t border-slate-100">
                               <h3 className="font-bold text-slate-800 mb-4">Legal Details</h3>
