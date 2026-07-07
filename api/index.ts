@@ -7,6 +7,7 @@ import fs from "fs";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import whatsappWebhookRouter from "./whatsapp-webhook";
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ const app = express();
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(whatsappWebhookRouter);
 
 // Lazy initializer for Supabase Server Client
 const getSupabaseClient = () => {
