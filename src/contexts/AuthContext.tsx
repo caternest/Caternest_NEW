@@ -351,47 +351,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       passwordLength: password?.length,
     });
 
-    // If input does not contain '@', it's a username. Resolve to email from caterer_registrations.
+    // If input does not contain '@', it's a username or phone. Resolve to email from caterer_registrations.
     if (!targetEmail.includes("@")) {
       try {
         console.log(
-          "[AUDIT LOG] Input looks like a username. Querying active caterer_registrations...",
+          "[AUDIT LOG] Input looks like a username or mobile. Querying active caterer_registrations...",
         );
         const { data: regs, error: lookupErr } = await supabase
           .from("caterer_registrations")
           .select("email")
-          .eq("username", targetEmail)
+          .or(`username.eq.${targetEmail},phone.eq.${targetEmail},username.eq.${targetEmail.toLowerCase()}`)
           .eq("status", "Approved")
           .order("updated_at", { ascending: false })
           .limit(1);
 
         if (lookupErr) {
-          console.error(
-            "[AUDIT LOG] Error resolving username to email:",
+          console.warn(
+            "[AUDIT LOG] Warning resolving username/phone to email:",
             lookupErr,
           );
         } else if (regs && regs.length > 0 && regs[0].email) {
           console.log(
-            `[AUDIT LOG] Resolved username "${targetEmail}" to email "${regs[0].email}"`,
+            `[AUDIT LOG] Resolved identifier "${targetEmail}" to email "${regs[0].email}"`,
           );
-          targetEmail = regs[0].email;
+          targetEmail = regs[0].email.toLowerCase().trim();
         } else {
           console.warn(
-            `[AUDIT LOG] No approved email found associated with username "${targetEmail}"`,
+            `[AUDIT LOG] No approved email found associated with identifier "${targetEmail}"`,
           );
         }
       } catch (err) {
-        console.error(
+        console.warn(
           "[AUDIT LOG] Exception during username resolution:",
           err,
         );
       }
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let { data, error } = await supabase.auth.signInWithPassword({
       email: targetEmail,
       password,
     });
+
+    // Self-healing credential check: If credentials failed, check if caterer registration has matching password
+    if (error && error.message?.toLowerCase().includes("invalid login credentials")) {
+      try {
+        const syncRes = await fetch("/api/auth/sync-credentials", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: targetEmail, password }),
+        });
+        if (syncRes.ok) {
+          const syncJson = await syncRes.json();
+          if (syncJson.success && syncJson.synchronized) {
+            console.log("[AUDIT LOG] Credentials auto-synchronized from backend. Retrying sign-in...");
+            const retryTargetEmail = syncJson.email || targetEmail;
+            const retryResult = await supabase.auth.signInWithPassword({
+              email: retryTargetEmail,
+              password,
+            });
+            if (!retryResult.error) {
+              return retryResult;
+            }
+          }
+        }
+      } catch (syncErr) {
+        console.warn("[AUDIT LOG] Self-healing sync check bypassed:", syncErr);
+      }
+    }
 
     return { data, error };
   };

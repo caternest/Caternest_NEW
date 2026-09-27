@@ -7,7 +7,6 @@ import fs from "fs";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import whatsappWebhookRouter from "./whatsapp-webhook";
 
 dotenv.config();
 
@@ -15,7 +14,38 @@ const app = express();
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-app.use(whatsappWebhookRouter);
+
+// WhatsApp Webhook Handlers (Self-contained for Vercel Serverless / Node.js ESM)
+app.get(["/api/whatsapp-webhook", "/whatsapp-webhook"], (req: any, res: any) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+
+  // Return status for generic health checks or pings without query params
+  if (!mode && !token) {
+    return res.status(200).json({ status: "active", service: "whatsapp-webhook" });
+  }
+
+  if (mode === "subscribe" && token === verifyToken) {
+    console.log("[WHATSAPP WEBHOOK] Webhook verified successfully.");
+    return res.status(200).send(challenge);
+  }
+
+  return res.status(403).send("Forbidden");
+});
+
+app.post(["/api/whatsapp-webhook", "/whatsapp-webhook"], (req: any, res: any) => {
+  const payload = req.body;
+
+  console.log(
+    "[WHATSAPP WEBHOOK] Received WhatsApp Webhook Payload:",
+    JSON.stringify(payload, null, 2)
+  );
+
+  return res.status(200).json({ success: true, message: "EVENT_RECEIVED" });
+});
 
 // Lazy initializer for Supabase Server Client
 const getSupabaseClient = () => {
@@ -42,14 +72,15 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.post("/api/storage/sign", async (req: any, res: any) => {
   const bucket = req.body.bucket || "branding-images";
   const filePath = req.body.filePath;
+  const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   console.log(
-    `[STORAGE SIGN] Initiating pre-signed URL generation. Bucket: ${bucket}, File Path: ${filePath}`,
+    `[STORAGE SIGN] Initiating pre-signed URL generation. Bucket: ${bucket}, File Path: ${filePath}, HasServiceRole: ${hasServiceRole}`,
   );
 
   if (!filePath) {
     const errorMsg = "Presign failed: No filePath provided in JSON body";
-    console.error(`[STORAGE SIGN] ${errorMsg}`);
+    console.warn(`[STORAGE SIGN] ${errorMsg}`);
     return res.status(400).json({ error: errorMsg });
   }
 
@@ -57,7 +88,7 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
   if (!supabase) {
     const errorMsg =
       "Presign failed: Supabase backend client or service role key is not configured.";
-    console.error(`[STORAGE SIGN] ${errorMsg}`);
+    console.warn(`[STORAGE SIGN] ${errorMsg}`);
     return res.status(500).json({ error: errorMsg });
   }
 
@@ -67,10 +98,16 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
       .createSignedUploadUrl(filePath);
 
     if (error) {
-      console.error(
+      console.warn(
         `[STORAGE SIGN] Storage Error generating signed URL for bucket ${bucket}:`,
         error.message || error,
       );
+      if (!hasServiceRole && (error.message?.includes("row-level security") || (error as any).statusCode === "403")) {
+        return res.status(500).json({
+          error: "SUPABASE_SERVICE_ROLE_KEY is required in Vercel environment variables to generate signed upload URLs for storage.",
+          details: error.message
+        });
+      }
       return res.status(500).json({ error: error.message, details: error });
     }
 
@@ -81,7 +118,7 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
     const publicUrl = publicData?.publicUrl || null;
 
     console.log(
-      `[STORAGE SIGN] Presigned URL and Public verification URL generated successfully under Service Role.`,
+      `[STORAGE SIGN] Presigned URL and Public verification URL generated successfully.`,
     );
     return res.json({
       success: true,
@@ -91,7 +128,7 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
       publicUrl,
     });
   } catch (err: any) {
-    console.error(
+    console.warn(
       `[STORAGE SIGN] Unexpected Error in pre-sign handler for bucket ${bucket}:`,
       err,
     );
@@ -625,6 +662,96 @@ app.post("/api/auth/login", async (req: any, res: any) => {
     return res.json({ data });
   } catch (err: any) {
     return res.status(500).json({ error: { message: err.message || err.toString() } });
+  }
+});
+
+// Self-healing credentials synchronizer for caterer accounts
+app.post("/api/auth/sync-credentials", async (req: any, res: any) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return res.status(500).json({ error: "Database client not configured on server" });
+  }
+
+  try {
+    const canonicalEmail = email.trim().toLowerCase();
+    
+    // Check if an approved caterer exists with this email or username and matching password
+    const { data: matchedCaterers } = await supabase
+      .from("caterer_registrations")
+      .select("id, userId, email, password, status, ownerName, businessName, username, phone")
+      .or(`email.eq.${canonicalEmail},username.eq.${canonicalEmail},phone.eq.${canonicalEmail}`)
+      .eq("status", "Approved")
+      .limit(1);
+
+    const caterer = matchedCaterers && matchedCaterers.length > 0 ? matchedCaterers[0] : null;
+
+    if (caterer && caterer.password && caterer.password === password) {
+      const targetUserEmail = (caterer.email || canonicalEmail).toLowerCase().trim();
+      console.log(`[AUTH SYNC] Found approved caterer registration for "${canonicalEmail}". Synchronizing Supabase Auth account...`);
+      let authUserId = caterer.userId;
+
+      // Find or create auth user
+      const { data: listResult } = await supabase.auth.admin.listUsers();
+      const existingUser = listResult?.users?.find(
+        (u: any) =>
+          (authUserId && u.id === authUserId) ||
+          u.email?.toLowerCase().trim() === targetUserEmail
+      );
+
+      if (existingUser) {
+        authUserId = existingUser.id;
+        await supabase.auth.admin.updateUserById(authUserId, {
+          password: password,
+          user_metadata: {
+            role: "caterer",
+            full_name: caterer.ownerName || caterer.businessName || "Caterer",
+          },
+        });
+      } else {
+        const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+          email: targetUserEmail,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            role: "caterer",
+            full_name: caterer.ownerName || caterer.businessName || "Caterer",
+          },
+        });
+        if (!createErr && newUser?.user) {
+          authUserId = newUser.user.id;
+        }
+      }
+
+      if (authUserId) {
+        await supabase
+          .from("caterer_registrations")
+          .update({ userId: authUserId, email: targetUserEmail })
+          .eq("id", caterer.id);
+
+        await supabase.from("profiles").upsert(
+          {
+            id: authUserId,
+            email: targetUserEmail,
+            full_name: caterer.ownerName || caterer.businessName || "Caterer",
+            role: "caterer",
+            must_change_password: false,
+          },
+          { onConflict: "id" }
+        );
+
+        return res.json({ success: true, synchronized: true, email: targetUserEmail });
+      }
+    }
+
+    return res.json({ success: false, message: "No matching registered credentials to synchronize" });
+  } catch (err: any) {
+    console.warn("[AUTH SYNC] Exception during sync-credentials handler:", err.message || err);
+    return res.status(500).json({ error: err.message || err.toString() });
   }
 });
 
@@ -1896,22 +2023,27 @@ function getFoodImages() {
     if (fs.existsSync(IMAGES_FILE_PATH)) {
       const data = fs.readFileSync(IMAGES_FILE_PATH, "utf-8").trim();
       if (!data) {
-        return [];
+        return SEED_FOOD_ITEMS;
       }
       try {
-        return JSON.parse(data);
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_FOOD_ITEMS;
       } catch (parseErr) {
-        console.error("SyntaxError parsing food images JSON. Recovering with empty list...", parseErr);
-        return [];
+        console.warn("SyntaxError parsing food images JSON. Recovering with seed list...", parseErr);
+        return SEED_FOOD_ITEMS;
       }
     }
   } catch (error) {
-    console.error("Error reading food images:", error);
+    console.warn("Notice: Error reading food images from disk, using seed items:", error);
   }
-  return [];
+  return SEED_FOOD_ITEMS;
 }
 
 function saveFoodImages(images: any[]) {
+  // On Vercel and serverless execution environments, the root filesystem is read-only
+  if (process.env.VERCEL) {
+    return;
+  }
   try {
     const dir = path.dirname(IMAGES_FILE_PATH);
     if (!fs.existsSync(dir)) {
@@ -1923,7 +2055,7 @@ function saveFoodImages(images: any[]) {
       "utf-8",
     );
   } catch (error) {
-    console.error("Error saving food images:", error);
+    console.warn("Notice: Local food images file write skipped in read-only environment:", error);
   }
 }
 
@@ -2667,11 +2799,13 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
 
 // Removed OTP resend-otp endpoint
 
-// Seed data immediately on module load
+// Seed data immediately on module load if not in serverless environment
 try {
-  seedFoodImagesOnStartup();
+  if (!process.env.VERCEL) {
+    seedFoodImagesOnStartup();
+  }
 } catch (e) {
-  console.error("Error seeding food library:", e);
+  console.warn("Notice: Startup food library seeding skipped:", e);
 }
 
 export default app;

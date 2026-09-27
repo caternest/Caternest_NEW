@@ -113,8 +113,13 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
         const { error: signInErr } = await signIn(normalizedEmail, formData.password);
         
         if (signInErr) {
-          console.error("[AUDIT LOG] signInWithPassword returned error:", signInErr.message, signInErr);
-          setError(signInErr.message || "Invalid email or password.");
+          console.warn("[AUDIT LOG] signInWithPassword returned error:", signInErr.message);
+          const isInvalidCreds = signInErr.message?.toLowerCase().includes("invalid login credentials");
+          setError(
+            isInvalidCreds
+              ? "Invalid email or password. Please verify your credentials or click 'Forgot Password?' below."
+              : signInErr.message || "Invalid email or password."
+          );
         } else {
           console.log("[AUDIT LOG] signInWithPassword returned success! Triggering success toast...");
           toast("Logged in successfully!", "success");
@@ -124,7 +129,7 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
         }
       }
     } catch (err: any) {
-      console.error("[AUDIT LOG] Exception caught during handleSubmit:", err);
+      console.warn("[AUDIT LOG] Exception caught during handleSubmit:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       console.log("[AUDIT LOG] handleSubmit finally block: setting state loading to false.");

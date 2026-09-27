@@ -362,6 +362,58 @@ export function getSupabase() {
 
 // Helper to check if a bucket exists or upload file to Supabase storage
 export async function uploadToSupabaseBucket(bucket: string, filePath: string, fileBody: any, fileType: string = 'image/jpeg') {
+  // Helper for server-side multipart upload fallback
+  const uploadViaServerMultipart = async (): Promise<string | null> => {
+    try {
+      console.warn(`[STORAGE CLIENT LOGGER] Attempting server multipart upload fallback via /api/upload for bucket "${bucket}"...`);
+      const formData = new FormData();
+      let blobToSend: Blob;
+
+      if (fileBody instanceof Blob) {
+        blobToSend = fileBody;
+      } else if (typeof fileBody === 'string') {
+        const match = fileBody.match(/^data:(.+?);base64,(.+)$/);
+        if (match) {
+          const byteCharacters = atob(match[2]);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          blobToSend = new Blob([new Uint8Array(byteNumbers)], { type: match[1] });
+        } else {
+          blobToSend = new Blob([fileBody], { type: fileType });
+        }
+      } else {
+        blobToSend = new Blob([fileBody], { type: fileType });
+      }
+
+      const rawFileName = filePath.split('/').pop() || 'upload.bin';
+      formData.append("file", blobToSend, rawFileName);
+      formData.append("bucket", bucket);
+      formData.append("filePath", filePath);
+      formData.append("fileType", fileType);
+
+      const serverRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (serverRes.ok) {
+        const json = await serverRes.json();
+        if (json.publicUrl) {
+          console.log(`[STORAGE CLIENT LOGGER] Server multipart fallback succeeded: ${json.publicUrl}`);
+          return json.publicUrl;
+        }
+      } else {
+        const errText = await serverRes.text();
+        console.warn("[STORAGE CLIENT LOGGER] Server multipart fallback response error:", errText);
+      }
+    } catch (fbErr) {
+      console.warn("[STORAGE CLIENT LOGGER] Server multipart fallback exception:", fbErr);
+    }
+    return null;
+  };
+
   try {
     console.log(`[STORAGE CLIENT LOGGER] Requesting signed URL. Bucket: ${bucket}, Path: ${filePath}, Type: ${fileType}`);
 
@@ -376,16 +428,16 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
 
     if (!signRes.ok) {
       const errText = await signRes.text();
-      console.error(`[STORAGE CLIENT LOGGER] Failed to retrieve pre-signed URL for bucket ${bucket}:`, errText);
-      return null;
+      console.warn(`[STORAGE CLIENT LOGGER] Pre-signed URL generation returned non-200 for bucket ${bucket}:`, errText);
+      return await uploadViaServerMultipart();
     }
 
     const signJson = await signRes.json();
     const { signedUrl, publicUrl } = signJson;
 
     if (!signedUrl) {
-      console.error(`[STORAGE CLIENT LOGGER] Storage returned empty signed URL configuration:`, signJson);
-      return null;
+      console.warn(`[STORAGE CLIENT LOGGER] Storage returned empty signed URL configuration:`, signJson);
+      return await uploadViaServerMultipart();
     }
 
     console.log(`[STORAGE CLIENT LOGGER] Signed upload URL acquired. Uploading raw binary directly to Supabase storage...`);
@@ -401,15 +453,15 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
 
     if (!uploadRes.ok) {
       const errText = await uploadRes.text();
-      console.error(`[STORAGE CLIENT LOGGER] Direct object storage PUT operation failed:`, errText);
-      return null;
+      console.warn(`[STORAGE CLIENT LOGGER] Direct object storage PUT operation failed:`, errText);
+      return await uploadViaServerMultipart();
     }
 
     console.log(`[STORAGE CLIENT LOGGER] Direct client-to-bucket upload successful. Returning resolution URL: ${publicUrl}`);
     return publicUrl || null;
   } catch (error) {
-    console.error(`[STORAGE CLIENT LOGGER] direct-client-upload execution crash under bucket ${bucket}:`, error);
-    return null;
+    console.warn(`[STORAGE CLIENT LOGGER] Exception during direct upload under bucket ${bucket}:`, error);
+    return await uploadViaServerMultipart();
   }
 }
 
