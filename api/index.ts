@@ -7,6 +7,7 @@ import fs from "fs";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import { sendWhatsAppMessage, normalizePhoneNumber } from "./whatsapp-service.js";
 
 dotenv.config();
 
@@ -45,6 +46,63 @@ app.post(["/api/whatsapp-webhook", "/whatsapp-webhook"], (req: any, res: any) =>
   );
 
   return res.status(200).json({ success: true, message: "EVENT_RECEIVED" });
+});
+
+// Internal WhatsApp Notification Dispatch Route
+app.post("/api/notifications/send-whatsapp", async (req: any, res: any) => {
+  const { to, templateName, templateLanguage, templateComponents, text } = req.body || {};
+
+  if (!to || typeof to !== "string" || !to.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: "Recipient phone number ('to') is required and must be a valid string.",
+    });
+  }
+
+  const normalizedTo = normalizePhoneNumber(to.trim());
+  if (!normalizedTo || normalizedTo.length < 10) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid phone number: '${to}'. Please provide a valid 10-digit mobile number or standard international format.`,
+    });
+  }
+
+  if (!templateName && (!text || typeof text !== "string" || !text.trim())) {
+    return res.status(400).json({
+      success: false,
+      error: "Either 'templateName' or non-empty 'text' must be provided in the request payload.",
+    });
+  }
+
+  try {
+    const result = await sendWhatsAppMessage({
+      to: normalizedTo,
+      templateName: templateName?.trim(),
+      templateLanguage: templateLanguage?.trim() || "en_US",
+      templateComponents: Array.isArray(templateComponents) ? templateComponents : undefined,
+      text: text?.trim(),
+    });
+
+    if (!result.success) {
+      return res.status(502).json({
+        success: false,
+        error: result.error || "Meta WhatsApp Cloud API failed to accept message.",
+        details: result.details,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      messageId: result.messageId,
+      recipient: `...${normalizedTo.slice(-4)}`,
+    });
+  } catch (err: any) {
+    console.warn("[NOTIFICATIONS / WHATSAPP] Unexpected dispatch failure:", err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Internal server error dispatching WhatsApp notification.",
+    });
+  }
 });
 
 // Lazy initializer for Supabase Server Client
