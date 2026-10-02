@@ -26,6 +26,7 @@ export interface OrderApprovedNotificationParams {
   customerName?: string;
   customerPhone?: string;
   phone?: string;
+  eventDate?: string;
 }
 
 /**
@@ -101,11 +102,14 @@ function formatTwilioSender(rawFrom: string): string {
 /**
  * Sends a WhatsApp message via Twilio WhatsApp API.
  * Never logs credentials or authorization headers.
+ * Uses ContentSid and ContentVariables for templates, or Body for freeform sessions.
  */
-async function sendTwilioWhatsApp(
-  to: string,
-  bodyText: string
-): Promise<WhatsAppServiceResult> {
+async function sendTwilioWhatsApp(params: {
+  to: string;
+  contentSid?: string;
+  contentVariables?: Record<string, string>;
+  bodyText?: string;
+}): Promise<WhatsAppServiceResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
   const rawFrom = process.env.TWILIO_WHATSAPP_FROM?.trim();
@@ -118,12 +122,12 @@ async function sendTwilioWhatsApp(
     };
   }
 
-  const e164To = normalizePhoneNumberE164(to);
+  const e164To = normalizePhoneNumberE164(params.to);
   if (!e164To || e164To.length < 8) {
     return {
       success: false,
       provider: "twilio",
-      error: `Invalid destination phone number: "${to}". Must be a valid phone number with country code.`,
+      error: `Invalid destination phone number: "${params.to}". Must be a valid phone number with country code.`,
     };
   }
 
@@ -136,7 +140,19 @@ async function sendTwilioWhatsApp(
   const formData = new URLSearchParams();
   formData.append("From", twilioFrom);
   formData.append("To", twilioTo);
-  formData.append("Body", bodyText);
+
+  if (params.contentSid) {
+    formData.append("ContentSid", params.contentSid);
+    formData.append("ContentVariables", JSON.stringify(params.contentVariables || {}));
+  } else if (params.bodyText) {
+    formData.append("Body", params.bodyText);
+  } else {
+    return {
+      success: false,
+      provider: "twilio",
+      error: "Either ContentSid or message body must be provided for Twilio message.",
+    };
+  }
 
   try {
     const response = await fetch(endpoint, {
@@ -331,7 +347,10 @@ export async function sendWhatsAppMessage(
       };
     }
 
-    return await sendTwilioWhatsApp(params.to, messageBody);
+    return await sendTwilioWhatsApp({
+      to: params.to,
+      bodyText: messageBody,
+    });
   }
 
   // Fallback to Meta Cloud API if configured
@@ -352,10 +371,18 @@ export async function sendWhatsAppMessage(
 }
 
 /**
- * Sends Order Approved WhatsApp notification to customer.
+ * Sends Order Approved WhatsApp notification to customer via Twilio Content Template.
  * - Primary recipient: customerPhone
  * - Fallback recipient: phone
- * - Message: "Hi {customerName}, your PlanMyChoice order #{orderId} has been approved. We will contact you with the next steps. Thank you for choosing PlanMyChoice."
+ * - Template: Sandbox pre-approved "Order Notifications" template:
+ *   "Your {{1}} order of {{2}} has shipped and should be delivered on {{3}}. Details: {{4}}"
+ * - Variables:
+ *   {{1}} = PlanMyChoice
+ *   {{2}} = Order #<orderId>
+ *   {{3}} = scheduled event date
+ *   {{4}} = https://www.planmychoice.com/orders
+ * - Requires: TWILIO_ORDER_APPROVED_CONTENT_SID environment variable (starts with HX...)
+ * - If TWILIO_ORDER_APPROVED_CONTENT_SID is missing, returns safe configuration error without falling back to Body.
  * - Non-throwing & fault-tolerant.
  */
 export async function sendOrderApprovedWhatsApp(
@@ -374,11 +401,32 @@ export async function sendOrderApprovedWhatsApp(
     };
   }
 
-  const customerName = order.customerName?.trim() || "Customer";
-  const messageText = `Hi ${customerName}, your PlanMyChoice order #${order.orderId} has been approved. We will contact you with the next steps. Thank you for choosing PlanMyChoice.`;
+  // 1. Verify TWILIO_ORDER_APPROVED_CONTENT_SID is configured
+  const contentSid = process.env.TWILIO_ORDER_APPROVED_CONTENT_SID?.trim();
+  if (!contentSid) {
+    console.warn(
+      `[WHATSAPP NOTIFICATION] Order #${order.orderId} approved, but TWILIO_ORDER_APPROVED_CONTENT_SID is not configured. Safe error returned without fallback.`
+    );
+    return {
+      success: false,
+      provider: "twilio",
+      error: "Twilio ContentSid (TWILIO_ORDER_APPROVED_CONTENT_SID) is not configured in environment variables.",
+    };
+  }
 
-  return await sendWhatsAppMessage({
+  // 2. Build ContentVariables for Twilio "Order Notifications" template
+  const eventDateText = (order.eventDate || "").trim() || "the scheduled event date";
+  const contentVariables: Record<string, string> = {
+    "1": "PlanMyChoice",
+    "2": `Order #${order.orderId}`,
+    "3": eventDateText,
+    "4": "https://www.planmychoice.com/orders",
+  };
+
+  // 3. Dispatch using ContentSid and ContentVariables (NO free-form Body)
+  return await sendTwilioWhatsApp({
     to: recipientRaw,
-    text: messageText,
+    contentSid,
+    contentVariables,
   });
 }

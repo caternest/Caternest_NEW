@@ -239,7 +239,7 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
     // 2. Derive order and customer details strictly server-side from database
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("id, status, customerPhone, phone, customerName")
+      .select("id, status, customerPhone, phone, customerName, eventDate")
       .eq("id", cleanOrderId)
       .maybeSingle();
 
@@ -286,6 +286,7 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
       customerName,
       customerPhone,
       phone: customerPhone,
+      eventDate: order.eventDate,
     });
 
     return res.status(200).json(result);
