@@ -172,7 +172,7 @@ export default function CatererMobileDashboard({
               <ChefHat size={18} />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-tight text-brand-green-900 leading-none">CaterNest</span>
+              <span className="text-sm font-bold tracking-tight text-brand-green-900 leading-none">PlanMyChoice</span>
               <span className="text-[7.5px] uppercase tracking-widest text-brand-gold-600 font-extrabold leading-none mt-0.5">PORTAL</span>
             </div>
           </div>
@@ -1646,7 +1646,7 @@ export default function CatererMobileDashboard({
                     <ChefHat size={18} />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold tracking-tight text-white leading-none">CaterNest</span>
+                    <span className="text-sm font-bold tracking-tight text-white leading-none">PlanMyChoice</span>
                     <span className="text-[7.5px] uppercase tracking-widest text-brand-gold-500 font-black leading-none mt-0.5">PORTAL</span>
                   </div>
                 </div>

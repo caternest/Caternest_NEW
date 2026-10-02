@@ -1509,7 +1509,7 @@ export const MenuPackagesCard: React.FC<SectionProps & {
 
               {/* Core Benefits */}
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-[#A27008] mb-2 font-sans">CaterNest Benefits</h4>
+                <h4 className="text-xs font-black uppercase tracking-widest text-[#A27008] mb-2 font-sans">PlanMyChoice Benefits</h4>
                 <ul className="space-y-2 text-xs font-bold text-slate-700">
                   <li className="flex items-center gap-2">
                     <span className="text-emerald-600 shrink-0">✓</span> Elegant Buffet Setup & Premium Chafing Dishes included

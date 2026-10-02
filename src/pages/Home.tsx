@@ -442,7 +442,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. WHY CHOOSE CATERNEST SECTION (Premium feature cards with luxurious aesthetic layout) */}
+      {/* 3. WHY CHOOSE PLANMYCHOICE SECTION (Premium feature cards with luxurious aesthetic layout) */}
       <section className="py-16" style={{ backgroundColor: '#e9f6e3' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center" style={{ marginTop: '-50px' }}>
           
@@ -454,7 +454,7 @@ export default function Home() {
               className="text-3xl md:text-4xl font-display font-bold text-slate-900 mt-2.5 mb-4 tracking-tight"
               style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
             >
-              Why Choose <span className="text-[#DEAA38]">CaterNest</span>
+              Why Choose <span className="text-[#DEAA38]">PlanMyChoice</span>
             </h2>
             <p className="text-slate-400 text-sm font-medium">
               We eliminate booking uncertainty to let you focus on what truly matters—celebrating with your loved ones.
@@ -709,7 +709,7 @@ export default function Home() {
                   Become an Event Partner
                 </h3>
                 <p className="text-slate-300 text-xs sm:text-[13px] font-medium leading-relaxed mb-6">
-                  Are you a professional decorator, photographer, planner, or stage emcee? Secure certified bookings through CaterNest.
+                  Are you a professional decorator, photographer, planner, or stage emcee? Secure certified bookings through PlanMyChoice.
                 </p>
               </div>
               <Link 

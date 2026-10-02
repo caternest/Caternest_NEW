@@ -33,7 +33,7 @@ export default function PartnerSelection() {
     <div className="pt-32 pb-20 bg-brand-green-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-brand-green-900 mb-4">Partner with CaterNest</h1>
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-brand-green-900 mb-4">Partner with PlanMyChoice</h1>
             <p className="text-brand-green-800/70 mb-12 max-w-2xl mx-auto text-lg font-poppins">
             Join our premium marketplace and grow your business. Select your service category to get started.
             </p>

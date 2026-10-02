@@ -282,7 +282,7 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
             </div>
             <div className="flex flex-col border-l-2 border-brand-green-100 pl-3">
               <span className="text-2xl font-bold font-display tracking-tight text-brand-green-900">
-                CaterNest
+                PlanMyChoice
               </span>
               <span className="text-[9px] uppercase font-poppins tracking-widest text-brand-gold-600 font-semibold">
                 Making Every Event Special
@@ -573,7 +573,7 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
                   <div className="bg-brand-gold-500 p-1.5 rounded-lg text-white">
                     <ChefHat size={18} />
                   </div>
-                  <span className="font-display font-bold text-lg tracking-tight">CaterNest</span>
+                  <span className="font-display font-bold text-lg tracking-tight">PlanMyChoice</span>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}

@@ -16,7 +16,7 @@ export default function Footer() {
               </div>
               <div className="flex flex-col">
                 <span className="text-2xl font-black text-white tracking-tight font-display">
-                  CaterNest
+                  PlanMyChoice
                 </span>
                 <span className="text-[9px] uppercase tracking-widest text-brand-gold-500 font-black">
                   Making Every Event Special
@@ -97,7 +97,7 @@ export default function Footer() {
 
         <div className="border-t border-slate-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-600">
           <p className="text-xs font-semibold">
-            © {new Date().getFullYear()} CaterNest. All Rights Reserved.
+            © {new Date().getFullYear()} PlanMyChoice. All Rights Reserved.
           </p>
         </div>
       </div>

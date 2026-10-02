@@ -96,14 +96,14 @@ function SplashScreen() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#FFFDFB] p-4">
       <div className="flex flex-col items-center max-w-sm w-full text-center">
-        {/* CaterNest Logo Container */}
+        {/* PlanMyChoice Logo Container */}
         <div className="flex items-center gap-3 mb-8 animate-pulse">
           <div className="bg-brand-gold-500 p-3 rounded-2xl text-white shadow-md">
             <ChefHat size={36} />
           </div>
           <div className="flex flex-col border-l-2 border-brand-green-100 pl-3 text-left">
             <span className="text-3xl font-bold font-display tracking-tight text-brand-green-900">
-              CaterNest
+              PlanMyChoice
             </span>
             <span className="text-[10px] uppercase font-poppins tracking-widest text-brand-gold-600 font-semibold">
               Making Every Event Special

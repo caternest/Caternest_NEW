@@ -162,7 +162,7 @@ export default function AdminMobileDashboard({
           </div>
           <div className="flex flex-col text-left">
             <span className="text-base font-extrabold font-display leading-none text-brand-green-900 uppercase tracking-tight">
-              CaterNest
+              PlanMyChoice
             </span>
             <span className="text-[7.5px] uppercase font-poppins tracking-widest text-brand-gold-600 font-extrabold leading-none mt-0.5">
               Admin Console
@@ -217,7 +217,7 @@ export default function AdminMobileDashboard({
                   </div>
                   <div className="flex flex-col text-left">
                     <span className="text-xl font-bold font-display tracking-tight text-white leading-tight">
-                      CaterNest
+                      PlanMyChoice
                     </span>
                     <span className="text-[9px] uppercase tracking-widest text-[#DEAA38] font-bold">
                       Admin Center

@@ -7,7 +7,12 @@ import fs from "fs";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import { sendWhatsAppMessage, normalizePhoneNumber } from "./whatsapp-service.js";
+import {
+  sendWhatsAppMessage,
+  normalizePhoneNumber,
+  normalizePhoneNumberE164,
+  sendOrderApprovedWhatsApp,
+} from "./whatsapp-service.js";
 
 dotenv.config();
 
@@ -106,7 +111,7 @@ app.post("/api/notifications/send-whatsapp", async (req: any, res: any) => {
 });
 
 // Lazy initializer for Supabase Server Client
-const getSupabaseClient = () => {
+function getSupabaseClient() {
   const rawSupabaseUrl =
     process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   if (!rawSupabaseUrl) return null;
@@ -122,7 +127,176 @@ const getSupabaseClient = () => {
     return null;
   }
   return createClient(supabaseUrl, supabaseServiceKey);
-};
+}
+
+// Authorized Admin Email List for CaterNest
+const AUTHORIZED_ADMIN_EMAILS = [
+  "meda1824@gmail.com",
+  "ybmk24@gmail.com",
+  "admin@caternest.com",
+];
+
+/**
+ * Validates that an incoming request is from an authenticated administrator.
+ * Strictly requires a valid Supabase Authorization: Bearer <token>.
+ * Decodes and verifies the user with Supabase auth and ensures admin role or authorized email.
+ */
+async function verifyAdminAuth(
+  req: any,
+  supabase: any
+): Promise<{ authorized: boolean; status?: number; error?: string; email?: string; user?: any }> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
+    return {
+      authorized: false,
+      status: 401,
+      error: "Unauthorized: Missing or invalid Authorization header. Bearer token is required.",
+    };
+  }
+
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    return {
+      authorized: false,
+      status: 401,
+      error: "Unauthorized: Empty Bearer token provided.",
+    };
+  }
+
+  if (!supabase) {
+    return {
+      authorized: false,
+      status: 503,
+      error: "Authentication service unavailable.",
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) {
+      return {
+        authorized: false,
+        status: 401,
+        error: "Unauthorized: Invalid or expired access token.",
+      };
+    }
+
+    const userEmail = (data.user.email || "").toLowerCase().trim();
+    const userRole = (data.user.user_metadata?.role || "").toLowerCase().trim();
+    const isAuthorizedAdmin = userRole === "admin" || AUTHORIZED_ADMIN_EMAILS.includes(userEmail);
+
+    if (!isAuthorizedAdmin) {
+      return {
+        authorized: false,
+        status: 403,
+        error: "Forbidden: Administrator privileges are required to perform this action.",
+      };
+    }
+
+    return { authorized: true, email: userEmail, user: data.user };
+  } catch (err: any) {
+    console.warn("[ADMIN AUTH] Bearer token validation exception:", err?.message || err);
+    return {
+      authorized: false,
+      status: 401,
+      error: "Unauthorized: Failed to validate access token.",
+    };
+  }
+}
+
+// Internal Order Approved WhatsApp Notification Route (Admin Authorized Only)
+app.post("/api/notifications/order-approved", async (req: any, res: any) => {
+  const { orderId } = req.body || {};
+
+  if (!orderId || typeof orderId !== "string" || !orderId.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: "Order ID ('orderId') is required.",
+    });
+  }
+
+  const cleanOrderId = orderId.trim();
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    return res.status(503).json({
+      success: false,
+      error: "Database service unavailable. Cannot securely verify order record.",
+    });
+  }
+
+  // 1. Strictly enforce admin authentication via Bearer token
+  const auth = await verifyAdminAuth(req, supabase);
+  if (!auth.authorized) {
+    console.warn(`[NOTIFICATIONS / ORDER APPROVED] Unauthorized trigger attempt for Order #${cleanOrderId}`);
+    return res.status(auth.status || 401).json({
+      success: false,
+      error: auth.error || "Unauthorized.",
+    });
+  }
+
+  try {
+    // 2. Derive order and customer details strictly server-side from database
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .select("id, status, customerPhone, phone, customerName")
+      .eq("id", cleanOrderId)
+      .maybeSingle();
+
+    if (orderErr) {
+      console.error(`[NOTIFICATIONS / ORDER APPROVED] Database query error for Order #${cleanOrderId}:`, orderErr);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to verify order record in database.",
+      });
+    }
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: `Order #${cleanOrderId} not found in database.`,
+      });
+    }
+
+    const orderStatus = (order.status || "").toLowerCase().trim();
+    // Ensure the order is actually in Approved state
+    if (orderStatus !== "approved") {
+      return res.status(400).json({
+        success: false,
+        error: `Order #${cleanOrderId} has status '${order.status}'. Notifications can only be sent for approved orders.`,
+      });
+    }
+
+    // Strictly derive customer details from verified database record
+    const customerPhone = (order.customerPhone || order.phone || "").trim();
+    const customerName = (order.customerName || "Customer").trim();
+
+    if (!customerPhone) {
+      console.log(`[WHATSAPP NOTIFICATION] Order #${cleanOrderId} has no customer phone number in database. Notification skipped.`);
+      return res.status(200).json({
+        success: true,
+        skipped: true,
+        error: "No customer phone number available on order record.",
+      });
+    }
+
+    // 3. Dispatch notification using verified server-side details (ignoring any client-supplied customerPhone)
+    const result = await sendOrderApprovedWhatsApp({
+      orderId: cleanOrderId,
+      customerName,
+      customerPhone,
+      phone: customerPhone,
+    });
+
+    return res.status(200).json(result);
+  } catch (err: any) {
+    console.warn("[NOTIFICATIONS / ORDER APPROVED] Dispatch error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Internal server error dispatching approval WhatsApp notification.",
+    });
+  }
+});
 
 // API routes
 const upload = multer({ storage: multer.memoryStorage() });
@@ -2485,7 +2659,7 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
 
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail =
-    process.env.RESEND_FROM_EMAIL || "CaterNest Team <onboarding@resend.dev>";
+    process.env.RESEND_FROM_EMAIL || "PlanMyChoice Team <onboarding@resend.dev>";
 
   if (resendApiKey) {
     console.log(
@@ -2501,19 +2675,19 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
         body: JSON.stringify({
           from: fromEmail,
           to: [email],
-          subject: "CaterNest Caterer Registration - Verification OTP",
+          subject: "PlanMyChoice Caterer Registration - Verification OTP",
           html: `
             <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #00483C; margin-top: 0;">Verify Your CaterNest Account</h2>
+              <h2 style="color: #00483C; margin-top: 0;">Verify Your PlanMyChoice Account</h2>
               <p>Hello,</p>
-              <p>Thank you for initiating your caterer registration on CaterNest under the brand name <strong>"${businessName}"</strong>.</p>
+              <p>Thank you for initiating your caterer registration on PlanMyChoice under the brand name <strong>"${businessName}"</strong>.</p>
               <p>To proceed with your application, please use the following 6-digit One-Time Verification Code (OTP):</p>
               <div style="font-size: 26px; font-weight: bold; padding: 18px; background: #f4fdfa; color: #00483C; letter-spacing: 6px; text-align: center; margin: 25px 0; border: 2px dashed #00483C; border-radius: 8px;">
                 ${otp}
               </div>
               <p>This verification code is strictly valid for <strong>10 minutes</strong>. If you did not initiate this registration request, you can safely ignore this email.</p>
               <hr style="border: none; border-top: 1px solid #f0f0f0; margin: 20px 0;" />
-              <p style="font-size: 11px; color: #888; text-align: center;">CaterNest Coordinator Platform &copy; 2026</p>
+              <p style="font-size: 11px; color: #888; text-align: center;">PlanMyChoice Coordinator Platform &copy; 2026</p>
             </div>
           `,
         }),
@@ -2576,19 +2750,19 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
     const mailOptions = {
       from: fromEmail,
       to: email,
-      subject: "CaterNest Caterer Registration - Verification OTP",
+      subject: "PlanMyChoice Caterer Registration - Verification OTP",
       html: `
         <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #00483C; margin-top: 0;">Verify Your CaterNest Account</h2>
+          <h2 style="color: #00483C; margin-top: 0;">Verify Your PlanMyChoice Account</h2>
           <p>Hello,</p>
-          <p>Thank you for initiating your caterer registration on CaterNest under the brand name <strong>"${businessName}"</strong>.</p>
+          <p>Thank you for initiating your caterer registration on PlanMyChoice under the brand name <strong>"${businessName}"</strong>.</p>
           <p>To proceed with your application, please use the following 6-digit One-Time Verification Code (OTP):</p>
           <div style="font-size: 26px; font-weight: bold; padding: 18px; background: #f4fdfa; color: #00483C; letter-spacing: 6px; text-align: center; margin: 25px 0; border: 2px dashed #00483C; border-radius: 8px;">
             ${otp}
           </div>
           <p>This verification code is strictly valid for <strong>10 minutes</strong>. If you did not initiate this registration request, you can safely ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #f0f0f0; margin: 20px 0;" />
-          <p style="font-size: 11px; color: #888; text-align: center;">CaterNest Coordinator Platform &copy; 2026</p>
+          <p style="font-size: 11px; color: #888; text-align: center;">PlanMyChoice Coordinator Platform &copy; 2026</p>
         </div>
       `,
     };

@@ -2441,12 +2441,12 @@ export default function Explore() {
               </button>
             </div>
 
-            {/* Block 2: Download CaterNest App Promo */}
+            {/* Block 2: Download PlanMyChoice App Promo */}
             <div className="bg-slate-50 border border-slate-200/80 text-slate-900 rounded-[2rem] p-7 flex flex-col justify-between h-[280px] relative overflow-hidden group shadow-md">
               <div className="absolute right-[-10px] bottom-[-10px] w-36 h-40 opacity-30 group-hover:opacity-40 transition-opacity flex items-end">
                 <div className="border-[4px] border-slate-950 rounded-xl w-full h-32 bg-slate-900 overflow-hidden relative shadow-sm">
                   <div className="bg-[#DEAA38] h-1.5 w-10 mx-auto mt-1 rounded-full" />
-                  <div className="p-2 text-[6px] text-white font-black">CaterNest App</div>
+                  <div className="p-2 text-[6px] text-white font-black">PlanMyChoice App</div>
                 </div>
               </div>
               <div>

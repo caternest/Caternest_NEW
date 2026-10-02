@@ -852,7 +852,7 @@ export default function CatererDetails() {
     const slug = getCatererSlug(caterer);
     const shareUrl = `${window.location.origin}/caterer/${slug}`;
     const shareTitle = caterer.brandName || caterer.businessName || caterer.name || "Caterer Profile";
-    const shareText = caterer.tagline || `Check out ${shareTitle}'s premium catering services on CaterNest!`;
+    const shareText = caterer.tagline || `Check out ${shareTitle}'s premium catering services on PlanMyChoice!`;
 
     if (navigator.share) {
       try {
@@ -4934,7 +4934,7 @@ export default function CatererDetails() {
                         <PlayCircle size={28} fill="currentColor" className="text-white" />
                       </div>
                     </div>
-                    <span className="text-[10px] text-white/80 font-medium self-start">By CaterNest</span>
+                    <span className="text-[10px] text-white/80 font-medium self-start">By PlanMyChoice</span>
                   </div>
                 </div>
               </div>
@@ -5033,7 +5033,7 @@ export default function CatererDetails() {
                 <ChefHat size={15} />
               </div>
               <div className="flex flex-col text-left">
-                <span className="text-xs font-bold font-serif leading-none text-[#173D32] tracking-tight">CaterNest</span>
+                <span className="text-xs font-bold font-serif leading-none text-[#173D32] tracking-tight">PlanMyChoice</span>
                 <span className="text-[6.5px] uppercase font-sans tracking-widest text-[#D4AF37] font-black leading-none mt-0.5">Making Every Event Special</span>
               </div>
             </div>
@@ -5540,7 +5540,7 @@ export default function CatererDetails() {
                 {/* Overlay Gradient */}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-4 z-10">
                   <span className="text-white font-sans text-[10px] font-bold uppercase tracking-wider">
-                    CaterNest Signature Plating
+                    PlanMyChoice Signature Plating
                   </span>
                 </div>
 
@@ -5711,7 +5711,7 @@ export default function CatererDetails() {
                   <h4 className="font-serif font-bold text-[#173D32] text-sm leading-tight">
                     Privacy Protected Contact
                   </h4>
-                  <p className="text-[10px] text-[#A27008] font-semibold mt-0.5">Secure verification via CaterNest</p>
+                  <p className="text-[10px] text-[#A27008] font-semibold mt-0.5">Secure verification via PlanMyChoice</p>
                 </div>
               </div>
 

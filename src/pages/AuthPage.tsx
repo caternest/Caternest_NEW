@@ -265,7 +265,7 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
               {currentMode === 'login' 
                 ? 'Sign in to access your orders and favorites.' 
                 : currentMode === 'signup' 
-                ? 'Join CaterNest to explore premium catering services.'
+                ? 'Join PlanMyChoice to explore premium catering services.'
                 : 'Enter your details to reset your password.'}
             </p>
           </div>

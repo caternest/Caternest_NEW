@@ -25,7 +25,7 @@ export default function RegistrationSuccess() {
           </div>
           
           <p className="text-slate-600 mb-8 font-poppins">
-             Thank you for joining CaterNest! Our team will review your application and documents carefully. 
+             Thank you for joining PlanMyChoice! Our team will review your application and documents carefully. 
              You will receive an email and notification once your business is approved.
           </p>
 

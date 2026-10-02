@@ -10,6 +10,9 @@ import { generateUUID } from '../lib/orderUtils';
 import { useAuth } from '../contexts/AuthContext';
 import AdminMobileDashboard from '../components/AdminMobileDashboard';
 
+// In-memory set to prevent duplicate WhatsApp approval notifications per session
+const dispatchedOrderApprovalWhatsApp = new Set<string>();
+
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const adminEmail = user?.email || 'admin@caternest.com';
@@ -238,6 +241,10 @@ export default function AdminDashboard() {
     try {
       const parsed = JSON.parse(raw);
       const o = parsed.find((ord: any) => ord.id === orderId);
+
+      // Capture original order status BEFORE performing the update
+      const originalStatusBeforeUpdate = (o?.status || '').trim();
+      const wasAlreadyApprovedBeforeUpdate = originalStatusBeforeUpdate.toLowerCase() === 'approved';
       
       const history = o && Array.isArray(o.status_history) ? o.status_history : [];
       const nowStr = new Date().toISOString();
@@ -346,6 +353,52 @@ export default function AdminDashboard() {
 
       // Requirement 7: Console log AFTER complete load
       console.log("[ORDER UPDATE PROGRESS] Force status successfully resolved.");
+
+      // Trigger Customer WhatsApp Approval Notification (Twilio)
+      const isTargetApproved = targetStatus.trim().toLowerCase() === 'approved';
+
+      if (isTargetApproved && o) {
+        if (wasAlreadyApprovedBeforeUpdate || dispatchedOrderApprovalWhatsApp.has(orderId)) {
+          console.log(`[WHATSAPP NOTIFICATION] Order #${orderId} was already approved before this action (status was: "${originalStatusBeforeUpdate}") or was already notified. Skipping duplicate WhatsApp.`);
+        } else {
+          dispatchedOrderApprovalWhatsApp.add(orderId);
+          const customerPhone = (o.customerPhone || o.phone || '').trim();
+          if (!customerPhone) {
+            console.log(`[WHATSAPP NOTIFICATION] Order #${orderId} approved, but customer phone number is missing. WhatsApp notification skipped.`);
+          } else {
+            // Non-blocking trigger: WhatsApp failures never rollback or fail order approval
+            (async () => {
+              try {
+                console.log(`[WHATSAPP NOTIFICATION] Dispatching approval WhatsApp for Order #${orderId} to customer...`);
+                const session = (await supabase?.auth?.getSession())?.data?.session;
+                const token = session?.access_token;
+                const headers: Record<string, string> = {
+                  "Content-Type": "application/json",
+                };
+                if (token) {
+                  headers["Authorization"] = `Bearer ${token}`;
+                }
+
+                const res = await fetch("/api/notifications/order-approved", {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({
+                    orderId: orderId,
+                  }),
+                });
+                const result = await res.json().catch(() => ({}));
+                if (result?.success) {
+                  console.log(`[WHATSAPP NOTIFICATION] WhatsApp approval message successfully dispatched for Order #${orderId}. Provider: ${result.provider || 'unknown'}`);
+                } else {
+                  console.warn(`[WHATSAPP NOTIFICATION] WhatsApp dispatch issue for Order #${orderId}:`, result?.error || "Unknown response");
+                }
+              } catch (waErr: any) {
+                console.warn(`[WHATSAPP NOTIFICATION] Failed to dispatch WhatsApp for Order #${orderId} (non-fatal):`, waErr?.message || waErr);
+              }
+            })();
+          }
+        }
+      }
 
       toast(`Order #${orderId} updated to ${targetStatus}`, "success");
       
@@ -1053,7 +1106,7 @@ export default function AdminDashboard() {
         )}
       >
         <div className="flex items-center justify-between px-6 pb-4 border-b border-slate-800">
-          <span className="font-display font-extrabold text-lg tracking-tight text-brand-gold-500">CaterNest Admin</span>
+          <span className="font-display font-extrabold text-lg tracking-tight text-brand-gold-500">PlanMyChoice Admin</span>
           <button onClick={() => setIsMobileSidebarOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
             <XCircle size={20} />
           </button>

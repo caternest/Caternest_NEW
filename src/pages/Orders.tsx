@@ -1877,7 +1877,7 @@ export default function Orders() {
             <ChefHat size={16} />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold font-display tracking-tight text-[#0F3D2E] leading-none">CaterNest</span>
+            <span className="text-lg font-bold font-display tracking-tight text-[#0F3D2E] leading-none">PlanMyChoice</span>
             <span className="text-[7px] font-extrabold tracking-widest text-[#D4AF37] leading-none uppercase mt-0.5">Making Every Event Special</span>
           </div>
         </Link>
@@ -1911,7 +1911,7 @@ export default function Orders() {
               className="fixed top-0 left-0 bottom-0 w-[280px] max-w-[80vw] bg-[#FFFEFB] z-55 flex flex-col border-r border-[#E8D7A5]/40 shadow-2xl overflow-y-auto"
             >
               <div className="p-4 bg-[#0F3D2E] text-white flex justify-between items-center">
-                <span className="font-display font-bold text-lg">CaterNest Menu</span>
+                <span className="font-display font-bold text-lg">PlanMyChoice Menu</span>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-white">
                   <X size={20} />
                 </button>
@@ -2556,7 +2556,7 @@ export default function Orders() {
 
                   {/* Contact Caterer */}
                   <a 
-                    href="mailto:contact@caternest.com"
+                    href="mailto:contact@planmychoice.com"
                     className="w-full bg-[#0F3D2E] hover:bg-[#0c3024] text-[#FCFBF7] py-2.5 rounded-xl text-xs font-bold transition-all border border-[#0F3D2E] flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Phone size={14} /> Contact Caterer

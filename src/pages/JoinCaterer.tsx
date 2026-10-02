@@ -763,7 +763,7 @@ export default function JoinCaterer() {
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="text-[#DEAA38]" size={22} />
               <span className="font-display font-medium text-xl text-[#DEAA38] tracking-widest uppercase">
-                CaterNest
+                PlanMyChoice
               </span>
             </div>
             <p className="text-[10px] tracking-wider text-[#6ea494] font-bold font-poppins uppercase">
@@ -800,7 +800,7 @@ export default function JoinCaterer() {
             Application Submitted!
           </h2>
           <p className="text-slate-300 text-sm max-w-md mx-auto font-poppins leading-relaxed mb-8 font-light">
-            Thank you for registering with CaterNest. Your application is under
+            Thank you for registering with PlanMyChoice. Your application is under
             review. Our team will verify your details and list your profile
             shortly.
           </p>
@@ -924,12 +924,12 @@ export default function JoinCaterer() {
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-top-6 duration-500">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-full bg-[#00483C] text-[#DEAA38] flex items-center justify-center font-display font-bold text-lg select-none shadow-brand-green-900/10 shadow-md">
-              CN
+              PMC
             </div>
             <div>
               <div className="flex items-center gap-1">
                 <span className="font-display font-semibold text-lg text-brand-green-950 uppercase tracking-widest leading-none">
-                  CaterNest
+                  PlanMyChoice
                 </span>
                 <span className="text-[#DEAA38] font-sans">★</span>
               </div>
