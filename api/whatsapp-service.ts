@@ -561,10 +561,9 @@ export async function sendTwilioSMS(
  * Sends Order Approved SMS notification to customer.
  * - Uses the SAME Supabase-derived order data already passed:
  *   - orderId
- *   - customerName
  *   - customerPhone / phone
- * - SMS text:
- *   "Hi {customerName}, your PlanMyChoice order #{orderId} has been approved. We will contact you with the next steps. Thank you for choosing PlanMyChoice."
+ * - Uses Twilio's exact predefined trial account SMS template:
+ *   "Thank you! Order #{orderId} confirmed. You'll get a message when it ships. Test message from Twilio."
  * - Returns safe configuration error if TWILIO_SMS_FROM is missing.
  * - Non-throwing & fault-tolerant.
  */
@@ -597,8 +596,8 @@ export async function sendOrderApprovedSMS(
     };
   }
 
-  const customerName = order.customerName?.trim() || "Customer";
-  const messageText = `Hi ${customerName}, your PlanMyChoice order #${order.orderId} has been approved. We will contact you with the next steps. Thank you for choosing PlanMyChoice.`;
+  // Predefined Twilio Trial SMS template text matching Twilio Error 572006 compliance
+  const messageText = `Thank you! Order #${order.orderId} confirmed. You'll get a message when it ships. Test message from Twilio.`;
 
   return await sendTwilioSMS(recipientRaw, messageText);
 }
