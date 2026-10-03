@@ -12,6 +12,7 @@ import {
   normalizePhoneNumber,
   normalizePhoneNumberE164,
   sendOrderApprovedWhatsApp,
+  sendOrderApprovedSMS,
 } from "./whatsapp-service.js";
 
 dotenv.config();
@@ -280,21 +281,49 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
       });
     }
 
-    // 3. Dispatch notification using verified server-side details (ignoring any client-supplied customerPhone)
-    const result = await sendOrderApprovedWhatsApp({
+    // 3. Dispatch independent notifications using verified server-side details (ignoring any client-supplied customerPhone)
+    const orderPayload = {
       orderId: cleanOrderId,
       customerName,
       customerPhone,
       phone: customerPhone,
       eventDate: order.eventDate,
-    });
+    };
 
-    return res.status(200).json(result);
+    // Dispatch WhatsApp and SMS independently. One failure must NOT prevent the other from executing.
+    const [waSettled, smsSettled] = await Promise.allSettled([
+      sendOrderApprovedWhatsApp(orderPayload),
+      sendOrderApprovedSMS(orderPayload),
+    ]);
+
+    const whatsappResult =
+      waSettled.status === "fulfilled"
+        ? waSettled.value
+        : { success: false, provider: "twilio", error: waSettled.reason?.message || "WhatsApp dispatch error" };
+
+    const smsResult =
+      smsSettled.status === "fulfilled"
+        ? smsSettled.value
+        : { success: false, provider: "twilio-sms", error: smsSettled.reason?.message || "SMS dispatch error" };
+
+    const anySuccess = whatsappResult.success || smsResult.success;
+
+    console.log(
+      `[NOTIFICATIONS / ORDER APPROVED] Order #${cleanOrderId} dispatch results: WhatsApp=${whatsappResult.success ? "OK" : "FAIL"}, SMS=${smsResult.success ? "OK" : "FAIL"}`
+    );
+
+    return res.status(200).json({
+      success: anySuccess,
+      orderId: cleanOrderId,
+      recipient: `...${customerPhone.slice(-4)}`,
+      whatsapp: whatsappResult,
+      sms: smsResult,
+    });
   } catch (err: any) {
     console.warn("[NOTIFICATIONS / ORDER APPROVED] Dispatch error:", err);
     return res.status(500).json({
       success: false,
-      error: err?.message || "Internal server error dispatching approval WhatsApp notification.",
+      error: err?.message || "Internal server error dispatching approval notifications.",
     });
   }
 });

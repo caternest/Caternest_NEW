@@ -430,3 +430,175 @@ export async function sendOrderApprovedWhatsApp(
     contentVariables,
   });
 }
+
+/**
+ * Formats sender address for Twilio SMS (standard E.164, without whatsapp: prefix).
+ */
+export function formatTwilioSmsSender(rawFrom: string): string {
+  if (!rawFrom) return "";
+  let cleaned = rawFrom.trim();
+  if (cleaned.toLowerCase().startsWith("whatsapp:")) {
+    cleaned = cleaned.substring(9).trim();
+  }
+  return normalizePhoneNumberE164(cleaned);
+}
+
+/**
+ * Result structure for Twilio SMS dispatches.
+ */
+export interface TwilioSmsResult {
+  success: boolean;
+  provider: string;
+  messageId?: string;
+  error?: string;
+  skipped?: boolean;
+  details?: any;
+}
+
+/**
+ * Sends a standard SMS via Twilio Messages REST API.
+ * - From = process.env.TWILIO_SMS_FROM (standard E.164, e.g. +17372508034)
+ * - To = normalized customer phone in E.164 (e.g. +918885912274)
+ * - Body = free-form SMS text
+ * - Does NOT send ContentSid.
+ * - Does NOT use whatsapp: prefix for From or To.
+ * - Never logs credentials or authorization headers.
+ */
+export async function sendTwilioSMS(
+  to: string,
+  bodyText: string
+): Promise<TwilioSmsResult> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const rawFrom = process.env.TWILIO_SMS_FROM?.trim() || "";
+
+  if (!accountSid || !authToken || !rawFrom) {
+    return {
+      success: false,
+      provider: "twilio-sms",
+      error: "Twilio SMS credentials or sender (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SMS_FROM) are not configured.",
+    };
+  }
+
+  const e164To = normalizePhoneNumberE164(to);
+  if (!e164To || e164To.length < 8) {
+    return {
+      success: false,
+      provider: "twilio-sms",
+      error: `Invalid destination phone number for SMS: "${to}". Must be a valid phone number with country code.`,
+    };
+  }
+
+  const e164From = formatTwilioSmsSender(rawFrom);
+  if (!e164From) {
+    return {
+      success: false,
+      provider: "twilio-sms",
+      error: `Invalid sender phone number in TWILIO_SMS_FROM: "${rawFrom}".`,
+    };
+  }
+
+  const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+
+  const formData = new URLSearchParams();
+  formData.append("From", e164From);
+  formData.append("To", e164To);
+  formData.append("Body", bodyText);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData.toString(),
+    });
+
+    const data: any = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const errorMessage = data?.message || `Twilio SMS HTTP error ${response.status} (${response.statusText})`;
+      console.warn(
+        `[TWILIO SMS] Delivery failed for ...${e164To.slice(-4)}: ${errorMessage}`
+      );
+      return {
+        success: false,
+        provider: "twilio-sms",
+        error: errorMessage,
+        details: {
+          code: data?.code,
+          more_info: data?.more_info,
+          status: data?.status,
+        },
+      };
+    }
+
+    console.log(
+      `[TWILIO SMS] SMS dispatched successfully to ...${e164To.slice(-4)}. SID: ${data.sid}`
+    );
+
+    return {
+      success: true,
+      provider: "twilio-sms",
+      messageId: data.sid,
+    };
+  } catch (err: any) {
+    console.warn(
+      `[TWILIO SMS] Network dispatch error sending to ...${e164To.slice(-4)}:`,
+      err?.message || err
+    );
+    return {
+      success: false,
+      provider: "twilio-sms",
+      error: err?.message || "Failed to communicate with Twilio SMS API.",
+    };
+  }
+}
+
+/**
+ * Sends Order Approved SMS notification to customer.
+ * - Uses the SAME Supabase-derived order data already passed:
+ *   - orderId
+ *   - customerName
+ *   - customerPhone / phone
+ * - SMS text:
+ *   "Hi {customerName}, your PlanMyChoice order #{orderId} has been approved. We will contact you with the next steps. Thank you for choosing PlanMyChoice."
+ * - Returns safe configuration error if TWILIO_SMS_FROM is missing.
+ * - Non-throwing & fault-tolerant.
+ */
+export async function sendOrderApprovedSMS(
+  order: OrderApprovedNotificationParams
+): Promise<TwilioSmsResult> {
+  const recipientRaw = (order.customerPhone || order.phone || "").trim();
+
+  if (!recipientRaw) {
+    console.log(
+      `[SMS NOTIFICATION] Order #${order.orderId} approved, but no customer phone number is available. Skipping SMS.`
+    );
+    return {
+      success: true,
+      skipped: true,
+      error: "No customer phone number available on order.",
+      provider: "twilio-sms",
+    };
+  }
+
+  const rawSmsFrom = process.env.TWILIO_SMS_FROM?.trim();
+  if (!rawSmsFrom) {
+    console.warn(
+      `[SMS NOTIFICATION] Order #${order.orderId} approved, but TWILIO_SMS_FROM is not configured. Safe configuration error returned.`
+    );
+    return {
+      success: false,
+      provider: "twilio-sms",
+      error: "Twilio SMS sender (TWILIO_SMS_FROM) is not configured in environment variables.",
+    };
+  }
+
+  const customerName = order.customerName?.trim() || "Customer";
+  const messageText = `Hi ${customerName}, your PlanMyChoice order #${order.orderId} has been approved. We will contact you with the next steps. Thank you for choosing PlanMyChoice.`;
+
+  return await sendTwilioSMS(recipientRaw, messageText);
+}
