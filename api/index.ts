@@ -205,7 +205,109 @@ async function verifyAdminAuth(
   }
 }
 
-// Internal Order Approved WhatsApp Notification Route (Admin Authorized Only)
+/**
+ * Result structure for Gmail SMTP dispatches.
+ */
+interface GmailSmtpResult {
+  success: boolean;
+  provider: string;
+  messageId?: string;
+  error?: string;
+  skipped?: boolean;
+}
+
+/**
+ * Sends Order Approved email notification via Gmail SMTP.
+ * - SMTP host: smtp.gmail.com
+ * - SMTP port: 465
+ * - SMTP secure: true
+ * - Auth: GMAIL_SMTP_USER and GMAIL_SMTP_APP_PASSWORD (normalized without spaces)
+ * - Recipient: customerEmail from Supabase order record
+ * - Non-throwing & fault-tolerant: failure never affects order approval.
+ */
+async function sendOrderApprovedEmailGmail(params: {
+  orderId: string;
+  customerName: string;
+  customerEmail?: string;
+}): Promise<GmailSmtpResult> {
+  const customerEmail = params.customerEmail?.trim();
+  if (!customerEmail) {
+    console.log(
+      `[GMAIL SMTP] Order #${params.orderId} approved, but no customer email available on order. Skipping email.`
+    );
+    return {
+      success: true,
+      skipped: true,
+      provider: "gmail-smtp",
+      error: "No customer email available on order record.",
+    };
+  }
+
+  const gmailUser = process.env.GMAIL_SMTP_USER?.trim();
+  const gmailAppPassword =
+    process.env.GMAIL_SMTP_APP_PASSWORD?.replace(/\s+/g, "").trim();
+
+  if (!gmailUser || !gmailAppPassword) {
+    console.warn(
+      `[GMAIL SMTP] Order #${params.orderId} approved, but Gmail SMTP credentials (GMAIL_SMTP_USER or GMAIL_SMTP_APP_PASSWORD) are not configured. Safe error returned.`
+    );
+    return {
+      success: false,
+      skipped: true,
+      provider: "gmail-smtp",
+      error: "Gmail SMTP credentials (GMAIL_SMTP_USER / GMAIL_SMTP_APP_PASSWORD) are not configured.",
+    };
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword,
+      },
+    });
+
+    const customerName = params.customerName?.trim() || "Customer";
+    const mailOptions = {
+      from: `"PlanMyChoice" <${gmailUser}>`,
+      to: customerEmail,
+      subject: "Your PlanMyChoice Order Has Been Approved",
+      text: `Hi ${customerName},
+
+Your PlanMyChoice order #${params.orderId} has been approved.
+
+We will contact you with the next steps.
+
+Thank you for choosing PlanMyChoice.`,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(
+      `[GMAIL SMTP] Approval email dispatched successfully for Order #${params.orderId}. Message ID: ${info?.messageId || "sent"}`
+    );
+
+    return {
+      success: true,
+      provider: "gmail-smtp",
+      messageId: info?.messageId,
+    };
+  } catch (err: any) {
+    console.warn(
+      `[GMAIL SMTP] Delivery failed for Order #${params.orderId}:`,
+      err?.message || "Unknown error"
+    );
+    return {
+      success: false,
+      provider: "gmail-smtp",
+      error: err?.message || "Failed to communicate with Gmail SMTP server.",
+    };
+  }
+}
+
+// Internal Order Approved Notification Route (Admin Authorized Only)
 app.post("/api/notifications/order-approved", async (req: any, res: any) => {
   const { orderId } = req.body || {};
 
@@ -240,7 +342,7 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
     // 2. Derive order and customer details strictly server-side from database
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("id, status, customerPhone, phone, customerName, eventDate")
+      .select("id, status, customerPhone, phone, customerName, customerEmail, eventDate")
       .eq("id", cleanOrderId)
       .maybeSingle();
 
@@ -271,17 +373,18 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
     // Strictly derive customer details from verified database record
     const customerPhone = (order.customerPhone || order.phone || "").trim();
     const customerName = (order.customerName || "Customer").trim();
+    const customerEmail = (order.customerEmail || "").trim();
 
-    if (!customerPhone) {
-      console.log(`[WHATSAPP NOTIFICATION] Order #${cleanOrderId} has no customer phone number in database. Notification skipped.`);
+    if (!customerPhone && !customerEmail) {
+      console.log(`[NOTIFICATIONS] Order #${cleanOrderId} has neither customer phone nor email in database. Notifications skipped.`);
       return res.status(200).json({
         success: true,
         skipped: true,
-        error: "No customer phone number available on order record.",
+        error: "No customer phone or email available on order record.",
       });
     }
 
-    // 3. Dispatch independent notifications using verified server-side details (ignoring any client-supplied customerPhone)
+    // 3. Dispatch independent notifications using verified server-side details (ignoring any client-supplied customerPhone/customerEmail)
     const orderPayload = {
       orderId: cleanOrderId,
       customerName,
@@ -290,10 +393,15 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
       eventDate: order.eventDate,
     };
 
-    // Dispatch WhatsApp and SMS independently. One failure must NOT prevent the other from executing.
-    const [waSettled, smsSettled] = await Promise.allSettled([
+    // Dispatch WhatsApp, SMS, and Gmail email independently. One failure must NOT prevent others from executing.
+    const [waSettled, smsSettled, emailSettled] = await Promise.allSettled([
       sendOrderApprovedWhatsApp(orderPayload),
       sendOrderApprovedSMS(orderPayload),
+      sendOrderApprovedEmailGmail({
+        orderId: cleanOrderId,
+        customerName,
+        customerEmail,
+      }),
     ]);
 
     const whatsappResult =
@@ -306,18 +414,25 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
         ? smsSettled.value
         : { success: false, provider: "twilio-sms", error: smsSettled.reason?.message || "SMS dispatch error" };
 
-    const anySuccess = whatsappResult.success || smsResult.success;
+    const emailResult =
+      emailSettled.status === "fulfilled"
+        ? emailSettled.value
+        : { success: false, provider: "gmail-smtp", error: emailSettled.reason?.message || "Gmail dispatch error" };
+
+    const anySuccess = whatsappResult.success || smsResult.success || emailResult.success;
 
     console.log(
-      `[NOTIFICATIONS / ORDER APPROVED] Order #${cleanOrderId} dispatch results: WhatsApp=${whatsappResult.success ? "OK" : "FAIL"}, SMS=${smsResult.success ? "OK" : "FAIL"}`
+      `[NOTIFICATIONS / ORDER APPROVED] Order #${cleanOrderId} dispatch results: WhatsApp=${whatsappResult.success ? "OK" : "FAIL"}, SMS=${smsResult.success ? "OK" : "FAIL"}, Email=${emailResult.success ? "OK" : "FAIL"}`
     );
 
     return res.status(200).json({
       success: anySuccess,
       orderId: cleanOrderId,
-      recipient: `...${customerPhone.slice(-4)}`,
+      recipient: customerPhone ? `...${customerPhone.slice(-4)}` : "none",
+      customerEmail: customerEmail ? `${customerEmail.slice(0, 3)}...` : "none",
       whatsapp: whatsappResult,
       sms: smsResult,
+      email: emailResult,
     });
   } catch (err: any) {
     console.warn("[NOTIFICATIONS / ORDER APPROVED] Dispatch error:", err);
