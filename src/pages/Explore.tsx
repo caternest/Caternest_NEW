@@ -30,6 +30,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { getSupabase } from '../lib/supabase';
 import { MapPickerModal } from '../components/MapPickerModal';
 import { calculateDistanceKm, estimateDrivingTimeMinutes, searchLocations } from '../lib/locationIntelligence';
+import { fetchCatererBadgesMap } from '../lib/badgeApi';
+import { PlatformBadge, STYLE_VARIANT_CONFIG, BadgeStyleVariant, getBadgeIconComponent } from '../lib/badgeUtils';
 
 // Helper to return beautiful, premium fallback images for caterers
 export function getCatererImagesFallback(name: string, images?: string[]): string[] {
@@ -411,9 +413,21 @@ export default function Explore() {
   const [openOccasion, setOpenOccasion] = useState(true);
   const [openBudget, setOpenBudget] = useState(true);
   const [openGuests, setOpenGuests] = useState(true);
-  const [openMoreFilters, setOpenMoreFilters] = useState(true);
+  const [openMoreFilters, setOpenMoreFilters] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [ratingFilter, setRatingFilter] = useState<number>(0);
+
+  const moreFiltersRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreFiltersRef.current && !moreFiltersRef.current.contains(event.target as Node)) {
+        setOpenMoreFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch active customer orders
   const fetchCustomerActiveOrders = async () => {
@@ -478,6 +492,14 @@ export default function Explore() {
       let allCaterers: any[] = [];
       const supabase = getSupabase();
       
+      // Load dynamic caterer badge mappings
+      let badgesMap: Record<string, PlatformBadge[]> = {};
+      try {
+        badgesMap = await fetchCatererBadgesMap();
+      } catch (e) {
+        console.warn("[EXPLORE] Failed to fetch caterer badges map:", e);
+      }
+      
       if (supabase) {
         try {
           const { data, error } = await supabase
@@ -486,26 +508,33 @@ export default function Explore() {
             .or('status.eq.Approved,status.eq.approved');
           
           if (!error && data && Array.isArray(data)) {
-            const formatted = data.map((r: any) => ({
-              id: r.id,
-              name: r.businessName || 'Premium Caterer',
-              location: r.address || r.location || 'Hyderabad', 
-              type: r.type || 'Veg + Non-Veg',
-              startingPrice: Number(r.startingPrice) || 350,
-              rating: typeof r.rating === 'number' ? r.rating : 5.0,
-              reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
-              description: r.description || 'Welcome to our premium catering service.',
-              images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.gallery || r.images || []),
-              logo: r.logo || null,
-              coverBanner: r.coverBanner || null,
-              address: r.address || 'Hyderabad, Telangana',
-              phone: r.phone || '+91 00000 00000',
-              isVerified: r.isVerified || true,
-              isPremium: r.isPremium || true,
-              latitude: r.latitude ? Number(r.latitude) : null,
-              longitude: r.longitude ? Number(r.longitude) : null,
-              serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
-            }));
+            const formatted = data.map((r: any) => {
+              const assignedBadges = (badgesMap && badgesMap[r.id]) ? badgesMap[r.id].filter(b => b.is_active) : [];
+              const isVerifiedBadge = assignedBadges.some(b => b.slug === 'verified' && b.is_active);
+              const isPremiumBadge = assignedBadges.some(b => b.slug === 'premium-partner' && b.is_active);
+
+              return {
+                id: r.id,
+                name: r.businessName || 'Premium Caterer',
+                location: r.address || r.location || 'Hyderabad', 
+                type: r.type || 'Veg + Non-Veg',
+                startingPrice: Number(r.startingPrice) || 350,
+                rating: typeof r.rating === 'number' ? r.rating : 5.0,
+                reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
+                description: r.description || 'Welcome to our premium catering service.',
+                images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.gallery || r.images || []),
+                logo: r.logo || null,
+                coverBanner: r.coverBanner || null,
+                address: r.address || 'Hyderabad, Telangana',
+                phone: r.phone || '+91 00000 00000',
+                isVerified: isVerifiedBadge || r.isVerified || false,
+                isPremium: isPremiumBadge || r.isPremium || false,
+                badges: assignedBadges,
+                latitude: r.latitude ? Number(r.latitude) : null,
+                longitude: r.longitude ? Number(r.longitude) : null,
+                serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
+              };
+            });
             allCaterers = [...formatted];
           }
         } catch (e) {
@@ -520,26 +549,33 @@ export default function Explore() {
           const allRegs = JSON.parse(raw);
           if (Array.isArray(allRegs)) {
             const approved = allRegs.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved'));
-            const formatted = approved.map((r: any) => ({
-              id: r.id,
-              name: r.businessName || 'Premium Caterer',
-              location: r.location || 'Hyderabad', 
-              type: r.type || 'Veg + Non-Veg',
-              startingPrice: Number(r.startingPrice) || 350,
-              rating: typeof r.rating === 'number' ? r.rating : 5.0,
-              reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
-              description: r.description || 'Welcome to our premium catering service.',
-              images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.images || []),
-              logo: r.logo || null,
-              coverBanner: r.coverBanner || null,
-              address: r.address || 'Hyderabad, Telangana',
-              phone: r.phone || '+91 00000 00000',
-              isVerified: true,
-              isPremium: true,
-              latitude: r.latitude ? Number(r.latitude) : null,
-              longitude: r.longitude ? Number(r.longitude) : null,
-              serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
-            }));
+            const formatted = approved.map((r: any) => {
+              const assignedBadges = (badgesMap && badgesMap[r.id]) ? badgesMap[r.id].filter(b => b.is_active) : [];
+              const isVerifiedBadge = assignedBadges.some(b => b.slug === 'verified' && b.is_active);
+              const isPremiumBadge = assignedBadges.some(b => b.slug === 'premium-partner' && b.is_active);
+
+              return {
+                id: r.id,
+                name: r.businessName || 'Premium Caterer',
+                location: r.location || 'Hyderabad', 
+                type: r.type || 'Veg + Non-Veg',
+                startingPrice: Number(r.startingPrice) || 350,
+                rating: typeof r.rating === 'number' ? r.rating : 5.0,
+                reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
+                description: r.description || 'Welcome to our premium catering service.',
+                images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.images || []),
+                logo: r.logo || null,
+                coverBanner: r.coverBanner || null,
+                address: r.address || 'Hyderabad, Telangana',
+                phone: r.phone || '+91 00000 00000',
+                isVerified: isVerifiedBadge || r.isVerified || false,
+                isPremium: isPremiumBadge || r.isPremium || false,
+                badges: assignedBadges,
+                latitude: r.latitude ? Number(r.latitude) : null,
+                longitude: r.longitude ? Number(r.longitude) : null,
+                serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
+              };
+            });
 
             const existingIds = new Set(allCaterers.map(c => c.id));
             formatted.forEach(c => {
@@ -572,6 +608,7 @@ export default function Explore() {
             logo: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=150',
             coverBanner: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=1200',
             address: 'Banjara Hills, Hyderabad',
+            badges: (badgesMap && badgesMap['c1']) ? badgesMap['c1'].filter(b => b.is_active) : [],
             isVerified: true,
             isPremium: true,
             years: '5+ Years',
@@ -595,8 +632,9 @@ export default function Explore() {
             logo: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=150',
             coverBanner: 'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&q=80&w=1200',
             address: 'Jubilee Hills, Hyderabad',
+            badges: (badgesMap && badgesMap['c2']) ? badgesMap['c2'].filter(b => b.is_active) : [],
             isVerified: true,
-            isPremium: true,
+            isPremium: false,
             years: '4+ Years',
             latitude: 17.4300,
             longitude: 78.4000,
@@ -618,6 +656,7 @@ export default function Explore() {
             logo: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&q=80&w=150',
             coverBanner: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&q=80&w=1200',
             address: 'Somajiguda, Hyderabad',
+            badges: (badgesMap && badgesMap['c3']) ? badgesMap['c3'].filter(b => b.is_active) : [],
             isVerified: true,
             isPremium: true,
             years: '7+ Years',
@@ -641,8 +680,9 @@ export default function Explore() {
             logo: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&q=80&w=150',
             coverBanner: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1200',
             address: 'Madhapur, Hyderabad',
+            badges: (badgesMap && badgesMap['c4']) ? badgesMap['c4'].filter(b => b.is_active) : [],
             isVerified: true,
-            isPremium: true,
+            isPremium: false,
             years: '3+ Years',
             latitude: 17.4485,
             longitude: 78.3741,
@@ -704,7 +744,7 @@ export default function Explore() {
 
     // Verified only toggle
     if (isVerifiedOnly) {
-      result = result.filter(c => c.isVerified);
+      result = result.filter(c => (c.badges && c.badges.some((b: any) => b.slug === 'verified' && b.is_active)) || c.isVerified);
     }
 
     // Rating filter
@@ -1101,19 +1141,40 @@ export default function Explore() {
                       )}
                     </div>
 
-                    {/* Verified/Premium badges */}
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1 z-10">
-                      {caterer.isVerified && (
-                        <span className="bg-emerald-500/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
-                          ✓ Verified
-                        </span>
-                      )}
-                      {caterer.isPremium && (
-                        <span className="bg-[#DEAA38]/95 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
-                          ✦ Premium
-                        </span>
-                      )}
-                    </div>
+                    {/* Dynamic Platform Badges */}
+                    {caterer.badges && caterer.badges.length > 0 ? (
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-1 z-10 max-w-[85%]">
+                        {caterer.badges.filter((b: any) => b.is_active).map((b: any) => {
+                          const styleCfg = STYLE_VARIANT_CONFIG[b.style_variant as BadgeStyleVariant] || STYLE_VARIANT_CONFIG.emerald;
+                          const BadgeIcon = getBadgeIconComponent(b.icon);
+                          return (
+                            <span
+                              key={b.id || b.slug}
+                              className={cn(
+                                styleCfg.mobileClasses,
+                                "backdrop-blur-xs px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm flex items-center gap-0.5"
+                              )}
+                            >
+                              <BadgeIcon size={8} className="shrink-0 stroke-[2.5]" />
+                              <span>{b.label}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-1 z-10">
+                        {caterer.isVerified && (
+                          <span className="bg-emerald-500/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
+                            ✓ Verified
+                          </span>
+                        )}
+                        {caterer.isPremium && (
+                          <span className="bg-[#DEAA38]/95 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wide shadow-sm">
+                            ✦ Premium
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Wishlist button */}
                     <button type="button" className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-slate-400 hover:text-rose-500 transition-colors shadow-sm z-10">
@@ -1512,17 +1573,14 @@ export default function Explore() {
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans">
       
-      {/* 1. Hero Section: Static, 1:1 expected design, rich dark green gradient overlay */}
+      {/* 1. Hero Section: Clean & Premium dark green gradient overlay */}
       <div 
-        className="relative min-h-[460px] md:h-[480px] w-full flex flex-col justify-start pt-24 pb-20 overflow-visible"
+        className="relative min-h-[380px] md:min-h-[440px] w-full flex flex-col justify-center py-20 md:py-28 overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%), url(${heroBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          paddingBottom: '112px',
-          paddingLeft: '1px',
-          marginBottom: '0px',
           marginTop: '-51px'
         }}
       >
@@ -1543,7 +1601,7 @@ export default function Explore() {
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-start text-left">
           
-          <div className="max-w-2xl mt-4 sm:mt-8 pl-4 sm:pl-8 md:pl-12 lg:pl-16">
+          <div className="max-w-2xl pl-4 sm:pl-8 md:pl-12 lg:pl-16">
             <h1 
               className="text-[2.75rem] md:text-[3.8rem] font-display text-white tracking-tight leading-[1.1] mb-5 font-semibold"
               style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
@@ -1553,7 +1611,7 @@ export default function Explore() {
             </h1>
             
             <p 
-              className="text-white/85 text-xs sm:text-[13px] max-w-lg mb-6 font-sans font-light leading-relaxed"
+              className="text-white/85 text-xs sm:text-[13px] max-w-lg mb-2 font-sans font-light leading-relaxed"
               style={{
                 width: '450px',
                 maxWidth: '100%',
@@ -1566,345 +1624,15 @@ export default function Explore() {
             </p>
           </div>
 
-          {/* White floating search panel overlapping the bottom boundary exactly (50% in, 50% out) */}
-          <div 
-            className="absolute bottom-0 left-1/2 w-[calc(100%-2rem)] max-w-4xl bg-white rounded-[2rem] shadow-[0_15px_40px_rgba(3,19,14,0.12)] border border-slate-100 flex flex-col gap-4 z-20"
-            style={{ 
-              transform: 'translate(-50%, 50%)',
-              height: 'auto',
-              backgroundColor: '#ffffff',
-              paddingLeft: '23px',
-              paddingTop: '26px',
-              paddingBottom: '20px',
-              paddingRight: '20px',
-              marginBottom: '-150px'
-            }}
-          >
-            
-            {/* Row 1: Search Form Grid + Find Caterers Button */}
-            <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full">
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 border border-slate-100 rounded-2xl md:border-0 md:rounded-none">
-                
-                {/* Field 1: Location */}
-                <div 
-                  onClick={() => setIsExploreMapOpen(true)}
-                  className="relative flex items-center px-4 py-2 text-left gap-3 h-12 cursor-pointer hover:bg-stone-50/50 transition-colors rounded-l-2xl"
-                >
-                  <MapPin size={18} className="text-[#DEAA38] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Location
-                    </span>
-                    <span className="font-bold text-slate-800 text-xs truncate mt-1">
-                      {searchLocation || "Select Location..."}
-                    </span>
-                  </div>
-                  <ChevronRight size={10} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                </div>
-
-                {/* Field 2: Occasion */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-12">
-                  <Clock size={18} className="text-[#DEAA38] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Occasion
-                    </span>
-                    <div className="relative mt-1">
-                      <select 
-                        value={searchOccasion} 
-                        onChange={(e) => setSearchOccasion(e.target.value)}
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full appearance-none pr-4"
-                      >
-                        <option value="">Select Occasion</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Reception">Reception</option>
-                        <option value="Birthday">Birthday Party</option>
-                        <option value="Corporate">Corporate Event</option>
-                        <option value="Housewarming">House Warming</option>
-                        <option value="Engagement">Engagement</option>
-                      </select>
-                      <ChevronRight size={10} className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Field 3: Guests */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-12">
-                  <Users size={18} className="text-[#DEAA38] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Guests
-                    </span>
-                    <div className="relative mt-1">
-                      <select 
-                        value={searchGuests} 
-                        onChange={(e) => setSearchGuests(e.target.value)}
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full appearance-none pr-4"
-                      >
-                        <option value="">No. of Guests</option>
-                        <option value="Upto 50">Upto 50</option>
-                        <option value="50-100">50 - 100</option>
-                        <option value="100-200">100 - 200</option>
-                        <option value="200-500">200 - 500</option>
-                        <option value="500-1000">500 - 1000</option>
-                        <option value="1000+">1000+</option>
-                      </select>
-                      <ChevronRight size={10} className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Field 4: Budget */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-12">
-                  <Tag size={18} className="text-[#DEAA38] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Budget
-                    </span>
-                    <div className="relative mt-1">
-                      <select 
-                        value={searchBudget} 
-                        onChange={(e) => setSearchBudget(e.target.value)}
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full appearance-none pr-4"
-                      >
-                        <option value="">Select Budget</option>
-                        <option value="300-400">₹300 - ₹400</option>
-                        <option value="400-600">₹400 - ₹600</option>
-                        <option value="600-800">₹600 - ₹800</option>
-                        <option value="800+">₹800+</option>
-                      </select>
-                      <ChevronRight size={10} className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Find Caterers Button with search icon on right */}
-              <button 
-                type="submit"
-                className="bg-[#051410] hover:bg-[#112921] hover:text-[#DEAA38] text-white px-7 py-3 rounded-xl font-bold text-xs transition-all shadow-md flex items-center justify-center gap-2 whitespace-nowrap md:self-stretch cursor-pointer border border-[#DEAA38]/10"
-              >
-                <span>Find Caterers</span>
-                <Search size={14} />
-              </button>
-            </form>
-
-            {/* Row 2: Popular Searches inside the white card */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-3 border-t border-slate-100">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                Popular Searches:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: 'Wedding Catering', val: 'Wedding' },
-                  { label: 'Birthday Party', val: 'Birthday' },
-                  { label: 'Corporate Events', val: 'Corporate' },
-                  { label: 'House Warming', val: 'Housewarming' },
-                  { label: 'Engagement', val: 'Engagement' }
-                ].map((chip, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setSearchOccasion(chip.val);
-                      setSearchKeyword(chip.val);
-                      const el = document.getElementById('explore-marketplace');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="px-4 py-1.5 bg-[#fdf8f0] hover:bg-[#DEAA38] hover:text-[#051410] text-[#825021] rounded-full text-[11px] font-extrabold transition-all cursor-pointer border border-[#eed5a7]/35 shadow-2xs"
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
         </div>
       </div>
 
-      {/* 2. Browse by Occasion Section - Tighter margins, custom horizontal carousel cards */}
-      <section className="pt-44 md:pt-28 pb-6 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          {/* Luxury Gold Ornamental Border Container */}
-          <div 
-            className="relative border border-[#DEAA38]/35 rounded-[2rem] bg-white shadow-xs"
-            style={{
-              width: '1219px',
-              maxWidth: '100%',
-              minHeight: '249.583px',
-              marginBottom: '-12px',
-              marginTop: '44px',
-              marginRight: '0px',
-              paddingLeft: '43px',
-              paddingBottom: '24px',
-              paddingRight: '46px',
-              paddingTop: '20px'
-            }}
-          >
-            {/* Corner Ornaments */}
-            <GoldOrnamentalCorner position="top-left" />
-            <GoldOrnamentalCorner position="top-right" />
-            <GoldOrnamentalCorner position="bottom-left" />
-            <GoldOrnamentalCorner position="bottom-right" />
-
-            <div className="flex justify-between items-end mb-6 px-1 md:px-3">
-              <div>
-                <h2 className="text-xl md:text-2xl font-display font-bold text-slate-900 tracking-tight">
-                  Browse By <span className="text-[#DEAA38]">Occasion</span>
-                </h2>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  setSearchKeyword('');
-                  const el = document.getElementById('explore-marketplace');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }} 
-                className="text-xs font-bold text-[#DEAA38] hover:text-[#c28824] flex items-center gap-1 hover:underline transition-all mr-1 md:mr-3 cursor-pointer bg-transparent border-0"
-              >
-                <span>View All Occasions</span>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-
-            {/* Carousel wrapper with navigation arrows matching the expected design */}
-            <div className="relative px-0 md:px-6">
-              <button
-                type="button"
-                className="absolute left-0 md:left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-[#DEAA38]/40 bg-white flex items-center justify-center text-[#DEAA38] hover:bg-[#DEAA38] hover:text-[#051410] transition-all cursor-pointer shadow-xs z-10 hidden sm:flex -ml-4"
-              >
-                <ChevronLeft size={14} />
-              </button>
-
-              {/* Compact visual cards matching the expected design grid dimensions and roundedness */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                {OCCASIONS.map((occ, idx) => (
-                  <div 
-                    key={idx}
-                    onClick={() => {
-                      setSearchKeyword(occ.name);
-                      toggleOccasionFilter(occ.name);
-                      const el = document.getElementById('explore-marketplace');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="bg-white rounded-[1.25rem] border border-slate-100 shadow-xs overflow-hidden text-center cursor-pointer group hover:scale-103 hover:shadow-md hover:border-amber-500/20 transition-all duration-300"
-                  >
-                    <div className="w-full aspect-[4/3] overflow-hidden bg-slate-50">
-                      <SafeImage src={occ.img} alt={occ.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" fallbackType="occasion" />
-                    </div>
-                    <div className="py-2.5 px-1 text-center bg-white">
-                      <span className="text-xs font-bold text-slate-800 group-hover:text-[#DEAA38] transition-colors">{occ.name}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                className="absolute right-0 md:right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-[#DEAA38]/40 bg-white flex items-center justify-center text-[#DEAA38] hover:bg-[#DEAA38] hover:text-[#051410] transition-all cursor-pointer shadow-xs z-10 hidden sm:flex -mr-4"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* 3. Browse by Cuisine Section - Tighter padding, compact aspect cards */}
-      <section className="py-6 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ marginTop: '-22px' }}>
-          
-          {/* Luxury Gold Ornamental Border Container */}
-          <div 
-            className="relative border border-[#DEAA38]/35 rounded-[2rem] bg-white shadow-xs"
-            style={{
-              paddingTop: '16px',
-              paddingBottom: '38px',
-              paddingRight: '41px',
-              paddingLeft: '41px',
-              minHeight: '261.583px'
-            }}
-          >
-            {/* Corner Ornaments */}
-            <GoldOrnamentalCorner position="top-left" />
-            <GoldOrnamentalCorner position="top-right" />
-            <GoldOrnamentalCorner position="bottom-left" />
-            <GoldOrnamentalCorner position="bottom-right" />
-
-            <div className="flex justify-between items-end mb-6 px-1 md:px-3">
-              <div>
-                <h2 className="text-xl md:text-2xl font-display font-bold text-slate-900 tracking-tight">
-                  Browse By <span className="text-[#DEAA38]">Cuisine</span>
-                </h2>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  setSearchKeyword('');
-                  const el = document.getElementById('explore-marketplace');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }} 
-                className="text-xs font-bold text-[#DEAA38] hover:text-[#c28824] flex items-center gap-1 hover:underline transition-all mr-1 md:mr-3 cursor-pointer bg-transparent border-0"
-              >
-                <span>View All Cuisines</span>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-
-            {/* Carousel wrapper with navigation arrows matching the expected design */}
-            <div className="relative px-0 md:px-6">
-              <button
-                type="button"
-                className="absolute left-0 md:left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-[#DEAA38]/40 bg-white flex items-center justify-center text-[#DEAA38] hover:bg-[#DEAA38] hover:text-[#051410] transition-all cursor-pointer shadow-xs z-10 hidden sm:flex -ml-4"
-              >
-                <ChevronLeft size={14} />
-              </button>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                {CUISINES.map((cui, idx) => (
-                  <div 
-                    key={idx}
-                    onClick={() => {
-                      setSearchKeyword(cui.name);
-                      const el = document.getElementById('explore-marketplace');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="bg-white rounded-[1.25rem] border border-slate-100 shadow-xs overflow-hidden text-center cursor-pointer group hover:scale-103 hover:shadow-md hover:border-amber-500/20 transition-all duration-300"
-                  >
-                    <div className="w-full aspect-[4/3] overflow-hidden bg-slate-50">
-                      <SafeImage src={cui.img} alt={cui.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" fallbackType="cuisine" />
-                    </div>
-                    <div className="py-2.5 px-1 text-center bg-white">
-                      <span className="text-xs font-bold text-slate-800 group-hover:text-[#DEAA38] transition-colors">{cui.name}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                className="absolute right-0 md:right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border border-[#DEAA38]/40 bg-white flex items-center justify-center text-[#DEAA38] hover:bg-[#DEAA38] hover:text-[#051410] transition-all cursor-pointer shadow-xs z-10 hidden sm:flex -mr-4"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* 4. Explore Premium Caterers Section - 1:1 Design Layout with Left Sidebar & Horizontal Cards */}
+      {/* 2. Explore Premium Caterers Section - 1:1 Design Layout with Left Sidebar & Horizontal Cards */}
       <section id="explore-marketplace" className="py-14 bg-white border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div 
             className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-4 border-b border-slate-100"
-            style={{ marginTop: '-35px' }}
           >
             <div>
               <h2 className="text-2xl md:text-3xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
@@ -1940,279 +1668,152 @@ export default function Explore() {
             </div>
           </div>
 
-          {/* Quick filter action bar at top of results grid */}
+          {/* Polished Premium Horizontal Filter Bar matching Image */}
           <div 
-            className="flex flex-wrap items-center gap-2.5 mb-6 bg-slate-50/50 p-3 rounded-2xl border border-slate-100"
+            className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-2.5 sm:px-5 sm:py-2.5 rounded-2xl md:rounded-full border border-slate-200/90 shadow-xs"
             style={{ marginTop: '-17px' }}
           >
-            
-            <button 
-              type="button"
-              onClick={() => setCuisineFilter('Veg')}
-              className={cn(
-                "px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer",
-                cuisineFilter === 'Veg' ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-white border-slate-200 text-slate-700"
-              )}
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Veg
-            </button>
-            
-            <button 
-              type="button"
-              onClick={() => setCuisineFilter('Non-Veg')}
-              className={cn(
-                "px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer",
-                cuisineFilter === 'Non-Veg' ? "bg-rose-50 border-rose-300 text-rose-900" : "bg-white border-slate-200 text-slate-700"
-              )}
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Veg
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => setCuisineFilter('Both')}
-              className={cn(
-                "px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer",
-                cuisineFilter === 'Both' ? "bg-slate-100 border-slate-300 text-slate-900" : "bg-white border-slate-200 text-slate-700"
-              )}
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Both
-            </button>
-
-            <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
-
-            <button 
-              type="button"
-              onClick={() => setOpenMoreFilters(!openMoreFilters)}
-              className="px-4 py-2 text-xs font-bold rounded-xl border bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer flex items-center gap-1"
-            >
-              <span>More Filters</span>
-              <ChevronRight size={12} className={cn("transition-transform", openMoreFilters && "rotate-90")} />
-            </button>
-
-            <button 
-              type="button"
-              onClick={clearAllFilters}
-              className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors ml-auto cursor-pointer"
-            >
-              Clear All
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('explore-marketplace');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-5 py-2 text-xs font-bold text-white bg-[#0f2922] hover:bg-[#173D32] rounded-xl transition-all cursor-pointer uppercase tracking-wider"
-            >
-              Apply Filters
-            </button>
-          </div>
-
-          {/* Active filter badge tags */}
-          <div className="flex flex-wrap items-center gap-2 mb-6 text-xs text-slate-600 font-bold">
-            {occasionFilter.map((occ) => (
-              <span key={occ} className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full flex items-center gap-1">
-                Occasion: {occ} <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-600"><X size={12} /></button>
-              </span>
-            ))}
-            {guestsFilter.map((gst) => (
-              <span key={gst} className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full flex items-center gap-1">
-                Guests: {gst} <button type="button" onClick={() => setGuestsFilter([])} className="text-slate-400 hover:text-slate-600"><X size={12} /></button>
-              </span>
-            ))}
-            {budgetFilter < 1000 && (
-              <span className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full flex items-center gap-1">
-                Budget: ≤ ₹{budgetFilter} <button type="button" onClick={() => setBudgetFilter(1000)} className="text-slate-400 hover:text-slate-600"><X size={12} /></button>
-              </span>
-            )}
-            {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000) && (
-              <button type="button" onClick={clearAllFilters} className="text-rose-600 hover:underline hover:text-rose-700 ml-1.5">
-                Clear All
-              </button>
-            )}
-          </div>
-
-          {/* Mobile Filters Trigger */}
-          <div className="lg:hidden mb-5">
-            <button
-              type="button"
-              onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
-              className="w-full py-3.5 bg-[#051410] hover:bg-[#112921] text-white rounded-xl font-bold text-xs tracking-wider transition-all shadow-md flex items-center justify-center gap-2 border border-[#DEAA38]/10 cursor-pointer active:scale-95 min-h-[48px]"
-            >
-              <Filter size={14} className="text-[#DEAA38]" />
-              <span>{isMobileFiltersOpen ? "HIDE FILTERS" : "SHOW FILTERS"}</span>
-            </button>
-          </div>
-
-          {/* Grid setup */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            
-            {/* Left Column Sidebar Filters (Tightly formatted, compact margin) */}
-            <div className={cn(
-              "lg:col-span-1 self-start bg-slate-50/80 rounded-3xl p-5 border border-slate-200/50 shadow-2xs transition-all",
-              isMobileFiltersOpen ? "block" : "hidden lg:block"
-            )}>
-              <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-200">
-                <span className="font-display font-black text-slate-900 text-sm flex items-center gap-1.5">
-                  <Filter size={15} className="text-slate-700" /> Filters
-                </span>
+            {/* Primary Filters (Left Group) */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
+              
+              {/* 1. Cuisine Pills */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button 
                   type="button"
-                  onClick={clearAllFilters} 
-                  className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                  onClick={() => setCuisineFilter('Veg')}
+                  className={cn(
+                    "px-3.5 py-1.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all cursor-pointer select-none",
+                    cuisineFilter === 'Veg'
+                      ? "bg-emerald-50 border-emerald-400 text-emerald-900 shadow-2xs"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  )}
                 >
-                  Clear All
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Veg</span>
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => setCuisineFilter('Non-Veg')}
+                  className={cn(
+                    "px-3.5 py-1.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all cursor-pointer select-none",
+                    cuisineFilter === 'Non-Veg'
+                      ? "bg-rose-50 border-rose-400 text-rose-900 shadow-2xs"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  )}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <span>Non-Veg</span>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setCuisineFilter('Both')}
+                  className={cn(
+                    "px-3.5 py-1.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all cursor-pointer select-none",
+                    cuisineFilter === 'Both'
+                      ? "bg-[#FCF8EE] border-[#DEAA38] text-slate-900 shadow-2xs font-bold"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  )}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span>Both</span>
                 </button>
               </div>
 
-              {/* Sidebar Accordions */}
-              <div className="space-y-4">
-                {/* 1. Cuisine Preference */}
-                <div className="border-b border-slate-200/85 pb-3">
-                  <button 
-                    type="button"
-                    onClick={() => setOpenCuisine(!openCuisine)} 
-                    className="flex justify-between items-center w-full text-left font-bold text-slate-800 text-[11px] uppercase tracking-wider cursor-pointer"
-                  >
-                    <span>Cuisine Preference</span>
-                    <ChevronRight size={12} className={cn("text-slate-400 transition-transform", openCuisine && "rotate-90")} />
-                  </button>
-                  {openCuisine && (
-                    <div className="space-y-2.5 pt-2.5">
-                      {['Veg', 'Non-Veg', 'Both', 'Pure Veg'].map((option) => (
-                        <label key={option} className="flex items-center gap-2.5 text-xs text-slate-600 font-bold cursor-pointer select-none">
-                          <input 
-                            type="radio" 
-                            name="sidebar-cuisine-pref"
-                            checked={cuisineFilter === option}
-                            onChange={() => setCuisineFilter(option)}
-                            className="w-4 h-4 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500/20"
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {/* Vertical subtle divider */}
+              <div className="w-px h-5 bg-slate-200 mx-1 hidden lg:block" />
 
-                {/* 2. Occasion Checkboxes */}
-                <div className="border-b border-slate-200/85 pb-3">
-                  <button 
-                    type="button"
-                    onClick={() => setOpenOccasion(!openOccasion)} 
-                    className="flex justify-between items-center w-full text-left font-bold text-slate-800 text-[11px] uppercase tracking-wider cursor-pointer"
+              {/* 2. Budget (per plate) Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap hidden sm:inline">Budget (per plate)</span>
+                <div className="relative flex items-center">
+                  <select 
+                    value={budgetFilter}
+                    onChange={(e) => setBudgetFilter(Number(e.target.value))}
+                    className={cn(
+                      "appearance-none bg-white border border-slate-200 rounded-full px-4 py-1.5 pr-8 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs",
+                      budgetFilter < 1000 && "border-[#DEAA38] bg-[#FCF8EE]/70 text-slate-900"
+                    )}
                   >
-                    <span>Occasion</span>
-                    <ChevronRight size={12} className={cn("text-slate-400 transition-transform", openOccasion && "rotate-90")} />
-                  </button>
-                  {openOccasion && (
-                    <div className="space-y-2.5 max-h-48 overflow-y-auto pt-2.5 pr-1">
-                      {['Wedding', 'Reception', 'Birthday Party', 'Corporate Events', 'House Warming', 'Engagement', 'Baby Shower', 'Festival'].map((occ) => (
-                        <label key={occ} className="flex items-center gap-2.5 text-xs text-slate-600 font-bold cursor-pointer select-none">
-                          <input 
-                            type="checkbox" 
-                            checked={occasionFilter.includes(occ)}
-                            onChange={() => toggleOccasionFilter(occ)}
-                            className="w-4 h-4 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500/20 cursor-pointer"
-                          />
-                          <span>{occ}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                    <option value={1000}>All Budgets</option>
+                    <option value={400}>₹300 - ₹400</option>
+                    <option value={600}>₹400 - ₹600</option>
+                    <option value={800}>₹300 - ₹800</option>
+                    <option value={1200}>₹800+</option>
+                  </select>
+                  <ChevronRight size={11} className="absolute right-3 rotate-90 text-slate-400 pointer-events-none" />
                 </div>
+              </div>
 
-                {/* 3. Budget Range Slider */}
-                <div className="border-b border-slate-200/85 pb-3">
-                  <button 
-                    type="button"
-                    onClick={() => setOpenBudget(!openBudget)} 
-                    className="flex justify-between items-center w-full text-left font-bold text-slate-800 text-[11px] uppercase tracking-wider cursor-pointer"
+              {/* 3. Guests Capacity Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap hidden sm:inline">Guests Capacity</span>
+                <div className="relative flex items-center">
+                  <select 
+                    value={guestsFilter[0] || ""}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setGuestsFilter([e.target.value]);
+                      } else {
+                        setGuestsFilter([]);
+                      }
+                    }}
+                    className={cn(
+                      "appearance-none bg-white border border-slate-200 rounded-full px-4 py-1.5 pr-8 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs",
+                      guestsFilter.length > 0 && "border-[#DEAA38] bg-[#FCF8EE]/70 text-slate-900"
+                    )}
                   >
-                    <span>Budget (Per Plate)</span>
-                    <ChevronRight size={12} className={cn("text-slate-400 transition-transform", openBudget && "rotate-90")} />
-                  </button>
-                  {openBudget && (
-                    <div className="space-y-3 pt-2">
-                      <div className="flex justify-between text-xs font-bold text-slate-500">
-                        <span>₹300</span>
-                        <span className="text-[#DEAA38]">Max: ₹{budgetFilter}</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="300" 
-                        max="1000" 
-                        step="20"
-                        value={budgetFilter}
-                        onChange={(e) => setBudgetFilter(Number(e.target.value))}
-                        className="w-full accent-[#DEAA38] h-1 bg-slate-200 rounded-lg cursor-pointer"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        {[400, 600, 800, 1000].map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setBudgetFilter(v)}
-                            className={cn(
-                              "py-1 px-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer",
-                              budgetFilter === v 
-                                ? "bg-[#0f2922] border-transparent text-white" 
-                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                            )}
-                          >
-                            ₹{v}
-                          </button>
+                    <option value="">All Guests</option>
+                    <option value="Upto 50">Upto 50</option>
+                    <option value="50 - 105">50 - 105</option>
+                    <option value="100 - 200">100 - 200</option>
+                    <option value="200 - 500">200 - 500</option>
+                    <option value="500 - 1000">500 - 1000</option>
+                    <option value="1000+">1000+</option>
+                  </select>
+                  <ChevronRight size={11} className="absolute right-3 rotate-90 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 4. More Filters Toggle */}
+              <div className="relative" ref={moreFiltersRef}>
+                <button 
+                  type="button"
+                  onClick={() => setOpenMoreFilters(!openMoreFilters)}
+                  className={cn(
+                    "px-3.5 py-1.5 text-xs font-bold rounded-full border bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer flex items-center gap-1 shadow-2xs select-none",
+                    (occasionFilter.length > 0 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && "border-[#DEAA38] bg-[#FCF8EE] text-slate-900"
+                  )}
+                >
+                  <span>More Filters</span>
+                  <ChevronRight size={11} className={cn("transition-transform text-slate-400", openMoreFilters && "rotate-90")} />
+                </button>
+
+                {openMoreFilters && (
+                  <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-40 space-y-3.5 animate-in fade-in zoom-in-95">
+                    {/* Occasion select */}
+                    <div>
+                      <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Occasion</label>
+                      <select 
+                        value={occasionFilter[0] || ""}
+                        onChange={(e) => {
+                          if (e.target.value) setOccasionFilter([e.target.value]);
+                          else setOccasionFilter([]);
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                      >
+                        <option value="">All Occasions</option>
+                        {['Wedding', 'Reception', 'Birthday Party', 'Corporate Events', 'House Warming', 'Engagement', 'Baby Shower', 'Festival'].map((occ) => (
+                          <option key={occ} value={occ}>{occ}</option>
                         ))}
-                      </div>
+                      </select>
                     </div>
-                  )}
-                </div>
 
-                {/* 4. Guests Selection */}
-                <div className="border-b border-slate-200/85 pb-3">
-                  <button 
-                    type="button"
-                    onClick={() => setOpenGuests(!openGuests)} 
-                    className="flex justify-between items-center w-full text-left font-bold text-slate-800 text-[11px] uppercase tracking-wider cursor-pointer"
-                  >
-                    <span>Guests Capacity</span>
-                    <ChevronRight size={12} className={cn("text-slate-400 transition-transform", openGuests && "rotate-90")} />
-                  </button>
-                  {openGuests && (
-                    <div className="space-y-2.5 pt-2.5">
-                      {['Upto 50', '50 - 105', '100 - 200', '200 - 500', '500 - 1000', '1000+'].map((cap) => (
-                        <label key={cap} className="flex items-center gap-2.5 text-xs text-slate-600 font-bold cursor-pointer select-none">
-                          <input 
-                            type="checkbox" 
-                            checked={guestsFilter.includes(cap)}
-                            onChange={() => {
-                              setGuestsFilter(prev => prev.includes(cap) ? prev.filter(g => g !== cap) : [...prev, cap]);
-                            }}
-                            className="w-4 h-4 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500/20 cursor-pointer"
-                          />
-                          <span>{cap}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 5. More Filters */}
-                <div>
-                  <button 
-                    type="button"
-                    onClick={() => setOpenMoreFilters(!openMoreFilters)} 
-                    className="flex justify-between items-center w-full text-left font-bold text-slate-800 text-[11px] uppercase tracking-wider cursor-pointer"
-                  >
-                    <span>More Filters</span>
-                    <ChevronRight size={12} className={cn("text-slate-400 transition-transform", openMoreFilters && "rotate-90")} />
-                  </button>
-                  {openMoreFilters && (
-                    <div className="space-y-3 pt-2.5">
-                      <label className="flex items-center justify-between text-xs text-slate-600 font-bold cursor-pointer select-none">
-                        <span>Verified Caterers</span>
+                    {/* Verified & Live Counters Toggles */}
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <label className="flex items-center justify-between text-xs text-slate-700 font-bold cursor-pointer select-none">
+                        <span>Verified Caterers Only</span>
                         <input 
                           type="checkbox" 
                           checked={isVerifiedOnly}
@@ -2220,8 +1821,8 @@ export default function Explore() {
                           className="w-4 h-4 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500/20 cursor-pointer"
                         />
                       </label>
-                      <label className="flex items-center justify-between text-xs text-slate-600 font-bold cursor-pointer select-none">
-                        <span>Live Counters Only</span>
+                      <label className="flex items-center justify-between text-xs text-slate-700 font-bold cursor-pointer select-none">
+                        <span>Live Counters Available</span>
                         <input 
                           type="checkbox" 
                           checked={isLiveCounters}
@@ -2230,13 +1831,103 @@ export default function Explore() {
                         />
                       </label>
                     </div>
-                  )}
-                </div>
+
+                    {/* Minimum Rating */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Rating</span>
+                        <span className="text-xs font-bold text-slate-700">{ratingFilter > 0 ? `${ratingFilter}+ Stars` : 'Any'}</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {[0, 4, 4.5].map((rt) => (
+                          <button
+                            key={rt}
+                            type="button"
+                            onClick={() => setRatingFilter(rt)}
+                            className={cn(
+                              "flex-1 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer",
+                              ratingFilter === rt
+                                ? "bg-[#051410] border-[#051410] text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                            )}
+                          >
+                            {rt === 0 ? 'Any' : `${rt}★`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
             </div>
 
-            {/* Right Column Grid Results: Compact premium horizontal cards exactly matching Image 1 layout */}
-            <div className="lg:col-span-3 space-y-5">
+            {/* Action Buttons (Right Group) */}
+            <div className="flex items-center gap-3 shrink-0 ml-auto">
+              <button 
+                type="button"
+                onClick={clearAllFilters}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer px-2 py-1 select-none whitespace-nowrap"
+              >
+                Clear All
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('explore-marketplace');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-6 py-2 text-xs font-bold text-white bg-[#051410] hover:bg-[#0f2922] rounded-full transition-all shadow-sm cursor-pointer uppercase tracking-wider border border-[#DEAA38]/20 active:scale-95 whitespace-nowrap"
+              >
+                APPLY FILTERS
+              </button>
+            </div>
+
+          </div>
+
+          {/* Active filter badge tags */}
+          {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && (
+            <div className="flex flex-wrap items-center gap-2 mb-6 text-xs text-slate-600 font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mr-1">Active:</span>
+              {occasionFilter.map((occ) => (
+                <span key={occ} className="px-3 py-1 bg-amber-500/10 border border-[#DEAA38]/40 text-slate-800 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  Occasion: {occ} <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              ))}
+              {guestsFilter.map((gst) => (
+                <span key={gst} className="px-3 py-1 bg-amber-500/10 border border-[#DEAA38]/40 text-slate-800 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  Guests: {gst} <button type="button" onClick={() => setGuestsFilter([])} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              ))}
+              {budgetFilter < 1000 && (
+                <span key="budget" className="px-3 py-1 bg-amber-500/10 border border-[#DEAA38]/40 text-slate-800 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  Budget: ≤ ₹{budgetFilter} <button type="button" onClick={() => setBudgetFilter(1000)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              )}
+              {isVerifiedOnly && (
+                <span key="verified" className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  Verified Only <button type="button" onClick={() => setIsVerifiedOnly(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              )}
+              {isLiveCounters && (
+                <span key="live" className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  Live Counters <button type="button" onClick={() => setIsLiveCounters(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              )}
+              {ratingFilter > 0 && (
+                <span key="rating" className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  ⭐ {ratingFilter}+ <button type="button" onClick={() => setRatingFilter(0)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              )}
+              <button type="button" onClick={clearAllFilters} className="text-rose-600 hover:underline hover:text-rose-700 ml-1.5 cursor-pointer">
+                Clear All
+              </button>
+            </div>
+          )}
+
+          {/* Caterers Cards List - Full Width Horizontal Cards */}
+          <div className="w-full space-y-5">
               {filteredCaterers.length === 0 ? (
                 <div className="bg-[#FFFDFB] rounded-3xl p-12 text-center border border-slate-100 max-w-md mx-auto">
                   <ChefHat className="text-slate-300 w-12 h-12 mx-auto mb-3" />
@@ -2279,19 +1970,40 @@ export default function Explore() {
                     {/* Middle Column Details */}
                     <div className="flex-1 p-5 md:p-6 flex flex-col justify-between text-left md:pr-4">
                       <div>
-                        {/* Badges/Tags */}
-                        <div className="flex flex-wrap gap-2 mb-2 items-center">
-                          {caterer.isVerified && (
-                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">
-                              ✓ Verified
-                            </span>
-                          )}
-                          {caterer.isPremium && (
-                            <span className="bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">
-                              ✦ Premium Partner
-                            </span>
-                          )}
-                        </div>
+                        {/* Dynamic Platform Badges/Tags */}
+                        {caterer.badges && caterer.badges.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mb-2 items-center">
+                            {caterer.badges.filter((b: any) => b.is_active).map((b: any) => {
+                              const styleCfg = STYLE_VARIANT_CONFIG[b.style_variant as BadgeStyleVariant] || STYLE_VARIANT_CONFIG.emerald;
+                              const BadgeIcon = getBadgeIconComponent(b.icon);
+                              return (
+                                <span
+                                  key={b.id || b.slug}
+                                  className={cn(
+                                    styleCfg.desktopClasses,
+                                    "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-2xs"
+                                  )}
+                                >
+                                  <BadgeIcon size={10} className="shrink-0 stroke-[2.5]" />
+                                  <span>{b.label}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 mb-2 items-center">
+                            {caterer.isVerified && (
+                              <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">
+                                ✓ Verified
+                              </span>
+                            )}
+                            {caterer.isPremium && (
+                              <span className="bg-amber-50 text-amber-800 border border-amber-100 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider">
+                                ✦ Premium Partner
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Title with verified check icon */}
                         <h3 className="text-lg md:text-xl font-display font-extrabold text-slate-900 group-hover:text-brand-gold-600 transition-colors leading-tight mb-1 flex items-center gap-1.5">
@@ -2378,8 +2090,6 @@ export default function Explore() {
                 ))
               )}
             </div>
-
-          </div>
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut } from 'lucide-react';
+import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut, Award, Plus, Edit2, X } from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '../components/Toast';
@@ -9,6 +9,17 @@ import { usePlatformSettings } from '../contexts/PlatformSettingsContext';
 import { generateUUID } from '../lib/orderUtils';
 import { useAuth } from '../contexts/AuthContext';
 import AdminMobileDashboard from '../components/AdminMobileDashboard';
+import { 
+  PlatformBadge, 
+  BadgeStyleVariant, 
+  BADGE_STYLE_LABELS, 
+  getDesktopBadgeClasses, 
+  getMobileBadgeClasses, 
+  DynamicBadgeIcon,
+  ALLOWED_STYLE_VARIANTS,
+  AVAILABLE_ICONS,
+  VALID_BADGE_STYLES
+} from '../lib/badgeUtils';
 
 // In-memory set to prevent duplicate WhatsApp approval notifications per session
 const dispatchedOrderApprovalWhatsApp = new Set<string>();
@@ -64,6 +75,212 @@ export default function AdminDashboard() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [expandedOrderIds, setExpandedOrderIds] = useState<Record<string, boolean>>({});
+
+  // Platform Badges Management state
+  const [platformBadges, setPlatformBadges] = useState<PlatformBadge[]>([]);
+  const [catererBadgesMap, setCatererBadgesMap] = useState<Record<string, PlatformBadge[]>>({});
+  const [loadingBadges, setLoadingBadges] = useState(false);
+  const [isCreateBadgeModalOpen, setIsCreateBadgeModalOpen] = useState(false);
+  const [editingBadge, setEditingBadge] = useState<PlatformBadge | null>(null);
+  const [managingBadgesCaterer, setManagingBadgesCaterer] = useState<any | null>(null);
+  const [selectedSettingsCatererId, setSelectedSettingsCatererId] = useState<string>('');
+
+  // Form states for Create/Edit Badge
+  const [badgeFormLabel, setBadgeFormLabel] = useState('');
+  const [badgeFormIcon, setBadgeFormIcon] = useState('Sparkles');
+  const [badgeFormStyle, setBadgeFormStyle] = useState<BadgeStyleVariant>('emerald');
+  const [badgeFormActive, setBadgeFormActive] = useState(true);
+  const [savingBadge, setSavingBadge] = useState(false);
+
+  const getAdminHeaders = async () => {
+    const supabase = getSupabase() as any;
+    const session = (await supabase?.auth?.getSession())?.data?.session;
+    const token = session?.access_token;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
+  const fetchBadgesData = async () => {
+    setLoadingBadges(true);
+    try {
+      const headers = await getAdminHeaders();
+      const [badgesRes, caterersBadgesRes] = await Promise.all([
+        fetch('/api/admin/platform-badges', { headers }).then(r => r.json()).catch(() => ({})),
+        fetch('/api/caterers-badges').then(r => r.json()).catch(() => ({}))
+      ]);
+
+      if (badgesRes?.success && Array.isArray(badgesRes.data)) {
+        setPlatformBadges(badgesRes.data);
+      }
+      if (caterersBadgesRes?.success && caterersBadgesRes.data) {
+        setCatererBadgesMap(caterersBadgesRes.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch badges data:", err);
+    } finally {
+      setLoadingBadges(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBadgesData();
+  }, []);
+
+  const handleOpenCreateBadgeModal = () => {
+    setBadgeFormLabel('');
+    setBadgeFormIcon('Sparkles');
+    setBadgeFormStyle('emerald');
+    setBadgeFormActive(true);
+    setIsCreateBadgeModalOpen(true);
+  };
+
+  const handleOpenEditBadgeModal = (badge: PlatformBadge) => {
+    setEditingBadge(badge);
+    setBadgeFormLabel(badge.label);
+    setBadgeFormIcon(badge.icon || 'Sparkles');
+    setBadgeFormStyle(badge.style_variant || 'emerald');
+    setBadgeFormActive(badge.is_active);
+  };
+
+  const handleCreateBadge = async () => {
+    if (!badgeFormLabel.trim()) {
+      toast("Please enter a badge label", "error");
+      return;
+    }
+    setSavingBadge(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch('/api/admin/platform-badges', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          label: badgeFormLabel.trim(),
+          icon: badgeFormIcon,
+          style_variant: badgeFormStyle,
+          is_active: badgeFormActive,
+          display_order: platformBadges.length + 1
+        })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        toast(`Badge '${badgeFormLabel}' created successfully!`, "success");
+        await logAudit("badge created", `Created badge '${badgeFormLabel}' (${badgeFormStyle})`);
+        setIsCreateBadgeModalOpen(false);
+        await fetchBadgesData();
+      } else {
+        toast(data?.error || "Failed to create badge", "error");
+      }
+    } catch (err: any) {
+      toast("Error creating badge: " + (err.message || err), "error");
+    } finally {
+      setSavingBadge(false);
+    }
+  };
+
+  const handleUpdateBadge = async () => {
+    if (!editingBadge) return;
+    if (!badgeFormLabel.trim()) {
+      toast("Please enter a badge label", "error");
+      return;
+    }
+    setSavingBadge(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(`/api/admin/platform-badges/${editingBadge.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          label: badgeFormLabel.trim(),
+          icon: badgeFormIcon,
+          style_variant: badgeFormStyle,
+          is_active: badgeFormActive
+        })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        toast(`Badge '${badgeFormLabel}' updated successfully!`, "success");
+        await logAudit("badge edited", `Edited badge '${badgeFormLabel}'`);
+        setEditingBadge(null);
+        await fetchBadgesData();
+      } else {
+        toast(data?.error || "Failed to update badge", "error");
+      }
+    } catch (err: any) {
+      toast("Error updating badge: " + (err.message || err), "error");
+    } finally {
+      setSavingBadge(false);
+    }
+  };
+
+  const handleToggleBadgeActive = async (badge: PlatformBadge) => {
+    const nextActive = !badge.is_active;
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(`/api/admin/platform-badges/${badge.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          is_active: nextActive
+        })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        toast(`Badge '${badge.label}' ${nextActive ? 'activated' : 'deactivated'}`, "success");
+        await logAudit(nextActive ? "badge activated" : "badge deactivated", `Badge '${badge.label}'`);
+        await fetchBadgesData();
+      } else {
+        toast(data?.error || "Failed to toggle badge", "error");
+      }
+    } catch (err: any) {
+      toast("Error updating badge status", "error");
+    }
+  };
+
+  const handleAssignBadge = async (catererId: string, badgeId: string, badgeLabel: string, catererName: string) => {
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(`/api/admin/caterers/${catererId}/badges`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ badgeId })
+      });
+      const data = await res.json();
+      if (data?.success) {
+        toast(`Assigned '${badgeLabel}' to ${catererName}`, "success");
+        await logAudit("badge assigned", `Assigned '${badgeLabel}' to ${catererName}`);
+        await fetchBadgesData();
+      } else {
+        toast(data?.error || "Failed to assign badge", "error");
+      }
+    } catch (err: any) {
+      toast("Error assigning badge", "error");
+    }
+  };
+
+  const handleRemoveBadge = async (catererId: string, badgeId: string, badgeLabel: string, catererName: string) => {
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(`/api/admin/caterers/${catererId}/badges/${badgeId}`, {
+        method: 'DELETE',
+        headers
+      });
+      const data = await res.json();
+      if (data?.success) {
+        toast(`Removed '${badgeLabel}' from ${catererName}`, "success");
+        await logAudit("badge removed", `Removed '${badgeLabel}' from ${catererName}`);
+        await fetchBadgesData();
+      } else {
+        toast(data?.error || "Failed to remove badge", "error");
+      }
+    } catch (err: any) {
+      toast("Error removing badge", "error");
+    }
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -1325,6 +1542,7 @@ export default function AdminDashboard() {
                                 <th className="px-8 py-5 font-bold">Business Name</th>
                                 <th className="px-8 py-5 font-bold">Owner</th>
                                 <th className="px-8 py-5 font-bold">Service Type</th>
+                                <th className="px-8 py-5 font-bold">Badges</th>
                                 <th className="px-8 py-5 font-bold">Date</th>
                                 <th className="px-8 py-5 font-bold">Status</th>
                                 <th className="px-8 py-5 font-bold">Actions</th>
@@ -1333,7 +1551,7 @@ export default function AdminDashboard() {
                         <tbody className="text-sm divide-y divide-slate-100">
                             {activeRegistrations.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500 font-medium">
                                         No partner registrations yet.
                                     </td>
                                 </tr>
@@ -1343,6 +1561,20 @@ export default function AdminDashboard() {
                                         <td className="px-8 py-5 font-bold text-slate-800">{r.businessName}</td>
                                         <td className="px-8 py-5 text-slate-600 font-medium">{r.owner}</td>
                                         <td className="px-8 py-5 text-slate-600 font-medium">{r.type}</td>
+                                        <td className="px-8 py-5">
+                                            <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                                {catererBadgesMap[r.id] && catererBadgesMap[r.id].length > 0 ? (
+                                                    catererBadgesMap[r.id].filter(b => b.is_active).map(b => (
+                                                        <span key={b.id || b.slug} className={cn("border px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5", getDesktopBadgeClasses(b.style_variant))}>
+                                                            <DynamicBadgeIcon name={b.icon} size={8} />
+                                                            {b.label}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-slate-400 text-xs italic">No badges</span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-8 py-5 text-slate-500 text-sm whitespace-nowrap">{r.date || 'N/A'}</td>
                                         <td className="px-8 py-5">
                                             <span className={cn("px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider shadow-sm", r.status === 'Approved' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : r.status === 'Pending Approval' ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-red-50 text-red-700 border border-red-200")}>
@@ -1350,6 +1582,13 @@ export default function AdminDashboard() {
                                             </span>
                                         </td>
                                         <td className="px-8 py-5 flex flex-wrap gap-2">
+                                            <button 
+                                                onClick={() => setManagingBadgesCaterer(r)} 
+                                                className="text-[11px] font-bold text-[#A27008] hover:text-slate-900 bg-amber-50 hover:bg-amber-100 shadow-sm border border-amber-200/60 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                                title="Manage Caterer Platform Badges"
+                                            >
+                                                <Award size={12} className="text-[#DEAA38]" /> Badges
+                                            </button>
                                             <Link to={`/admin/caterers/view/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border border-slate-200 px-3.5 py-1.5 rounded-lg transition-colors">View</Link>
                                             <Link to={`/admin/caterers/edit/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border border-slate-200 px-3.5 py-1.5 rounded-lg transition-colors">Edit</Link>
                                             {r.status !== 'Approved' && (
@@ -1777,18 +2016,163 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'settings' && (
-              <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm max-w-2xl space-y-6">
+              <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm max-w-5xl space-y-8">
                   <div>
                       <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                           <Sliders className="text-brand-gold-500" size={24} />
                           Platform Settings
                       </h2>
                       <p className="text-slate-500 text-sm mt-1">
-                          Configure platform settings, administrative defaults, and features. These values apply globally in real-time.
+                          Configure platform settings, marketing badges, administrative defaults, and features. These values apply globally in real-time.
                       </p>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-6 space-y-6">
+                  <div className="border-t border-slate-100 pt-6 space-y-8">
+                      {/* Platform Badges Management Subsection */}
+                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 shadow-sm space-y-6">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-200 pb-4">
+                              <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-amber-100/80 flex items-center justify-center text-[#DEAA38]">
+                                      <Award size={22} />
+                                  </div>
+                                  <div>
+                                      <h3 className="text-base font-bold text-slate-900 leading-tight">Platform Badges Management</h3>
+                                      <p className="text-xs text-slate-500 mt-0.5">Admin-controlled marketing and trust badges displayed on caterer cards</p>
+                                  </div>
+                              </div>
+                              <button
+                                  type="button"
+                                  onClick={handleOpenCreateBadgeModal}
+                                  className="px-4 py-2.5 bg-brand-green-900 hover:bg-brand-green-800 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+                              >
+                                  <Plus size={15} /> Create New Badge
+                              </button>
+                          </div>
+
+                          {/* Badges Catalog */}
+                          <div>
+                              <div className="flex justify-between items-center mb-3">
+                                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Available Platform Badges ({platformBadges.length})</h4>
+                                  <span className="text-[11px] text-slate-400">Click Active/Inactive to toggle instantly</span>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {platformBadges.map((b) => (
+                                      <div key={b.id || b.slug} className="bg-white p-4 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition-all">
+                                          <div className="flex items-center gap-3 min-w-0">
+                                              <span className={cn("border px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-2xs", getDesktopBadgeClasses(b.style_variant))}>
+                                                  <DynamicBadgeIcon name={b.icon} size={12} />
+                                                  {b.label}
+                                              </span>
+                                              <div className="min-w-0">
+                                                  <p className="text-xs font-mono font-medium text-slate-500 truncate">{b.slug}</p>
+                                                  <p className="text-[10px] text-slate-400 capitalize">{BADGE_STYLE_LABELS[b.style_variant] || b.style_variant}</p>
+                                              </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handleToggleBadgeActive(b)}
+                                                  title={b.is_active ? "Deactivate badge" : "Activate badge"}
+                                                  className={cn(
+                                                      "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer border",
+                                                      b.is_active 
+                                                          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200" 
+                                                          : "bg-slate-100 text-slate-500 hover:bg-slate-200 border-slate-200"
+                                                  )}
+                                              >
+                                                  {b.is_active ? "Active" : "Inactive"}
+                                              </button>
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handleOpenEditBadgeModal(b)}
+                                                  className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                                  title="Edit Badge"
+                                              >
+                                                  <Edit2 size={13} />
+                                              </button>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+
+                          {/* Quick Caterer Badge Assignment */}
+                          <div className="border-t border-slate-200/80 pt-5">
+                              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-3">
+                                  <div>
+                                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Assign Badges to Caterer</h4>
+                                      <p className="text-[11px] text-slate-400">Select any partner to assign or remove platform badges in 1 click</p>
+                                  </div>
+                                  <div className="w-full sm:w-72">
+                                      <select
+                                          value={selectedSettingsCatererId || (activeRegistrations[0]?.id || '')}
+                                          onChange={(e) => setSelectedSettingsCatererId(e.target.value)}
+                                          className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-brand-gold-500 shadow-2xs"
+                                      >
+                                          {activeRegistrations.map((r) => (
+                                              <option key={r.id} value={r.id}>
+                                                  {r.businessName || r.name || 'Caterer'} ({r.status})
+                                              </option>
+                                          ))}
+                                      </select>
+                                  </div>
+                              </div>
+
+                              {(() => {
+                                  const currentId = selectedSettingsCatererId || (activeRegistrations[0]?.id || '');
+                                  const activeCaterer = activeRegistrations.find(r => r.id === currentId);
+                                  if (!activeCaterer) {
+                                      return <p className="text-xs text-slate-400 italic">No approved caterer selected.</p>;
+                                  }
+                                  const assigned = catererBadgesMap[activeCaterer.id] || [];
+                                  const assignedIds = new Set(assigned.map(b => b.id || b.slug));
+
+                                  return (
+                                      <div className="bg-white p-4.5 rounded-xl border border-slate-200 shadow-2xs">
+                                          <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
+                                              <p className="text-xs font-bold text-slate-800">
+                                                  Managing Badges for: <span className="text-brand-green-900 font-extrabold">{activeCaterer.businessName || activeCaterer.name}</span>
+                                              </p>
+                                              <span className="text-[11px] font-bold text-slate-500">
+                                                  {assigned.length} badge{assigned.length !== 1 ? 's' : ''} assigned
+                                              </span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-2.5">
+                                              {platformBadges.map((badge) => {
+                                                  const isAssigned = assignedIds.has(badge.id) || assignedIds.has(badge.slug);
+                                                  return (
+                                                      <button
+                                                          key={badge.id || badge.slug}
+                                                          type="button"
+                                                          onClick={() => {
+                                                              if (isAssigned) {
+                                                                  handleRemoveBadge(activeCaterer.id, badge.id, badge.label, activeCaterer.businessName);
+                                                              } else {
+                                                                  handleAssignBadge(activeCaterer.id, badge.id, badge.label, activeCaterer.businessName);
+                                                              }
+                                                          }}
+                                                          className={cn(
+                                                              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer shadow-2xs",
+                                                              isAssigned
+                                                                  ? `${getDesktopBadgeClasses(badge.style_variant)} ring-2 ring-[#DEAA38]/30 scale-102 font-black`
+                                                                  : "bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                                          )}
+                                                      >
+                                                          <DynamicBadgeIcon name={badge.icon} size={12} />
+                                                          <span>{badge.label}</span>
+                                                          <span className={cn("text-[10px] font-black ml-1", isAssigned ? "text-emerald-700" : "text-slate-400")}>
+                                                              {isAssigned ? "✓" : "+"}
+                                                          </span>
+                                                      </button>
+                                                  );
+                                              })}
+                                          </div>
+                                      </div>
+                                  );
+                              })()}
+                          </div>
+                      </div>
+
                       {/* Platform Fee Management Subsection */}
                       <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 shadow-sm space-y-4">
                           <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
@@ -2108,6 +2492,8 @@ export default function AdminDashboard() {
         navigate={navigate}
         registrations={registrations}
         activeRegistrations={activeRegistrations}
+        catererBadgesMap={catererBadgesMap}
+        onManageBadges={(caterer) => setManagingBadgesCaterer(caterer)}
         deletedRegistrations={deletedRegistrations}
         orders={orders}
         auditLogs={auditLogs}
@@ -2150,6 +2536,349 @@ export default function AdminDashboard() {
         expandedOrderIds={expandedOrderIds}
         setExpandedOrderIds={setExpandedOrderIds}
       />
+
+      {/* Create New Platform Badge Modal */}
+      {isCreateBadgeModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto"
+              >
+                  <button 
+                      onClick={() => setIsCreateBadgeModalOpen(false)}
+                      className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+                  >
+                      <X size={18} />
+                  </button>
+                  <h3 className="text-xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+                      <Award className="text-[#DEAA38]" size={22} /> Create Platform Badge
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-6">Define a new marketing or trust badge for PlanMyChoice caterers</p>
+                  
+                  <div className="space-y-4 mb-6">
+                      <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Badge Label *</label>
+                          <input 
+                              type="text" 
+                              value={badgeFormLabel}
+                              onChange={(e) => setBadgeFormLabel(e.target.value)}
+                              placeholder="e.g. Featured, Top Rated, Trusted"
+                              className="w-full border border-slate-200 bg-slate-50 px-4 py-2.5 rounded-xl focus:border-brand-gold-500 focus:bg-white outline-none text-sm font-bold text-slate-800"
+                          />
+                      </div>
+
+                      <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Select Icon</label>
+                          <div className="grid grid-cols-4 gap-2 max-h-36 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50">
+                              {AVAILABLE_ICONS.map((item) => (
+                                  <button
+                                      key={item.name}
+                                      type="button"
+                                      onClick={() => setBadgeFormIcon(item.name)}
+                                      className={cn(
+                                          "flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all cursor-pointer",
+                                          badgeFormIcon === item.name
+                                              ? "bg-white border-[#DEAA38] text-slate-900 shadow-sm font-bold"
+                                              : "border-transparent text-slate-500 hover:bg-white/80"
+                                      )}
+                                  >
+                                      <item.icon size={16} className={badgeFormIcon === item.name ? "text-[#DEAA38]" : "text-slate-500"} />
+                                      <span className="text-[9px] mt-1 truncate max-w-full">{item.name}</span>
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Color Palette Preset</label>
+                          <div className="grid grid-cols-2 gap-2">
+                              {VALID_BADGE_STYLES.map((variant) => (
+                                  <button
+                                      key={variant}
+                                      type="button"
+                                      onClick={() => setBadgeFormStyle(variant)}
+                                      className={cn(
+                                          "p-2.5 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all cursor-pointer",
+                                          badgeFormStyle === variant
+                                              ? `${getDesktopBadgeClasses(variant)} ring-2 ring-[#DEAA38]/50 shadow-xs font-black`
+                                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                      )}
+                                  >
+                                      <span className="w-2.5 h-2.5 rounded-full bg-current shrink-0" />
+                                      <span className="truncate">{BADGE_STYLE_LABELS[variant]}</span>
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
+                      <div className="pt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                  type="checkbox"
+                                  checked={badgeFormActive}
+                                  onChange={(e) => setBadgeFormActive(e.target.checked)}
+                                  className="rounded border-slate-300 text-brand-green-900 focus:ring-brand-green-900 h-4 w-4"
+                              />
+                              <span className="text-xs font-bold text-slate-800">Set as Active immediately</span>
+                          </label>
+                      </div>
+
+                      {/* Live Preview */}
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Live Badge Preview</p>
+                          <div className="flex items-center gap-3">
+                              <span className={cn("border px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs", getDesktopBadgeClasses(badgeFormStyle))}>
+                                  <DynamicBadgeIcon name={badgeFormIcon} size={12} />
+                                  {badgeFormLabel.trim() || "Preview Label"}
+                              </span>
+                              <span className={cn("px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm", getMobileBadgeClasses(badgeFormStyle))}>
+                                  <DynamicBadgeIcon name={badgeFormIcon} size={10} />
+                                  {badgeFormLabel.trim() || "Preview Label"}
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                      <button
+                          type="button"
+                          onClick={() => setIsCreateBadgeModalOpen(false)}
+                          className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                      >
+                          Cancel
+                      </button>
+                      <button
+                          type="button"
+                          disabled={savingBadge || !badgeFormLabel.trim()}
+                          onClick={handleCreateBadge}
+                          className="px-5 py-2 bg-brand-green-900 hover:bg-brand-green-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                          {savingBadge ? 'Creating...' : 'Create Badge'}
+                      </button>
+                  </div>
+              </motion.div>
+          </div>
+      )}
+
+      {/* Edit Platform Badge Modal */}
+      {editingBadge && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto"
+              >
+                  <button 
+                      onClick={() => setEditingBadge(null)}
+                      className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+                  >
+                      <X size={18} />
+                  </button>
+                  <h3 className="text-xl font-bold text-slate-900 mb-1 flex items-center gap-2">
+                      <Edit2 className="text-[#DEAA38]" size={20} /> Edit Badge: {editingBadge.label}
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-6">Modify badge label, icon, style variant or active status</p>
+                  
+                  <div className="space-y-4 mb-6">
+                      <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Badge Label *</label>
+                          <input 
+                              type="text" 
+                              value={badgeFormLabel}
+                              onChange={(e) => setBadgeFormLabel(e.target.value)}
+                              className="w-full border border-slate-200 bg-slate-50 px-4 py-2.5 rounded-xl focus:border-brand-gold-500 focus:bg-white outline-none text-sm font-bold text-slate-800"
+                          />
+                      </div>
+
+                      <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Select Icon</label>
+                          <div className="grid grid-cols-4 gap-2 max-h-36 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50">
+                              {AVAILABLE_ICONS.map((item) => (
+                                  <button
+                                      key={item.name}
+                                      type="button"
+                                      onClick={() => setBadgeFormIcon(item.name)}
+                                      className={cn(
+                                          "flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all cursor-pointer",
+                                          badgeFormIcon === item.name
+                                              ? "bg-white border-[#DEAA38] text-slate-900 shadow-sm font-bold"
+                                              : "border-transparent text-slate-500 hover:bg-white/80"
+                                      )}
+                                  >
+                                      <item.icon size={16} className={badgeFormIcon === item.name ? "text-[#DEAA38]" : "text-slate-500"} />
+                                      <span className="text-[9px] mt-1 truncate max-w-full">{item.name}</span>
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
+                      <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Color Palette Preset</label>
+                          <div className="grid grid-cols-2 gap-2">
+                              {VALID_BADGE_STYLES.map((variant) => (
+                                  <button
+                                      key={variant}
+                                      type="button"
+                                      onClick={() => setBadgeFormStyle(variant)}
+                                      className={cn(
+                                          "p-2.5 rounded-xl border flex items-center gap-2 text-xs font-bold transition-all cursor-pointer",
+                                          badgeFormStyle === variant
+                                              ? `${getDesktopBadgeClasses(variant)} ring-2 ring-[#DEAA38]/50 shadow-xs font-black`
+                                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                      )}
+                                  >
+                                      <span className="w-2.5 h-2.5 rounded-full bg-current shrink-0" />
+                                      <span className="truncate">{BADGE_STYLE_LABELS[variant]}</span>
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
+                      <div className="pt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                  type="checkbox"
+                                  checked={badgeFormActive}
+                                  onChange={(e) => setBadgeFormActive(e.target.checked)}
+                                  className="rounded border-slate-300 text-brand-green-900 focus:ring-brand-green-900 h-4 w-4"
+                              />
+                              <span className="text-xs font-bold text-slate-800">Badge is Active (Visible on Customer Cards)</span>
+                          </label>
+                      </div>
+
+                      {/* Live Preview */}
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Live Badge Preview</p>
+                          <div className="flex items-center gap-3">
+                              <span className={cn("border px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs", getDesktopBadgeClasses(badgeFormStyle))}>
+                                  <DynamicBadgeIcon name={badgeFormIcon} size={12} />
+                                  {badgeFormLabel.trim() || "Preview Label"}
+                              </span>
+                              <span className={cn("px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm", getMobileBadgeClasses(badgeFormStyle))}>
+                                  <DynamicBadgeIcon name={badgeFormIcon} size={10} />
+                                  {badgeFormLabel.trim() || "Preview Label"}
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                      <button
+                          type="button"
+                          onClick={() => setEditingBadge(null)}
+                          className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                      >
+                          Cancel
+                      </button>
+                      <button
+                          type="button"
+                          disabled={savingBadge || !badgeFormLabel.trim()}
+                          onClick={handleUpdateBadge}
+                          className="px-5 py-2 bg-brand-green-900 hover:bg-brand-green-800 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                          {savingBadge ? 'Saving...' : 'Save Changes'}
+                      </button>
+                  </div>
+              </motion.div>
+          </div>
+      )}
+
+      {/* Manage Badges for Caterer Modal */}
+      {managingBadgesCaterer && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl relative max-h-[90vh] overflow-y-auto"
+              >
+                  <button 
+                      onClick={() => setManagingBadgesCaterer(null)}
+                      className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+                  >
+                      <X size={18} />
+                  </button>
+                  <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100/80 flex items-center justify-center text-[#DEAA38]">
+                          <Award size={22} />
+                      </div>
+                      <div>
+                          <h3 className="text-xl font-bold text-slate-900 leading-tight">
+                              Manage Badges: {managingBadgesCaterer.businessName || managingBadgesCaterer.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                              Owner: {managingBadgesCaterer.owner || 'N/A'} • Status: {managingBadgesCaterer.status}
+                          </p>
+                      </div>
+                  </div>
+                  
+                  <div className="border-t border-slate-100 pt-4 mb-6">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3">
+                          Assigned & Available Badges
+                      </p>
+                      
+                      {(() => {
+                          const assigned = catererBadgesMap[managingBadgesCaterer.id] || [];
+                          const assignedIds = new Set(assigned.map(b => b.id || b.slug));
+
+                          return (
+                              <div className="space-y-2.5">
+                                  {platformBadges.map((badge) => {
+                                      const isAssigned = assignedIds.has(badge.id) || assignedIds.has(badge.slug);
+                                      return (
+                                          <div
+                                              key={badge.id || badge.slug}
+                                              className={cn(
+                                                  "p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all",
+                                                  isAssigned ? "bg-amber-50/40 border-amber-200/80 shadow-2xs" : "bg-slate-50 border-slate-200/60"
+                                              )}
+                                          >
+                                              <div className="flex items-center gap-2.5 min-w-0">
+                                                  <span className={cn("border px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0", getDesktopBadgeClasses(badge.style_variant))}>
+                                                      <DynamicBadgeIcon name={badge.icon} size={11} />
+                                                      {badge.label}
+                                                  </span>
+                                                  <span className="text-xs text-slate-500 font-mono truncate">{badge.slug}</span>
+                                              </div>
+
+                                              <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                      if (isAssigned) {
+                                                          handleRemoveBadge(managingBadgesCaterer.id, badge.id, badge.label, managingBadgesCaterer.businessName);
+                                                      } else {
+                                                          handleAssignBadge(managingBadgesCaterer.id, badge.id, badge.label, managingBadgesCaterer.businessName);
+                                                      }
+                                                  }}
+                                                  className={cn(
+                                                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border",
+                                                      isAssigned
+                                                          ? "bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200"
+                                                          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
+                                                  )}
+                                              >
+                                                  {isAssigned ? "✕ Remove" : "+ Assign"}
+                                              </button>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          );
+                      })()}
+                  </div>
+
+                  <div className="flex justify-end pt-3 border-t border-slate-100">
+                      <button
+                          type="button"
+                          onClick={() => setManagingBadgesCaterer(null)}
+                          className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                      >
+                          Done
+                      </button>
+                  </div>
+              </motion.div>
+          </div>
+      )}
 
       {/* Add Custom Mapping Modal */}
       {showAddMappingModal && (

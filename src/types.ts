@@ -1,3 +1,5 @@
+import { PlatformBadge } from './lib/badgeUtils';
+
 export interface Dish {
   id: string;
   name: string;
@@ -49,6 +51,9 @@ export interface Caterer {
   longitude?: number | null;
   serviceRadiusKm?: number | null;
   pendingUpdates?: any;
+  badges?: PlatformBadge[];
+  isVerified?: boolean;
+  isPremium?: boolean;
 }
 
 export interface LocationOption {

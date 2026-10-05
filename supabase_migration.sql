@@ -309,5 +309,108 @@ ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE public.platform_settings DISABLE ROW LEVEL SECURITY;
 
+-- ===================================================
+-- 10. Platform Badges & Caterer Badges
+-- ===================================================
+
+CREATE TABLE IF NOT EXISTS public.platform_badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    icon TEXT,
+    style_variant TEXT NOT NULL DEFAULT 'emerald' CHECK (style_variant IN ('emerald', 'amber', 'gold', 'blue', 'purple', 'rose')),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.caterer_badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    caterer_id UUID NOT NULL REFERENCES public.caterer_registrations(id) ON DELETE CASCADE,
+    badge_id UUID NOT NULL REFERENCES public.platform_badges(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    assigned_by UUID,
+    UNIQUE(caterer_id, badge_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_caterer_badges_caterer_id ON public.caterer_badges(caterer_id);
+CREATE INDEX IF NOT EXISTS idx_caterer_badges_badge_id ON public.caterer_badges(badge_id);
+CREATE INDEX IF NOT EXISTS idx_platform_badges_is_active ON public.platform_badges(is_active);
+
+-- Enable RLS
+ALTER TABLE public.platform_badges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.caterer_badges ENABLE ROW LEVEL SECURITY;
+
+-- Public can read active platform badges
+DROP POLICY IF EXISTS "Allow public read of active badges" ON public.platform_badges;
+CREATE POLICY "Allow public read of active badges" 
+ON public.platform_badges FOR SELECT 
+USING (is_active = TRUE OR auth.role() = 'authenticated');
+
+-- Service role & Admin full access on platform_badges
+DROP POLICY IF EXISTS "Allow admin full access on platform_badges" ON public.platform_badges;
+CREATE POLICY "Allow admin full access on platform_badges" 
+ON public.platform_badges FOR ALL 
+USING (true)
+WITH CHECK (true);
+
+-- Public can read caterer badges assignments
+DROP POLICY IF EXISTS "Allow public read of caterer_badges" ON public.caterer_badges;
+CREATE POLICY "Allow public read of caterer_badges" 
+ON public.caterer_badges FOR SELECT 
+USING (true);
+
+-- Service role & Admin full access on caterer_badges
+DROP POLICY IF EXISTS "Allow admin full access on caterer_badges" ON public.caterer_badges;
+CREATE POLICY "Allow admin full access on caterer_badges" 
+ON public.caterer_badges FOR ALL 
+USING (true)
+WITH CHECK (true);
+
+-- Seed Initial Platform Badges
+INSERT INTO public.platform_badges (slug, label, icon, style_variant, is_active, display_order)
+VALUES 
+    ('verified', 'Verified', 'Check', 'emerald', TRUE, 1),
+    ('premium-partner', 'Premium Partner', 'Sparkles', 'amber', TRUE, 2),
+    ('featured', 'Featured', 'Star', 'gold', TRUE, 3),
+    ('top-rated', 'Top Rated', 'Award', 'blue', TRUE, 4),
+    ('trusted', 'Trusted', 'ShieldCheck', 'emerald', TRUE, 5),
+    ('new', 'New', 'Tag', 'purple', TRUE, 6),
+    ('best-value', 'Best Value', 'Percent', 'rose', TRUE, 7),
+    ('editors-choice', 'Editor''s Choice', 'Crown', 'gold', TRUE, 8)
+ON CONFLICT (slug) DO UPDATE SET
+    label = EXCLUDED.label,
+    icon = EXCLUDED.icon,
+    style_variant = EXCLUDED.style_variant,
+    display_order = EXCLUDED.display_order;
+
+-- Migration: Preserve existing verified and premium partner status for current approved caterers
+DO $$
+DECLARE
+    verified_badge_id UUID;
+    premium_badge_id UUID;
+    caterer_rec RECORD;
+BEGIN
+    SELECT id INTO verified_badge_id FROM public.platform_badges WHERE slug = 'verified';
+    SELECT id INTO premium_badge_id FROM public.platform_badges WHERE slug = 'premium-partner';
+
+    -- Assign to all current approved caterers to preserve current visual display
+    IF verified_badge_id IS NOT NULL THEN
+        FOR caterer_rec IN SELECT id FROM public.caterer_registrations WHERE status = 'Approved' LOOP
+            INSERT INTO public.caterer_badges (caterer_id, badge_id)
+            VALUES (caterer_rec.id, verified_badge_id)
+            ON CONFLICT (caterer_id, badge_id) DO NOTHING;
+            
+            IF premium_badge_id IS NOT NULL THEN
+                INSERT INTO public.caterer_badges (caterer_id, badge_id)
+                VALUES (caterer_rec.id, premium_badge_id)
+                ON CONFLICT (caterer_id, badge_id) DO NOTHING;
+            END IF;
+        END LOOP;
+    END IF;
+END $$;
+
 NOTIFY pgrst, 'reload schema';
+
 

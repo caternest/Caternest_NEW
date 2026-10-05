@@ -751,6 +751,488 @@ app.post("/api/platform-settings", async (req: any, res: any) => {
   }
 });
 
+// ==========================================
+// DYNAMIC PLATFORM BADGES MANAGEMENT (API)
+// ==========================================
+
+const ALLOWED_BADGE_STYLES = ['emerald', 'amber', 'gold', 'blue', 'purple', 'rose'];
+
+interface ServerPlatformBadge {
+  id: string;
+  slug: string;
+  label: string;
+  icon?: string | null;
+  style_variant: string;
+  is_active: boolean;
+  display_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface ServerCatererBadge {
+  id: string;
+  caterer_id: string;
+  badge_id: string;
+  assigned_at?: string;
+  assigned_by?: string | null;
+}
+
+// Initial seed badges to ensure high availability
+const DEFAULT_SEED_BADGES: ServerPlatformBadge[] = [
+  { id: 'pb-verified', slug: 'verified', label: 'Verified', icon: 'Check', style_variant: 'emerald', is_active: true, display_order: 1, created_at: new Date().toISOString() },
+  { id: 'pb-premium-partner', slug: 'premium-partner', label: 'Premium Partner', icon: 'Sparkles', style_variant: 'amber', is_active: true, display_order: 2, created_at: new Date().toISOString() },
+  { id: 'pb-featured', slug: 'featured', label: 'Featured', icon: 'Star', style_variant: 'gold', is_active: true, display_order: 3, created_at: new Date().toISOString() },
+  { id: 'pb-top-rated', slug: 'top-rated', label: 'Top Rated', icon: 'Award', style_variant: 'blue', is_active: true, display_order: 4, created_at: new Date().toISOString() },
+  { id: 'pb-trusted', slug: 'trusted', label: 'Trusted', icon: 'ShieldCheck', style_variant: 'emerald', is_active: true, display_order: 5, created_at: new Date().toISOString() },
+  { id: 'pb-new', slug: 'new', label: 'New', icon: 'Tag', style_variant: 'purple', is_active: true, display_order: 6, created_at: new Date().toISOString() },
+  { id: 'pb-best-value', slug: 'best-value', label: 'Best Value', icon: 'Percent', style_variant: 'rose', is_active: true, display_order: 7, created_at: new Date().toISOString() },
+  { id: 'pb-editors-choice', slug: 'editors-choice', label: "Editor's Choice", icon: 'Crown', style_variant: 'gold', is_active: true, display_order: 8, created_at: new Date().toISOString() },
+];
+
+// In-memory / persistent cache for badge definitions and caterer badge mappings
+let inMemoryBadges: ServerPlatformBadge[] = [...DEFAULT_SEED_BADGES];
+let inMemoryCatererBadges: ServerCatererBadge[] = [
+  // Preserving prior verified/premium status for existing caterers
+  { id: 'cb-1', caterer_id: '5c997613-3130-4657-9335-7c47b16bc4b3', badge_id: 'pb-verified', assigned_at: new Date().toISOString() },
+  { id: 'cb-2', caterer_id: '5c997613-3130-4657-9335-7c47b16bc4b3', badge_id: 'pb-premium-partner', assigned_at: new Date().toISOString() },
+  { id: 'cb-3', caterer_id: 'c9af3e3d-4cb9-4413-b38c-6a236b03c2e5', badge_id: 'pb-verified', assigned_at: new Date().toISOString() },
+  { id: 'cb-4', caterer_id: 'c9af3e3d-4cb9-4413-b38c-6a236b03c2e5', badge_id: 'pb-premium-partner', assigned_at: new Date().toISOString() },
+  // Default mock caterers c1, c2, c3
+  { id: 'cb-c1-1', caterer_id: 'c1', badge_id: 'pb-verified', assigned_at: new Date().toISOString() },
+  { id: 'cb-c1-2', caterer_id: 'c1', badge_id: 'pb-premium-partner', assigned_at: new Date().toISOString() },
+  { id: 'cb-c2-1', caterer_id: 'c2', badge_id: 'pb-verified', assigned_at: new Date().toISOString() },
+  { id: 'cb-c3-1', caterer_id: 'c3', badge_id: 'pb-verified', assigned_at: new Date().toISOString() },
+  { id: 'cb-c3-2', caterer_id: 'c3', badge_id: 'pb-premium-partner', assigned_at: new Date().toISOString() },
+];
+
+// Helper to record audit logs securely
+async function recordBadgeAudit(supabase: any, action: string, details: string, userEmail: string) {
+  try {
+    if (supabase) {
+      await supabase.from('audit_logs').insert([{
+        timestamp: new Date().toISOString(),
+        action,
+        details,
+        user_email: userEmail,
+        role: 'Admin'
+      }]);
+    }
+  } catch (err) {
+    console.warn('[AUDIT] Failed to record badge audit to database:', err);
+  }
+}
+
+// 1. GET /api/badges (Public & Admin) - list all badges or active only
+app.get(["/api/badges", "/api/platform-badges", "/api/admin/platform-badges"], async (req: any, res: any) => {
+  const activeOnly = req.query.active === 'true';
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    try {
+      let query = supabase.from("platform_badges").select("*").order("display_order", { ascending: true });
+      if (activeOnly) {
+        query = query.eq("is_active", true);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        // Sync in-memory representation
+        inMemoryBadges = data;
+        return res.json({ success: true, data });
+      }
+    } catch (err: any) {
+      console.warn("[BADGES] Supabase platform_badges table fetch notice:", err?.message || err);
+    }
+  }
+
+  // Graceful fallback to memory store
+  const badges = activeOnly ? inMemoryBadges.filter(b => b.is_active) : inMemoryBadges;
+  return res.json({ success: true, data: badges });
+});
+
+// 2. GET /api/caterer-badges (Public) - mapping of catererId -> PlatformBadge[] (active only)
+app.get(["/api/caterer-badges", "/api/caterers-badges"], async (req: any, res: any) => {
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    try {
+      // Query caterer_badges joined with platform_badges
+      const { data, error } = await supabase
+        .from("caterer_badges")
+        .select(`
+          caterer_id,
+          badge_id,
+          platform_badges!inner (
+            id,
+            slug,
+            label,
+            icon,
+            style_variant,
+            is_active,
+            display_order
+          )
+        `)
+        .eq("platform_badges.is_active", true);
+
+      if (!error && Array.isArray(data)) {
+        const mapping: Record<string, ServerPlatformBadge[]> = {};
+        for (const item of data) {
+          const catererId = item.caterer_id;
+          const badge = item.platform_badges as any;
+          if (badge && badge.is_active) {
+            if (!mapping[catererId]) mapping[catererId] = [];
+            mapping[catererId].push(badge);
+          }
+        }
+        return res.json({ success: true, data: mapping });
+      }
+    } catch (err: any) {
+      console.warn("[CATERER BADGES] Supabase caterer_badges join fetch notice:", err?.message || err);
+    }
+  }
+
+  // Fallback to in-memory mappings with active badge check
+  const activeBadgesMap = new Map(inMemoryBadges.filter(b => b.is_active).map(b => [b.id, b]));
+  const mapping: Record<string, ServerPlatformBadge[]> = {};
+
+  for (const cb of inMemoryCatererBadges) {
+    const badge = activeBadgesMap.get(cb.badge_id);
+    if (badge) {
+      if (!mapping[cb.caterer_id]) mapping[cb.caterer_id] = [];
+      mapping[cb.caterer_id].push(badge);
+    }
+  }
+
+  return res.json({ success: true, data: mapping });
+});
+
+// 3. GET /api/caterers/:catererId/badges (Public) - list active badges for specific caterer
+app.get("/api/caterers/:catererId/badges", async (req: any, res: any) => {
+  const { catererId } = req.params;
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("caterer_badges")
+        .select(`
+          badge_id,
+          platform_badges!inner (
+            id,
+            slug,
+            label,
+            icon,
+            style_variant,
+            is_active,
+            display_order
+          )
+        `)
+        .eq("caterer_id", catererId)
+        .eq("platform_badges.is_active", true);
+
+      if (!error && Array.isArray(data)) {
+        const badges = data.map((d: any) => d.platform_badges).filter(Boolean);
+        return res.json({ success: true, data: badges });
+      }
+    } catch (err: any) {
+      console.warn(`[CATERER BADGES] Error fetching badges for caterer ${catererId}:`, err);
+    }
+  }
+
+  // Memory fallback
+  const activeBadgesMap = new Map(inMemoryBadges.filter(b => b.is_active).map(b => [b.id, b]));
+  const badges = inMemoryCatererBadges
+    .filter(cb => cb.caterer_id === catererId)
+    .map(cb => activeBadgesMap.get(cb.badge_id))
+    .filter(Boolean) as ServerPlatformBadge[];
+
+  return res.json({ success: true, data: badges });
+});
+
+// 4. POST /api/admin/badges (Admin Only) - create a new badge definition
+app.post(["/api/admin/badges", "/api/admin/platform-badges"], async (req: any, res: any) => {
+  const supabase = getSupabaseClient();
+  const auth = await verifyAdminAuth(req, supabase);
+  if (!auth.authorized) {
+    return res.status(auth.status || 401).json({ success: false, error: auth.error || "Unauthorized." });
+  }
+
+  const { slug, label, icon, style_variant, is_active, display_order } = req.body;
+
+  if (!label || typeof label !== 'string' || !label.trim()) {
+    return res.status(400).json({ success: false, error: "Badge label is required." });
+  }
+
+  const cleanVariant = (style_variant || 'emerald').toLowerCase().trim();
+  if (!ALLOWED_BADGE_STYLES.includes(cleanVariant)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid style preset '${style_variant}'. Allowed presets: ${ALLOWED_BADGE_STYLES.join(', ')}`
+    });
+  }
+
+  const cleanSlug = (slug || label)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  if (!cleanSlug) {
+    return res.status(400).json({ success: false, error: "Valid badge slug is required." });
+  }
+
+  const newBadge: ServerPlatformBadge = {
+    id: `pb-${cleanSlug}-${Date.now()}`,
+    slug: cleanSlug,
+    label: label.trim(),
+    icon: (icon || 'Check').trim(),
+    style_variant: cleanVariant,
+    is_active: is_active !== false,
+    display_order: typeof display_order === 'number' ? display_order : (inMemoryBadges.length + 1),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("platform_badges")
+        .insert([{
+          slug: newBadge.slug,
+          label: newBadge.label,
+          icon: newBadge.icon,
+          style_variant: newBadge.style_variant,
+          is_active: newBadge.is_active,
+          display_order: newBadge.display_order
+        }])
+        .select()
+        .single();
+
+      if (!error && data) {
+        newBadge.id = data.id;
+      }
+    } catch (err: any) {
+      console.warn("[ADMIN BADGE] Database insert note (falling back to memory):", err?.message || err);
+    }
+  }
+
+  // Update in-memory state
+  const existingIdx = inMemoryBadges.findIndex(b => b.slug === cleanSlug);
+  if (existingIdx >= 0) {
+    inMemoryBadges[existingIdx] = newBadge;
+  } else {
+    inMemoryBadges.push(newBadge);
+  }
+
+  // Audit log
+  await recordBadgeAudit(
+    supabase,
+    "Badge Created",
+    `Created platform badge '${newBadge.label}' (slug: ${newBadge.slug}, style: ${newBadge.style_variant})`,
+    auth.email || 'admin'
+  );
+
+  return res.json({ success: true, data: newBadge });
+});
+
+// Handler for updating badges (PUT and PATCH)
+const handleUpdateBadgeRequest = async (req: any, res: any) => {
+  const { id } = req.params;
+  const supabase = getSupabaseClient();
+  const auth = await verifyAdminAuth(req, supabase);
+  if (!auth.authorized) {
+    return res.status(auth.status || 401).json({ success: false, error: auth.error || "Unauthorized." });
+  }
+
+  const { label, icon, style_variant, is_active, display_order } = req.body;
+
+  if (style_variant) {
+    const cleanVariant = style_variant.toLowerCase().trim();
+    if (!ALLOWED_BADGE_STYLES.includes(cleanVariant)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid style preset '${style_variant}'. Allowed presets: ${ALLOWED_BADGE_STYLES.join(', ')}`
+      });
+    }
+  }
+
+  // Find badge in memory or db
+  let badge = inMemoryBadges.find(b => b.id === id || b.slug === id);
+  const oldActive = badge?.is_active;
+
+  const updates: Partial<ServerPlatformBadge> = {
+    updated_at: new Date().toISOString()
+  };
+  if (label !== undefined) updates.label = String(label).trim();
+  if (icon !== undefined) updates.icon = String(icon).trim();
+  if (style_variant !== undefined) updates.style_variant = style_variant.toLowerCase().trim();
+  if (is_active !== undefined) updates.is_active = Boolean(is_active);
+  if (display_order !== undefined) updates.display_order = Number(display_order);
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("platform_badges")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (!error && data) {
+        badge = data;
+      }
+    } catch (err: any) {
+      console.warn("[ADMIN BADGE] Database update note:", err?.message || err);
+    }
+  }
+
+  // Memory fallback update
+  if (badge) {
+    Object.assign(badge, updates);
+  } else {
+    // If not found in memory, create a record
+    badge = {
+      id,
+      slug: id,
+      label: updates.label || 'Badge',
+      icon: updates.icon || 'Check',
+      style_variant: updates.style_variant || 'emerald',
+      is_active: updates.is_active !== false,
+      display_order: updates.display_order || 1,
+      ...updates
+    };
+    inMemoryBadges.push(badge);
+  }
+
+  // Audit logs
+  if (is_active !== undefined && oldActive !== updates.is_active) {
+    await recordBadgeAudit(
+      supabase,
+      updates.is_active ? "badge activated" : "badge deactivated",
+      `${updates.is_active ? 'Activated' : 'Deactivated'} platform badge '${badge.label}' (${badge.slug})`,
+      auth.email || 'admin'
+    );
+  } else {
+    await recordBadgeAudit(
+      supabase,
+      "badge edited",
+      `Updated platform badge '${badge.label}' (${badge.slug})`,
+      auth.email || 'admin'
+    );
+  }
+
+  return res.json({ success: true, data: badge });
+};
+
+// 5. PUT & PATCH /api/admin/badges/:id (Admin Only) - edit an existing badge
+app.put(["/api/admin/badges/:id", "/api/admin/platform-badges/:id"], handleUpdateBadgeRequest);
+app.patch(["/api/admin/badges/:id", "/api/admin/platform-badges/:id"], handleUpdateBadgeRequest);
+
+// 6. POST /api/admin/caterers/:catererId/badges (Admin Only) - assign a badge to a caterer
+app.post("/api/admin/caterers/:catererId/badges", async (req: any, res: any) => {
+  const { catererId } = req.params;
+  const badge_id = req.body.badge_id || req.body.badgeId;
+  const supabase = getSupabaseClient();
+  const auth = await verifyAdminAuth(req, supabase);
+  if (!auth.authorized) {
+    return res.status(auth.status || 401).json({ success: false, error: auth.error || "Unauthorized." });
+  }
+
+  if (!badge_id) {
+    return res.status(400).json({ success: false, error: "badge_id (or badgeId) is required." });
+  }
+
+  // Check if badge exists
+  const targetBadge = inMemoryBadges.find(b => b.id === badge_id || b.slug === badge_id);
+  const badgeIdToUse = targetBadge ? targetBadge.id : badge_id;
+  const badgeLabel = targetBadge ? targetBadge.label : badge_id;
+
+  const assignment: ServerCatererBadge = {
+    id: `cb-${catererId}-${badgeIdToUse}`,
+    caterer_id: catererId,
+    badge_id: badgeIdToUse,
+    assigned_at: new Date().toISOString(),
+    assigned_by: auth.user?.id || null
+  };
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("caterer_badges")
+        .upsert([{
+          caterer_id: catererId,
+          badge_id: badgeIdToUse,
+          assigned_by: auth.user?.id || null
+        }], { onConflict: 'caterer_id,badge_id' })
+        .select()
+        .maybeSingle();
+
+      if (!error && data) {
+        assignment.id = data.id;
+      }
+    } catch (err: any) {
+      console.warn("[ADMIN BADGE] Database caterer badge assign note:", err?.message || err);
+    }
+  }
+
+  // Update memory state
+  const alreadyExists = inMemoryCatererBadges.some(
+    cb => cb.caterer_id === catererId && (cb.badge_id === badgeIdToUse || cb.badge_id === targetBadge?.slug)
+  );
+  if (!alreadyExists) {
+    inMemoryCatererBadges.push(assignment);
+  }
+
+  // Audit log
+  await recordBadgeAudit(
+    supabase,
+    "badge assigned",
+    `Assigned badge '${badgeLabel}' to caterer ID: ${catererId}`,
+    auth.email || 'admin'
+  );
+
+  return res.json({ success: true, data: assignment });
+});
+
+// 7. DELETE /api/admin/caterers/:catererId/badges/:badgeId (Admin Only) - remove badge from caterer
+app.delete("/api/admin/caterers/:catererId/badges/:badgeId", async (req: any, res: any) => {
+  const { catererId, badgeId } = req.params;
+  const supabase = getSupabaseClient();
+  const auth = await verifyAdminAuth(req, supabase);
+  if (!auth.authorized) {
+    return res.status(auth.status || 401).json({ success: false, error: auth.error || "Unauthorized." });
+  }
+
+  const targetBadge = inMemoryBadges.find(b => b.id === badgeId || b.slug === badgeId);
+  const badgeLabel = targetBadge ? targetBadge.label : badgeId;
+
+  if (supabase) {
+    try {
+      await supabase
+        .from("caterer_badges")
+        .delete()
+        .eq("caterer_id", catererId)
+        .or(`badge_id.eq.${badgeId},badge_id.eq.${targetBadge?.id || ''}`);
+    } catch (err: any) {
+      console.warn("[ADMIN BADGE] Database caterer badge delete note:", err?.message || err);
+    }
+  }
+
+  // Update memory state
+  inMemoryCatererBadges = inMemoryCatererBadges.filter(
+    cb => !(cb.caterer_id === catererId && (cb.badge_id === badgeId || cb.badge_id === targetBadge?.id || cb.badge_id === targetBadge?.slug))
+  );
+
+  // Audit log
+  await recordBadgeAudit(
+    supabase,
+    "badge removed",
+    `Removed badge '${badgeLabel}' from caterer ID: ${catererId}`,
+    auth.email || 'admin'
+  );
+
+  return res.json({ success: true, message: "Badge unassigned successfully." });
+});
+
 // Server-side robust database synchronization endpoint (bypasses RLS)
 app.post("/api/sync", async (req: any, res: any) => {
   const { tableName, localData } = req.body;

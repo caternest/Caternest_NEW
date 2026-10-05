@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
+import { fetchBadgesForCaterer } from "../lib/badgeApi";
+import { PlatformBadge, STYLE_VARIANT_CONFIG, BadgeStyleVariant, getBadgeIconComponent } from "../lib/badgeUtils";
 import {
   MapPin,
   Star,
@@ -611,6 +613,20 @@ export default function CatererDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedCaterer, setEditedCaterer] = useState<any>(null);
   const [activeBranchIndexForMap, setActiveBranchIndexForMap] = useState<number | 'hq' | null>(null);
+  const [catererBadges, setCatererBadges] = useState<PlatformBadge[]>([]);
+
+  useEffect(() => {
+    const catererId = caterer?.id || id;
+    if (catererId) {
+      fetchBadgesForCaterer(catererId).then(badges => {
+        if (badges && Array.isArray(badges)) {
+          setCatererBadges(badges);
+        }
+      }).catch(err => {
+        console.warn("[CATERER DETAILS] Error loading badges:", err);
+      });
+    }
+  }, [caterer?.id, id]);
 
   // Premium Unified Modal states
   const [activeEditSection, setActiveEditSection] = useState<string | null>(null);
@@ -5095,17 +5111,41 @@ export default function CatererDetails() {
                   )}
                 </div>
 
-                {/* Business Name & Badge */}
-                <div className="flex items-center gap-1.5 mt-4 justify-center">
-                  <h1 className="text-xl font-serif font-black text-[#173D32] text-center tracking-tight leading-tight">
-                    {targetCatererObj.brandName || targetCatererObj.name}
-                  </h1>
-                  {targetCatererObj.status === "Approved" && (
-                    <span className="text-[#D4AF37] shrink-0" title="Verified Check">
-                      <svg className="w-4.5 h-4.5 filter drop-shadow-[0_1px_2px_rgba(212,175,55,0.2)]" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2l2.4 1.4 2.7-.4.9 2.6 2.5 1.1-.4 2.7 1.8 2-1.3 2.4.9 2.7-2.2 1.6-.9 2.6-2.7-.4-2.1 1.8-2.1-1.8-2.7.4-.9-2.6-2.2-1.6.9-2.7-1.3-2.4 1.8-2-.4-2.7 2.5-1.1.9-2.6 2.7.4L12 2zm-1 13.5l5.5-5.5-1.4-1.4-4.1 4.1-1.9-1.9-1.4 1.4 3.3 3.3z" />
-                      </svg>
-                    </span>
+                {/* Business Name & Dynamic Badges */}
+                <div className="flex flex-col items-center mt-4 justify-center">
+                  <div className="flex items-center gap-1.5 justify-center">
+                    <h1 className="text-xl font-serif font-black text-[#173D32] text-center tracking-tight leading-tight">
+                      {targetCatererObj.brandName || targetCatererObj.name}
+                    </h1>
+                    {targetCatererObj.status === "Approved" && (
+                      <span className="text-[#D4AF37] shrink-0" title="Verified Check">
+                        <svg className="w-4.5 h-4.5 filter drop-shadow-[0_1px_2px_rgba(212,175,55,0.2)]" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l2.4 1.4 2.7-.4.9 2.6 2.5 1.1-.4 2.7 1.8 2-1.3 2.4.9 2.7-2.2 1.6-.9 2.6-2.7-.4-2.1 1.8-2.1-1.8-2.7.4-.9-2.6-2.2-1.6.9-2.7-1.3-2.4 1.8-2-.4-2.7 2.5-1.1.9-2.6 2.7.4L12 2zm-1 13.5l5.5-5.5-1.4-1.4-4.1 4.1-1.9-1.9-1.4 1.4 3.3 3.3z" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Active Platform Badges */}
+                  {catererBadges && catererBadges.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+                      {catererBadges.filter(b => b.is_active).map(b => {
+                        const styleCfg = STYLE_VARIANT_CONFIG[b.style_variant as BadgeStyleVariant] || STYLE_VARIANT_CONFIG.emerald;
+                        const BadgeIcon = getBadgeIconComponent(b.icon);
+                        return (
+                          <span
+                            key={b.id || b.slug}
+                            className={cn(
+                              styleCfg.detailsClasses,
+                              "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1"
+                            )}
+                          >
+                            <BadgeIcon size={10} className="shrink-0 stroke-[2.5]" />
+                            <span>{b.label}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 

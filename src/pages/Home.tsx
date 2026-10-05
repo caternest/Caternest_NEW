@@ -1,14 +1,9 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import React from 'react';
 import heroBg from '../assets/images/Hero-bg.png';
 import { 
-  Search, 
-  MapPin, 
-  ChevronRight, 
   Star, 
   ChefHat, 
   Tag, 
-  Users, 
   Calendar, 
   Sparkles,
   Smartphone,
@@ -32,25 +27,13 @@ import { Link, useNavigate } from 'react-router-dom';
 
 export default function Home() {
   const navigate = useNavigate();
-  
-  // Search Form State
-  const [searchLocation, setSearchLocation] = useState('Hyderabad');
-  const [searchOccasion, setSearchOccasion] = useState('');
-  const [searchGuests, setSearchGuests] = useState('');
-  const [searchBudget, setSearchBudget] = useState('');
-  const [searchKeyword, setSearchKeyword] = useState('');
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate(`/explore?search=${encodeURIComponent(searchKeyword || searchOccasion || '')}&location=${encodeURIComponent(searchLocation)}&budget=${searchBudget}&guests=${searchGuests}`);
-  };
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans overflow-x-hidden">
       
-      {/* 1. DESKTOP HERO BANNER SECTION (Completely untouched for Desktop & Tablet) */}
+      {/* 1. DESKTOP HERO BANNER SECTION (Clean & Premium without overlapping card) */}
       <div 
-        className="relative min-h-[550px] md:h-[580px] w-full flex flex-col justify-start pt-28 pb-28 overflow-visible"
+        className="relative min-h-[480px] md:min-h-[520px] w-full flex flex-col justify-center py-20 md:py-28 overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%), url(${heroBg})`,
           backgroundSize: 'cover',
@@ -78,7 +61,7 @@ export default function Home() {
           style={{ marginBottom: '1px', paddingBottom: '0px' }}
         >
           
-          {/* Text block aligned beautifully with premium typography and no hardcoded height/bg */}
+          {/* Text block aligned beautifully with premium typography */}
           <div 
             className="max-w-xl pt-2 md:pt-4 pl-4 sm:pl-8 md:pl-12 lg:pl-16"
             style={{ marginTop: '20px', paddingLeft: '66px' }}
@@ -115,171 +98,24 @@ export default function Home() {
               <span className="w-[1.5px] h-3.5 bg-[#DEAA38] inline-block"></span>
               <span>One Platform. Many Services. Countless Memories.</span>
             </div>
-          </div>
- 
-          {/* White floating search panel overlapping the bottom boundary exactly (50% in, 50% out) */}
-          <div 
-            className="absolute bottom-0 left-1/2 w-[calc(100%-2rem)] max-w-5xl bg-white p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(3,19,14,0.15)] border border-slate-100 flex flex-col gap-4 z-20"
-            style={{ 
-              transform: 'translate(-50%, 50%)',
-              height: 'auto',
-              backgroundColor: '#ffffff',
-              marginTop: '0px',
-              paddingTop: '26px',
-              paddingBottom: '20px',
-              paddingRight: '20px',
-              paddingLeft: '23px',
-              marginBottom: '-110px',
-              color: '#302e2e'
-            }}
-          >
-            
-            {/* Row 1: Search Form Grid + Find Caterers Button */}
-            <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full">
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100/80 border border-slate-100 rounded-2xl md:border-0 md:rounded-none">
-                
-                {/* Field 1: Location */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-14">
-                  <MapPin size={18} className="text-[#032a1e] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Location
-                    </span>
-                    <div className="relative mt-1">
-                      <select 
-                        value={searchLocation} 
-                        onChange={(e) => setSearchLocation(e.target.value)}
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full appearance-none pr-4"
-                      >
-                        <option value="Hyderabad">Hyderabad</option>
-                      </select>
-                      <ChevronRight size={10} className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
 
-                {/* Field 2: Service */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-14">
-                  <ChefHat size={18} className="text-[#032a1e] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Service
-                    </span>
-                    <div className="relative mt-1">
-                      <select 
-                        value={searchOccasion} 
-                        onChange={(e) => setSearchOccasion(e.target.value)}
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full appearance-none pr-4"
-                      >
-                        <option value="">Catering Services</option>
-                        <option value="Wedding">Wedding Catering</option>
-                        <option value="Birthday">Birthday Party Catering</option>
-                        <option value="Corporate">Corporate Event Catering</option>
-                        <option value="Housewarming">House Warming Catering</option>
-                        <option value="Engagement">Engagement Catering</option>
-                      </select>
-                      <ChevronRight size={10} className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Field 3: Date */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-14">
-                  <Calendar size={18} className="text-[#032a1e] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Date
-                    </span>
-                    <div className="relative mt-1">
-                      <input 
-                        type="text"
-                        placeholder="Pick a Date"
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full placeholder-slate-800"
-                        onFocus={(e) => (e.target.type = 'date')}
-                        onBlur={(e) => { if(!e.target.value) e.target.type = 'text'; }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Field 4: Guests */}
-                <div className="relative flex items-center px-4 py-2 text-left gap-3 h-14">
-                  <Users size={18} className="text-[#032a1e] shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest leading-none">
-                      Guests
-                    </span>
-                    <div className="relative mt-1">
-                      <select 
-                        value={searchGuests} 
-                        onChange={(e) => setSearchGuests(e.target.value)}
-                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent cursor-pointer w-full appearance-none pr-4"
-                      >
-                        <option value="">Select Guests</option>
-                        <option value="Upto 50">Upto 50</option>
-                        <option value="50-100">50 - 100</option>
-                        <option value="100-200">100 - 200</option>
-                        <option value="200-500">200 - 500</option>
-                        <option value="500+">500+</option>
-                      </select>
-                      <ChevronRight size={10} className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Submit Button */}
-              <button 
-                type="submit"
-                className="bg-[#032a1e] hover:bg-[#05402e] text-white px-8 py-3.5 rounded-xl font-bold text-xs transition-all shadow-md flex items-center justify-center gap-2 whitespace-nowrap md:self-stretch cursor-pointer border border-[#DEAA38]/10"
+            {/* Premium CTA Button */}
+            <div className="pt-1">
+              <Link 
+                to="/explore" 
+                className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs tracking-wider transition-all shadow-md cursor-pointer border border-[#DEAA38]/20"
               >
-                <span>Explore Now</span>
-                <ArrowRight size={14} className="text-[#DEAA38]" />
-              </button>
-            </form>
-
-            {/* Row 2: Popular Searches Tags matching Image 1 */}
-            <div 
-              className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-3 border-t border-slate-100/80"
-              style={{ color: '#cb8383' }}
-            >
-              <span 
-                className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest whitespace-nowrap"
-                style={{ color: '#7e7e0b' }}
-              >
-                Popular Searches:
-              </span>
-              <div className="flex flex-wrap gap-2.5">
-                {[
-                  { label: 'Wedding Catering', val: 'Wedding' },
-                  { label: 'Birthday Party', val: 'Birthday' },
-                  { label: 'Corporate Events', val: 'Corporate' },
-                  { label: 'House Warming', val: 'Housewarming' },
-                  { label: 'Engagement', val: 'Engagement' }
-                ].map((chip) => (
-                  <button
-                    key={chip.label}
-                    type="button"
-                    onClick={() => {
-                      setSearchOccasion(chip.val);
-                      navigate(`/explore?search=${encodeURIComponent(chip.val)}`);
-                    }}
-                    className="px-4 py-1.5 bg-white hover:bg-[#DEAA38] hover:text-white text-slate-600 rounded-full text-[11px] font-medium transition-all cursor-pointer border border-slate-200/80 hover:border-[#DEAA38] shadow-2xs"
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
+                <span>Explore Caterers</span>
+                <ArrowRight size={14} />
+              </Link>
             </div>
-
           </div>
 
         </div>
       </div>
 
       {/* 2. SERVICES SECTION (Premium showcase of active catering and placeholder coming soon services) */}
-      <section className="pt-48 md:pt-32 pb-16 border-b border-slate-100" style={{ backgroundColor: '#f2faf4' }}>
+      <section className="py-16 md:py-20 border-b border-slate-100" style={{ backgroundColor: '#f2faf4' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           
           <div className="max-w-3xl mx-auto mb-12">

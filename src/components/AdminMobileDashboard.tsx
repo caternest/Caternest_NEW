@@ -5,9 +5,10 @@ import {
   Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, 
   CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, 
   Package, Image, Trash, Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut,
-  LayoutGrid, Plus, TrendingUp, Calendar
+  LayoutGrid, Plus, TrendingUp, Calendar, Award
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { DynamicBadgeIcon, getDesktopBadgeClasses } from '../lib/badgeUtils';
 
 interface AdminMobileDashboardProps {
   adminEmail: string;
@@ -18,6 +19,8 @@ interface AdminMobileDashboardProps {
   navigate: (path: string) => void;
   registrations: any[];
   activeRegistrations: any[];
+  catererBadgesMap?: Record<string, any[]>;
+  onManageBadges?: (caterer: any) => void;
   deletedRegistrations: any[];
   orders: any[];
   auditLogs: any[];
@@ -72,6 +75,8 @@ export default function AdminMobileDashboard({
   navigate,
   registrations,
   activeRegistrations,
+  catererBadgesMap = {},
+  onManageBadges,
   deletedRegistrations,
   orders,
   auditLogs,
@@ -583,6 +588,18 @@ export default function AdminMobileDashboard({
                       </span>
                     </div>
 
+                    {/* Active Platform Badges */}
+                    {catererBadgesMap[r.id] && catererBadgesMap[r.id].length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {catererBadgesMap[r.id].filter((b: any) => b.is_active).map((b: any) => (
+                          <span key={b.id || b.slug} className={cn("border px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5", getDesktopBadgeClasses(b.style_variant))}>
+                            <Award size={9} />
+                            {b.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs font-sans border-t border-b border-stone-100 py-3.5">
                       <div>
                         <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block mb-0.5">Service Type</span>
@@ -603,6 +620,15 @@ export default function AdminMobileDashboard({
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-1">
+                      {onManageBadges && (
+                        <button
+                          type="button"
+                          onClick={() => onManageBadges(r)}
+                          className="flex-1 min-w-[70px] py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[#A27008] font-bold text-center rounded-xl text-[11px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <Award size={11} className="text-[#DEAA38]" /> Badges
+                        </button>
+                      )}
                       <Link 
                         to={`/admin/caterers/view/${r.id}`}
                         className="flex-1 min-w-[70px] py-2.5 bg-[#FAF8F5] hover:bg-stone-50 border border-stone-200 text-stone-700 font-bold text-center rounded-xl text-[11px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
