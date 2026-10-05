@@ -9,6 +9,39 @@ export interface User {
   role: 'admin' | 'caterer' | 'customer';
   roles: string[]; // ['user', 'admin'] or ['user', 'partner', 'caterer'] or ['user']
   must_change_password?: boolean;
+  provider?: string;
+  isGoogleUser?: boolean;
+}
+
+/**
+ * Standard phone normalization helper handling:
+ * - spaces, hyphens, brackets
+ * - leading + (international format)
+ * - Indian 10-digit numbers (8885912274 -> +918885912274)
+ * - 11-digit numbers with leading 0 (08885912274 -> +918885912274)
+ * - 12-digit numbers with 91 prefix (918885912274 -> +918885912274)
+ */
+export function normalizePhone(rawPhone: string): string {
+  if (!rawPhone) return "";
+  const cleaned = rawPhone.trim().replace(/[\s\-\(\)]/g, "");
+  if (!cleaned) return "";
+
+  if (cleaned.startsWith("+")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("0") && cleaned.length === 11) {
+    return `+91${cleaned.substring(1)}`;
+  }
+  if (/^\d{10}$/.test(cleaned)) {
+    return `+91${cleaned}`;
+  }
+  if (/^91\d{10}$/.test(cleaned)) {
+    return `+${cleaned}`;
+  }
+  if (/^\d+$/.test(cleaned)) {
+    return `+${cleaned}`;
+  }
+  return cleaned;
 }
 
 interface AuthContextType {
@@ -165,6 +198,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         rolesArr = ['user', 'partner', 'caterer'];
       }
 
+      const isGoogleUser =
+        authUser.app_metadata?.provider === 'google' ||
+        authUser.identities?.some((i: any) => i.provider === 'google');
+
       const syncResult: User = {
         id: authUser.id,
         name: (activeProfile && activeProfile.full_name) || authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
@@ -172,7 +209,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: authUser.phone || authUser.user_metadata?.phone || '',
         role: roleStr,
         roles: rolesArr,
-        must_change_password: activeProfile ? !!activeProfile.must_change_password : false
+        must_change_password: activeProfile ? !!activeProfile.must_change_password : false,
+        provider: isGoogleUser ? 'google' : 'email',
+        isGoogleUser: !!isGoogleUser
       };
 
       console.log("[AUDIT LOG] syncProfile final mapped user state:", syncResult);
@@ -306,14 +345,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) throw new Error("Supabase is not configured.");
 
     const normalizedEmail = email.trim().toLowerCase();
+    const cleanPhone = normalizePhone(phone);
 
+    // 1. Pre-signup server validation for duplicate email or duplicate phone
+    try {
+      const valRes = await fetch('/api/auth/validate-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, phone: cleanPhone })
+      });
+      if (valRes.ok) {
+        const valData = await valRes.json();
+        if (!valData.available) {
+          return { data: null, error: { message: valData.error } };
+        }
+      }
+    } catch (valErr) {
+      console.warn("[SIGNUP VALIDATION] Pre-check network exception:", valErr);
+    }
+
+    // 2. Call Supabase Auth signUp
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
         data: {
           full_name: name,
-          phone,
+          phone: cleanPhone,
           role
         }
       }
@@ -321,16 +379,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) return { data: null, error };
 
+    // 3. Supabase duplicate email detection: when an account already exists,
+    // GoTrue returns error=null with an empty identities array.
+    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return {
+        data: null,
+        error: { message: "An account with this email already exists. Please log in instead." }
+      };
+    }
+
     // Explicit client-side profile creation as a secondary redundant layer to the triggers
     if (data && data.user) {
       try {
-        await supabase.from('profiles').upsert({
+        const profilePayload: any = {
           id: data.user.id,
           email: normalizedEmail,
           full_name: name,
           role,
           must_change_password: false
-        }, { onConflict: 'id' });
+        };
+        if (cleanPhone) {
+          profilePayload.phone = cleanPhone;
+        }
+        await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
       } catch (e) {
         console.warn("Redundant client-side profile creation skipped/handled in backend:", e);
       }

@@ -150,7 +150,7 @@ function AppInitializer() {
           <Route path="explore-caterers" element={<Explore />} />
           <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-          <Route path="change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+          <Route path="change-password" element={<ChangePassword />} />
           <Route path="about" element={<PlaceholderPage title="About Us" />} />
           <Route path="contact" element={<PlaceholderPage title="Contact Us" />} />
           <Route path="login" element={<AuthPage mode="login" />} />

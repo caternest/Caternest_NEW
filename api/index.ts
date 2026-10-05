@@ -1234,6 +1234,202 @@ app.post("/api/auth/reset-password-request", async (req: any, res: any) => {
   }
 });
 
+// Rate limiter map for availability checks: IP -> array of timestamps
+const signupValidationRateLimits = new Map<string, number[]>();
+
+// Pre-signup Duplicate Email and Phone Validation Endpoint
+app.post("/api/auth/validate-signup", async (req: any, res: any) => {
+  const { email, phone } = req.body || {};
+  const clientIp = (req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "global") as string;
+  const now = Date.now();
+
+  // Enforce rate limit: max 25 checks per minute per IP
+  const timestamps = signupValidationRateLimits.get(clientIp) || [];
+  const recentTimestamps = timestamps.filter((t: number) => now - t < 60000);
+  if (recentTimestamps.length >= 25) {
+    return res.status(429).json({
+      available: false,
+      error: "Too many registration attempts. Please wait a minute and try again.",
+    });
+  }
+  recentTimestamps.push(now);
+  signupValidationRateLimits.set(clientIp, recentTimestamps);
+
+  const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const cleanPhone = typeof phone === "string" ? normalizePhoneNumberE164(phone) : "";
+
+  if (!cleanEmail && !cleanPhone) {
+    return res.status(400).json({ error: "Email or phone is required for validation." });
+  }
+
+  const rawSupabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceKey) {
+    return res.status(500).json({ error: "Server authentication service unavailable." });
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  try {
+    // 1. Check Email uniqueness
+    if (cleanEmail) {
+      // Check auth.users via admin.listUsers
+      const { data: usersData, error: listErr } = await adminClient.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+
+      if (!listErr && usersData?.users) {
+        const emailMatch = usersData.users.find(
+          (u: any) => (u.email || "").toLowerCase().trim() === cleanEmail
+        );
+        if (emailMatch) {
+          return res.status(200).json({
+            available: false,
+            field: "email",
+            error: "An account with this email already exists. Please log in instead.",
+          });
+        }
+
+        // 2. Check Phone uniqueness across auth.users (phone column and metadata)
+        if (cleanPhone) {
+          const phoneMatch = usersData.users.find((u: any) => {
+            const rawUserPhone = u.phone || u.user_metadata?.phone;
+            if (!rawUserPhone) return false;
+            return normalizePhoneNumberE164(rawUserPhone) === cleanPhone;
+          });
+
+          if (phoneMatch) {
+            return res.status(200).json({
+              available: false,
+              field: "phone",
+              error: "An account with this phone number already exists.",
+            });
+          }
+        }
+      }
+
+      // Check profiles table for email
+      const { data: profileByEmail } = await adminClient
+        .from("profiles")
+        .select("id")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (profileByEmail) {
+        return res.status(200).json({
+          available: false,
+          field: "email",
+          error: "An account with this email already exists. Please log in instead.",
+        });
+      }
+    }
+
+    // Check caterer_registrations for phone if phone was provided
+    if (cleanPhone) {
+      const digitsOnly = cleanPhone.replace(/^\+/, "");
+      const { data: catererPhoneMatch } = await adminClient
+        .from("caterer_registrations")
+        .select("id")
+        .or(`phone.eq.${cleanPhone},phone.eq.${digitsOnly}`)
+        .maybeSingle();
+
+      if (catererPhoneMatch) {
+        return res.status(200).json({
+          available: false,
+          field: "phone",
+          error: "An account with this phone number already exists.",
+        });
+      }
+    }
+
+    return res.status(200).json({
+      available: true,
+      normalizedPhone: cleanPhone,
+    });
+  } catch (err: any) {
+    console.warn("[VALIDATE SIGNUP] Exception:", err?.message || err);
+    return res.status(500).json({ error: "Validation check failed." });
+  }
+});
+
+// Secure Account Deletion Endpoint (Authenticated User Only)
+app.post("/api/account/delete", async (req: any, res: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid authorization header." });
+  }
+
+  const token = authHeader.replace(/^Bearer\s+/, "").trim();
+  const rawSupabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").trim();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceKey) {
+    return res.status(503).json({ error: "Database service unavailable." });
+  }
+
+  const adminClient = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  try {
+    // 1. Verify user's Bearer token securely
+    const { data: { user }, error: userErr } = await adminClient.auth.getUser(token);
+    if (userErr || !user) {
+      return res.status(401).json({ error: "Invalid or expired session. Please log in again." });
+    }
+
+    const userId = user.id;
+    const userEmail = (user.email || "").toLowerCase().trim();
+
+    // 2. Strict Protection: Administrator accounts CANNOT self-delete
+    if (
+      userEmail === "meda1824@gmail.com" ||
+      userEmail === "admin@caternest.com" ||
+      user.user_metadata?.role === "admin"
+    ) {
+      return res.status(403).json({ error: "Administrator accounts cannot be deleted." });
+    }
+
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profile?.role === "admin") {
+      return res.status(403).json({ error: "Administrator accounts cannot be deleted." });
+    }
+
+    // 3. Delete user data across tables
+    try {
+      await adminClient.from("notifications").delete().eq("userId", userId);
+    } catch (e) {
+      // Table column may vary
+    }
+
+    await adminClient.from("profiles").delete().eq("id", userId);
+
+    // 4. Delete the user from Supabase Auth
+    const { error: deleteErr } = await adminClient.auth.admin.deleteUser(userId);
+    if (deleteErr) {
+      console.error(`[ACCOUNT DELETE] Failed to delete auth user ${userId}:`, deleteErr);
+      return res.status(500).json({ error: "Failed to delete user account from authentication service." });
+    }
+
+    console.log(`[ACCOUNT DELETE] Successfully deleted user ID ${userId} (${userEmail})`);
+    return res.status(200).json({ success: true, message: "Account deleted successfully." });
+  } catch (err: any) {
+    console.error("[ACCOUNT DELETE] Exception:", err);
+    return res.status(500).json({ error: err?.message || "Internal server error during account deletion." });
+  }
+});
+
 app.post("/api/admin/reset-password", async (req: any, res: any) => {
   const { catererId, newPassword } = req.body;
 

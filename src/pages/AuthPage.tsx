@@ -274,8 +274,17 @@ export default function AuthPage({ mode = 'login' }: { mode?: 'login' | 'signup'
         {/* Content body */}
         <div className="p-6 md:p-8">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-3 rounded-xl text-xs font-semibold text-center mb-4 font-poppins">
-              {error}
+            <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-3.5 rounded-xl text-xs font-semibold text-center mb-4 font-poppins flex flex-col items-center justify-center gap-1.5">
+              <span>{error}</span>
+              {error.toLowerCase().includes("log in instead") && (
+                <button
+                  type="button"
+                  onClick={() => { setError(''); setCurrentMode('login'); }}
+                  className="text-brand-green-900 underline font-bold hover:text-brand-green-800 cursor-pointer transition-colors"
+                >
+                  Click here to Log In
+                </button>
+              )}
             </div>
           )}
 
