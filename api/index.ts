@@ -513,7 +513,7 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
   }
 });
 
-app.post("/api/upload", upload.single("file"), async (req: any, res: any) => {
+app.post("/api/upload", upload.single("file") as any, async (req: any, res: any) => {
   const bucket = req.body.bucket || "branding-images";
   const filePath = req.body.filePath;
   const fileType = req.body.fileType || "image/jpeg";
@@ -2385,7 +2385,7 @@ const parseMenuHandler = async (req: any, res: any) => {
 
     // Lazy initialization of active GoogleGenAI Client
     const aiClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       httpOptions: {
         headers: {
           "User-Agent": "aistudio-build",

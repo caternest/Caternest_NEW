@@ -1627,6 +1627,66 @@ export default function Explore() {
         </div>
       </div>
 
+      {/* AI Menu Builder Primary Discovery Highlight */}
+      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-6 pb-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-3xl p-6 sm:p-8 lg:p-9 border border-[#DEAA38]/30 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 group">
+            
+            {/* Background luxury glow and decorative motif */}
+            <div className="absolute right-[-40px] bottom-[-40px] w-64 h-64 bg-[#DEAA38]/12 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute left-1/4 top-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Left Content */}
+            <div className="relative z-10 max-w-2xl text-left">
+              <div className="inline-flex items-center gap-1.5 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-3">
+                <Sparkles size={13} className="text-[#DEAA38]" />
+                <span>Featured Smart Tool</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-white tracking-tight mb-2">
+                AI Menu <span className="text-[#DEAA38]">Builder</span>
+              </h2>
+              <p className="text-white/85 text-xs sm:text-[13.5px] font-sans font-normal leading-relaxed mb-4 max-w-xl">
+                Create the perfect custom menu for your event with intelligent AI recommendations. Tailored specifically to your guest count, occasion, and cuisine preferences.
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-[#E0D4BA] font-medium">
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle2 size={13} className="text-[#DEAA38]" />
+                  <span>Smart Dish Pairings</span>
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle2 size={13} className="text-[#DEAA38]" />
+                  <span>Pricing Optimization</span>
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle2 size={13} className="text-[#DEAA38]" />
+                  <span>100% Customizable</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Right Action Button */}
+            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-2.5 justify-center items-center md:items-end">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('explore-marketplace');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto px-7 py-3.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 cursor-pointer group/btn"
+              >
+                <span>Try Now</span>
+                <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+              </button>
+              <span className="text-[10px] text-white/70 tracking-wide text-center">
+                Explore caterers & customize packages
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* 2. Explore Premium Caterers Section - 1:1 Design Layout with Left Sidebar & Horizontal Cards */}
       <section id="explore-marketplace" className="py-14 bg-white border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -2096,12 +2156,10 @@ export default function Explore() {
       {/* 5. Trust Badges row - Compact padding, perfect alignment */}
       <section className="py-8 bg-slate-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { title: 'Verified & Trusted', desc: 'Only verified & top-rated caterers', icon: ShieldCheck },
               { title: 'Transparent Pricing', desc: 'No hidden charges, clear & honest pricing', icon: Tag },
-              { title: 'AI Menu Builder', desc: 'Custom menu recommended by AI', icon: Sparkles },
-              { title: 'Hygiene Certified', desc: 'Food safety & hygiene is our priority', icon: Award },
               { title: 'Instant Quotes', desc: 'Get quotes in just a few minutes', icon: Smartphone },
               { title: '24x7 Support', desc: "We're here to help you anytime", icon: ChefHat }
             ].map((badge, idx) => (
@@ -2151,7 +2209,7 @@ export default function Explore() {
               </button>
             </div>
 
-            {/* Block 2: Download PlanMyChoice App Promo */}
+            {/* Block 2: Download PlanMyChoice App Promo (Coming Soon) */}
             <div className="bg-slate-50 border border-slate-200/80 text-slate-900 rounded-[2rem] p-7 flex flex-col justify-between h-[280px] relative overflow-hidden group shadow-md">
               <div className="absolute right-[-10px] bottom-[-10px] w-36 h-40 opacity-30 group-hover:opacity-40 transition-opacity flex items-end">
                 <div className="border-[4px] border-slate-950 rounded-xl w-full h-32 bg-slate-900 overflow-hidden relative shadow-sm">
@@ -2160,23 +2218,19 @@ export default function Explore() {
                 </div>
               </div>
               <div>
+                <span className="bg-[#DEAA38]/15 text-[#886C1D] border border-[#DEAA38]/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1 mb-2">
+                  <Clock size={10} className="text-[#DEAA38]" /> Coming Soon
+                </span>
                 <h3 className="text-xl font-display font-extrabold tracking-tight mb-1 text-slate-900">Download App</h3>
-                <p className="text-slate-400 text-[11px] font-semibold leading-relaxed max-w-[190px] mb-2">Book premium caterers and track deliveries on the go.</p>
-                <div className="flex gap-1.5">
-                  <div className="w-20 py-1 bg-slate-950 rounded border border-slate-800 flex items-center justify-center text-white font-bold text-[8px]">Google Play</div>
-                  <div className="w-20 py-1 bg-slate-950 rounded border border-slate-800 flex items-center justify-center text-white font-bold text-[8px]">App Store</div>
-                </div>
+                <p className="text-slate-500 text-[11px] font-medium leading-relaxed max-w-[200px]">
+                  Book premium caterers, customize dishes, and track your events on the go.
+                </p>
               </div>
               
-              {/* QR Code section */}
-              <div className="self-start flex items-center gap-2.5">
-                <div className="w-10 h-10 bg-white border border-slate-200 p-1 rounded flex items-center justify-center">
-                  <div className="w-full h-full bg-slate-200 border border-dashed border-slate-400" />
-                </div>
-                <div>
-                  <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Scan to download</p>
-                  <p className="text-[10px] font-extrabold text-slate-700 leading-none">Get 10% Off First Order</p>
-                </div>
+              {/* Coming Soon status box */}
+              <div className="self-start flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                <Smartphone size={16} className="text-[#DEAA38]" />
+                <span className="text-[11px] font-bold text-slate-700">iOS & Android App Launching Soon</span>
               </div>
             </div>
 

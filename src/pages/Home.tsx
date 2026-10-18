@@ -114,6 +114,62 @@ export default function Home() {
         </div>
       </div>
 
+      {/* AI Menu Builder Primary Discovery Highlight */}
+      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-6 pb-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-3xl p-6 sm:p-8 lg:p-9 border border-[#DEAA38]/30 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 group">
+            
+            {/* Background luxury glow and decorative motif */}
+            <div className="absolute right-[-40px] bottom-[-40px] w-64 h-64 bg-[#DEAA38]/12 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute left-1/4 top-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Left Content */}
+            <div className="relative z-10 max-w-2xl text-left">
+              <div className="inline-flex items-center gap-1.5 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-3">
+                <Sparkles size={13} className="text-[#DEAA38]" />
+                <span>Featured Smart Tool</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-white tracking-tight mb-2">
+                AI Menu <span className="text-[#DEAA38]">Builder</span>
+              </h2>
+              <p className="text-white/85 text-xs sm:text-[13.5px] font-sans font-normal leading-relaxed mb-4 max-w-xl">
+                Create the perfect custom menu for your event with intelligent AI recommendations. Tailored specifically to your guest count, occasion, and cuisine preferences.
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-[#E0D4BA] font-medium">
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle size={13} className="text-[#DEAA38]" />
+                  <span>Smart Dish Pairings</span>
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle size={13} className="text-[#DEAA38]" />
+                  <span>Pricing Optimization</span>
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle size={13} className="text-[#DEAA38]" />
+                  <span>100% Customizable</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Right Action Button */}
+            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-2.5 justify-center items-center md:items-end">
+              <Link
+                to="/explore"
+                className="w-full sm:w-auto px-7 py-3.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 cursor-pointer group/btn"
+              >
+                <span>Try Now</span>
+                <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+              </Link>
+              <span className="text-[10px] text-white/70 tracking-wide text-center">
+                Explore caterers & customize packages
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* 2. SERVICES SECTION (Premium showcase of active catering and placeholder coming soon services) */}
       <section className="py-16 md:py-20 border-b border-slate-100" style={{ backgroundColor: '#f2faf4' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -306,7 +362,7 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">Verified Professionals</h3>
               <p className="text-slate-400 text-xs sm:text-[13px] leading-relaxed font-medium">
-                Every vendor listed goes through a detailed background, legal, and quality audit including food hygiene standards.
+                Every vendor listed goes through a detailed background, legal, and quality audit.
               </p>
             </div>
 
@@ -365,6 +421,28 @@ export default function Home() {
               </p>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Badges row */}
+      <section className="py-8 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { title: 'Verified & Trusted', desc: 'Only verified & top-rated caterers', icon: ShieldCheck },
+              { title: 'Transparent Pricing', desc: 'No hidden charges, clear & honest pricing', icon: Tag },
+              { title: 'Instant Quotes', desc: 'Get quotes in just a few minutes', icon: Smartphone },
+              { title: '24x7 Support', desc: "We're here to help you anytime", icon: ChefHat }
+            ].map((badge, idx) => (
+              <div key={idx} className="flex flex-col items-center text-center p-3.5 bg-white rounded-xl border border-slate-100/80 hover:shadow-sm transition-shadow group">
+                <div className="w-10 h-10 rounded-full bg-brand-gold-500/10 text-[#DEAA38] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                  <badge.icon size={18} className="stroke-[1.5]" />
+                </div>
+                <h5 className="text-[11px] font-black text-slate-800 leading-tight mb-0.5">{badge.title}</h5>
+                <p className="text-[9px] text-slate-400 font-semibold leading-tight">{badge.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -432,7 +510,7 @@ export default function Home() {
               </div>
               <h3 className="text-base font-bold text-slate-950 mt-4 mb-1.5 uppercase tracking-wide text-[#DEAA38]">Celebrate</h3>
               <p className="text-slate-400 text-xs font-semibold leading-relaxed max-w-[180px]">
-                Relax as our verified experts execute your customized menu and services with immaculate hygiene.
+                Relax as our verified experts execute your customized menu and services with immaculate excellence.
               </p>
             </div>
 
@@ -494,10 +572,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 6. PARTNER PROMOTION SECTION (Premium promotional callouts for business signups) */}
+      {/* 6. PARTNER PROMOTION & APP DOWNLOAD SECTION */}
       <section className="py-16" style={{ backgroundColor: '#d6f4e6' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Promo Card 1: Become Catering Partner */}
             <div className="bg-gradient-to-br from-[#051410] to-[#0f2922] text-white rounded-[2.5rem] p-8 md:p-10 flex flex-col justify-between min-h-[300px] relative overflow-hidden group border border-slate-800 shadow-xl">
@@ -528,7 +606,34 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Promo Card 2: Become Service Partner */}
+            {/* Promo Card 2: Download App (Coming Soon) */}
+            <div className="bg-slate-50 border border-slate-200/80 text-slate-900 rounded-[2.5rem] p-8 md:p-10 flex flex-col justify-between min-h-[300px] relative overflow-hidden group shadow-xl">
+              <div className="absolute right-[-10px] bottom-[-10px] w-36 h-40 opacity-30 group-hover:opacity-40 transition-opacity flex items-end pointer-events-none">
+                <div className="border-[4px] border-slate-950 rounded-xl w-full h-32 bg-slate-900 overflow-hidden relative shadow-sm">
+                  <div className="bg-[#DEAA38] h-1.5 w-10 mx-auto mt-1 rounded-full" />
+                  <div className="p-2 text-[6px] text-white font-black">PlanMyChoice App</div>
+                </div>
+              </div>
+              <div className="relative z-10 max-w-sm">
+                <span className="bg-[#DEAA38]/15 text-[#886C1D] border border-[#DEAA38]/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1 mb-3">
+                  <Clock size={11} className="text-[#DEAA38]" /> Coming Soon
+                </span>
+                <h3 className="text-2xl font-display font-extrabold tracking-tight mb-2.5 text-slate-900">
+                  Download App
+                </h3>
+                <p className="text-slate-500 text-xs sm:text-[13px] font-medium leading-relaxed mb-6">
+                  Book premium caterers, customize dishes, and track your events seamlessly on the go.
+                </p>
+              </div>
+              
+              {/* Coming Soon status box - No fake store buttons */}
+              <div className="relative z-10 self-start flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                <Smartphone size={16} className="text-[#DEAA38]" />
+                <span className="text-xs font-bold text-slate-700">iOS & Android App Launching Soon</span>
+              </div>
+            </div>
+
+            {/* Promo Card 3: Become Service Partner */}
             <div className="bg-gradient-to-br from-[#0f2922] to-[#051410] text-white rounded-[2.5rem] p-8 md:p-10 flex flex-col justify-between min-h-[300px] relative overflow-hidden group border border-slate-800 shadow-xl">
               <div className="absolute right-[-20px] bottom-[-20px] w-48 h-48 opacity-15 group-hover:opacity-25 transition-opacity pointer-events-none">
                 <img 

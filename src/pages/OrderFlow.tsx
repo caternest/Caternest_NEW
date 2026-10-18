@@ -26,6 +26,11 @@ import {
   ShieldCheck,
   Truck,
   Smile,
+  Trash2,
+  Lock,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { DEMO_CATERERS } from "../data";
 import { toast } from "../components/Toast";
@@ -346,6 +351,42 @@ const isItemNonVeg = (itemName: string, categoryName: string = ""): boolean => {
   );
 };
 
+const getItemPrice = (itemName: string, categoryName: string = ""): number => {
+  const lower = itemName.toLowerCase().trim();
+  // Exact prices matching reference image:
+  if (lower.includes("fresh lime")) return 50;
+  if (lower.includes("guava punch")) return 60;
+  if (lower.includes("virgin mojito")) return 70;
+  if (lower.includes("sweet lassi") || lower.includes("salted lassi")) return 50;
+  if (lower.includes("mango juice")) return 60;
+  if (lower.includes("orange juice")) return 60;
+  if (lower.includes("watermelon")) return 50;
+  if (lower.includes("masala chaas") || lower.includes("chaas") || lower.includes("butter milk")) return 40;
+  if (lower.includes("pineapple")) return 60;
+  if (lower.includes("fruit punch") || lower.includes("rose milk") || lower.includes("badam milk")) return 60;
+  if (lower.includes("blue lagoon") || lower.includes("smoothie") || lower.includes("kiwi")) return 70;
+  if (lower.includes("jal jeera") || lower.includes("aam panna")) return 50;
+  if (lower.includes("cold coffee") || lower.includes("mint lemon")) return 50;
+  if (lower.includes("mocktail")) return 70;
+
+  // Curries, Breads & Rice, Desserts:
+  if (lower.includes("biryani") || lower.includes("mutton") || lower.includes("prawn")) return 120;
+  if (lower.includes("chicken") || lower.includes("fish")) return 90;
+  if (lower.includes("paneer") || lower.includes("tikka") || lower.includes("kebab") || lower.includes("kabab")) return 80;
+  if (lower.includes("kofta") || lower.includes("korma") || lower.includes("curry") || lower.includes("masala")) return 70;
+  if (lower.includes("ice cream") || lower.includes("gulab") || lower.includes("halwa") || lower.includes("sweet") || lower.includes("dessert")) return 60;
+  if (lower.includes("naan") || lower.includes("roti") || lower.includes("kulcha") || lower.includes("bread")) return 40;
+  if (lower.includes("dal") || lower.includes("rice") || lower.includes("sambar") || lower.includes("raita") || lower.includes("salad")) return 40;
+
+  let hash = 0;
+  for (let i = 0; i < itemName.length; i++) {
+    hash = (hash << 5) - hash + itemName.charCodeAt(i);
+    hash |= 0;
+  }
+  const tiers = [40, 50, 60, 70, 80];
+  return tiers[Math.abs(hash) % tiers.length];
+};
+
 const getFallbackPackage = (pkgId: string, startingPrice: number) => {
   const basePrice = startingPrice || 350;
 
@@ -354,7 +395,17 @@ const getFallbackPackage = (pkgId: string, startingPrice: number) => {
     {
       categoryName: "Welcome Drinks",
       selectionRule: "Select Any 1 Item",
-      items: ["Fresh Lime Soda", "Guava Punch", "Virgin Mojito", "Sweet Lassi"],
+      items: [
+        "Fresh Lime Soda",
+        "Guava Punch",
+        "Virgin Mojito",
+        "Sweet Lassi",
+        "Mango Juice",
+        "Orange Juice",
+        "Watermelon Juice",
+        "Masala Chaas",
+        "Pineapple Juice",
+      ],
     },
     {
       categoryName: "Starters (Veg)",
@@ -898,6 +949,51 @@ export default function OrderFlow() {
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
   const [guests, setGuests] = useState(100);
+  const [guestInputVal, setGuestInputVal] = useState("100");
+  const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
+  const [categorySearchQuery, setCategorySearchQuery] = useState("");
+
+  useEffect(() => {
+    setGuestInputVal(String(guests));
+  }, [guests]);
+
+  const minGuests = selectedPackage?.minimumGuests || 50;
+  const maxGuests = selectedPackage?.maximumGuests || 5000;
+
+  const handleGuestSubmit = (valStr: string) => {
+    const trimmed = valStr.trim();
+    if (!trimmed) {
+      setGuestInputVal(String(guests));
+      return;
+    }
+    const parsed = parseInt(trimmed, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      setGuestInputVal(String(guests));
+      toast("Please enter a valid positive number of guests", "error");
+      return;
+    }
+    if (parsed < minGuests) {
+      toast(`Minimum requirement for this package is ${minGuests} guests`, "error");
+    } else if (parsed > maxGuests) {
+      toast(`Maximum guest limit is ${maxGuests} guests`, "error");
+    }
+    const validCount = Math.max(minGuests, Math.min(maxGuests, parsed));
+    setGuests(validCount);
+    setGuestInputVal(String(validCount));
+  };
+
+  const decrementGuests = () => {
+    const newCount = Math.max(minGuests, guests - 10);
+    setGuests(newCount);
+    setGuestInputVal(String(newCount));
+  };
+
+  const incrementGuests = () => {
+    const newCount = Math.min(maxGuests, guests + 10);
+    setGuests(newCount);
+    setGuestInputVal(String(newCount));
+  };
+
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>(
     {},
   );
@@ -1209,7 +1305,7 @@ export default function OrderFlow() {
       platformFeePerPlate: platformFeePerPlate,
       pricePerPlate: currentPerPlatePrice,
       platformFee: platformFee,
-      status: "Submitted",
+      status: "Pending Approval",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -1237,7 +1333,7 @@ export default function OrderFlow() {
       storeNotification(
         newOrder.id,
         "New Booking Submitted 📨",
-        `Your booking request for ${newOrder.catererName} on ${newOrder.eventDate} has been submitted successfully. Wait for review!`,
+        `Your booking request for ${newOrder.catererName} on ${newOrder.eventDate} has been submitted and is waiting for caterer approval.`,
         "customer",
         newOrder.catererId,
       );
@@ -1270,9 +1366,7 @@ export default function OrderFlow() {
 
     console.log("[TRACE_LOG #9] Before navigate('/orders')");
     toast(
-      isQuote
-        ? "Quotation requested successfully!"
-        : "Booking requested successfully!",
+      "Your booking request has been submitted and is waiting for caterer approval.",
       "success",
     );
     navigate("/orders");
@@ -1299,6 +1393,17 @@ export default function OrderFlow() {
   const [activeCategory, setActiveCategory] = useState(menuCategories[0] || "");
   const [highlightIncomplete, setHighlightIncomplete] = useState(false);
   const [validationTriggered, setValidationTriggered] = useState(false);
+  const categoryTabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  useEffect(() => {
+    if (activeCategory && categoryTabRefs.current[activeCategory]) {
+      categoryTabRefs.current[activeCategory]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [activeCategory]);
 
   useEffect(() => {
     if (highlightIncomplete) {
@@ -1349,6 +1454,30 @@ export default function OrderFlow() {
     });
   };
 
+  const handleQuantityChange = (itemName: string, catName: string, newQty: number) => {
+    if (newQty <= 0) {
+      if (selectedItems[itemName]) {
+        toggleItem(itemName, catName);
+      }
+      setItemQuantities((prev) => ({ ...prev, [itemName]: 0 }));
+    } else {
+      if (!selectedItems[itemName]) {
+        toggleItem(itemName, catName);
+      }
+      setItemQuantities((prev) => ({ ...prev, [itemName]: newQty }));
+    }
+  };
+
+  const toggleItemWithQty = (itemName: string, catName: string) => {
+    const isCurrentlySelected = !!selectedItems[itemName];
+    toggleItem(itemName, catName);
+    if (!isCurrentlySelected) {
+      setItemQuantities((prev) => ({ ...prev, [itemName]: 1 }));
+    } else {
+      setItemQuantities((prev) => ({ ...prev, [itemName]: 0 }));
+    }
+  };
+
   const isCategoryComplete = (catName: string) => {
     if (!selectedPackage) return true;
     const cat = selectedPackage.categories?.find(
@@ -1385,14 +1514,16 @@ export default function OrderFlow() {
 
   const navigateToCategory = (catName: string) => {
     setActiveCategory(catName);
-    const middlePanel = document.getElementById("middle-dishes-panel");
-    if (middlePanel) {
-      middlePanel.scrollIntoView({ behavior: "smooth", block: "center" });
+    const categoryContent = document.getElementById("active-category-content");
+    if (categoryContent) {
+      categoryContent.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
   const allCategoriesComplete =
     menuCategories.length > 0 && menuCategories.every(isCategoryComplete);
+  const totalCategoriesCount = menuCategories.length;
+  const doneCategoriesCount = menuCategories.filter(isCategoryComplete).length;
   const selectedItemsCount = Object.keys(selectedItems).filter(
     (k) => selectedItems[k],
   ).length;
@@ -1420,6 +1551,8 @@ export default function OrderFlow() {
     return selectedPackage?.pricePerPlate || caterer?.startingPrice || 350;
   })();
 
+  const platformFee = guests * platformFeePerPlate;
+
   if (!caterer)
     return (
       <div className="min-h-screen pt-32 pb-24 text-center">Loading...</div>
@@ -1433,112 +1566,174 @@ export default function OrderFlow() {
     >
       {/* Build Header */}
       {viewMode === "custom" ? (
-        <div className="bg-[#FAF6EE] border-b border-[#D5A859]/20 py-2.5 sm:py-4 shadow-[0_4px_25px_rgba(213,168,89,0.03)] z-20 relative select-none">
-          <div className="max-w-full lg:max-w-full xl:max-w-[1240px] 2xl:max-w-[1380px] mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div className="bg-[#FAF7F2] border-b border-[#D6B15E]/30 sticky top-[72px] md:top-[80px] z-20 select-none shadow-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 flex items-center justify-between gap-4">
             {/* Left Controls & Title Branding */}
-            <div className="flex items-center gap-2.5 sm:gap-4.5 min-w-0">
-              {/* Back / Menu Hamburger button */}
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              {/* Back button */}
               <button
+                type="button"
                 onClick={() => setViewMode("package_detail")}
-                className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border border-[#7A7369]/25 hover:border-[#D5A859] hover:bg-white text-[#0B1F17] transition-all bg-transparent cursor-pointer group shadow-sm shrink-0"
-                title="Back to Package Details"
+                className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-[#FFFEFA] border border-[#D6B15E]/50 hover:border-[#D6B15E] text-[#0B2D23] rounded-full font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0"
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="transition-transform group-hover:scale-105 w-4.5 h-4.5 sm:w-5 sm:h-5"
-                >
-                  <line x1="4" y1="12" x2="20" y2="12"></line>
-                  <line x1="4" y1="6" x2="20" y2="6"></line>
-                  <line x1="4" y1="18" x2="20" y2="18"></line>
-                </svg>
+                <ArrowLeft size={16} className="text-[#0B2D23]" />
+                <span>Back</span>
               </button>
 
-              {/* Brand Title with beautiful Gold Ornament */}
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                {/* Elegant Gold abstract ornament SVG */}
-                <svg
-                  viewBox="0 0 100 100"
-                  className="w-6 h-6 sm:w-8 sm:h-8 text-[#D5A859] shrink-0 animate-pulse"
-                  fill="currentColor"
-                >
-                  <path d="M50 15 C45 35 35 45 15 50 C35 55 45 65 50 85 C55 65 65 55 85 50 C65 45 55 35 50 15 Z" />
-                  <circle cx="50" cy="50" r="6" fill="#0B1F17" />
-                </svg>
+              {/* Brand Title */}
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div className="flex flex-col text-left min-w-0">
-                  <h1 className="font-display font-black text-base sm:text-xl lg:text-2xl tracking-tight text-[#0B1F17] uppercase leading-tight line-clamp-2 max-h-[2.4em] overflow-hidden break-words">
-                    {caterer.name || "Veg Silver"}
+                  <h1 className="font-serif font-bold text-lg sm:text-xl lg:text-2xl tracking-tight text-[#0B2D23] uppercase leading-tight truncate">
+                    {caterer.name || "ELITE CATERING"}
                   </h1>
-                  <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-[#7A7369] font-sans leading-none mt-1 sm:mt-1.5 block truncate">
-                    The Gourmet Experience
+                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-[#B8860B] font-sans leading-none mt-1 truncate">
+                    {caterer.tagline || caterer.location || "Curated Catering Menu"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Right Guests Selector */}
-            <div className="bg-white/90 border border-[#D5A859]/30 rounded-xl sm:rounded-2xl flex items-center px-1 py-1 sm:px-2 sm:py-1.5 shadow-[0_4px_20px_rgba(213,168,89,0.06)] shrink-0 select-none">
-              <button
-                onClick={() =>
-                  setGuests(
-                    Math.max(selectedPackage.minimumGuests || 50, guests - 10),
-                  )
-                }
-                className="w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent border border-[#D5A859]/20 hover:border-[#D5A859]/60 hover:bg-[#FFF8EC] text-[#0B1F17] rounded-[10px] sm:rounded-xl font-bold transition-all shrink-0 cursor-pointer"
-              >
-                <Minus size={11} sm:size={13} strokeWidth={3} />
-              </button>
-              <div className="w-[45px] sm:w-[88px] text-center flex flex-col justify-center select-none shrink-0 px-0.5 sm:px-2.5">
-                <span className="font-sans text-[13px] sm:text-[18px] font-black text-[#0B1F17] leading-none">
-                  {guests}
-                </span>
-                <span className="text-[7.5px] sm:text-[8.5px] text-[#7A7369] tracking-tight sm:tracking-widest font-black uppercase leading-none mt-1">
-                  Guests
-                </span>
+            {/* Right Guests Selector with Editable Numeric Input */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="flex items-center bg-[#FFFEFA] border border-[#D6B15E]/50 rounded-xl overflow-hidden shadow-2xs">
+                <button
+                  type="button"
+                  onClick={decrementGuests}
+                  className="w-8 sm:w-10 h-8 sm:h-10 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-r border-[#D6B15E]/40 transition-colors font-bold text-base sm:text-lg cursor-pointer"
+                  title="Decrease Guests"
+                >
+                  −
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={guestInputVal}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    setGuestInputVal(val);
+                  }}
+                  onBlur={() => handleGuestSubmit(guestInputVal)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className="w-12 sm:w-18 h-8 sm:h-10 text-center font-bold text-sm sm:text-base text-[#0B2D23] bg-[#FFFEFA] outline-none focus:bg-[#FFFDF7] focus:ring-1 focus:ring-[#D6B15E]/50"
+                  title="Click to type guest count directly"
+                />
+                <button
+                  type="button"
+                  onClick={incrementGuests}
+                  className="w-8 sm:w-10 h-8 sm:h-10 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-l border-[#D6B15E]/40 transition-colors font-bold text-base sm:text-lg cursor-pointer"
+                  title="Increase Guests"
+                >
+                  +
+                </button>
               </div>
-              <button
-                onClick={() => setGuests(guests + 10)}
-                className="w-7 h-7 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent border border-[#D5A859]/20 hover:border-[#D5A859]/60 hover:bg-[#FFF8EC] text-[#0B1F17] rounded-[10px] sm:rounded-xl font-bold transition-all shrink-0 cursor-pointer"
-              >
-                <Plus size={11} sm:size={13} strokeWidth={3} />
-              </button>
+              <span className="font-bold text-xs sm:text-sm text-[#0B2D23] hidden xs:inline">
+                Guests
+              </span>
+            </div>
+          </div>
+
+          {/* Horizontal Category Tabs Row */}
+          <div className="border-t border-[#D6B15E]/30 bg-[#FFFEFA]/95 backdrop-blur-xs">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+              <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+                {menuCategories.map((cat: string) => {
+                  const catData = selectedPackage?.categories?.find(
+                    (c: any) => c.categoryName === cat,
+                  );
+                  const catItems = catData?.items || [];
+                  const selectedCount = catItems.filter(
+                    (i: string) => selectedItems[i],
+                  ).length;
+                  const match = catData?.selectionRule?.match(/\d+/);
+                  const catLimit = match ? parseInt(match[0], 10) : 0;
+                  const isDone = selectedCount >= catLimit;
+                  const isActive = activeCategory === cat;
+                  const isHighlighted = highlightIncomplete && !isDone;
+
+                  return (
+                    <button
+                      key={cat}
+                      ref={(el) => (categoryTabRefs.current[cat] = el)}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={cn(
+                        "px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-[13.5px] sm:text-[14px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-2 border select-none shrink-0",
+                        isActive
+                          ? "bg-[#0B2D23] text-white border-[#D6B15E]/80 shadow-[0_2px_10px_rgba(11,45,35,0.2)]"
+                          : "bg-[#FFFEFA] text-[#0B2D23] hover:text-[#061D16] hover:bg-[#FAF6EE] border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_8px_rgba(214,177,94,0.06)]",
+                        isHighlighted && "border-red-500 bg-red-50 text-red-700 animate-pulse",
+                      )}
+                    >
+                      <span>{cat}</span>
+                      {catLimit > 0 ? (
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                            isActive
+                              ? isDone
+                                ? "bg-[#D6B15E]/30 text-[#FDF3D6] border border-[#D6B15E]/40"
+                                : "bg-white/15 text-white/90"
+                              : isDone
+                                ? "bg-[#E8F5EE] text-[#0B2D23] border border-[#A3D9BA]/60"
+                                : "bg-[#FAF6EE] text-[#7A6A4E] border border-[#D6B15E]/30",
+                          )}
+                        >
+                          {selectedCount}/{catLimit}
+                        </span>
+                      ) : selectedCount > 0 ? (
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                            isActive
+                              ? "bg-white/15 text-white"
+                              : "bg-[#FAF6EE] text-[#7A6A4E] border border-[#D6B15E]/30",
+                          )}
+                        >
+                          {selectedCount}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
       ) : viewMode === "package_detail" ? (
-        <div className="bg-transparent py-5 sm:py-6 z-20 relative select-none">
-          <div className="max-w-[620px] mx-auto px-4.5 sm:px-6 flex flex-col gap-4.5">
+        <div className="bg-transparent py-3 sm:py-4 z-20 relative select-none">
+          <div className="max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-2.5 sm:gap-3">
             {/* Breadcrumbs */}
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-stone-500 font-sans tracking-wide">
               <Link to="/" className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600">Home</Link>
               <ChevronRight size={12} className="text-stone-400 shrink-0" />
               <Link to="/explore" className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600">Explore Caterers</Link>
               <ChevronRight size={12} className="text-stone-400 shrink-0" />
-              <Link to={`/caterer/${id}`} className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600 truncate max-w-[140px] sm:max-w-[180px]">{caterer?.name}</Link>
+              <Link to={`/caterer/${id}`} className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600 truncate max-w-[140px] sm:max-w-[220px]">{caterer?.name}</Link>
               <ChevronRight size={12} className="text-stone-400 shrink-0" />
-              <span className="text-[#BB9C4A] font-extrabold truncate max-w-[140px] sm:max-w-[180px]">{selectedPackage?.packageName || selectedPackage?.name || "Gold Package"}</span>
+              <span className="text-[#BB9C4A] font-extrabold truncate max-w-[160px] sm:max-w-[240px]">{selectedPackage?.packageName || selectedPackage?.name || "Gold Package"}</span>
             </div>
 
-            <div className="flex items-center justify-start gap-3 sm:gap-4">
+            <div className="flex items-center justify-start gap-3 sm:gap-3.5">
               {/* Elegant Back Arrow button */}
               <button
                 onClick={() => {
                   navigate(`/caterer/${id}`, { state: { fromOrder: true, selectedPackageId: selectedPackage?.id, guests: guests } });
                 }}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#D5A859]/12 text-[#C2BB8B] active:scale-95 transition-all bg-transparent cursor-pointer shrink-0"
+                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-[#D5A859]/15 text-[#C2BB8B] active:scale-95 transition-all bg-white/80 border border-[#DECC9C]/60 hover:border-[#BB9C4A] cursor-pointer shrink-0 shadow-xs"
                 title="Back to Caterer"
               >
                 <svg
-                  width="24"
-                  height="24"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="#BB9C4A"
-                  strokeWidth="2.8"
+                  strokeWidth="2.5"
                   className="transition-transform hover:-translate-x-0.5"
                 >
                   <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -1546,12 +1741,12 @@ export default function OrderFlow() {
                 </svg>
               </button>
 
-              {/* Brand Title with elegant styling to match template */}
+              {/* Brand Title with elegant styling and balanced scale */}
               <div className="flex flex-col text-left">
-                <h1 className="font-display font-bold text-[36px] sm:text-[56px] tracking-[-1px] text-[#0B1F17] uppercase leading-none">
+                <h1 className="font-display font-bold text-2xl sm:text-3xl lg:text-4xl tracking-tight text-[#0B1F17] uppercase leading-tight">
                   {selectedPackage?.packageName || "Veg Silver"}
                 </h1>
-                <span className="text-[9.5px] sm:text-[11px] font-sans font-semibold text-[#B8860B] uppercase tracking-[0.25em] mt-3">
+                <span className="text-[10px] sm:text-xs font-sans font-semibold text-[#B8860B] uppercase tracking-[0.2em] mt-1">
                   {caterer.name} • {caterer.location}
                 </span>
               </div>
@@ -1882,16 +2077,16 @@ export default function OrderFlow() {
       )}
 
       {viewMode === "package_detail" && selectedPackage && (
-        <div className="flex-1 w-full max-w-full md:max-w-[580px] mx-auto px-2 xs:px-3 sm:px-6 py-2 sm:py-8 relative box-border">
+        <div className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pb-8 pt-1 relative box-border">
           {/* Outer Luxury 2-layer Bezel Frame */}
-          <div className="bg-transparent md:bg-[#FAF5EA] rounded-[20px] sm:rounded-[38px] p-0 md:p-1.5 shadow-none md:shadow-[0_25px_60px_rgba(21,21,21,0.12)] border-0 md:border-[2.8px] border-[#BB9C4A] relative overflow-hidden w-full max-w-full box-border">
-            <div className="bg-[#FFFDF9] rounded-2xl sm:rounded-[30px] border border-slate-200 md:border-[#DECC9C] overflow-hidden flex flex-col relative w-full max-w-full box-border">
+          <div className="bg-[#FAF5EA] rounded-2xl md:rounded-3xl p-1 md:p-1.5 shadow-[0_15px_45px_rgba(21,21,21,0.08)] border border-[#DECC9C] md:border-2 md:border-[#BB9C4A] relative overflow-hidden w-full max-w-full box-border">
+            <div className="bg-[#FFFDF9] rounded-[14px] md:rounded-[22px] border border-slate-200 md:border-[#DECC9C] overflow-hidden flex flex-col relative w-full max-w-full box-border">
               {/* Premium Emerald Green Header with Leaf motif */}
-              <div className="bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-white p-4.5 sm:p-7 relative overflow-hidden select-none border-b border-[#BB9C4A]/40">
+              <div className="bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-white px-4 py-3.5 sm:px-6 sm:py-4.5 relative overflow-hidden select-none border-b border-[#BB9C4A]/40">
                 {/* Detailed decorative leaf watermark on the right */}
                 <svg
                   viewBox="0 0 100 100"
-                  className="absolute -right-2 bottom-0 top-0 w-32 sm:w-40 h-full text-[#032D29] opacity-45 pointer-events-none select-none"
+                  className="absolute -right-2 bottom-0 top-0 w-32 sm:w-48 h-full text-[#032D29] opacity-45 pointer-events-none select-none"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.2"
@@ -1904,372 +2099,357 @@ export default function OrderFlow() {
                   <path d="M22 75 Q 30 67 40 70" strokeWidth="0.8" />
                 </svg>
 
-                <div className="flex items-center gap-3.5 sm:gap-5 relative z-10">
-                  {/* Elegant circular brand gold crest logo */}
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full border-2 border-transparent bg-gradient-to-br from-[#F4E2B6] via-[#D4AF37] to-[#886C1D] flex items-center justify-center shadow-[0_4px_16px_rgba(184,150,46,0.25)] shrink-0 p-[2px] relative z-10 transition-transform hover:scale-105 duration-300">
-                    <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                      {/* Custom leaf from Screenshot 1 */}
-                      <svg
-                        viewBox="0 0 100 100"
-                        className="w-7 sm:w-10 h-7 sm:h-10 text-[#0F3D2E] fill-none"
-                        stroke="currentColor"
-                        strokeWidth="5.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M50 82 L50 22" />
-                        <path
-                          d="M50 45 C40 35, 42 20, 50 15 C58 20, 60 35, 50 45 Z"
-                          fill="#0F3D2E"
-                          fillOpacity="0.08"
-                        />
-                        <path
-                          d="M50 62 C28 58, 22 42, 34 34 C42 45, 48 53, 50 57"
-                          strokeWidth="5"
-                        />
-                        <path
-                          d="M50 62 C72 58, 78 42, 66 34 C58 45, 52 53, 50 57"
-                          strokeWidth="5"
-                        />
-                      </svg>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    {/* Elegant circular brand gold crest logo */}
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 bg-white rounded-full border-2 border-transparent bg-gradient-to-br from-[#F4E2B6] via-[#D4AF37] to-[#886C1D] flex items-center justify-center shadow-[0_4px_16px_rgba(184,150,46,0.25)] shrink-0 p-[2px] relative z-10 transition-transform hover:scale-105 duration-300">
+                      <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                        <svg
+                          viewBox="0 0 100 100"
+                          className="w-6 sm:w-8 h-6 sm:h-8 text-[#0F3D2E] fill-none"
+                          stroke="currentColor"
+                          strokeWidth="5.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M50 82 L50 22" />
+                          <path
+                            d="M50 45 C40 35, 42 20, 50 15 C58 20, 60 35, 50 45 Z"
+                            fill="#0F3D2E"
+                            fillOpacity="0.08"
+                          />
+                          <path
+                            d="M50 62 C28 58, 22 42, 34 34 C42 45, 48 53, 50 57"
+                            strokeWidth="5"
+                          />
+                          <path
+                            d="M50 62 C72 58, 78 42, 66 34 C58 45, 52 53, 50 57"
+                            strokeWidth="5"
+                          />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="text-left flex-1">
-                    <h2 className="text-lg sm:text-2xl font-display font-semibold text-[#F4E2B6] tracking-wider uppercase leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-                      {selectedPackage.packageName}
-                    </h2>
-                    <div className="mt-2 text-left">
-                      <div className="inline-flex items-center gap-1.5 bg-white border border-emerald-600 rounded-[6px] px-2 py-0.5 shadow-xs">
-                        <span className="w-2 h-2 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                          <span className="w-1 h-1 rounded-full bg-white"></span>
-                        </span>
-                        <span className="text-[10px] font-black text-emerald-800 tracking-wider font-sans leading-none uppercase">
-                          VEG
+                    <div className="text-left flex-1 min-w-0">
+                      <h2 className="text-base sm:text-xl lg:text-2xl font-display font-semibold text-[#F4E2B6] tracking-wider uppercase leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] truncate">
+                        {selectedPackage.packageName}
+                      </h2>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-[10px] sm:text-[11px] text-[#E0D4BA] font-medium tracking-wide">
+                          {caterer.name} • {caterer.location}
                         </span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                    {renderVegNonVegBadge(selectedPackage.packageType || "Veg")}
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-[#D4AF37]/30 text-[9.5px] font-bold text-[#F4E2B6] font-sans">
+                      <Users size={12} className="text-[#D4AF37]" />
+                      Min {selectedPackage.minimumGuests || 50}+
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 xs:p-5 sm:p-6.5 bg-[#FFFDF9] flex flex-col gap-4 sm:gap-6">
-                {/* Package Price Redesign with Centermost aligned premium label */}
-                <div className="text-center">
-                  <div className="relative bg-gradient-to-br from-[#FFFDF9] to-[#FAF5EA] rounded-[18px] sm:rounded-[22px] border border-[#DECC9C] p-4.5 sm:p-6.5 hover:border-[#D4AF37]/50 hover:shadow-[0_12px_36px_rgba(212,175,55,0.08)] transition-all duration-350 overflow-hidden shadow-sm flex flex-col items-center justify-center">
-                    {/* Corner bevel/flourish details to match Victorian feel */}
-                    <div className="absolute top-2.5 left-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-t border-l border-[#BB9C4A]/40 rounded-tl-[4px]"></div>
-                    <div className="absolute top-2.5 right-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-t border-r border-[#BB9C4A]/40 rounded-tr-[4px]"></div>
-                    <div className="absolute bottom-2.5 left-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-b border-l border-[#BB9C4A]/40 rounded-bl-[4px]"></div>
-                    <div className="absolute bottom-2.5 right-2.5 w-3.5 h-3.5 sm:w-4 sm:h-4 border-b border-r border-[#BB9C4A]/40 rounded-br-[4px]"></div>
+              <div className="p-4 sm:p-6 lg:p-7 bg-[#FFFDF9]">
+                {/* 2-Column Responsive Layout on Desktop, 1-Column on Mobile */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+                  
+                  {/* LEFT COLUMN: Package Information & Pricing Tiers */}
+                  <div className="lg:col-span-6 flex flex-col gap-4">
+                    {/* Package Price Box */}
+                    <div className="relative bg-gradient-to-br from-[#FFFDF9] to-[#FAF5EA] rounded-2xl border border-[#DECC9C] p-4 sm:p-5 hover:border-[#D4AF37]/50 hover:shadow-[0_8px_24px_rgba(212,175,55,0.08)] transition-all duration-350 overflow-hidden shadow-xs flex flex-col items-center justify-center text-center">
+                      {/* Corner bevel/flourish details */}
+                      <div className="absolute top-2 left-2 w-3 h-3 border-t border-l border-[#BB9C4A]/40 rounded-tl-[3px]"></div>
+                      <div className="absolute top-2 right-2 w-3 h-3 border-t border-r border-[#BB9C4A]/40 rounded-tr-[3px]"></div>
+                      <div className="absolute bottom-2 left-2 w-3 h-3 border-b border-l border-[#BB9C4A]/40 rounded-bl-[3px]"></div>
+                      <div className="absolute bottom-2 right-2 w-3 h-3 border-b border-r border-[#BB9C4A]/40 rounded-br-[3px]"></div>
 
-                    {/* Faint gold leaf background */}
-                    <div className="absolute right-3 bottom-0 w-20 h-20 sm:w-24 sm:h-24 text-[#C29D38]/6 pointer-events-none select-none">
-                      <svg
-                        viewBox="0 0 100 100"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
-                      >
-                        <path d="M15 85 C 30 65, 45 40, 80 15 C 75 35, 60 75, 15 85 Z" />
-                        <path d="M15 85 L 80 15" strokeDasharray="1.5 1.5" />
-                      </svg>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-2 sm:gap-4 mb-2.5 sm:mb-3 relative z-10 w-full px-1 sm:px-2">
-                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
-                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <span className="text-[#C29D38] text-[8px] sm:text-[9px] select-none">
-                          ⚜️
-                        </span>
-                        <span className="text-[10px] sm:text-[12.5px] font-sans font-semibold tracking-[2px] sm:tracking-[3px] text-[#8C6D1F] uppercase text-center">
-                          PACKAGE PRICE
-                        </span>
-                        <span className="text-[#C29D38] text-[8px] sm:text-[9px] select-none">
-                          ⚜️
-                        </span>
-                      </div>
-                      <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
-                    </div>
-
-                    <div className="relative z-10 flex flex-col items-center justify-center text-center">
-                      {/* Metallic Gold Typography */}
-                      <span
-                        className="font-semibold text-5xl xs:text-5.5xl sm:text-9xl md:text-[104px] leading-none select-all text-transparent bg-clip-text"
-                        style={{
-                          fontFamily:
-                            '"Cinzel", "Libre Baskerville", "Georgia", serif',
-                          fontWeight: 600,
-                          letterSpacing: "-1.2px",
-                          background:
-                            "linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)",
-                          WebkitBackgroundClip: "text",
-                          WebkitTextFillColor: "transparent",
-                          filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.08))",
-                        }}
-                      >
-                        ₹{currentPerPlatePrice}
-                      </span>
-                      <span className="text-[12px] sm:text-[14px] font-sans font-black text-[#5C5750] uppercase tracking-[0.2em] mt-2">
-                        Per Plate
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pricing Slabs (Interactive, if available) */}
-                {selectedPackage.pricingSlabs &&
-                  selectedPackage.pricingSlabs.length > 0 && (
-                    <div>
-                      <span className="block text-[11px] font-sans font-black text-[#8A6715] uppercase tracking-wider text-left mb-2.5">
-                        Pricing Tiers
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
-                        {(() => {
-                          const sortedSlabs = [
-                            ...selectedPackage.pricingSlabs,
-                          ].sort((a: any, b: any) => a.minGuests - b.minGuests);
-                          return sortedSlabs.map((slab: any, idx: number) => {
-                            let isActive = false;
-                            if (
-                              guests >= slab.minGuests &&
-                              (slab.maxGuests === null ||
-                                guests <= slab.maxGuests)
-                            ) {
-                              isActive = true;
-                            } else if (
-                              guests < sortedSlabs[0].minGuests &&
-                              idx === 0
-                            ) {
-                              isActive = true;
-                            } else if (
-                              sortedSlabs[sortedSlabs.length - 1].maxGuests !==
-                                null &&
-                              guests >
-                                sortedSlabs[sortedSlabs.length - 1].maxGuests &&
-                              idx === sortedSlabs.length - 1
-                            ) {
-                              isActive = true;
-                            } else if (
-                              slab.maxGuests === null &&
-                              guests >= slab.minGuests
-                            ) {
-                              isActive = true;
-                            }
-
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => setGuests(slab.minGuests)}
-                                className={cn(
-                                  "flex flex-col justify-center items-start px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 text-left cursor-pointer",
-                                  isActive
-                                    ? "border-[#D4AF37] bg-gradient-to-br from-[#FFFDF9] to-[#FCFAF5] shadow-[0_6px_20px_rgba(212,175,55,0.18)] scale-[1.02] -translate-y-0.5 z-10"
-                                    : "border-[#DECC9C]/40 bg-white hover:border-[#DECC9C] opacity-80 hover:opacity-100",
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest font-sans",
-                                    isActive
-                                      ? "text-[#8A6715]"
-                                      : "text-slate-450",
-                                  )}
-                                >
-                                  {slab.minGuests}{" "}
-                                  {slab.maxGuests ? `- ${slab.maxGuests}` : "+"}{" "}
-                                  Guests
-                                </span>
-                                <span
-                                  className={cn(
-                                    "text-base sm:text-lg font-black font-display mt-0.5",
-                                    isActive
-                                      ? "text-[#0F3D2E]"
-                                      : "text-slate-800",
-                                  )}
-                                >
-                                  ₹{slab.price}{" "}
-                                  <span className="text-2xs font-sans font-medium text-slate-450">
-                                    / plate
-                                  </span>
-                                </span>
-                              </button>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                {/* Enter Guest Count Controls */}
-                <div className="text-left">
-                  <label className="block text-[11px] sm:text-[12.5px] font-sans font-semibold text-[#123326] uppercase tracking-[3px] mb-2 px-0.5">
-                    ENTER GUEST COUNT
-                  </label>
-                  <div className="flex items-center gap-2 sm:gap-3.5">
-                    {/* Minus Control */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setGuests(
-                          Math.max(
-                            selectedPackage.minimumGuests || 50,
-                            guests - 10,
-                          ),
-                        )
-                      }
-                      className="w-12 h-12 xs:w-13 xs:h-13 sm:w-15 sm:h-15 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-[10px] sm:rounded-[14px] border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-xl font-bold shrink-0"
-                    >
-                      <Minus size={16} sm:size={18} strokeWidth={2.8} />
-                    </button>
-
-                    {/* Main Counter input */}
-                    <input
-                      type="number"
-                      value={guests}
-                      onChange={(e) => {
-                        const val = Math.max(0, Number(e.target.value));
-                        setGuests(val);
-                      }}
-                      className="flex-1 w-full h-12 xs:h-13 sm:h-15 text-center font-sans font-black text-xl xs:text-2xl text-[#123326] bg-white border border-[#DECC9C] hover:border-[#C29D38] focus:border-[#C29D38] rounded-[10px] sm:rounded-[14px] outline-none transition-all shadow-inner select-all"
-                    />
-
-                    {/* Plus Control */}
-                    <button
-                      type="button"
-                      onClick={() => setGuests(guests + 10)}
-                      className="w-12 h-12 xs:w-13 xs:h-13 sm:w-15 sm:h-15 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-[10px] sm:rounded-[14px] border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-xl font-bold shrink-0"
-                    >
-                      <Plus size={16} sm:size={18} strokeWidth={2.8} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Gold Detail Estimate Summary Card */}
-                <div className="bg-[#FCFAF7] border border-[#DECC9C] rounded-[18px] sm:rounded-[24px] p-4 sm:p-7 shadow-[0_12px_40px_rgba(212,175,55,0.03)] relative overflow-hidden text-left w-full box-border">
-                  <div className="absolute top-0 right-0 w-36 h-36 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none"></div>
-
-                  <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5 border-b border-[#E5D2A6] pb-3 sm:pb-3.5">
-                    <div className="w-7.5 h-7.5 rounded-full border border-[#DECC9C] bg-[#FCFAF5] text-[#8C6D1F] flex items-center justify-center shadow-xs shrink-0">
-                      <svg
-                        className="w-4 h-4 text-[#8A6715]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          ry="2"
-                        />
-                        <line x1="9" y1="9" x2="15" y2="9" />
-                        <line x1="9" y1="13" x2="15" y2="13" />
-                        <line x1="9" y1="17" x2="15" y2="17" />
-                      </svg>
-                    </div>
-                    <h4 className="font-sans font-semibold text-[10px] sm:text-[12px] tracking-[2px] sm:tracking-[3px] text-[#123326] uppercase">
-                      ESTIMATE SUMMARY
-                    </h4>
-                  </div>
-
-                  <div className="space-y-3 sm:space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-left">
-                      <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] sm:tracking-[1.5px] font-sans">
-                        CATERING PACKAGE
-                      </span>
-                      <span className="font-sans font-black text-[#123326] text-xs sm:text-xs uppercase tracking-[0.05em]">
-                        {selectedPackage.packageName}
-                      </span>
-                    </div>
-
-                    <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
-
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-left">
-                      <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] sm:tracking-[1.5px] font-sans">
-                        PRICE PER PLATE
-                      </span>
-                      <span className="font-sans font-black text-[#123326] text-xs sm:text-sm">
-                        ₹{currentPerPlatePrice}
-                      </span>
-                    </div>
-
-                    <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
-
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 text-left">
-                      <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] sm:tracking-[1.5px] font-sans">
-                        EXPECTED GUEST COUNT
-                      </span>
-                      <span className="font-sans font-black text-[#123326] text-xs sm:text-sm">
-                        {guests}
-                      </span>
-                    </div>
-
-                    <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
-
-                    {/* Elevated dynamic highlight for the total (Requirement 6) */}
-                    <div className="pt-1.5 sm:pt-2">
-                      <div className="bg-gradient-to-r from-[#F6F0DF] to-[#EFE5CD] border border-[#DECC9C] rounded-[12px] sm:rounded-[16px] p-3 sm:p-4.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 shadow-md relative overflow-hidden group hover:border-[#C29D38] transition-all">
-                        <div className="flex flex-col text-left">
-                          <span className="text-[9px] sm:text-[10px] font-sans font-semibold text-[#B8860B] uppercase tracking-[2px] sm:tracking-[3px]">
-                            ESTIMATED TOTAL
+                      <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 relative z-10 w-full px-2">
+                        <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[#C29D38] text-[8px] select-none">⚜️</span>
+                          <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[2px] text-[#8C6D1F] uppercase text-center">
+                            PACKAGE PRICE
                           </span>
-                          <span className="text-[9px] sm:text-[9.5px] text-[#5C5750] font-medium tracking-tight mt-0.5">
-                            Inclusive of all taxes
-                          </span>
+                          <span className="text-[#C29D38] text-[8px] select-none">⚜️</span>
                         </div>
+                        <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
+                      </div>
+
+                      <div className="relative z-10 flex flex-col items-center justify-center text-center my-1">
                         <span
-                          className="font-semibold text-2.5xl xs:text-3.5xl sm:text-4.5xl md:text-[52px] leading-none text-[#C9A227] sm:text-transparent sm:bg-clip-text"
+                          className="font-semibold text-4xl sm:text-5xl lg:text-5.5xl leading-none select-all text-transparent bg-clip-text"
                           style={{
-                            fontFamily:
-                              '"Cinzel", "Libre Baskerville", "Georgia", serif',
+                            fontFamily: '"Cinzel", "Libre Baskerville", "Georgia", serif',
                             fontWeight: 600,
-                            letterSpacing: "-0.5px",
-                            background:
-                              "linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)",
+                            letterSpacing: "-1px",
+                            background: "linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)",
                             WebkitBackgroundClip: "text",
                             WebkitTextFillColor: "transparent",
-                            filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.08))",
+                            filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))",
                           }}
                         >
-                          ₹
-                          {(currentPerPlatePrice * guests).toLocaleString(
-                            "en-IN",
-                          )}
+                          ₹{currentPerPlatePrice}
+                        </span>
+                        <span className="text-[11px] sm:text-[12px] font-sans font-black text-[#5C5750] uppercase tracking-[0.2em] mt-1.5">
+                          Per Plate
                         </span>
                       </div>
+
+                      {/* Package Description / Feature highlights */}
+                      <p className="text-[11px] sm:text-xs text-stone-500 italic mt-2 text-center max-w-md">
+                        "{selectedPackage.description || "Curated premium catering spread with chef-crafted delicacies tailored for your event."}"
+                      </p>
+
+                      {selectedPackage.categories && selectedPackage.categories.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-center gap-2 mt-3 pt-2.5 border-t border-[#DECC9C]/50 w-full">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0F3D2E] bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                            <Sparkles size={11} className="text-[#D4AF37]" />
+                            {selectedPackage.categories.length} Food Categories
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full">
+                            <Utensils size={11} className="text-stone-500" />
+                            Fully Customizable
+                          </span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Pricing Slabs (Interactive Tiers) */}
+                    {selectedPackage.pricingSlabs && selectedPackage.pricingSlabs.length > 0 && (
+                      <div className="bg-white/90 border border-[#DECC9C] rounded-2xl p-3.5 sm:p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[10.5px] font-sans font-bold text-[#8A6715] uppercase tracking-wider">
+                            Pricing Tiers
+                          </span>
+                          <span className="text-[9.5px] text-stone-500">
+                            Click tier to update guest count
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {(() => {
+                            const sortedSlabs = [...selectedPackage.pricingSlabs].sort(
+                              (a: any, b: any) => a.minGuests - b.minGuests
+                            );
+                            return sortedSlabs.map((slab: any, idx: number) => {
+                              let isActive = false;
+                              if (
+                                guests >= slab.minGuests &&
+                                (slab.maxGuests === null || guests <= slab.maxGuests)
+                              ) {
+                                isActive = true;
+                              } else if (guests < sortedSlabs[0].minGuests && idx === 0) {
+                                isActive = true;
+                              } else if (
+                                sortedSlabs[sortedSlabs.length - 1].maxGuests !== null &&
+                                guests > sortedSlabs[sortedSlabs.length - 1].maxGuests &&
+                                idx === sortedSlabs.length - 1
+                              ) {
+                                isActive = true;
+                              } else if (slab.maxGuests === null && guests >= slab.minGuests) {
+                                isActive = true;
+                              }
+
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setGuests(slab.minGuests)}
+                                  className={cn(
+                                    "flex flex-col justify-center items-start px-3 py-2 sm:py-2.5 rounded-xl border transition-all duration-200 text-left cursor-pointer",
+                                    isActive
+                                      ? "border-[#D4AF37] bg-gradient-to-br from-[#FFFDF9] to-[#FCFAF5] shadow-xs ring-1 ring-[#D4AF37]/50"
+                                      : "border-[#DECC9C]/50 bg-[#FAF8F5] hover:border-[#DECC9C] hover:bg-white"
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      "text-[9px] font-black uppercase tracking-wider font-sans",
+                                      isActive ? "text-[#8A6715]" : "text-stone-500"
+                                    )}
+                                  >
+                                    {slab.minGuests} {slab.maxGuests ? `- ${slab.maxGuests}` : "+"} Guests
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      "text-sm sm:text-base font-black font-display mt-0.5",
+                                      isActive ? "text-[#0F3D2E]" : "text-stone-800"
+                                    )}
+                                  >
+                                    ₹{slab.price}{" "}
+                                    <span className="text-[10px] font-sans font-medium text-stone-400">
+                                      / plate
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {/* Disclaimer Policy */}
-                <div className="flex items-start gap-1.5 text-[10px] sm:text-[11px] text-[#7A7369] font-medium leading-relaxed mb-1 select-all text-left px-1">
-                  <span className="text-xs text-[#C29D38] font-bold shrink-0">
-                    ⓘ
-                  </span>
-                  <span>
-                    Taxes and additional charges may apply as per venue policy.
-                  </span>
-                </div>
+                  {/* RIGHT COLUMN: Guest Count Controls, Estimate Summary & Continue Button */}
+                  <div className="lg:col-span-6 flex flex-col gap-4">
+                    {/* Enter Guest Count Controls */}
+                    <div className="bg-white/95 border border-[#DECC9C] rounded-2xl p-3.5 sm:p-4 shadow-xs">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[11px] sm:text-[12px] font-sans font-semibold text-[#123326] uppercase tracking-[2px]">
+                          ENTER GUEST COUNT
+                        </label>
+                        <span className="text-[10px] font-medium text-stone-500">
+                          Min: {selectedPackage.minimumGuests || 50} guests
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGuests(
+                              Math.max(
+                                selectedPackage.minimumGuests || 50,
+                                guests - 10
+                              )
+                            )
+                          }
+                          className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-xl border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-lg font-bold shrink-0"
+                          title="Decrease 10 guests"
+                        >
+                          <Minus size={16} strokeWidth={2.5} />
+                        </button>
 
-                {/* Call To Action Button (Premium Emerald / Gold outline) */}
-                <button
-                  type="button"
-                  onClick={() => setViewMode("custom")}
-                  className="w-full bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-[#FDE5A9] font-sans font-bold text-xs sm:text-[13px] uppercase tracking-[2px] sm:tracking-[4px] py-3.5 sm:py-4.5 px-4 sm:px-6 rounded-[12px] sm:rounded-[14px] shadow-[0_12px_30px_rgba(2,27,26,0.25)] hover:shadow-[0_16px_40px_rgba(184,150,46,0.3)] border-2 border-[#BB9C4A] hover:border-[#F4E2B6] hover:scale-[1.01] hover:-translate-y-0.5 transition-all outline-none flex items-center justify-center gap-2 cursor-pointer group"
-                >
-                  <span>CONTINUE WITH MENU</span>
-                  <ChevronRight
-                    size={14}
-                    className="transition-transform group-hover:translate-x-1 text-[#FDE5A9] stroke-[3]"
-                  />
-                </button>
+                        <input
+                          type="number"
+                          value={guests}
+                          onChange={(e) => {
+                            const val = Math.max(0, Number(e.target.value));
+                            setGuests(val);
+                          }}
+                          className="flex-1 w-full h-11 sm:h-12 text-center font-sans font-black text-xl text-[#123326] bg-[#FAF8F5] focus:bg-white border border-[#DECC9C] hover:border-[#C29D38] focus:border-[#C29D38] rounded-xl outline-none transition-all shadow-inner select-all"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setGuests(guests + 10)}
+                          className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-xl border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-lg font-bold shrink-0"
+                          title="Increase 10 guests"
+                        >
+                          <Plus size={16} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Gold Detail Estimate Summary Card */}
+                    <div className="bg-[#FCFAF7] border border-[#DECC9C] rounded-2xl p-4 sm:p-5 shadow-xs relative overflow-hidden text-left w-full box-border">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-2xl pointer-events-none"></div>
+
+                      <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-[#E5D2A6]">
+                        <div className="w-6.5 h-6.5 rounded-full border border-[#DECC9C] bg-[#FCFAF5] text-[#8C6D1F] flex items-center justify-center shadow-xs shrink-0">
+                          <svg
+                            className="w-3.5 h-3.5 text-[#8A6715]"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <line x1="9" y1="9" x2="15" y2="9" />
+                            <line x1="9" y1="13" x2="15" y2="13" />
+                            <line x1="9" y1="17" x2="15" y2="17" />
+                          </svg>
+                        </div>
+                        <h4 className="font-sans font-semibold text-[11px] sm:text-xs tracking-[2px] text-[#123326] uppercase">
+                          ESTIMATE SUMMARY
+                        </h4>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <div className="flex justify-between items-center text-left">
+                          <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] font-sans">
+                            CATERING PACKAGE
+                          </span>
+                          <span className="font-sans font-bold text-[#123326] text-xs uppercase tracking-tight truncate max-w-[200px]">
+                            {selectedPackage.packageName}
+                          </span>
+                        </div>
+
+                        <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
+
+                        <div className="flex justify-between items-center text-left">
+                          <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] font-sans">
+                            PRICE PER PLATE
+                          </span>
+                          <span className="font-sans font-bold text-[#123326] text-xs sm:text-sm">
+                            ₹{currentPerPlatePrice}
+                          </span>
+                        </div>
+
+                        <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
+
+                        <div className="flex justify-between items-center text-left">
+                          <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] font-sans">
+                            EXPECTED GUEST COUNT
+                          </span>
+                          <span className="font-sans font-bold text-[#123326] text-xs sm:text-sm">
+                            {guests} Guests
+                          </span>
+                        </div>
+
+                        {/* Estimated Total Highlight Banner */}
+                        <div className="pt-1">
+                          <div className="bg-gradient-to-r from-[#F6F0DF] to-[#EFE5CD] border border-[#DECC9C] rounded-xl p-3 sm:p-3.5 flex justify-between items-center shadow-xs">
+                            <div className="flex flex-col text-left">
+                              <span className="text-[9.5px] font-sans font-bold text-[#B8860B] uppercase tracking-[2px]">
+                                ESTIMATED TOTAL
+                              </span>
+                              <span className="text-[9px] text-[#5C5750] font-medium tracking-tight">
+                                Inclusive of all taxes
+                              </span>
+                            </div>
+                            <span
+                              className="font-bold text-2xl sm:text-3xl lg:text-3.5xl leading-none"
+                              style={{
+                                fontFamily: '"Cinzel", "Libre Baskerville", "Georgia", serif',
+                                letterSpacing: "-0.5px",
+                                background: "linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                                filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.06))",
+                              }}
+                            >
+                              ₹{(currentPerPlatePrice * guests).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Disclaimer Policy */}
+                    <div className="flex items-center gap-1.5 text-[10.5px] text-[#7A7369] font-medium text-left px-1">
+                      <span className="text-xs text-[#C29D38] font-bold shrink-0">ⓘ</span>
+                      <span>Taxes and additional charges may apply as per venue policy.</span>
+                    </div>
+
+                    {/* Call To Action Button (Premium Emerald / Gold outline) */}
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("custom")}
+                      className="w-full bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-[#FDE5A9] font-sans font-bold text-xs sm:text-[13px] uppercase tracking-[2px] sm:tracking-[3px] py-3.5 px-6 rounded-xl shadow-[0_8px_24px_rgba(2,27,26,0.2)] hover:shadow-[0_12px_32px_rgba(184,150,46,0.25)] border-2 border-[#BB9C4A] hover:border-[#F4E2B6] hover:scale-[1.008] active:scale-[0.99] transition-all outline-none flex items-center justify-center gap-2 cursor-pointer group"
+                    >
+                      <span>CONTINUE WITH MENU</span>
+                      <ChevronRight
+                        size={15}
+                        className="transition-transform group-hover:translate-x-1 text-[#FDE5A9] stroke-[3]"
+                      />
+                    </button>
+                  </div>
+
+                </div>
               </div>
             </div>
           </div>
@@ -2278,289 +2458,215 @@ export default function OrderFlow() {
 
       {viewMode === "custom" && selectedPackage && (
         <>
-          <div className="flex-1 max-w-full lg:max-w-full xl:max-w-[1240px] 2xl:max-w-[1380px] mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
-          <div className="flex flex-col lg:flex-row gap-4 lg:gap-4.5 xl:gap-5">
-            {/* MOBILE ONLY LAYOUT (Screenshot reference style) */}
-            <div className="block lg:hidden w-full">
-              {/* MOBILE PROGRESS BAR (Screenshot style) */}
-              {(() => {
-                const activeCats = menuCategories.filter((cat: string) => {
-                  const catItems =
-                    selectedPackage?.categories?.find(
-                      (c: any) => c.categoryName === cat,
-                    )?.items || [];
-                  return catItems.length > 0;
-                });
-                const totalCats = activeCats.length;
-                const doneCats = activeCats.filter((cat: string) => {
-                  const catData = selectedPackage?.categories?.find(
-                    (c: any) => c.categoryName === cat,
-                  );
-                  if (!catData) return false;
-                  const match = catData.selectionRule?.match(/\d+/);
-                  const limit = match ? parseInt(match[0], 10) : 0;
-                  if (limit === 0) return true;
-                  const selectedCount = (catData.items || []).filter(
-                    (i: string) => selectedItems[i],
-                  ).length;
-                  return selectedCount >= limit;
-                }).length;
-                const pctDone = Math.round((doneCats / (totalCats || 1)) * 100);
-
-                return (
-                  <div className="bg-[#0B1F17] text-white py-1.5 px-3 flex items-center justify-between text-[10px] font-sans border border-[#D4AF37]/30 select-none rounded-[10px] mb-3 shadow-md h-[34px]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-black uppercase tracking-[0.08em] text-[#D5A859]">
-                        Progress
-                      </span>
-                      <div className="w-[64px] bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-[#FCE6A9] to-[#D5A859] h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pctDone}%` }}
-                        />
+          <div className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+              {/* LEFT COLUMN: Main Menu Selection Area */}
+              <div id="active-category-content" className="flex-1 min-w-0 w-full">
+                <div className="bg-[#FFFEFA] rounded-3xl border border-[#D6B15E]/40 shadow-[0_4px_24px_rgba(214,177,94,0.06)] p-4 sm:p-6 lg:p-7">
+                  {/* Category Header & Controls */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#D6B15E]/30">
+                    <div>
+                      <h2
+                        className="font-serif font-bold text-2xl sm:text-3xl lg:text-3.5xl text-[#0B2D23] leading-tight tracking-tight"
+                        style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+                      >
+                        {activeCategory}
+                      </h2>
+                      <div className="flex items-center gap-2.5 mt-2 flex-wrap">
+                        <span className="text-xs font-semibold text-[#8B6E4A] uppercase tracking-wider font-sans">
+                          {getSelectionRuleLabel(
+                            selectedPackage.categories?.find(
+                              (c: any) => c.categoryName === activeCategory,
+                            )?.selectionRule,
+                          )}
+                        </span>
+                        {limitPerCategory > 0 && (
+                          <>
+                            <span className="text-[#D6B15E]/60">•</span>
+                            {(() => {
+                              const catData = selectedPackage.categories?.find(
+                                (c: any) => c.categoryName === activeCategory,
+                              );
+                              const itemsInCat = catData?.items || [];
+                              const selectedCount = itemsInCat.filter(
+                                (i: string) => selectedItems[i],
+                              ).length;
+                              const isFull = selectedCount >= limitPerCategory;
+                              return isFull ? (
+                                <span className="inline-flex items-center gap-1.5 bg-[#E8F5EE] text-[#0B2D23] font-bold px-2.5 py-0.5 rounded-full text-xs border border-[#A3D9BA]/70">
+                                  <Check size={12} strokeWidth={3} />
+                                  Completed ({selectedCount}/{limitPerCategory})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 bg-[#FFFDF7] text-[#8B6E32] font-bold px-2.5 py-0.5 rounded-full text-xs border border-[#D6B15E]/50">
+                                  Requires {limitPerCategory} ({selectedCount} selected)
+                                </span>
+                              );
+                            })()}
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 font-black tracking-wider text-[#FAF6EE] text-[10px]">
-                      <span>
-                        {doneCats}/{totalCats} Done
-                      </span>
-                      <span className="text-[#D4AF37]/60">|</span>
-                      <span className="text-[#E6C77D] font-mono">
-                        {pctDone}%
-                      </span>
+
+                    {/* Search Bar for filtering items within category */}
+                    <div className="relative w-full sm:w-[240px] shrink-0">
+                      <Search
+                        size={15}
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#D6B15E]"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search dishes..."
+                        value={categorySearchQuery}
+                        onChange={(e) => setCategorySearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2 bg-[#FFFEFA] border border-[#D6B15E]/50 rounded-full text-xs sm:text-sm font-medium text-[#0B2D23] placeholder:text-stone-400 outline-none focus:border-[#D6B15E] focus:ring-1 focus:ring-[#D6B15E]/50 transition-all shadow-2xs"
+                      />
+                      {categorySearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setCategorySearchQuery("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#0B2D23] cursor-pointer"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
-                );
-              })()}
 
-              <div className="mb-4 pl-1 select-none">
-                <h2
-                  className="text-[28px] font-bold text-[#0B1F17] leading-tight mb-1"
-                  style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-                >
-                  {activeCategory}
-                </h2>
-                <p className="text-[10.5px] font-extrabold tracking-[0.18em] text-[#8B6E4A] uppercase font-sans">
-                  {getSelectionRuleLabel(
-                    selectedPackage.categories?.find(
-                      (c: any) => c.categoryName === activeCategory,
-                    )?.selectionRule,
+                  {/* Category Completion Alert message */}
+                  {highlightIncomplete && !isCategoryComplete(activeCategory) && (
+                    <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-2 text-xs font-semibold animate-pulse">
+                      <span>⚠️</span>
+                      <span>
+                        Please select {getCategoryRemainingCount(activeCategory)} more item{getCategoryRemainingCount(activeCategory) > 1 ? "s" : ""} from {activeCategory}.
+                      </span>
+                    </div>
                   )}
-                </p>
-              </div>
 
-              {/* TWO COLUMN MOBILE CONTENT: LEFT 80px, RIGHT Remainder */}
-              <div className="flex flex-row gap-2.5 items-start w-full">
-                {/* LEFT: Compact categories sidebar (80px width) */}
-                <div className="w-[80px] shrink-0 flex flex-col gap-2 max-h-[calc(100vh-190px)] overflow-y-auto no-scrollbar scroll-smooth pr-0.5 pb-20">
-                  {menuCategories.map((cat: string) => {
-                    const catData = selectedPackage.categories?.find(
-                      (c: any) => c.categoryName === cat,
-                    );
-                    const catItems = catData?.items || [];
-                    if (catItems.length === 0) return null;
-                    const selectedCount = catItems.filter(
-                      (i: string) => selectedItems[i],
-                    ).length;
-
-                    const match = catData.selectionRule?.match(/\d+/);
-                    const catLimit = match ? parseInt(match[0], 10) : 0;
-                    const isDone = selectedCount >= catLimit;
-                    const isActive = activeCategory === cat;
-
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={cn(
-                          "w-full rounded-[14px] p-1.5 pb-2 flex flex-col items-center justify-between text-center transition-all duration-300 border relative group cursor-pointer min-h-[76px] select-none",
-                          isActive
-                            ? "bg-[#106B40] text-white border-[#D4AF37] shadow-[0_4px_12px_rgba(16,107,64,0.18)] font-black"
-                            : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 hover:border-[#D4AF37]/40 shadow-sm",
-                        )}
-                      >
-                        {/* Status Indicator inside Category Card */}
-                        <div className="absolute top-1 right-1">
-                          {catLimit > 0 ? (
-                            isDone ? (
-                              <span
-                                className={cn(
-                                  "w-3.5 h-3.5 rounded-full flex items-center justify-center font-black border text-[7.5px]",
-                                  isActive
-                                    ? "bg-[#D4AF37] text-[#106B40] border-[#D4AF37]"
-                                    : "bg-[#1E8E5A]/10 text-[#1E8E5A] border-[#1E8E5A]/20",
-                                )}
-                              >
-                                ✓
-                              </span>
-                            ) : (
-                              <span
-                                className={cn(
-                                  "px-1 rounded-full font-bold text-[7px] border tracking-tight leading-none h-3 w-fit flex items-center justify-center font-sans",
-                                  isActive
-                                    ? "bg-white/20 text-white border-transparent"
-                                    : "bg-slate-150 text-slate-500 border-slate-200/60",
-                                )}
-                              >
-                                {selectedCount}/{catLimit}
-                              </span>
-                            )
-                          ) : (
-                            selectedCount > 0 && (
-                              <span
-                                className={cn(
-                                  "px-1 rounded-full font-bold text-[7px] border tracking-tight leading-none h-3 w-fit flex items-center justify-center font-sans",
-                                  isActive
-                                    ? "bg-white/20 text-white border-transparent"
-                                    : "bg-slate-100 text-slate-500 border-slate-200/60",
-                                )}
-                              >
-                                {selectedCount}
-                              </span>
-                            )
-                          )}
-                        </div>
-
-                        {/* Icon + Label */}
-                        <div className="flex flex-col items-center gap-1 justify-center flex-1 py-1 w-full mt-2">
-                          <span
-                            className={cn(
-                              "text-[15px] transition-transform duration-300 group-hover:scale-115",
-                              isActive ? "text-[#ECE2D0]" : "text-[#D5A859]",
-                            )}
-                          >
-                            {getCategoryIcon(cat)}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-[8.5px] leading-[1.15] font-sans tracking-tight uppercase font-black block w-full text-center px-0.5 max-h-[2.4em] overflow-hidden line-clamp-2",
-                              isActive ? "text-[#FFF8EC]" : "text-[#123326]",
-                            )}
-                            style={{
-                              whiteSpace: "normal",
-                              wordBreak: "keep-all",
-                              overflowWrap: "anywhere",
-                            }}
-                          >
-                            {cat}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* RIGHT: Menu items list with full-width search & cards */}
-                <div className="flex-1 min-w-0 flex flex-col gap-2 pb-20">
-                  {/* Full-width Search Box */}
-                  <div className="relative w-full mb-1">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-[#D5A859] select-none">
-                      🍸
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search dishes..."
-                      className="w-full pl-9 pr-4 bg-[#FFFDF9]/95 border border-[#D4AF37]/35 hover:border-[#D5A859]/60 focus:border-[#D4AF37] rounded-full text-[12px] font-semibold shadow-[inset_0_1px_3px_rgba(120,90,40,0.03)] outline-none transition-all placeholder:text-[#7A7369]/40 text-[#123326] h-[38px] tracking-wide"
-                      onChange={(e) => {
-                        const val = e.target.value.toLowerCase();
-                        document
-                          .querySelectorAll(".mobile-dish-row")
-                          .forEach((el) => {
-                            const name =
-                              el.getAttribute("data-name")?.toLowerCase() || "";
-                            if (name.includes(val))
-                              el.classList.remove("hidden");
-                            else el.classList.add("hidden");
-                          });
-                      }}
-                    />
-                  </div>
-
-                  {/* Dishes Horizontal Row Cards */}
-                  <div className="flex flex-col gap-2 max-h-[calc(100vh-230px)] overflow-y-auto no-scrollbar pb-24 pr-0.5">
+                  {/* Menu Items Grid: Cards with thin gold borders and warm cream bg */}
+                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
                     {(() => {
-                      const catData = selectedPackage.categories?.find(
-                        (c: any) => c.categoryName === activeCategory,
+                      const allCatItems =
+                        selectedPackage.categories?.find(
+                          (c: any) => c.categoryName === activeCategory,
+                        )?.items || [];
+
+                      const filteredItems = allCatItems.filter((item: string) =>
+                        categorySearchQuery.trim() === ""
+                          ? true
+                          : item
+                              .toLowerCase()
+                              .includes(categorySearchQuery.toLowerCase().trim()),
                       );
-                      const itemsStr = catData?.items || [];
-                      if (itemsStr.length === 0) {
+
+                      if (filteredItems.length === 0) {
                         return (
-                          <div className="text-center py-8 text-neutral-400 text-xs italic">
-                            No items available
+                          <div className="col-span-full py-12 text-center text-stone-400">
+                            <p className="text-sm font-medium">
+                              No dishes found matching "{categorySearchQuery}"
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setCategorySearchQuery("")}
+                              className="mt-2 text-xs font-bold text-[#D6B15E] hover:underline cursor-pointer"
+                            >
+                              Clear search
+                            </button>
                           </div>
                         );
                       }
-                      return itemsStr.map((itemName: string, idx: number) => {
-                        const isSelected = selectedItems[itemName];
-                        const selectedCount = itemsStr.filter(
+
+                      return filteredItems.map((itemName: string, idx: number) => {
+                        const isSelected = !!selectedItems[itemName];
+                        const itemsInCat = allCatItems;
+                        const selectedCount = itemsInCat.filter(
                           (i: string) => selectedItems[i],
                         ).length;
-
-                        const limitMatch = catData.selectionRule?.match(/\d+/);
-                        const catLimit = limitMatch
-                          ? parseInt(limitMatch[0], 10)
-                          : 0;
                         const isAtLimit =
-                          catLimit > 0 && selectedCount >= catLimit;
+                          limitPerCategory > 0 &&
+                          selectedCount >= limitPerCategory;
                         const isDisabled = !isSelected && isAtLimit;
-                        const isNonVeg = isItemNonVeg(itemName, activeCategory);
+                        const isPremium = isItemPremium(itemName);
+                        const isNonVeg = isItemNonVeg(
+                          itemName,
+                          activeCategory,
+                        );
 
                         return (
                           <div
-                            key={itemName}
+                            key={idx}
                             data-name={itemName}
                             onClick={() => {
-                              if (!isDisabled)
+                              if (!isDisabled) {
                                 toggleItem(itemName, activeCategory);
+                              }
                             }}
                             className={cn(
-                              "mobile-dish-row relative bg-[#FFFDF9] rounded-[16px] flex items-center justify-between p-3 py-3.5 transition-all duration-300 border shadow-sm select-none min-h-[58px]",
+                              "relative bg-[#FFFEFA] rounded-2xl p-4 sm:p-4.5 border transition-all duration-200 flex flex-col justify-between min-h-[110px] sm:min-h-[120px] select-none",
                               isSelected
-                                ? "bg-[#FFF8EC]/60"
+                                ? "border-[#D6B15E] ring-1 ring-[#D6B15E]/40 bg-[#FFFDF7] shadow-[0_4px_16px_rgba(214,177,94,0.18)]"
                                 : isDisabled
-                                  ? "opacity-45 bg-slate-50/50"
-                                  : "",
+                                  ? "border-[#D6B15E]/20 bg-[#FAF9F5] opacity-55 cursor-not-allowed shadow-none"
+                                  : "border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_10px_rgba(214,177,94,0.08)] hover:shadow-[0_4px_16px_rgba(214,177,94,0.16)] cursor-pointer",
                             )}
-                            style={{
-                              border: isDisabled
-                                ? "1px solid rgba(226,232,240,0.5)"
-                                : isSelected
-                                  ? "2px solid rgba(212,175,55,0.85)"
-                                  : "1px solid rgba(212,175,55,0.35)",
-                              boxShadow: isSelected
-                                ? "0 4px 14px rgba(160,120,50,0.12)"
-                                : "0 2px 6px rgba(160,120,50,0.04)",
-                            }}
                           >
-                            {/* Left text portion */}
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
-                              {/* Veg/Non-veg indicator badge */}
-                              <div className="shrink-0 flex items-center">
+                            {/* Top Row: Dietary Indicator (Veg / Non-Veg) & Status Badge */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div>
                                 {isNonVeg ? (
-                                  <span className="flex items-center justify-center w-3.5 h-3.5 border border-red-800 rounded-sm p-[1.5px] bg-white">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-800"></span>
+                                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-700 font-sans">
+                                    <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                                    Non-Veg
                                   </span>
                                 ) : (
-                                  <span className="flex items-center justify-center w-3.5 h-3.5 border border-emerald-700 rounded-sm p-[1.5px] bg-white">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+                                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0B2D23] font-sans">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                                    Veg
                                   </span>
                                 )}
                               </div>
 
-                              {/* Elegant playfair name */}
-                              <span
-                                className="text-[12.5px] font-bold text-[#0B1F17] leading-tight truncate pr-1"
+                              <div>
+                                {isPremium ? (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 px-2 py-0.5 rounded-md">
+                                    Premium
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
+                                    Included
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Middle: Dish Name in Clean High-Readability Serif Text (NO images, NO logos, NO initials) */}
+                            <div className="my-1">
+                              <h3
+                                className="font-serif font-bold text-base sm:text-[17px] text-[#0B2D23] leading-snug"
                                 style={{
-                                  fontFamily:
-                                    '"Playfair Display", Georgia, serif',
+                                  fontFamily: '"Playfair Display", Georgia, serif',
                                 }}
                               >
                                 {itemName}
-                              </span>
+                              </h3>
                             </div>
 
-                            {/* Right Button Column */}
-                            <div className="shrink-0 pl-1.5">
+                            {/* Bottom Row: Control button */}
+                            <div className="mt-3 pt-2.5 border-t border-[#D6B15E]/20 flex items-center justify-between">
+                              <span className="text-xs font-medium text-stone-500">
+                                {isSelected ? (
+                                  <span className="text-[#0B2D23] font-bold">
+                                    In your menu
+                                  </span>
+                                ) : isDisabled ? (
+                                  <span className="text-stone-400">
+                                    Limit reached
+                                  </span>
+                                ) : (
+                                  <span>Tap to add</span>
+                                )}
+                              </span>
+
                               {isSelected ? (
                                 <button
                                   type="button"
@@ -2568,9 +2674,10 @@ export default function OrderFlow() {
                                     e.stopPropagation();
                                     toggleItem(itemName, activeCategory);
                                   }}
-                                  className="px-3.5 py-1.5 bg-[#0B1F17] text-[#FFF8EC] border border-[#D5A859]/35 font-extrabold text-[10px] uppercase tracking-wider rounded-[14px] transition-all flex items-center gap-1.5 select-none shadow-[0_3px_8px_rgba(11,31,23,0.18)]"
+                                  className="px-3.5 py-1.5 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] border border-[#D6B15E]/70 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
                                 >
-                                  ✓ Added
+                                  <Check size={12} strokeWidth={3} />
+                                  <span>Selected</span>
                                 </button>
                               ) : (
                                 <button
@@ -2578,17 +2685,19 @@ export default function OrderFlow() {
                                   disabled={isDisabled}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!isDisabled)
+                                    if (!isDisabled) {
                                       toggleItem(itemName, activeCategory);
+                                    }
                                   }}
                                   className={cn(
-                                    "px-3.5 py-1.5 font-extrabold text-[10px] uppercase tracking-wider rounded-[14px] transition-all select-none",
+                                    "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 select-none",
                                     isDisabled
-                                      ? "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
-                                      : "bg-[#8B6E4A] hover:bg-[#7D5F3D] text-[#FFFDF9] border border-[#8B6E4A] shadow-sm",
+                                      ? "bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed"
+                                      : "bg-[#FFFEFA] hover:bg-[#FAF6EE] text-[#0B2D23] border border-[#D6B15E]/60 hover:border-[#D6B15E] cursor-pointer shadow-2xs",
                                   )}
                                 >
-                                  + Add
+                                  <Plus size={12} strokeWidth={2.5} />
+                                  <span>Add</span>
                                 </button>
                               )}
                             </div>
@@ -2599,807 +2708,214 @@ export default function OrderFlow() {
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* LEFT PANEL - Categories (Desktop) */}
-            <div className="hidden lg:block lg:w-[245px] xl:w-[265px] shrink-0">
-              <div className="bg-[#FDFBF6] rounded-[1.5rem] border border-[#D5A859]/22 p-3.5 sticky top-28 shadow-[0_10px_30px_rgba(120,90,40,0.04)] max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar">
-                {/* Completed Categories Circular Progress Indicator */}
-                {(() => {
-                  const activeCats = menuCategories.filter((cat: string) => {
-                    const catItems =
-                      selectedPackage?.categories?.find(
-                        (c: any) => c.categoryName === cat,
-                      )?.items || [];
-                    return catItems.length > 0;
-                  });
-                  const totalCats = activeCats.length;
-                  const doneCats = activeCats.filter((cat: string) => {
-                    const catData = selectedPackage?.categories?.find(
-                      (c: any) => c.categoryName === cat,
-                    );
-                    if (!catData) return false;
-                    const match = catData.selectionRule?.match(/\d+/);
-                    const limit = match ? parseInt(match[0], 10) : 0;
-                    if (limit === 0) return true;
-                    const selectedCount = (catData.items || []).filter(
-                      (i: string) => selectedItems[i],
-                    ).length;
-                    return selectedCount >= limit;
-                  }).length;
-                  const pctDone = Math.round(
-                    (doneCats / (totalCats || 1)) * 100,
-                  );
-                  return (
-                    <div className="mb-3.5">
-                      <p className="text-[9px] font-bold text-[#7A7369] uppercase tracking-widest mb-1.5 font-sans leading-none">
-                        Completed Categories
-                      </p>
-
-                      <div className="flex items-center gap-2.5 mb-2 select-none">
-                        <div className="relative w-11 h-11 shrink-0 flex items-center justify-center">
-                          {/* SVG Circular Progress circle with gold stroke */}
-                          <svg className="w-11 h-11 transform -rotate-90">
-                            <circle
-                              cx="22"
-                              cy="22"
-                              r="18"
-                              className="stroke-[#F5EFE1]"
-                              strokeWidth="2.5"
-                              fill="transparent"
-                            />
-                            <circle
-                              cx="22"
-                              cy="22"
-                              r="18"
-                              strokeWidth="3"
-                              fill="transparent"
-                              strokeDasharray="113"
-                              strokeDashoffset={
-                                113 - 113 * (doneCats / (totalCats || 1))
-                              }
-                              strokeLinecap="round"
-                              className="stroke-[#D5A859] transition-all duration-500"
-                            />
-                          </svg>
-                          <span className="absolute text-[10px] font-bold font-sans text-[#2A2A2A]">
-                            {doneCats}/{totalCats}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold text-[#7A7369] block leading-tight">
-                            Progress towards
-                          </span>
-                          <span className="text-xs font-bold font-display text-[#123326]">
-                            perfect dinner
-                          </span>
-                        </div>
+              {/* RIGHT COLUMN: Order Summary Panel (Desktop Sticky) */}
+              <div className="hidden lg:block lg:w-[380px] xl:w-[410px] shrink-0">
+                <div className="bg-[#FFFEFA] rounded-3xl border border-[#D6B15E]/50 shadow-[0_4px_24px_rgba(214,177,94,0.08)] sticky top-[180px] max-h-[calc(100vh-200px)] flex flex-col overflow-hidden">
+                  {/* Panel Header */}
+                  <div className="p-5 pb-4 border-b border-[#D6B15E]/30 bg-[#FAF7F2]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B8860B] font-sans">
+                          ORDER SUMMARY
+                        </span>
+                        <h3
+                          className="font-serif font-bold text-xl sm:text-2xl text-[#0B2D23] leading-tight mt-0.5"
+                          style={{
+                            fontFamily: '"Playfair Display", Georgia, serif',
+                          }}
+                        >
+                          {selectedPackage.packageName || "Curated Menu"}
+                        </h3>
+                        <p className="text-xs text-stone-600 font-medium mt-0.5">
+                          {caterer.name}
+                        </p>
                       </div>
-                      <div className="w-full bg-[#F5EFE1] h-[4px] rounded-full overflow-hidden">
+
+                      {selectedItemsCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to clear your selected menu items?",
+                              )
+                            ) {
+                              setSelectedItems({});
+                            }
+                          }}
+                          className="text-[11px] font-bold text-stone-400 hover:text-rose-600 transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-rose-50"
+                          title="Clear all selected items"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Guest & Base Price Row */}
+                    <div className="mt-3.5 pt-3 border-t border-[#D6B15E]/30 flex items-center justify-between text-xs font-semibold">
+                      <div className="flex items-center gap-1.5 text-stone-600">
+                        <Users size={14} className="text-[#D6B15E]" />
+                        <span className="text-[#0B2D23]">{guests} Guests</span>
+                      </div>
+                      <div className="text-[#0B2D23]">
+                        <span>₹{currentPerPlatePrice} / plate</span>
+                      </div>
+                    </div>
+
+                    {/* Category Completion Progress Bar */}
+                    <div className="mt-3.5 pt-3 border-t border-[#D6B15E]/30">
+                      <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                        <span className="text-[#0B2D23]">Menu Completion</span>
+                        <span
+                          className={
+                            doneCategoriesCount === totalCategoriesCount
+                              ? "text-[#0B2D23] font-bold"
+                              : "text-[#B8860B] font-bold"
+                          }
+                        >
+                          {doneCategoriesCount} of {totalCategoriesCount} Categories
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#FAF4E8] border border-[#D6B15E]/30 h-2 rounded-full overflow-hidden">
                         <div
-                          className="bg-gradient-to-r from-[#FCE6A9] via-[#D5A859] to-[#9E7730] h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pctDone}%` }}
-                        ></div>
+                          className="bg-gradient-to-r from-[#D6B15E] to-[#0B2D23] h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${Math.round(
+                              (doneCategoriesCount /
+                                (totalCategoriesCount || 1)) *
+                                100,
+                            )}%`,
+                          }}
+                        />
                       </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="w-full my-3 border-t border-[#D5A859]/20"></div>
-
-                <h3 className="font-sans font-bold text-[9px] uppercase tracking-widest text-[#7A7369] mb-2 px-0.5">
-                  Categories
-                </h3>
-                <div className="space-y-1.5 px-0.5">
-                  {menuCategories.map((cat: string) => {
-                    const catData = selectedPackage.categories?.find(
-                      (c: any) => c.categoryName === cat,
-                    );
-                    const catItems = catData?.items || [];
-                    if (catItems.length === 0) return null;
-                    const selectedCount = catItems.filter(
-                      (i: string) => selectedItems[i],
-                    ).length;
-
-                    const match = catData.selectionRule?.match(/\d+/);
-                    const catLimit = match ? parseInt(match[0], 10) : 0;
-                    const isDone = selectedCount >= catLimit;
-                    const isActive = activeCategory === cat;
-
-                    const isHighlighted = highlightIncomplete && !isDone;
-
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={cn(
-                          "w-full text-left px-2 py-2.5 rounded-xl transition-all border text-[11px] font-bold flex items-center justify-between select-none relative group cursor-pointer",
-                          isActive
-                            ? "bg-[#0B1F17] text-white border-[#D4AF37] shadow-[0_6px_18px_rgba(11,31,23,0.15)]"
-                            : "bg-[#FFFDF9]/95 text-[#123326] border-[#D4AF37]/15 hover:border-[#D4AF37]/40 hover:bg-[#FAF4E5] shadow-[0_2px_6px_rgba(120,90,40,0.02)]",
-                          isHighlighted && "border-red-500 bg-red-50/70 text-red-950 shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-pulse"
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-1">
-                          <span
-                            className={cn(
-                              "shrink-0 transition-transform duration-300 group-hover:scale-110 [&_svg]:w-[15px] [&_svg]:h-[15px]",
-                              isActive
-                                ? "text-[#E6C77D]"
-                                : "text-[#123326] transition-colors group-hover:text-[#D5A859]",
-                            )}
-                          >
-                            {getCategoryIcon(cat)}
-                          </span>
-                          <span className="leading-none font-sans font-bold tracking-tight text-[11px] xl:text-[11.5px] break-words whitespace-normal leading-tight text-left">
-                            {cat}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {catLimit > 0 ? (
-                            isDone ? (
-                              <span
-                                className={cn(
-                                  "text-[8.5px] px-1.5 py-0.5 rounded-full font-black flex items-center gap-0.5 uppercase tracking-wide shrink-0 border",
-                                  isActive
-                                    ? "bg-white/10 text-[#E6C77D] border-transparent"
-                                    : "bg-[#27AE60]/15 text-[#1E8E5A] border-transparent",
-                                )}
-                              >
-                                ✓
-                              </span>
-                            ) : (
-                              <span
-                                className={cn(
-                                  "text-[8.5px] px-1.5 py-0.5 rounded-full font-black tracking-wide shrink-0 border uppercase",
-                                  isActive
-                                    ? "bg-white/15 text-white border-transparent"
-                                    : "bg-slate-50 text-slate-500 border-slate-200/85",
-                                  isHighlighted && "bg-red-100 text-red-700 border-red-300"
-                                )}
-                              >
-                                {selectedCount}/{catLimit}
-                              </span>
-                            )
-                          ) : (
-                            <span
-                              className={cn(
-                                "text-[8.5px] px-1.5 py-0.5 rounded-full font-black shrink-0 border",
-                                isActive
-                                  ? "bg-white/15 text-white border-transparent"
-                                  : "bg-slate-50 text-slate-500 border-slate-100",
-                              )}
-                            >
-                              {selectedCount}
-                            </span>
-                          )}
-
-                          {isActive ? (
-                            <span className="text-[#E6C77D] translate-x-0.5 transition-transform shrink-0">
-                              <ChevronRight size={11} strokeWidth={3} />
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#D5A859]/70 shrink-0">
-                              <ChevronRight size={11} strokeWidth={2} />
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Great Choice Paragraph message Card - Premium style matching Screenshot 1 */}
-                <div className="mt-5 bg-[#FFFDF9] border border-[#D5A859]/30 rounded-xl p-3.5 relative overflow-hidden select-none shadow-[inset_0_1px_5px_rgba(213,168,89,0.05),0_8px_24px_rgba(213,168,89,0.04)]">
-                  {/* Rich vertical highlight border tag */}
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#E6C77D] via-[#D5A859] to-[#9E7730] opacity-90"></div>
-                  <div className="flex gap-2.5 items-start pl-0.5">
-                    <div className="w-6.5 h-6.5 rounded-full bg-[#FFF8EC] flex items-center justify-center border border-[#D5A859]/25 shadow-sm text-xs shrink-0">
-                      👑
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#123326] tracking-wider mb-0.5 font-sans uppercase">
-                        Great choice!
-                      </p>
-                      <p className="text-[11px] text-[#554F46] font-medium leading-normal">
-                        You are building a delicious menu
-                      </p>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* MIDDLE PANEL - Available Dishes */}
-            <div
-              id="middle-dishes-panel"
-              className={cn(
-                "hidden lg:flex flex-1 min-w-0 flex-col lg:overflow-hidden mb-24 lg:mb-6 rounded-[24px] lg:rounded-[28px] min-h-[400px] lg:min-h-[650px] transition-all duration-300",
-                highlightIncomplete && !isCategoryComplete(activeCategory)
-                  ? "border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.25)] animate-pulse"
-                  : "border border-[#D5A859]/35 shadow-[0_15px_30px_rgba(120,90,40,0.06)]"
-              )}
-              style={{
-                backgroundColor: "#FDFBF6",
-              }}
-            >
-              {/* Category Header Area */}
-              <div className="p-3 md:px-4.5 pb-2.5 md:pb-3 border-b border-[#D5A859]/15 bg-transparent">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 md:gap-6">
-                  <div>
-                    <h2
-                      className="text-[28px] sm:text-[38px] lg:text-[42px] xl:text-[46px] font-bold font-serif font-display text-[#0B1F17] leading-none tracking-tight mb-2 max-w-[90%]"
-                      style={{
-                        whiteSpace: "normal",
-                        wordBreak: "keep-all",
-                        overflowWrap: "normal",
-                      }}
-                    >
-                      {activeCategory}
-                    </h2>
-
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-[10px] sm:text-[11.5px] font-black tracking-[0.22em] text-[#D5A859] uppercase font-sans">
-                        {getSelectionRuleLabel(
-                          selectedPackage.categories?.find(
-                            (c: any) => c.categoryName === activeCategory,
-                          )?.selectionRule,
-                        )}
-                      </span>
-                      <div className="h-[1px] bg-[#D5A859]/25 flex-1 w-20"></div>
-                    </div>
-
-                    {limitPerCategory > 0 && (
-                      <div className="mt-4 flex flex-col gap-2.5">
-                        <div className="flex items-center gap-2">
-                          {(() => {
-                            const catData = selectedPackage.categories?.find(
-                              (c: any) => c.categoryName === activeCategory,
-                            );
-                            const itemsInCat = catData?.items || [];
-                            const selectedCount = itemsInCat.filter(
-                              (i: string) => selectedItems[i],
-                            ).length;
-                            const isFull = selectedCount >= limitPerCategory;
-                            return isFull ? (
-                              <span className="inline-flex items-center gap-1.5 bg-[#1E8E5A]/8 border border-[#1E8E5A]/25 text-[#1E8E5A] font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
-                                <Check
-                                  size={11}
-                                  strokeWidth={3.5}
-                                  className="text-[#1E8E5A]"
-                                />{" "}
-                                Completed selection ({selectedCount}/
-                                {limitPerCategory})
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 bg-[#FFF8EC] border border-[#D5A859]/30 text-amber-850 font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wide uppercase">
-                                Requires any {limitPerCategory} ({selectedCount}{" "}
-                                selected)
-                              </span>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Validation Alert Message inside Middle Panel */}
-                        {!isCategoryComplete(activeCategory) && (
-                          <div className={cn(
-                            "px-4 py-2.5 rounded-xl border flex items-center gap-2 text-[11px] font-bold font-sans transition-all duration-300 max-w-md",
-                            highlightIncomplete
-                              ? "bg-red-50 border-red-200 text-red-800 shadow-[0_4px_12px_rgba(239,68,68,0.1)]"
-                              : "bg-[#FFF8EC] border-[#D5A859]/25 text-amber-900"
-                          )}>
-                            <span className="text-xs">⚠️</span>
-                            <span>
-                              Please select {getCategoryRemainingCount(activeCategory)} more item{getCategoryRemainingCount(activeCategory) > 1 ? "s" : ""} from {activeCategory}.
-                            </span>
-                          </div>
-                        )}
+                  {/* Scrollable List of Selected Items grouped by category */}
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+                    {selectedItemsCount === 0 ? (
+                      <div className="py-12 text-center text-stone-400">
+                        <p className="font-serif text-base text-stone-600 font-bold mb-1">
+                          Your Menu is Empty
+                        </p>
+                        <p className="text-xs text-stone-500 max-w-[220px] mx-auto leading-relaxed">
+                          Select dishes from the categories to build your custom
+                          catering package.
+                        </p>
                       </div>
+                    ) : (
+                      menuCategories.map((cat: string) => {
+                        const itemsInCat = (
+                          selectedPackage.categories?.find(
+                            (c: any) => c.categoryName === cat,
+                          )?.items || []
+                        ).filter((i: string) => selectedItems[i]);
+
+                        if (itemsInCat.length === 0) return null;
+
+                        return (
+                          <div key={cat} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-bold text-stone-600 pb-1 border-b border-[#D6B15E]/20">
+                              <span className="uppercase tracking-wider text-[11px] text-[#0B2D23] font-sans">
+                                {cat}
+                              </span>
+                              <span className="text-[10px] text-[#8B6E32]">
+                                {itemsInCat.length} selected
+                              </span>
+                            </div>
+                            <ul className="space-y-1">
+                              {itemsInCat.map((item: string) => (
+                                <li
+                                  key={item}
+                                  className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-[#FAF7F2] hover:bg-[#FAF4E8] transition-colors text-xs font-semibold text-[#0B2D23] border border-[#D6B15E]/20 group"
+                                >
+                                  <span className="truncate pr-2">{item}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleItem(item, cat)}
+                                    className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+                                    title={`Remove ${item}`}
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
 
-                  <div className="relative w-full sm:w-[210px] lg:w-[245px] shrink-0 self-center sm:self-end">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#D5A859] select-none">
-                      🍸
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search dishes..."
-                      className="w-full pl-10 pr-5 bg-[#FFFDF9]/95 border border-[#D4AF37]/30 hover:border-[#D5A859]/60 focus:border-[#D4AF37] rounded-full text-[12px] font-semibold shadow-[inset_0_1px_3px_rgba(120,90,40,0.03)] outline-none transition-all placeholder:text-[#7A7369]/40 text-[#123326] h-[38px] tracking-wide"
-                      onChange={(e) => {
-                        const val = e.target.value.toLowerCase();
-                        document
-                          .querySelectorAll(".dish-card-item")
-                          .forEach((el) => {
-                            const name =
-                              el.getAttribute("data-name")?.toLowerCase() || "";
-                            if (name.includes(val))
-                              el.classList.remove("hidden");
-                            else el.classList.add("hidden");
-                          });
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid layout - Highly spacious & elevated matching Screenshot 1 */}
-              <div className="p-1.5 sm:px-3 lg:px-3.5 py-3 sm:py-4 lg:py-4.5 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-2 sm:gap-3 xl:gap-3.5 auto-rows-max overflow-y-visible lg:overflow-y-auto h-auto lg:h-full max-h-none lg:max-h-[calc(100vh-210px)] content-start bg-[#FAF6EE]/12 pb-20 lg:pb-16">
-                {(
-                  selectedPackage.categories?.find(
-                    (c: any) => c.categoryName === activeCategory,
-                  )?.items || []
-                ).map((itemName: string, idx: number) => {
-                  const isSelected = selectedItems[itemName];
-                  const itemsInCat =
-                    selectedPackage.categories?.find(
-                      (c: any) => c.categoryName === activeCategory,
-                    )?.items || [];
-                  const selectedCount = itemsInCat.filter(
-                    (i: string) => selectedItems[i],
-                  ).length;
-                  const isAtLimit =
-                    limitPerCategory > 0 && selectedCount >= limitPerCategory;
-                  const isDisabled = !isSelected && isAtLimit;
-
-                  const isPremium = isItemPremium(itemName);
-                  const isNonVeg = isItemNonVeg(itemName, activeCategory);
-
-                  return (
-                    <div
-                      key={idx}
-                      data-name={itemName}
-                      onClick={() => {
-                        if (!isDisabled) toggleItem(itemName, activeCategory);
-                      }}
-                      onMouseEnter={() => setHoveredCardIdx(idx)}
-                      onMouseLeave={() => setHoveredCardIdx(null)}
-                      className={cn(
-                        "dish-card-item relative bg-[#FFFDF9] rounded-[16px] flex flex-col justify-between p-2 sm:p-2.5 pt-2 sm:pt-2.5 pb-1.5 sm:pb-2 transition-all duration-300 cursor-pointer select-none min-h-[92px] sm:min-h-[108px] max-h-[114px] sm:max-h-none",
-                        isSelected
-                          ? "bg-[#FFF8EC]/60"
-                          : isDisabled
-                            ? "bg-slate-50/70 opacity-45 cursor-not-allowed shadow-none"
-                            : "",
-                      )}
-                      style={{
-                        border: isDisabled
-                          ? "1px solid rgba(226,232,240,0.5)"
-                          : isSelected
-                            ? "2px solid rgba(212,175,55,0.85)"
-                            : "1px solid rgba(212,175,55,0.35)",
-                        boxShadow: isDisabled
-                          ? "none"
-                          : isSelected
-                            ? "0 14px 34px rgba(160,120,50,0.18), 0 4px 12px rgba(0,0,0,0.06)"
-                            : hoveredCardIdx === idx
-                              ? "0 14px 28px rgba(160,120,50,0.2), 0 5px 12px rgba(0,0,0,0.08)"
-                              : "0 12px 25px rgba(160,120,50,0.12)",
-                        transform: isSelected
-                          ? "translateY(0)"
-                          : hoveredCardIdx === idx
-                            ? "translateY(-2px)"
-                            : "translateY(0)",
-                        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-                      }}
-                    >
-                      {/* Champagne Gold Gilded Top Accent bar */}
-                      {!isDisabled && (
-                        <div
-                          className="absolute top-0 left-0 right-0 h-[3px] sm:h-1 rounded-t-[16px] opacity-90"
-                          style={{
-                            background:
-                              "linear-gradient(90deg, #FCE6A9, #D4AF37, #B8872B, #D4AF37, #FCE6A9)",
-                          }}
-                        ></div>
-                      )}
-
-                      {/* Header Item Category & Type */}
-                      <div className="flex justify-between items-center gap-1.5 mb-1 sm:mb-1.5 mt-0.5 sm:mt-0 leading-none">
-                        {/* Veg / Non-Veg Indicator Badge */}
-                        {isNonVeg ? (
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#8C2A2A]">
-                            <span className="flex items-center justify-center w-3 h-3 border border-red-800 rounded-sm p-[1.5px] bg-white shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-800"></span>
-                            </span>
-                            <span className="hidden sm:inline text-[10px] font-extrabold tracking-wider text-red-800 font-sans uppercase">
-                              Non-Veg
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#1E8E5A]">
-                            <span className="flex items-center justify-center w-3 h-3 border border-emerald-700 rounded-sm p-[1.5px] bg-white shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 font-sans"></span>
-                            </span>
-                            <span className="hidden sm:inline text-[10px] font-extrabold tracking-wider text-[#1E8E5A] font-sans uppercase">
-                              Veg
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Top right crown indicating slot limit */}
-                        <div className="hidden sm:flex items-center gap-1 text-xs font-black text-[#D5A859]">
-                          <span>👑</span>
-                          <span className="text-12px font-bold font-sans">
-                            {limitPerCategory || 1}
+                  {/* Panel Footer: Pricing Breakdown & CTA */}
+                  <div className="p-5 pt-4 border-t border-[#D6B15E]/30 bg-[#FAF7F2] shrink-0 space-y-3">
+                    {/* Price breakdown */}
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between text-stone-600">
+                        <span>Package Subtotal ({guests} guests)</span>
+                        <span className="font-semibold text-[#0B2D23]">
+                          ₹{(currentPerPlatePrice * guests).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      {platformFee > 0 && (
+                        <div className="flex justify-between text-stone-600">
+                          <span>Platform Service Fee</span>
+                          <span className="font-semibold text-[#0B2D23]">
+                            ₹{platformFee.toLocaleString("en-IN")}
                           </span>
                         </div>
+                      )}
+                      <div className="pt-2 border-t border-[#D6B15E]/30 flex justify-between items-baseline">
+                        <span className="font-bold text-stone-800 text-sm">
+                          Estimated Total
+                        </span>
+                        <span className="font-serif font-bold text-2xl text-[#0B2D23]">
+                          ₹
+                          {(
+                            currentPerPlatePrice * guests +
+                            platformFee
+                          ).toLocaleString("en-IN")}
+                        </span>
                       </div>
-
-                      {/* Item Name - Beautiful Playfair display serif, scaled up */}
-                      <div className="flex-1 flex flex-col justify-center my-0.5 select-all min-h-[28px] sm:min-h-[32px]">
-                        <h4
-                          className="text-[12px] sm:text-[14px] font-bold font-display text-[#0B1F17] leading-tight text-center line-clamp-2"
-                          style={{
-                            fontFamily: '"Playfair Display", Georgia, serif',
-                            whiteSpace: "normal",
-                            wordBreak: "keep-all",
-                            overflowWrap: "break-word",
-                          }}
-                        >
-                          {itemName}
-                        </h4>
-                      </div>
-
-                      {/* Bottom Control Row */}
-                      <div className="flex items-center justify-center sm:justify-between gap-1.5 mt-1 sm:mt-1.5 pt-1 sm:pt-1.5 border-t border-slate-100/90 shrink-0">
-                        {/* Left status badge */}
-                        <div className="hidden sm:block">
-                          {isPremium ? (
-                            <span className="text-[8.5px] font-extrabold uppercase tracking-wide text-[#9E7730] bg-[#FFF8EC] px-1.5 py-0.5 rounded-[5px] border border-[#D5A859]/15 w-fit">
-                              Premium
-                            </span>
-                          ) : (
-                            <span className="text-[8.5px] font-extrabold uppercase tracking-wide text-[#1E8E5A] bg-[#1E8E5A]/8 px-1.5 py-0.5 rounded-[5px] border border-[#1E8E5A]/12 w-fit">
-                              Included
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Right Gold-accented Button */}
-                        {isSelected ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isDisabled)
-                                toggleItem(itemName, activeCategory);
-                            }}
-                            className="w-full sm:w-auto px-2 sm:px-3.5 py-1 sm:py-1.5 bg-[#123326] hover:bg-[#0B1F17] border border-[#D5A859]/20 text-[#FFF8EC] font-black text-[9px] sm:text-[10px] uppercase tracking-wider rounded-lg transition-all duration-200 shadow-sm cursor-pointer min-h-[26px] flex items-center justify-center gap-0.5"
-                          >
-                            <span className="text-[9px]">✓</span> Added
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isDisabled)
-                                toggleItem(itemName, activeCategory);
-                            }}
-                            disabled={isDisabled}
-                            className={cn(
-                              "w-full sm:w-auto px-2 sm:px-3.5 py-1 sm:py-1.5 font-black text-[9px] sm:text-[10px] uppercase tracking-wider rounded-lg transition-all duration-200 select-none cursor-pointer min-h-[26px] flex items-center justify-center",
-                              isDisabled
-                                ? "bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed shadow-none"
-                                : "bg-[#8B6E4A] hover:bg-[#7D5F3D] text-[#FFFDF9] shadow-[0_1.5px_4px_rgba(139,110,74,0.18)] active:scale-[0.97]",
-                            )}
-                          >
-                            + Add
-                          </button>
-                        )}
-                      </div>
+                      <p className="text-[10px] text-stone-500 text-right">
+                        Inclusive of taxes & package curation
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
 
-            {/* RIGHT PANEL - Live Order Summary */}
-            <div className="hidden lg:block lg:w-[265px] xl:w-[280px] shrink-0">
-              <div
-                className="rounded-[2rem] p-5 pb-6 sticky top-28 overflow-hidden relative flex flex-col h-[calc(100vh-140px)] border border-[#D4AF37]/28"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #04140D 0%, #010604 100%)",
-                  boxShadow:
-                    "0 24px 75px rgba(5,20,13,0.45), 0 0 40px rgba(212,175,55,0.04), inset 0 0 0 1px rgba(255,240,200,0.07)",
-                }}
-              >
-                {/* Inner champagne-gold gilded luxury border double-line */}
-                <div className="absolute inset-2 md:inset-2.5 rounded-[1.6rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
-                {/* Ambient background luxury glows */}
-                <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#D5A859]/12 rounded-full pointer-events-none blur-3xl"></div>
-                <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-[#FCE6A9]/6 rounded-full pointer-events-none blur-3xl"></div>
-
-                {/* Floating panel top summary bar */}
-                <div className="mb-6 pb-5 border-b border-white/10 flex justify-between items-center relative z-10">
-                  <div>
-                    <h3 className="font-display font-black text-3.5xl tracking-tight text-[#FDFBFA] mb-1.5">
-                      Your Order
-                    </h3>
-                    <p className="text-[10px] font-black text-[#D5A859] tracking-[0.16em] uppercase">
-                      {guests} GUESTS SELECTED
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 relative z-10 shrink-0">
+                    {/* CTA Button */}
                     <button
-                      onClick={() => setSelectedItems({})}
-                      title="Clear entire selection"
-                      className="w-11 h-11 rounded-2xl bg-[#FFF8EC] border border-[#D5A859]/35 hover:border-[#D5A859] flex items-center justify-center transition-all cursor-pointer shadow-md text-[#5D4E40] hover:text-rose-900"
-                    >
-                      <svg
-                        width="17"
-                        height="17"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Glassmorphic scrolling selected item list container */}
-                <div className="flex-1 overflow-y-auto pr-1 space-y-4 mb-6 relative z-10 custom-scrollbar">
-                  {menuCategories.map((cat: string) => {
-                    const itemsInCat = (
-                      selectedPackage.categories?.find(
-                        (c: any) => c.categoryName === cat,
-                      )?.items || []
-                    ).filter((i: string) => selectedItems[i]);
-                    if (itemsInCat.length === 0) return null;
-                    return (
-                      <div key={cat} className="space-y-2.5 mb-4 px-0.5">
-                        <h4 className="text-[10px] font-black text-[#D5A859] uppercase tracking-widest pl-1">
-                          {cat}
-                        </h4>
-                        <ul className="space-y-2">
-                          {itemsInCat.map((item: string, idx: number) => (
-                            <li
-                              key={idx}
-                              className="bg-white/5 backdrop-blur-md rounded-2xl px-5 py-4 border border-white/10 text-sm flex items-center justify-between font-bold text-white/95 shadow-sm group transition-all hover:bg-white/10"
-                            >
-                              <div className="flex items-center gap-2 py-0.5 min-w-0 pr-2">
-                                <span className="text-[#D5A859] shrink-0 text-xs">
-                                  ◆
-                                </span>
-                                <span className="leading-tight truncate font-sans text-[14.5px]">
-                                  {item}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => toggleItem(item, cat)}
-                                className="w-6.5 h-6.5 rounded-full bg-white/5 hover:bg-rose-900/40 hover:text-white text-white/50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                              >
-                                <X size={12} />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
-
-                  {Object.keys(selectedItems).filter((k) => selectedItems[k])
-                    .length === 0 && (
-                    <div className="text-center py-16 text-white/40 text-sm h-full flex flex-col justify-center items-center">
-                      {/* Beautiful gold wireframe cake/dessert tray SVG */}
-                      <svg
-                        viewBox="0 0 100 100"
-                        className="w-24 h-24 mx-auto mb-5 text-[#D5A859]/60"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        {/* Serve stand wireframe base */}
-                        <path
-                          d="M50 85 C35 85 30 92 30 95 L70 95 C70 92 65 85 50 85 Z"
-                          fill="rgba(213, 168, 89, 0.05)"
-                        />
-                        {/* Central pillar */}
-                        <line x1="50" y1="20" x2="50" y2="85" />
-                        {/* Serving ring handle */}
-                        <circle cx="50" cy="15" r="5" />
-                        {/* Tier 1 (Bottom tray) */}
-                        <path d="M25 75 Q50 80 75 75" />
-                        {/* Tier 2 (Middle tray) */}
-                        <path d="M30 50 Q50 54 70 50" />
-                        {/* Tier 3 (Top tray) */}
-                        <path d="M35 28 Q50 31 65 28" />
-                        {/* Mini cakes / pastries on trays */}
-                        <circle cx="42" cy="71" r="2.5" fill="#D5A859" />
-                        <circle cx="58" cy="71" r="2.5" fill="#D5A859" />
-                        <rect
-                          x="47"
-                          y="43"
-                          width="6"
-                          height="5"
-                          rx="1"
-                          fill="#D5A859"
-                        />
-                        <circle cx="48" cy="24" r="2" fill="#D5A859" />
-                      </svg>
-                      <p className="font-extrabold text-[#FCE6A9]/95 text-sm tracking-widest uppercase">
-                        Select dishes from the left
-                      </p>
-                      <p className="text-[12.5px] mt-1.5 text-white/50 leading-relaxed font-sans max-w-[85%]">
-                        To custom curate your luxury menu
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Divider line before checkout stats */}
-                <div className="flex items-center justify-center my-6.5 relative z-10 font-sans">
-                  <div className="w-full h-[1px] bg-[#D5A859]/25 font-sans"></div>
-                  <span className="absolute text-[#D5A859] bg-[#06150D] px-3.5 text-[14px] font-sans">
-                    ✧
-                  </span>
-                </div>
-
-                {/* Total Estimate Highlight box */}
-                <div className="pt-3 relative z-10 mt-auto shrink-0 font-sans">
-                  {/* Rich Highlight Box style */}
-                  <div className="bg-white/[0.06] border border-[#D5A859]/35 rounded-[1.75rem] p-7 mb-7 shadow-inner font-sans">
-                    <div className="flex justify-between items-baseline mb-3 text-white/70 font-sans">
-                      <span className="text-[11px] font-black uppercase tracking-widest text-[#FFF8EC]/60 font-sans">
-                        Estimated Base Price
-                      </span>
-                      <span className="text-sm font-black text-[#E5C37A] font-sans">
-                        ₹{currentPerPlatePrice} / guest
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-3 border-t border-white/[0.08] font-sans">
-                      <span className="font-extrabold text-[#FDFBFA] text-[15px] tracking-tight font-sans">
-                        Total Estimate
-                      </span>
-                      <span className="text-[32px] lg:text-[36px] font-black font-display font-serif text-[#E5C37A] leading-none select-all tracking-tight">
-                        ₹
-                        {(currentPerPlatePrice * guests).toLocaleString(
-                          "en-IN",
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Trust metrics */}
-                  <div className="flex items-center justify-around text-[11px] text-[#F8F4EC]/75 font-bold mb-6 font-sans">
-                    <span className="flex items-center gap-1">
-                      <svg
-                        className="w-3.5 h-3.5 text-[#D5A859] inline mr-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                        <polyline points="9 11 11 13 15 9" />
-                      </svg>
-                      Secure
-                    </span>
-                    <span className="text-white/20">|</span>
-                    <span className="flex items-center gap-1">
-                      <svg
-                        className="w-3.5 h-3.5 text-[#D5A859] inline mr-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect
-                          x="3"
-                          y="11"
-                          width="18"
-                          height="11"
-                          rx="2"
-                          ry="2"
-                        />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      Safe
-                    </span>
-                    <span className="text-white/20">|</span>
-                    <span className="flex items-center gap-1">
-                      <svg
-                        className="w-3.5 h-3.5 text-[#D5A859] inline mr-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="8" r="7" />
-                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-                      </svg>
-                      Reliable
-                    </span>
-                  </div>
-
-                  {/* Proceed CTA button */}
-                  <button
-                    onClick={() => {
-                      const incomplete = menuCategories.filter(cat => !isCategoryComplete(cat));
-                      if (incomplete.length === 0) {
-                        setViewMode("checkout");
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      } else {
-                        const firstIncomplete = incomplete[0];
-                        navigateToCategory(firstIncomplete);
-                        setHighlightIncomplete(true);
-                        setValidationTriggered(true);
-                        toast("Please complete all required menu selections before proceeding.", "error");
-                      }
-                    }}
-                    className="w-full py-5 rounded-[18px] font-extrabold shadow-lg transition-all flex items-center justify-between px-7 uppercase tracking-wider text-xs duration-300 relative group overflow-hidden cursor-pointer text-[#0B1F17] hover:opacity-95 hover:shadow-[0_8px_25px_rgba(212,175,55,0.42)] border-[1.5px] border-white/40"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #F4E2B6, #D4AF37, #B8872B)",
-                      boxShadow:
-                        "0 8px 24px rgba(212, 168, 89, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
-                    }}
-                  >
-                    <span className="font-extrabold tracking-widest text-[11px]">
-                      Proceed to Order
-                    </span>
-                    <div className="w-8.5 h-8.5 rounded-full bg-[#0B1F17] text-[#FCE6A9] flex items-center justify-center shadow-md grow-0 shrink-0">
-                      <ChevronRight size={17} strokeWidth={3} />
-                    </div>
-                  </button>
-
-                  {!allCategoriesComplete && (
-                    <div className="mt-4 bg-white/[0.04] text-[#FCE6A9] border border-[#D5A859]/20 px-4 py-3.5 rounded-[16px] text-[11px] font-semibold relative z-10 text-left space-y-2">
-                      <div className="text-center font-bold text-xs text-[#FFF8EC] border-b border-white/10 pb-2 flex items-center justify-center gap-1.5">
-                        <span className="text-amber-400">⚠️</span> Menu Selections Incomplete
-                      </div>
-                      <p className="text-[10px] text-slate-300 font-medium">
-                        Please complete the following required categories before proceeding:
-                      </p>
-                      <ul className="space-y-1.5 mt-2">
-                        {menuCategories.map((cat: string) => {
-                          const isDone = isCategoryComplete(cat);
-                          if (isDone) return null;
-                          const remaining = getCategoryRemainingCount(cat);
-                          return (
-                            <li key={cat}>
-                              <button
-                                type="button"
-                                onClick={() => navigateToCategory(cat)}
-                                className="w-full text-left flex items-center justify-between text-[11px] text-[#FCE6A9] hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-all border border-[#D5A859]/10 hover:border-[#D5A859]/30"
-                              >
-                                <span className="font-bold flex items-center gap-1">
-                                  <span className="text-red-400">•</span> {cat}
-                                </span>
-                                <span className="text-[9.5px] bg-red-950/40 text-red-300 px-2 py-0.5 rounded-full font-sans font-bold border border-red-900/30">
-                                  {remaining} item{remaining > 1 ? "s" : ""} remaining
-                                </span>
-                              </button>
-                            </li>
+                      type="button"
+                      onClick={() => {
+                        const incomplete = menuCategories.filter(
+                          (cat) => !isCategoryComplete(cat),
+                        );
+                        if (incomplete.length === 0) {
+                          setViewMode("checkout");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        } else {
+                          const firstIncomplete = incomplete[0];
+                          navigateToCategory(firstIncomplete);
+                          setHighlightIncomplete(true);
+                          setValidationTriggered(true);
+                          toast(
+                            `Please complete selections for ${firstIncomplete}`,
+                            "error",
                           );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-                </div>
+                        }
+                      }}
+                      className="w-full py-3.5 px-5 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99] border border-[#D6B15E]"
+                    >
+                      <span>Proceed to Booking</span>
+                      <ArrowRight size={16} />
+                    </button>
 
-                {/* Details footprint */}
-                  <div className="mt-3.5 text-center text-[10px] text-[#F8F4EC]/40 flex items-center justify-center gap-1 leading-none select-none">
-                    <span>🔒 Your details are 100% safe with us</span>
+                    {/* Incomplete warning banner */}
+                    {!allCategoriesComplete && (
+                      <div className="text-[11px] text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 rounded-lg p-2.5 text-center font-medium">
+                        Select required items in all categories to proceed.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3407,92 +2923,78 @@ export default function OrderFlow() {
           </div>
 
           {/* BOTTOM PREMIUM TRUST SECTION */}
-          <div className="mt-12 bg-[#FDFCF9] border border-[#D5A859]/20 rounded-[2.5rem] p-8 shadow-[0_12px_40px_rgba(213,168,89,0.04)] flex flex-col md:flex-row items-center justify-around gap-8 text-[13px] font-semibold text-[#2A2A2A] select-none">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-[#FFF8EC] text-[#D5A859] flex items-center justify-center shrink-0 border border-[#D5A859]/25">
-                <Award size={22} />
+          <div className="max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 pb-12 select-none">
+            <div className="bg-[#FFFEFA] border border-[#D6B15E]/40 rounded-3xl p-6 sm:p-8 shadow-[0_4px_20px_rgba(214,177,94,0.06)] flex flex-col md:flex-row items-center justify-around gap-6 text-[13px] font-semibold text-stone-800">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-[#FFF8EC] text-[#B8860B] flex items-center justify-center shrink-0 border border-[#D6B15E]/30">
+                  <Award size={20} />
+                </div>
+                <div>
+                  <h4 className="text-[#0B2D23] font-bold leading-tight">
+                    Premium Ingredients
+                  </h4>
+                  <p className="text-[11px] text-stone-500 font-medium">
+                    100% Quality Assurance
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-slate-800 font-bold leading-tight">
-                  Premium Ingredients
-                </h4>
-                <p className="text-[11px] text-[#7A7369] font-bold">
-                  100% Quality Assurance
-                </p>
-              </div>
-            </div>
 
-            <div className="h-8 w-px bg-[#D5A859]/15 hidden md:block"></div>
+              <div className="h-8 w-px bg-[#D6B15E]/30 hidden md:block"></div>
 
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-55 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-100/50">
-                <ShieldCheck size={22} />
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-[#E8F5EE] text-[#0B2D23] flex items-center justify-center shrink-0 border border-[#A3D9BA]/50">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h4 className="text-[#0B2D23] font-bold leading-tight">
+                    Food Safety Standards
+                  </h4>
+                  <p className="text-[11px] text-stone-500 font-medium">
+                    FSSAI Certified Protocols
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-slate-800 font-bold leading-tight">
-                  Hygienic Kitchens
-                </h4>
-                <p className="text-[11px] text-[#7A7369] font-bold">
-                  FSSAI Certified Standards
-                </p>
-              </div>
-            </div>
 
-            <div className="h-8 w-px bg-[#D5A859]/15 hidden md:block"></div>
+              <div className="h-8 w-px bg-[#D6B15E]/30 hidden md:block"></div>
 
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#123326] flex items-center justify-center shrink-0 border border-emerald-100/50">
-                <ChefHat size={22} />
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-[#FFF8EC] text-[#B8860B] flex items-center justify-center shrink-0 border border-[#D5A859]/30">
+                  <ChefHat size={20} />
+                </div>
+                <div>
+                  <h4 className="text-[#0B2D23] font-bold leading-tight">
+                    Professional Chefs
+                  </h4>
+                  <p className="text-[11px] text-stone-500 font-medium">
+                    5-Star Culinary Mastery
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-slate-800 font-bold leading-tight">
-                  Professional Chefs
-                </h4>
-                <p className="text-[11px] text-[#7A7369] font-bold">
-                  5-Star Culinary Expertise
-                </p>
-              </div>
-            </div>
 
-            <div className="h-8 w-px bg-[#D5A859]/15 hidden md:block"></div>
+              <div className="h-8 w-px bg-[#D6B15E]/30 hidden md:block"></div>
 
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-[#FFF8EC] text-[#D5A859] flex items-center justify-center shrink-0 border border-[#D5A859]/25">
-                <Truck size={22} />
-              </div>
-              <div>
-                <h4 className="text-slate-800 font-bold leading-tight">
-                  Punctual Delivery
-                </h4>
-                <p className="text-[11px] text-[#7A7369] font-bold">
-                  Hot & Fresh On Time
-                </p>
-              </div>
-            </div>
-
-            <div className="h-8 w-px bg-[#D5A859]/15 hidden md:block"></div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#123326] flex items-center justify-center shrink-0 border border-emerald-200/30">
-                <Smile size={22} />
-              </div>
-              <div>
-                <h4 className="text-slate-800 font-bold leading-tight">
-                  100% Satisfaction
-                </h4>
-                <p className="text-[11px] text-[#7A7369] font-bold">
-                  Loved By 20,000+ Guests
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-[#E8F5EE] text-[#0B2D23] flex items-center justify-center shrink-0 border border-[#A3D9BA]/50">
+                  <Smile size={20} />
+                </div>
+                <div>
+                  <h4 className="text-[#0B2D23] font-bold leading-tight">
+                    Guaranteed Delight
+                  </h4>
+                  <p className="text-[11px] text-stone-500 font-medium">
+                    Loved By 20,000+ Guests
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Mobile Sticky Drawer / Bottom Sheet */}
+          {/* MOBILE STICKY BOTTOM ORDER BAR & EXPANDABLE DRAWER */}
           <div className="block lg:hidden">
             {/* Backdrop overlay */}
             {mobileCartExpanded && (
               <div
-                className="fixed inset-0 bg-black/75 z-40 transition-opacity duration-300"
+                className="fixed inset-0 bg-black/60 z-40 transition-opacity duration-300"
                 onClick={() => setMobileCartExpanded(false)}
               />
             )}
@@ -3502,221 +3004,183 @@ export default function OrderFlow() {
               className={cn(
                 "fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out flex flex-col overflow-hidden",
                 mobileCartExpanded
-                  ? "h-[85vh] rounded-t-[2.5rem] border-t border-[#D4AF37]/50"
-                  : "h-[48px] rounded-t-[1.2rem] border-t border-[#D4AF37]/30 shadow-[0_-8px_30px_rgba(5,20,13,0.35)]",
+                  ? "h-[85vh] rounded-t-[2rem] bg-[#FFFEFA] border-t border-[#D6B15E]/60 shadow-2xl"
+                  : "h-[56px] bg-[#0B2D23] text-white border-t border-[#D6B15E]/50 shadow-lg",
               )}
-              style={{
-                background: "linear-gradient(135deg, #04140D 0%, #010604 100%)",
-              }}
             >
-              {/* Champagne double-line gilded border - inside container */}
-              {mobileCartExpanded && (
-                <div className="absolute inset-2.5 rounded-t-[2rem] border-2 border-[#D4AF37]/15 pointer-events-none z-0"></div>
-              )}
-              {/* Glow spots */}
-              <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#D5A859]/12 rounded-full pointer-events-none blur-3xl"></div>
-
               {!mobileCartExpanded ? (
-                /* Collapsed view - 35% height reduced ultra-compact elegant bar with equally spaced elements and highly visible dividers */
+                /* Collapsed Mobile Bar */
                 <div
-                  className="w-full h-full flex items-center justify-between px-3 cursor-pointer relative z-10 select-none pb-0.5"
+                  className="w-full h-full flex items-center justify-between px-4 cursor-pointer select-none"
                   onClick={() => setMobileCartExpanded(true)}
                 >
-                  {/* 1st part: Price */}
-                  <div className="flex-1 flex items-center justify-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                    <span className="text-[13px] font-black text-[#FFF8EC] tracking-wider font-sans">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-sm font-bold text-white">
                       ₹{(currentPerPlatePrice * guests).toLocaleString("en-IN")}
                     </span>
-                  </div>
-
-                  {/* 1st divider */}
-                  <div className="h-4.5 w-[1.5px] bg-[#D4AF37]/50 shrink-0"></div>
-
-                  {/* 2nd part: Items Count */}
-                  <div className="flex-1 text-center font-black text-[13px] text-[#FFF8EC] tracking-wider font-sans">
-                    {selectedItemsCount}{" "}
-                    {selectedItemsCount === 1 ? "Item" : "Items"}
-                  </div>
-
-                  {/* 2nd divider */}
-                  <div className="h-4.5 w-[1.5px] bg-[#D4AF37]/50 shrink-0"></div>
-
-                  {/* 3rd part: View Order */}
-                  <div className="flex-1 flex items-center justify-center gap-1 font-extrabold text-[11px] text-[#E5C37A] uppercase tracking-widest font-sans">
-                    View Order{" "}
-                    <span className="text-[#E5C37A] text-[11.5px] font-black">
-                      ↗
+                    <span className="text-xs text-[#D6B15E] font-medium">
+                      ({selectedItemsCount} {selectedItemsCount === 1 ? "item" : "items"})
                     </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#FDF3D6] uppercase tracking-wider">
+                    <span>View Order</span>
+                    <ChevronUp size={14} />
                   </div>
                 </div>
               ) : (
-                /* Expanded Drawer view header with drag-handle */
-                <>
+                /* Expanded Mobile Drawer */
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                  {/* Drawer Handle */}
                   <div
-                    className="w-full text-center py-2.5 relative z-10 cursor-pointer select-none border-b border-white/5"
+                    className="w-full py-2.5 flex items-center justify-center cursor-pointer select-none border-b border-[#D6B15E]/30"
                     onClick={() => setMobileCartExpanded(false)}
                   >
-                    <div className="w-12 h-1 bg-[#D4AF37]/45 hover:bg-[#D4AF37]/75 rounded-full mx-auto mb-1 transition-colors"></div>
+                    <div className="w-12 h-1 bg-[#D6B15E]/50 rounded-full" />
                   </div>
-                </>
-              )}
 
-              {mobileCartExpanded && (
-                /* Expanded bottom sheet view */
-                <div className="flex-1 flex flex-col relative z-10 overflow-hidden px-5.5 py-4 pt-1.5 pb-24">
-                  {/* Top Bar inside sheet */}
-                  <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4 shrink-0">
+                  {/* Drawer Header */}
+                  <div className="px-5 py-3 border-b border-[#D6B15E]/30 flex items-center justify-between bg-[#FAF7F2]">
                     <div>
-                      <h3 className="font-display font-black text-2.5xl tracking-tight text-[#FDFBFA]">
+                      <h3
+                        className="font-serif font-bold text-xl text-[#0B2D23]"
+                        style={{
+                          fontFamily: '"Playfair Display", Georgia, serif',
+                        }}
+                      >
                         Your Curated Feast
                       </h3>
-                      <p className="text-[10px] font-black text-[#D5A859] tracking-wider uppercase mt-1">
-                        {guests} Guests • Base Price: ₹{currentPerPlatePrice} /
-                        P
+                      <p className="text-xs text-stone-500 font-medium">
+                        {guests} Guests • ₹{currentPerPlatePrice} / plate
                       </p>
                     </div>
+
                     <div className="flex items-center gap-2">
+                      {selectedItemsCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to clear your selected menu items?",
+                              )
+                            ) {
+                              setSelectedItems({});
+                            }
+                          }}
+                          className="text-xs font-bold text-stone-400 hover:text-rose-600 px-2 py-1"
+                        >
+                          Clear
+                        </button>
+                      )}
                       <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              "Are you sure you want to clear your entire selection?",
-                            )
-                          ) {
-                            setSelectedItems({});
-                          }
-                        }}
-                        className="w-9 h-9 rounded-xl bg-white/5 border border-[#D5A859]/25 hover:border-red-900 flex items-center justify-center text-white/55 hover:text-red-300 transition-all cursor-pointer"
-                        title="Clear all"
+                        type="button"
+                        onClick={() => setMobileCartExpanded(false)}
+                        className="w-8 h-8 rounded-full bg-[#FFFEFA] border border-[#D6B15E]/40 flex items-center justify-center text-[#0B2D23] cursor-pointer"
                       >
                         <X size={15} />
                       </button>
-                      <button
-                        onClick={() => setMobileCartExpanded(false)}
-                        className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-[#FDFBFA]"
-                      >
-                        ✕
-                      </button>
                     </div>
                   </div>
 
-                  {/* Scrollable middle list */}
-                  <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
-                    {menuCategories.map((cat: string) => {
-                      const itemsInCat = (
-                        selectedPackage.categories?.find(
-                          (c: any) => c.categoryName === cat,
-                        )?.items || []
-                      ).filter((i: string) => selectedItems[i]);
-                      if (itemsInCat.length === 0) return null;
-                      return (
-                        <div key={cat} className="space-y-2 mb-3">
-                          <h4 className="text-[10px] font-black text-[#D5A859] uppercase tracking-wider pl-1">
-                            {cat}
-                          </h4>
-                          <ul className="space-y-1.5">
-                            {itemsInCat.map((item: string, idx: number) => (
-                              <li
-                                key={idx}
-                                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs flex items-center justify-between font-bold text-white/90"
-                              >
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <span className="text-[#D5A859] text-[9px] shrink-0">
-                                    ◆
-                                  </span>
-                                  <span className="truncate leading-none font-sans text-sm">
-                                    {item}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleItem(item, cat)}
-                                  className="w-5.5 h-5.5 rounded-full bg-white/5 hover:bg-rose-900/40 text-white/40 hover:text-white flex items-center justify-center cursor-pointer shrink-0"
-                                >
-                                  <X size={10} />
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })}
-
-                    {selectedItemsCount === 0 && (
-                      <div className="text-center py-10 text-white/30 text-xs flex flex-col justify-center items-center">
-                        <span className="text-2xl mb-2">🍽️</span>
-                        <p className="font-extrabold uppercase text-[#FCE6A9]/80 tracking-widest text-[11px]">
-                          Your luxury menu is empty
+                  {/* Drawer Items List */}
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+                    {selectedItemsCount === 0 ? (
+                      <div className="py-12 text-center text-stone-400">
+                        <p className="font-serif text-base text-stone-600 font-bold mb-1">
+                          Your Menu is Empty
                         </p>
-                        <p className="text-white/40 mt-1 max-w-[80%] font-sans text-[11px]">
-                          Tap items below to custom design your banquet
+                        <p className="text-xs text-stone-500 max-w-[220px] mx-auto leading-relaxed">
+                          Select dishes from the categories to build your custom
+                          catering package.
                         </p>
                       </div>
+                    ) : (
+                      menuCategories.map((cat: string) => {
+                        const itemsInCat = (
+                          selectedPackage.categories?.find(
+                            (c: any) => c.categoryName === cat,
+                          )?.items || []
+                        ).filter((i: string) => selectedItems[i]);
+
+                        if (itemsInCat.length === 0) return null;
+
+                        return (
+                          <div key={cat} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-bold text-stone-600 pb-1 border-b border-[#D6B15E]/20">
+                              <span className="uppercase tracking-wider text-[11px] text-[#0B2D23] font-sans">
+                                {cat}
+                              </span>
+                              <span className="text-[10px] text-[#8B6E32]">
+                                {itemsInCat.length} selected
+                              </span>
+                            </div>
+                            <ul className="space-y-1">
+                              {itemsInCat.map((item: string) => (
+                                <li
+                                  key={item}
+                                  className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-[#FAF7F2] text-xs font-semibold text-[#0B2D23] border border-[#D6B15E]/20"
+                                >
+                                  <span className="truncate pr-2">{item}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleItem(item, cat)}
+                                    className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
 
-                  {/* Calculations & Proceed Footer */}
-                  <div className="pt-3 border-t border-white/10 mt-auto shrink-0 space-y-3.5 bg-transparent pb-4">
-                    {/* Estimate row */}
-                    <div className="bg-white/[0.05] border border-[#D5A859]/30 rounded-2xl p-4 flex items-center justify-between select-all">
-                      <div>
-                        <span className="text-[9px] font-semibold text-[#FFF8EC]/60 block leading-none uppercase mb-1">
-                          Total Estimated Investment
-                        </span>
-                        <p className="text-xl font-black font-display text-[#E5C37A] leading-none mb-0.5">
-                          ₹
-                          {(currentPerPlatePrice * guests).toLocaleString(
-                            "en-IN",
-                          )}
-                        </p>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-sans tracking-wide">
-                        ₹{currentPerPlatePrice} x {guests} guests
+                  {/* Drawer Footer */}
+                  <div className="p-4 border-t border-[#D6B15E]/30 bg-[#FAF7F2] space-y-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+                        Estimated Total
+                      </span>
+                      <span className="font-serif font-bold text-xl text-[#0B2D23]">
+                        ₹
+                        {(
+                          currentPerPlatePrice * guests +
+                          platformFee
+                        ).toLocaleString("en-IN")}
                       </span>
                     </div>
 
-                    {/* CTA button */}
-                    <div>
-                      <button
-                        onClick={() => {
-                          if (allCategoriesComplete) {
-                            setMobileCartExpanded(false);
-                            setViewMode("checkout");
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          } else {
-                            setMobileCartExpanded(false);
-                            // Soft scroll indicator
-                            const catProgress =
-                              document.getElementById(
-                                "completed-categories-box",
-                              ) || document.querySelector(".progress-header");
-                            if (catProgress) {
-                              catProgress.scrollIntoView({
-                                behavior: "smooth",
-                              });
-                            }
-                          }
-                        }}
-                        className="w-full py-4 rounded-xl font-extrabold shadow-lg flex items-center justify-between px-5 uppercase tracking-wider text-[11px] relative duration-300 text-[#0B1F17]"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #F4E2B6, #D4AF37, #B8872B)",
-                          boxShadow: "0 6px 18px rgba(212, 168, 89, 0.3)",
-                        }}
-                      >
-                        <span className="font-extrabold tracking-widest">
-                          Proceed to Order
-                        </span>
-                        <ChevronRight size={15} strokeWidth={2.5} />
-                      </button>
-
-                      {!allCategoriesComplete && (
-                        <div className="mt-2 bg-white/[0.04] text-[#FCE6A9]/90 border border-[#D5A859]/15 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-center">
-                          ℹ️ Please complete all categories to proceed.
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const incomplete = menuCategories.filter(
+                          (cat) => !isCategoryComplete(cat),
+                        );
+                        if (incomplete.length === 0) {
+                          setMobileCartExpanded(false);
+                          setViewMode("checkout");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        } else {
+                          const firstIncomplete = incomplete[0];
+                          navigateToCategory(firstIncomplete);
+                          setHighlightIncomplete(true);
+                          setValidationTriggered(true);
+                          setMobileCartExpanded(false);
+                          toast(
+                            `Please complete selections for ${firstIncomplete}`,
+                            "error",
+                          );
+                        }
+                      }}
+                      className="w-full py-3.5 px-5 bg-[#0B2D23] text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md border border-[#D6B15E]"
+                    >
+                      <span>Proceed to Booking</span>
+                      <ArrowRight size={15} />
+                    </button>
                   </div>
                 </div>
               )}

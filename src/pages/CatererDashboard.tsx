@@ -2200,6 +2200,35 @@ export default function CatererDashboard() {
                                  <button onClick={() => openModifyModal(selectedOrder)} className="px-4 py-2 border-2 border-brand-gold-500 text-brand-gold-700 hover:bg-brand-gold-50 font-bold rounded-xl text-xs transition-colors">Edit Quotation</button>
                                  <button onClick={() => handleApprove(selectedOrder.id)} className="px-5 py-2 bg-brand-green-900 text-white hover:bg-brand-green-800 font-bold rounded-xl text-xs transition-colors shadow-lg shadow-brand-green-900/20">Approve Order</button>
                               </>
+                          ) : normalizeStatus(selectedOrder.status) === 'approved' ? (
+                              <>
+                                 <button 
+                                     type="button"
+                                     onClick={async () => {
+                                         await performOrderStatusUpdate(
+                                             selectedOrder.id, 
+                                             'completed', 
+                                             { completedAt: new Date().toISOString() }, 
+                                             user?.email || 'partner@caternest.com', 
+                                             'partner'
+                                         );
+                                         storeNotification(
+                                             selectedOrder.id, 
+                                             "Event Completed 🎉", 
+                                             `Your catering booking with ${caterer?.businessName || 'the caterer'} has been marked as Completed!`, 
+                                             "customer", 
+                                             caterer?.id
+                                         );
+                                         await refreshData();
+                                         setSelectedOrder(null);
+                                         toast("Booking marked as Completed!", "success");
+                                     }} 
+                                     className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs transition-colors shadow-sm"
+                                 >
+                                     Mark Event Completed
+                                 </button>
+                                 <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition">Close</button>
+                              </>
                           ) : (
                               <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition">Close</button>
                           )}

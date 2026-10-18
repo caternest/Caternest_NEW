@@ -56,8 +56,16 @@ export type OrderStatus =
 // Backwards compatibility mapper
 export function normalizeStatus(status: string): OrderStatus {
   const s = (status || '').toLowerCase().trim();
-  if (s === 'submitted' || s === 'pending caterer review' || s === 'pending') return 'pending';
-  if (s === 'approved') return 'approved';
+  if (
+    s === 'submitted' || 
+    s === 'pending caterer review' || 
+    s === 'pending' || 
+    s === 'pending approval' || 
+    s === 'pending_approval' || 
+    s === 'waiting for approval' ||
+    s === 'waiting_for_approval'
+  ) return 'pending';
+  if (s === 'approved' || s === 'active') return 'approved';
   if (s === 'rejected') return 'rejected';
   if (s === 'modified' || s === 'changes_requested') return 'changes_requested';
   if (s === 'updated_by_customer' || s === 'updated') return 'updated_by_customer';
@@ -70,7 +78,7 @@ export function normalizeStatus(status: string): OrderStatus {
 export function getStatusLabel(status: string): string {
   const norm = normalizeStatus(status);
   switch (norm) {
-    case 'pending': return 'Pending Review';
+    case 'pending': return 'Waiting for Approval';
     case 'approved': return 'Approved';
     case 'rejected': return 'Rejected';
     case 'changes_requested': return 'Changes Requested';
