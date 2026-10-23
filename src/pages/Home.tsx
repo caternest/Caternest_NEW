@@ -33,7 +33,7 @@ export default function Home() {
       
       {/* 1. DESKTOP HERO BANNER SECTION (Clean & Premium without overlapping card) */}
       <div 
-        className="relative min-h-[480px] md:min-h-[520px] w-full flex flex-col justify-center py-20 md:py-28 overflow-hidden"
+        className="relative min-h-[300px] md:min-h-[340px] w-full flex flex-col justify-center py-10 md:py-14 overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%), url(${heroBg})`,
           backgroundSize: 'cover',
@@ -56,112 +56,91 @@ export default function Home() {
           }}
         />
 
-        <div 
-          className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-start text-left"
-          style={{ marginBottom: '1px', paddingBottom: '0px' }}
-        >
-          
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-start text-left">
           {/* Text block aligned beautifully with premium typography */}
-          <div 
-            className="max-w-xl pt-2 md:pt-4 pl-4 sm:pl-8 md:pl-12 lg:pl-16"
-            style={{ marginTop: '20px', paddingLeft: '66px' }}
-          >
+          <div className="max-w-xl pl-2 sm:pl-6 md:pl-10">
             <h1 
-              className="text-[2.2rem] md:text-[3.2rem] font-display text-white tracking-tight leading-[1.12] mb-5 font-bold"
-              style={{ 
-                fontFamily: 'Playfair Display, Georgia, serif', 
-                fontSize: '47.2px',
-                paddingBottom: '0px',
-                lineHeight: '55.864px'
-              }}
+              className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] font-display text-white tracking-tight leading-[1.12] mb-3 font-bold"
+              style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
             >
               Everything You Need <br />
               for Your Event in <br />
-              <span 
-                className="text-[#DEAA38]"
-                style={{
-                  marginBottom: '0px',
-                  paddingBottom: '0px',
-                  marginTop: '1px',
-                  paddingTop: '-2px'
-                }}
-              >
+              <span className="text-[#DEAA38]">
                 One Trusted Platform
               </span>
             </h1>
             
-            <p className="text-white/80 text-sm sm:text-[14px] max-w-xl mb-4 font-sans font-normal leading-relaxed">
+            <p className="text-white/80 text-xs sm:text-[13px] max-w-lg mb-2.5 font-sans font-normal leading-relaxed">
               From catering to decor, music to memories, we make every celebration unforgettable.
             </p>
  
-            <div className="flex items-center gap-2 mb-6 text-xs sm:text-[13px] font-medium text-[#DEAA38]/90">
-              <span className="w-[1.5px] h-3.5 bg-[#DEAA38] inline-block"></span>
+            <div className="flex items-center gap-2 mb-4 text-[11px] sm:text-xs font-medium text-[#DEAA38]/90">
+              <span className="w-[1.5px] h-3 bg-[#DEAA38] inline-block"></span>
               <span>One Platform. Many Services. Countless Memories.</span>
             </div>
 
             {/* Premium CTA Button */}
-            <div className="pt-1">
+            <div>
               <Link 
                 to="/explore" 
-                className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs tracking-wider transition-all shadow-md cursor-pointer border border-[#DEAA38]/20"
+                className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs tracking-wider transition-all shadow-sm cursor-pointer border border-[#DEAA38]/20"
               >
                 <span>Explore Caterers</span>
-                <ArrowRight size={14} />
+                <ArrowRight size={13} />
               </Link>
             </div>
           </div>
-
         </div>
       </div>
 
       {/* AI Menu Builder Primary Discovery Highlight */}
-      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-6 pb-2">
+      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-4 pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-3xl p-6 sm:p-8 lg:p-9 border border-[#DEAA38]/30 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 group">
+          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-2xl p-4 sm:p-5 lg:p-6 border border-[#DEAA38]/30 shadow-md relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 group">
             
             {/* Background luxury glow and decorative motif */}
-            <div className="absolute right-[-40px] bottom-[-40px] w-64 h-64 bg-[#DEAA38]/12 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute left-1/4 top-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute right-[-40px] bottom-[-40px] w-48 h-48 bg-[#DEAA38]/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute left-1/4 top-0 w-36 h-36 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
 
             {/* Left Content */}
-            <div className="relative z-10 max-w-2xl text-left">
-              <div className="inline-flex items-center gap-1.5 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-3">
-                <Sparkles size={13} className="text-[#DEAA38]" />
+            <div className="relative z-10 max-w-xl text-left">
+              <div className="inline-flex items-center gap-1.5 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mb-2">
+                <Sparkles size={11} className="text-[#DEAA38]" />
                 <span>Featured Smart Tool</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-white tracking-tight mb-2">
+              <h2 className="text-xl sm:text-2xl font-display font-bold text-white tracking-tight mb-1.5">
                 AI Menu <span className="text-[#DEAA38]">Builder</span>
               </h2>
-              <p className="text-white/85 text-xs sm:text-[13.5px] font-sans font-normal leading-relaxed mb-4 max-w-xl">
+              <p className="text-white/85 text-xs sm:text-[12.5px] font-sans font-normal leading-relaxed mb-3 max-w-lg">
                 Create the perfect custom menu for your event with intelligent AI recommendations. Tailored specifically to your guest count, occasion, and cuisine preferences.
               </p>
               
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-[#E0D4BA] font-medium">
-                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle size={13} className="text-[#DEAA38]" />
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] text-[#E0D4BA] font-medium">
+                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle size={11} className="text-[#DEAA38]" />
                   <span>Smart Dish Pairings</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle size={13} className="text-[#DEAA38]" />
+                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle size={11} className="text-[#DEAA38]" />
                   <span>Pricing Optimization</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle size={13} className="text-[#DEAA38]" />
+                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle size={11} className="text-[#DEAA38]" />
                   <span>100% Customizable</span>
                 </span>
               </div>
             </div>
 
             {/* Right Action Button */}
-            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-2.5 justify-center items-center md:items-end">
+            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-1.5 justify-center items-center md:items-end">
               <Link
                 to="/explore"
-                className="w-full sm:w-auto px-7 py-3.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 cursor-pointer group/btn"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer group/btn"
               >
                 <span>Try Now</span>
-                <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                <ArrowRight size={13} className="group-hover/btn:translate-x-1 transition-transform" />
               </Link>
-              <span className="text-[10px] text-white/70 tracking-wide text-center">
+              <span className="text-[9.5px] text-white/70 tracking-wide text-center">
                 Explore caterers & customize packages
               </span>
             </div>

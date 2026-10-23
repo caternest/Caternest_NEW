@@ -1567,26 +1567,26 @@ export default function OrderFlow() {
       {/* Build Header */}
       {viewMode === "custom" ? (
         <div className="bg-[#FAF7F2] border-b border-[#D6B15E]/30 sticky top-[72px] md:top-[80px] z-20 select-none shadow-xs">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 flex items-center justify-between gap-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-3">
             {/* Left Controls & Title Branding */}
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               {/* Back button */}
               <button
                 type="button"
                 onClick={() => setViewMode("package_detail")}
-                className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-[#FFFEFA] border border-[#D6B15E]/50 hover:border-[#D6B15E] text-[#0B2D23] rounded-full font-bold text-xs sm:text-sm shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFEFA] border border-[#D6B15E]/50 hover:border-[#D6B15E] text-[#0B2D23] rounded-full font-bold text-xs shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0"
               >
-                <ArrowLeft size={16} className="text-[#0B2D23]" />
+                <ArrowLeft size={14} className="text-[#0B2D23]" />
                 <span>Back</span>
               </button>
 
               {/* Brand Title */}
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <div className="flex flex-col text-left min-w-0">
-                  <h1 className="font-serif font-bold text-lg sm:text-xl lg:text-2xl tracking-tight text-[#0B2D23] uppercase leading-tight truncate">
+                  <h1 className="font-serif font-bold text-base sm:text-lg lg:text-xl tracking-tight text-[#0B2D23] uppercase leading-tight truncate">
                     {caterer.name || "ELITE CATERING"}
                   </h1>
-                  <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-[#B8860B] font-sans leading-none mt-1 truncate">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-[#B8860B] font-sans leading-none mt-0.5 truncate">
                     {caterer.tagline || caterer.location || "Curated Catering Menu"}
                   </span>
                 </div>
@@ -1594,12 +1594,12 @@ export default function OrderFlow() {
             </div>
 
             {/* Right Guests Selector with Editable Numeric Input */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <div className="flex items-center bg-[#FFFEFA] border border-[#D6B15E]/50 rounded-xl overflow-hidden shadow-2xs">
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center bg-[#FFFEFA] border border-[#D6B15E]/50 rounded-lg overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={decrementGuests}
-                  className="w-8 sm:w-10 h-8 sm:h-10 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-r border-[#D6B15E]/40 transition-colors font-bold text-base sm:text-lg cursor-pointer"
+                  className="w-7 sm:w-8 h-7.5 sm:h-8 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-r border-[#D6B15E]/40 transition-colors font-bold text-sm cursor-pointer"
                   title="Decrease Guests"
                 >
                   −
@@ -1619,19 +1619,19 @@ export default function OrderFlow() {
                       e.currentTarget.blur();
                     }
                   }}
-                  className="w-12 sm:w-18 h-8 sm:h-10 text-center font-bold text-sm sm:text-base text-[#0B2D23] bg-[#FFFEFA] outline-none focus:bg-[#FFFDF7] focus:ring-1 focus:ring-[#D6B15E]/50"
+                  className="w-11 sm:w-14 h-7.5 sm:h-8 text-center font-bold text-xs sm:text-sm text-[#0B2D23] bg-[#FFFEFA] outline-none focus:bg-[#FFFDF7] focus:ring-1 focus:ring-[#D6B15E]/50"
                   title="Click to type guest count directly"
                 />
                 <button
                   type="button"
                   onClick={incrementGuests}
-                  className="w-8 sm:w-10 h-8 sm:h-10 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-l border-[#D6B15E]/40 transition-colors font-bold text-base sm:text-lg cursor-pointer"
+                  className="w-7 sm:w-8 h-7.5 sm:h-8 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-l border-[#D6B15E]/40 transition-colors font-bold text-sm cursor-pointer"
                   title="Increase Guests"
                 >
                   +
                 </button>
               </div>
-              <span className="font-bold text-xs sm:text-sm text-[#0B2D23] hidden xs:inline">
+              <span className="font-bold text-xs text-[#0B2D23] hidden xs:inline">
                 Guests
               </span>
             </div>
@@ -1639,8 +1639,8 @@ export default function OrderFlow() {
 
           {/* Horizontal Category Tabs Row */}
           <div className="border-t border-[#D6B15E]/30 bg-[#FFFEFA]/95 backdrop-blur-xs">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
-              <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
                 {menuCategories.map((cat: string) => {
                   const catData = selectedPackage?.categories?.find(
                     (c: any) => c.categoryName === cat,
@@ -1662,10 +1662,10 @@ export default function OrderFlow() {
                       type="button"
                       onClick={() => setActiveCategory(cat)}
                       className={cn(
-                        "px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-[13.5px] sm:text-[14px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-2 border select-none shrink-0",
+                        "px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-[13px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 border select-none shrink-0",
                         isActive
-                          ? "bg-[#0B2D23] text-white border-[#D6B15E]/80 shadow-[0_2px_10px_rgba(11,45,35,0.2)]"
-                          : "bg-[#FFFEFA] text-[#0B2D23] hover:text-[#061D16] hover:bg-[#FAF6EE] border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_8px_rgba(214,177,94,0.06)]",
+                          ? "bg-[#0B2D23] text-white border-[#D6B15E]/80 shadow-2xs"
+                          : "bg-[#FFFEFA] text-[#0B2D23] hover:text-[#061D16] hover:bg-[#FAF6EE] border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-2xs",
                         isHighlighted && "border-red-500 bg-red-50 text-red-700 animate-pulse",
                       )}
                     >
@@ -2602,7 +2602,7 @@ export default function OrderFlow() {
                               }
                             }}
                             className={cn(
-                              "relative bg-[#FFFEFA] rounded-2xl p-4 sm:p-4.5 border transition-all duration-200 flex flex-col justify-between min-h-[110px] sm:min-h-[120px] select-none",
+                              "relative bg-[#FFFEFA] rounded-xl p-3 sm:p-3.5 border transition-all duration-200 flex flex-col justify-between min-h-[90px] sm:min-h-[100px] select-none",
                               isSelected
                                 ? "border-[#D6B15E] ring-1 ring-[#D6B15E]/40 bg-[#FFFDF7] shadow-[0_4px_16px_rgba(214,177,94,0.18)]"
                                 : isDisabled
@@ -2611,16 +2611,16 @@ export default function OrderFlow() {
                             )}
                           >
                             {/* Top Row: Dietary Indicator (Veg / Non-Veg) & Status Badge */}
-                            <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center justify-between gap-2 mb-1">
                               <div>
                                 {isNonVeg ? (
-                                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-700 font-sans">
-                                    <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 font-sans">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                                     Non-Veg
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#0B2D23] font-sans">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0B2D23] font-sans">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                     Veg
                                   </span>
                                 )}
@@ -2628,11 +2628,11 @@ export default function OrderFlow() {
 
                               <div>
                                 {isPremium ? (
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 px-2 py-0.5 rounded-md">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 px-1.5 py-0.5 rounded">
                                     Premium
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">
+                                  <span className="text-[9px] font-semibold text-stone-500 uppercase tracking-wider">
                                     Included
                                   </span>
                                 )}
@@ -2640,9 +2640,9 @@ export default function OrderFlow() {
                             </div>
 
                             {/* Middle: Dish Name in Clean High-Readability Serif Text (NO images, NO logos, NO initials) */}
-                            <div className="my-1">
+                            <div className="my-0.5">
                               <h3
-                                className="font-serif font-bold text-base sm:text-[17px] text-[#0B2D23] leading-snug"
+                                className="font-serif font-bold text-sm sm:text-[15px] text-[#0B2D23] leading-snug"
                                 style={{
                                   fontFamily: '"Playfair Display", Georgia, serif',
                                 }}
@@ -2652,8 +2652,8 @@ export default function OrderFlow() {
                             </div>
 
                             {/* Bottom Row: Control button */}
-                            <div className="mt-3 pt-2.5 border-t border-[#D6B15E]/20 flex items-center justify-between">
-                              <span className="text-xs font-medium text-stone-500">
+                            <div className="mt-2 pt-1.5 border-t border-[#D6B15E]/20 flex items-center justify-between">
+                              <span className="text-[11px] font-medium text-stone-500">
                                 {isSelected ? (
                                   <span className="text-[#0B2D23] font-bold">
                                     In your menu
@@ -2674,9 +2674,9 @@ export default function OrderFlow() {
                                     e.stopPropagation();
                                     toggleItem(itemName, activeCategory);
                                   }}
-                                  className="px-3.5 py-1.5 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] border border-[#D6B15E]/70 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
+                                  className="px-2.5 py-1 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] border border-[#D6B15E]/70 rounded-md text-[11px] font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
                                 >
-                                  <Check size={12} strokeWidth={3} />
+                                  <Check size={11} strokeWidth={3} />
                                   <span>Selected</span>
                                 </button>
                               ) : (
@@ -2690,13 +2690,13 @@ export default function OrderFlow() {
                                     }
                                   }}
                                   className={cn(
-                                    "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 select-none",
+                                    "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 select-none",
                                     isDisabled
                                       ? "bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed"
                                       : "bg-[#FFFEFA] hover:bg-[#FAF6EE] text-[#0B2D23] border border-[#D6B15E]/60 hover:border-[#D6B15E] cursor-pointer shadow-2xs",
                                   )}
                                 >
-                                  <Plus size={12} strokeWidth={2.5} />
+                                  <Plus size={11} strokeWidth={2.5} />
                                   <span>Add</span>
                                 </button>
                               )}
@@ -2710,24 +2710,24 @@ export default function OrderFlow() {
               </div>
 
               {/* RIGHT COLUMN: Order Summary Panel (Desktop Sticky) */}
-              <div className="hidden lg:block lg:w-[380px] xl:w-[410px] shrink-0">
-                <div className="bg-[#FFFEFA] rounded-3xl border border-[#D6B15E]/50 shadow-[0_4px_24px_rgba(214,177,94,0.08)] sticky top-[180px] max-h-[calc(100vh-200px)] flex flex-col overflow-hidden">
+              <div className="hidden lg:block lg:w-[320px] xl:w-[350px] shrink-0">
+                <div className="bg-[#FFFEFA] rounded-2xl border border-[#D6B15E]/50 shadow-[0_4px_20px_rgba(214,177,94,0.06)] sticky top-[150px] max-h-[calc(100vh-170px)] flex flex-col overflow-hidden">
                   {/* Panel Header */}
-                  <div className="p-5 pb-4 border-b border-[#D6B15E]/30 bg-[#FAF7F2]">
-                    <div className="flex items-start justify-between gap-3">
+                  <div className="p-3.5 pb-3 border-b border-[#D6B15E]/30 bg-[#FAF7F2]">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B8860B] font-sans">
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#B8860B] font-sans">
                           ORDER SUMMARY
                         </span>
                         <h3
-                          className="font-serif font-bold text-xl sm:text-2xl text-[#0B2D23] leading-tight mt-0.5"
+                          className="font-serif font-bold text-lg sm:text-xl text-[#0B2D23] leading-tight mt-0.5"
                           style={{
                             fontFamily: '"Playfair Display", Georgia, serif',
                           }}
                         >
                           {selectedPackage.packageName || "Curated Menu"}
                         </h3>
-                        <p className="text-xs text-stone-600 font-medium mt-0.5">
+                        <p className="text-[11px] text-stone-600 font-medium mt-0.5">
                           {caterer.name}
                         </p>
                       </div>
@@ -2744,7 +2744,7 @@ export default function OrderFlow() {
                               setSelectedItems({});
                             }
                           }}
-                          className="text-[11px] font-bold text-stone-400 hover:text-rose-600 transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-rose-50"
+                          className="text-[10px] font-bold text-stone-400 hover:text-rose-600 transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-rose-50"
                           title="Clear all selected items"
                         >
                           Clear All
@@ -2753,9 +2753,9 @@ export default function OrderFlow() {
                     </div>
 
                     {/* Guest & Base Price Row */}
-                    <div className="mt-3.5 pt-3 border-t border-[#D6B15E]/30 flex items-center justify-between text-xs font-semibold">
+                    <div className="mt-2.5 pt-2 border-t border-[#D6B15E]/30 flex items-center justify-between text-[11px] font-semibold">
                       <div className="flex items-center gap-1.5 text-stone-600">
-                        <Users size={14} className="text-[#D6B15E]" />
+                        <Users size={12} className="text-[#D6B15E]" />
                         <span className="text-[#0B2D23]">{guests} Guests</span>
                       </div>
                       <div className="text-[#0B2D23]">
@@ -2764,8 +2764,8 @@ export default function OrderFlow() {
                     </div>
 
                     {/* Category Completion Progress Bar */}
-                    <div className="mt-3.5 pt-3 border-t border-[#D6B15E]/30">
-                      <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                    <div className="mt-2.5 pt-2 border-t border-[#D6B15E]/30">
+                      <div className="flex items-center justify-between text-[11px] font-bold mb-1">
                         <span className="text-[#0B2D23]">Menu Completion</span>
                         <span
                           className={
@@ -2777,7 +2777,7 @@ export default function OrderFlow() {
                           {doneCategoriesCount} of {totalCategoriesCount} Categories
                         </span>
                       </div>
-                      <div className="w-full bg-[#FAF4E8] border border-[#D6B15E]/30 h-2 rounded-full overflow-hidden">
+                      <div className="w-full bg-[#FAF4E8] border border-[#D6B15E]/30 h-1.5 rounded-full overflow-hidden">
                         <div
                           className="bg-gradient-to-r from-[#D6B15E] to-[#0B2D23] h-full rounded-full transition-all duration-300"
                           style={{
@@ -2793,13 +2793,13 @@ export default function OrderFlow() {
                   </div>
 
                   {/* Scrollable List of Selected Items grouped by category */}
-                  <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-3.5 space-y-3 no-scrollbar">
                     {selectedItemsCount === 0 ? (
-                      <div className="py-12 text-center text-stone-400">
-                        <p className="font-serif text-base text-stone-600 font-bold mb-1">
+                      <div className="py-8 text-center text-stone-400">
+                        <p className="font-serif text-sm text-stone-600 font-bold mb-0.5">
                           Your Menu is Empty
                         </p>
-                        <p className="text-xs text-stone-500 max-w-[220px] mx-auto leading-relaxed">
+                        <p className="text-[11px] text-stone-500 max-w-[200px] mx-auto leading-relaxed">
                           Select dishes from the categories to build your custom
                           catering package.
                         </p>
@@ -2815,12 +2815,12 @@ export default function OrderFlow() {
                         if (itemsInCat.length === 0) return null;
 
                         return (
-                          <div key={cat} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs font-bold text-stone-600 pb-1 border-b border-[#D6B15E]/20">
-                              <span className="uppercase tracking-wider text-[11px] text-[#0B2D23] font-sans">
+                          <div key={cat} className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 pb-0.5 border-b border-[#D6B15E]/20">
+                              <span className="uppercase tracking-wider text-[10px] text-[#0B2D23] font-sans">
                                 {cat}
                               </span>
-                              <span className="text-[10px] text-[#8B6E32]">
+                              <span className="text-[9.5px] text-[#8B6E32]">
                                 {itemsInCat.length} selected
                               </span>
                             </div>
@@ -2828,16 +2828,16 @@ export default function OrderFlow() {
                               {itemsInCat.map((item: string) => (
                                 <li
                                   key={item}
-                                  className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-[#FAF7F2] hover:bg-[#FAF4E8] transition-colors text-xs font-semibold text-[#0B2D23] border border-[#D6B15E]/20 group"
+                                  className="flex items-center justify-between py-1 px-2 rounded-md bg-[#FAF7F2] hover:bg-[#FAF4E8] transition-colors text-[11px] font-semibold text-[#0B2D23] border border-[#D6B15E]/20 group"
                                 >
-                                  <span className="truncate pr-2">{item}</span>
+                                  <span className="truncate pr-1.5">{item}</span>
                                   <button
                                     type="button"
                                     onClick={() => toggleItem(item, cat)}
                                     className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
                                     title={`Remove ${item}`}
                                   >
-                                    <X size={13} />
+                                    <X size={12} />
                                   </button>
                                 </li>
                               ))}
@@ -2849,9 +2849,9 @@ export default function OrderFlow() {
                   </div>
 
                   {/* Panel Footer: Pricing Breakdown & CTA */}
-                  <div className="p-5 pt-4 border-t border-[#D6B15E]/30 bg-[#FAF7F2] shrink-0 space-y-3">
+                  <div className="p-3.5 pt-3 border-t border-[#D6B15E]/30 bg-[#FAF7F2] shrink-0 space-y-2.5">
                     {/* Price breakdown */}
-                    <div className="space-y-1.5 text-xs">
+                    <div className="space-y-1 text-[11px]">
                       <div className="flex justify-between text-stone-600">
                         <span>Package Subtotal ({guests} guests)</span>
                         <span className="font-semibold text-[#0B2D23]">
@@ -2866,11 +2866,11 @@ export default function OrderFlow() {
                           </span>
                         </div>
                       )}
-                      <div className="pt-2 border-t border-[#D6B15E]/30 flex justify-between items-baseline">
-                        <span className="font-bold text-stone-800 text-sm">
+                      <div className="pt-1.5 border-t border-[#D6B15E]/30 flex justify-between items-baseline">
+                        <span className="font-bold text-stone-800 text-xs">
                           Estimated Total
                         </span>
-                        <span className="font-serif font-bold text-2xl text-[#0B2D23]">
+                        <span className="font-serif font-bold text-xl text-[#0B2D23]">
                           ₹
                           {(
                             currentPerPlatePrice * guests +
@@ -2878,7 +2878,7 @@ export default function OrderFlow() {
                           ).toLocaleString("en-IN")}
                         </span>
                       </div>
-                      <p className="text-[10px] text-stone-500 text-right">
+                      <p className="text-[9.5px] text-stone-500 text-right">
                         Inclusive of taxes & package curation
                       </p>
                     </div>
@@ -2904,15 +2904,15 @@ export default function OrderFlow() {
                           );
                         }
                       }}
-                      className="w-full py-3.5 px-5 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99] border border-[#D6B15E]"
+                      className="w-full py-2.5 px-4 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow active:scale-[0.99] border border-[#D6B15E]"
                     >
                       <span>Proceed to Booking</span>
-                      <ArrowRight size={16} />
+                      <ArrowRight size={14} />
                     </button>
 
                     {/* Incomplete warning banner */}
                     {!allCategoriesComplete && (
-                      <div className="text-[11px] text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 rounded-lg p-2.5 text-center font-medium">
+                      <div className="text-[10px] text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 rounded-lg p-2 text-center font-medium">
                         Select required items in all categories to proceed.
                       </div>
                     )}

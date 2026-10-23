@@ -263,12 +263,12 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
   const isHome = location.pathname === '/';
   const navClass = cn(
     'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-    isScrolled ? 'glass py-3 shadow-sm' : 'bg-white py-5 shadow-sm'
+    isScrolled ? 'glass py-1.5 sm:py-2 shadow-xs' : 'bg-white py-2 sm:py-2.5 shadow-xs'
   );
 
   const textClass = cn(
-    'transition-colors font-medium font-poppins text-sm',
-    'text-slate-700 hover:text-brand-gold-600 font-bold'
+    'transition-colors font-medium font-poppins text-xs sm:text-[13px]',
+    'text-slate-700 hover:text-brand-gold-600 font-semibold'
   );
 
   return (
@@ -276,23 +276,23 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center bg-transparent">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group" id="navbar-logo-link">
-            <div className="bg-brand-gold-500 p-2 rounded-xl text-white group-hover:scale-105 transition-transform">
-              <ChefHat size={28} />
+          <Link to="/" className="flex items-center gap-2.5 group" id="navbar-logo-link">
+            <div className="bg-brand-gold-500 p-1.5 rounded-lg text-white group-hover:scale-105 transition-transform shadow-xs">
+              <ChefHat size={22} />
             </div>
-            <div className="flex flex-col border-l-2 border-brand-green-100 pl-3">
-              <span className="text-2xl font-bold font-display tracking-tight text-brand-green-900">
+            <div className="flex flex-col border-l-2 border-brand-green-100 pl-2.5">
+              <span className="text-lg sm:text-xl font-bold font-display tracking-tight text-brand-green-900 leading-tight">
                 PlanMyChoice
               </span>
-              <span className="text-[9px] uppercase font-poppins tracking-widest text-brand-gold-600 font-semibold">
+              <span className="text-[8px] uppercase font-poppins tracking-wider text-brand-gold-600 font-bold">
                 Making Every Event Special
               </span>
             </div>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8" id="desktop-links-container">
-            <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-5 sm:gap-6" id="desktop-links-container">
+            <div className="flex items-center gap-4 sm:gap-5">
               {navLinks.map((link) => {
                 const isExplore = link.name === 'Explore Caterers';
                 const isMarketplace = homepageMode === 'marketplace';
@@ -321,23 +321,23 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
                 );
               })}
             </div>
-            <div className="flex items-center gap-4 border-l pl-6 border-slate-200 relative">
+            <div className="flex items-center gap-3 border-l pl-4 sm:pl-5 border-slate-200 relative">
               {user && user.roles.includes('admin') && (
-                  <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-full text-red-800 text-[10px] uppercase tracking-widest font-bold shadow-sm">
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 border border-red-100 rounded-full text-red-800 text-[9px] uppercase tracking-wider font-bold shadow-2xs">
                       Admin Mode
                   </div>
               )}
               {!user ? (
-                <div className="flex items-center gap-3" id="navbar-anonymous-actions">
-                  <Link to="/caterer-login" className="flex items-center gap-2 px-4 py-2 font-poppins font-medium text-sm text-brand-gold-700 bg-brand-gold-50 hover:bg-brand-gold-100 rounded-full transition-colors border border-brand-gold-100">
-                    <ChefHat size={16} /> Caterer Login
+                <div className="flex items-center gap-2 sm:gap-2.5" id="navbar-anonymous-actions">
+                  <Link to="/caterer-login" className="flex items-center gap-1.5 px-3 py-1.5 font-poppins font-medium text-xs text-brand-gold-700 bg-brand-gold-50 hover:bg-brand-gold-100 rounded-full transition-colors border border-brand-gold-100">
+                    <ChefHat size={14} /> Caterer Login
                   </Link>
-                  <Link to="/login" className="px-4 py-2 font-poppins font-medium text-sm text-slate-700 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
+                  <Link to="/login" className="px-3 py-1.5 font-poppins font-medium text-xs text-slate-700 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
                     Login
                   </Link>
                   <Link 
                     to="/signup" 
-                    className="px-5 py-2 rounded-full font-poppins text-sm font-medium transition-all bg-brand-green-900 text-white hover:bg-brand-green-800 shadow-lg shadow-brand-green-900/20"
+                    className="px-3.5 py-1.5 rounded-full font-poppins text-xs font-semibold transition-all bg-brand-green-900 text-white hover:bg-brand-green-800 shadow-sm"
                   >
                     Sign Up
                   </Link>
