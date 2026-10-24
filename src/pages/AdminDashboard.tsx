@@ -356,22 +356,9 @@ export default function AdminDashboard() {
 
   const handleSavePlatformSettings = async () => {
     setSavingSettings(true);
-    console.log("[handleSavePlatformSettings] 'Save Settings' clicked.");
     try {
-      // Fetch the value before saving to compare
-      const valueBefore = currentHomepageMode;
-      console.log("[handleSavePlatformSettings] Value before save (from Context):", valueBefore);
-      console.log("[handleSavePlatformSettings] Value sent to Context/DB:", homepageMode);
-
       await updatePlatformFee(platformFeePerPlate);
-      const result = await updateHomepageMode(homepageMode);
-
-      // Verify the update
-      const valueAfter = homepageMode;
-      console.log("[handleSavePlatformSettings] Value after update:", valueAfter);
-      console.log("[handleSavePlatformSettings] SUCCESS: Saved value verified successfully!");
-
-      await logAudit("Update Platform Settings", `Set fee per plate to ₹${platformFeePerPlate} and homepage mode to ${homepageMode === 'classic' ? 'Classic' : 'Marketplace'}`);
+      await logAudit("Update Platform Settings", `Set fee per plate to ₹${platformFeePerPlate}`);
       toast("Platform settings updated successfully!", "success");
     } catch (err) {
       console.error("[handleSavePlatformSettings] Error updating settings:", err);
@@ -2220,52 +2207,6 @@ export default function AdminDashboard() {
                                           className="block w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-brand-gold-500 text-sm font-bold text-slate-800"
                                       />
                                   </div>
-                              </div>
-                          </div>
-                      </div>
-
-                      {/* Homepage Mode Subsection */}
-                      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 shadow-sm space-y-4">
-                          <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-                              <Sliders className="text-brand-green-900" size={20} />
-                              <h3 className="text-base font-bold text-slate-800">Homepage Mode</h3>
-                          </div>
-                          
-                          <div>
-                              <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                                  Select which layout will act as the homepage when a user visits the website root URL ("/"):
-                              </p>
-                              
-                              <div className="flex flex-col gap-3">
-                                  <label className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 cursor-pointer hover:bg-slate-50 transition-all">
-                                      <input
-                                          type="radio"
-                                          name="homepageMode"
-                                          value="classic"
-                                          checked={homepageMode === 'classic'}
-                                          onChange={() => setHomepageMode('classic')}
-                                          className="text-slate-900 focus:ring-slate-900 h-4 w-4"
-                                      />
-                                      <div>
-                                          <span className="block text-sm font-bold text-slate-800">Classic Landing Page</span>
-                                          <span className="block text-xs text-slate-500 mt-0.5">Show the default landing page (Hero Banner, Search bar, Premium sections).</span>
-                                      </div>
-                                  </label>
-                                  
-                                  <label className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 cursor-pointer hover:bg-slate-50 transition-all">
-                                      <input
-                                          type="radio"
-                                          name="homepageMode"
-                                          value="marketplace"
-                                          checked={homepageMode === 'marketplace'}
-                                          onChange={() => setHomepageMode('marketplace')}
-                                          className="text-slate-900 focus:ring-slate-900 h-4 w-4"
-                                      />
-                                      <div>
-                                          <span className="block text-sm font-bold text-slate-800">Catering Marketplace</span>
-                                          <span className="block text-xs text-slate-500 mt-0.5">Directly render the existing Explore Caterers page as the homepage.</span>
-                                      </div>
-                                  </label>
                               </div>
                           </div>
                       </div>

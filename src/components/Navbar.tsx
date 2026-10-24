@@ -288,26 +288,13 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
           <div className="hidden md:flex items-center gap-4 sm:gap-5" id="desktop-links-container">
             <div className="flex items-center gap-4 sm:gap-5">
               {navLinks.map((link) => {
-                const isExplore = link.name === 'Explore Caterers';
-                const isMarketplace = homepageMode === 'marketplace';
-                
-                // Determine destination URL
-                const toPath = isExplore && isMarketplace ? '/explore?scroll=true' : link.path;
-                
-                // Determine active status
-                let isActive = location.pathname === link.path;
-                if (isExplore) {
-                  isActive = location.pathname === '/explore' || location.pathname === '/explore-caterers' || (location.pathname === '/' && isMarketplace);
-                } else if (link.name === 'Home') {
-                  isActive = location.pathname === '/' && !isMarketplace;
-                }
+                const isActive = location.pathname === link.path;
 
                 return (
                   <Link 
                     key={link.name} 
-                    to={toPath} 
+                    to={link.path} 
                     data-keep-profile-open="true" 
-                    onClick={isExplore ? handleExploreCaterersClick : undefined}
                     className={cn(textClass, isActive && "text-brand-gold-600")}
                   >
                     {link.name}
@@ -315,19 +302,7 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
                 );
               })}
             </div>
-            <div className="flex items-center gap-2.5 border-l pl-3.5 sm:pl-4 border-slate-200 relative">
-              {/* Location Pill for Desktop (Matching Reference) */}
-              <button 
-                type="button"
-                onClick={() => navigate('/explore')}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/80 rounded-full text-slate-700 text-[11px] font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
-                title="Location"
-              >
-                <MapPin size={12} className="text-[#DEAA38]" />
-                <span className="truncate max-w-[130px]">Hyderabad, Telangana</span>
-                <ChevronDown size={11} className="text-slate-400" />
-              </button>
-
+            <div className="flex items-center gap-3 border-l pl-3.5 sm:pl-4 border-slate-200 relative">
               {user && user.roles.includes('admin') && (
                   <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-100 rounded-full text-red-800 text-[8.5px] uppercase tracking-wider font-bold shadow-2xs">
                       Admin Mode
@@ -617,7 +592,7 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                      (location.pathname === "/" && homepageMode !== 'marketplace') ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                      location.pathname === "/" ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
                     Home

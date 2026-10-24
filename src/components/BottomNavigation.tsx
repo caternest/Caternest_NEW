@@ -52,7 +52,7 @@ export default function BottomNavigation({ homepageMode: _unused }: { homepageMo
       {navItems.map((item) => {
         const isActive =
           item.path === '/'
-            ? currentPath === '/' && homepageMode !== 'marketplace'
+            ? currentPath === '/'
             : currentPath.startsWith(item.path);
 
         return (
