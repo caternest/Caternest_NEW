@@ -79,17 +79,7 @@ function PlaceholderPage({ title }: { title: string }) {
 import { ToastProvider } from './components/Toast';
 
 function RootHome() {
-  const { homepageMode, loading } = usePlatformSettings();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FFFDFB]">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-slate-800"></div>
-      </div>
-    );
-  }
-
-  return homepageMode === 'marketplace' ? <Explore /> : <Home />;
+  return <Home />;
 }
 
 function SplashScreen() {

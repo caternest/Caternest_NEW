@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
-import { ChefHat, Menu, X, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package } from 'lucide-react';
+import { ChefHat, Menu, X, LogOut, Settings, Handshake, ShoppingBag, Building, Bell, Package, MapPin, ChevronDown, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabase } from '../lib/supabase';
 import { usePlatformSettings } from '../contexts/PlatformSettingsContext';
@@ -74,10 +74,7 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'Explore Caterers', path: '/explore' },
-    { name: 'Become a Caterer', path: '/partner-selection' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
+    { name: 'About Us', path: '/about' },
   ];
 
   const handleExploreCaterersClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -284,15 +281,12 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
               <span className="text-base sm:text-lg font-bold font-display tracking-tight text-brand-green-900 leading-none">
                 PlanMyChoice
               </span>
-              <span className="text-[7.5px] uppercase font-poppins tracking-wider text-brand-gold-600 font-bold mt-0.5">
-                Making Every Event Special
-              </span>
             </div>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-4 sm:gap-5" id="desktop-links-container">
-            <div className="flex items-center gap-3.5 sm:gap-4">
+            <div className="flex items-center gap-4 sm:gap-5">
               {navLinks.map((link) => {
                 const isExplore = link.name === 'Explore Caterers';
                 const isMarketplace = homepageMode === 'marketplace';
@@ -322,6 +316,18 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
               })}
             </div>
             <div className="flex items-center gap-2.5 border-l pl-3.5 sm:pl-4 border-slate-200 relative">
+              {/* Location Pill for Desktop (Matching Reference) */}
+              <button 
+                type="button"
+                onClick={() => navigate('/explore')}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/80 rounded-full text-slate-700 text-[11px] font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Location"
+              >
+                <MapPin size={12} className="text-[#DEAA38]" />
+                <span className="truncate max-w-[130px]">Hyderabad, Telangana</span>
+                <ChevronDown size={11} className="text-slate-400" />
+              </button>
+
               {user && user.roles.includes('admin') && (
                   <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-100 rounded-full text-red-800 text-[8.5px] uppercase tracking-wider font-bold shadow-2xs">
                       Admin Mode
@@ -617,17 +623,14 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
                     Home
                   </Link>
                   <Link
-                    to={homepageMode === 'marketplace' ? '/explore?scroll=true' : '/explore'}
-                    onClick={(e) => {
-                      setIsMobileMenuOpen(false);
-                      handleExploreCaterersClick(e);
-                    }}
+                    to="/about"
+                    onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                      (location.pathname === "/explore" || location.pathname === "/explore-caterers" || (location.pathname === "/" && homepageMode === 'marketplace')) ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
+                      location.pathname === "/about" ? "bg-[#173D32]/5 text-[#173D32]" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
-                    Explore Caterers
+                    About Us
                   </Link>
 
                   {user && (

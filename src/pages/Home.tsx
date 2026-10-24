@@ -1,6 +1,10 @@
-import React from 'react';
-import heroBg from '../assets/images/Hero-bg.png';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
+  Search,
+  MapPin,
+  Crosshair,
+  ChevronDown,
+  ChevronRight,
   Star, 
   ChefHat, 
   Tag, 
@@ -21,131 +25,459 @@ import {
   Car,
   CheckCircle,
   Clock4,
-  Heart
+  Heart,
+  X,
+  Utensils,
+  BarChart2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { HYDERABAD_AREAS } from '../data';
+import { getSupabase } from '../lib/supabase';
 
 export default function Home() {
   const navigate = useNavigate();
 
+  // Search & Location States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('Hyderabad, Telangana');
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close location dropdown when clicked outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target as Node)) {
+        setIsLocationDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) {
+      params.set('search', searchQuery.trim());
+    }
+    if (selectedLocation) {
+      const cleanLoc = selectedLocation.replace(', Telangana', '').trim();
+      if (cleanLoc && cleanLoc !== 'All Hyderabad') {
+        params.set('location', cleanLoc);
+      }
+    }
+    navigate(`/explore?${params.toString()}`);
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setSelectedLocation('Current Location');
+          setIsLocationDropdownOpen(false);
+          const params = new URLSearchParams();
+          if (searchQuery.trim()) params.set('search', searchQuery.trim());
+          params.set('lat', position.coords.latitude.toString());
+          params.set('lng', position.coords.longitude.toString());
+          navigate(`/explore?${params.toString()}`);
+        },
+        () => {
+          setSelectedLocation('Hyderabad, Telangana');
+          setIsLocationDropdownOpen(false);
+        }
+      );
+    }
+  };
+
+
+  // Fallback Top Rated Caterers (Matching Reference image_3d9d44db.png)
+  const FALLBACK_POPULAR_CATERERS = [
+    {
+      id: 'c1',
+      name: 'Sri Sai Caterers',
+      location: 'Hyderabad',
+      cuisines: 'South Indian, North Indian',
+      rating: 4.8,
+      reviewCount: 120,
+      startingPrice: 350,
+      image: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800',
+      type: 'Veg & Non-Veg',
+      tags: ['Veg', 'Non-Veg', 'Custom Menu'],
+      isVerified: true
+    },
+    {
+      id: 'c2',
+      name: 'Royal Spice Caterers',
+      location: 'Hyderabad',
+      cuisines: 'North Indian, Mughlai',
+      rating: 4.6,
+      reviewCount: 98,
+      startingPrice: 420,
+      image: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&q=80&w=800',
+      type: 'North Indian, Mughlai',
+      tags: ['Veg', 'Non-Veg', 'Live Counters'],
+      isVerified: true
+    },
+    {
+      id: 'c3',
+      name: 'Utsav Caterers',
+      location: 'Hyderabad',
+      cuisines: 'South Indian, Traditional',
+      rating: 4.7,
+      reviewCount: 156,
+      startingPrice: 380,
+      image: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?auto=format&fit=crop&q=80&w=800',
+      type: 'South Indian, Traditional',
+      tags: ['Veg', 'Custom Menu', 'Bulk Orders'],
+      isVerified: true
+    },
+    {
+      id: 'c4',
+      name: 'Celebration Caterers',
+      location: 'Hyderabad',
+      cuisines: 'Multi Cuisine',
+      rating: 4.5,
+      reviewCount: 87,
+      startingPrice: 480,
+      image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=800',
+      type: 'Multi Cuisine',
+      tags: ['Veg', 'Non-Veg', 'Wedding Special'],
+      isVerified: true
+    }
+  ];
+
+  const [popularCaterers, setPopularCaterers] = useState<any[]>(FALLBACK_POPULAR_CATERERS);
+
+  // Fetch verified approved caterers
+  useEffect(() => {
+    const fetchPopularCaterers = async () => {
+      let catererList: any[] = [];
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('caterer_registrations')
+            .select('*')
+            .or('status.eq.Approved,status.eq.approved')
+            .limit(4);
+          if (!error && data && data.length > 0) {
+            catererList = data.map((r: any) => ({
+              id: r.id,
+              name: r.businessName || 'Premium Caterer',
+              location: r.address || r.location || 'Hyderabad',
+              rating: typeof r.rating === 'number' ? r.rating : 4.9,
+              reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 120,
+              startingPrice: Number(r.startingPrice) || 350,
+              image: (r.galleryPhotos && r.galleryPhotos[0]) || (r.images && r.images[0]) || 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800',
+              type: r.type || 'Veg + Non-Veg',
+              tags: ['Verified Partner', 'Live Counters'],
+              isVerified: true
+            }));
+          }
+        } catch (e) {
+          console.error("Error fetching caterers on Home:", e);
+        }
+      }
+
+      if (catererList.length === 0) {
+        try {
+          const raw = localStorage.getItem('registrations');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const approved = parsed.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved'));
+            if (approved.length > 0) {
+              catererList = approved.slice(0, 4).map((r: any) => ({
+                id: r.id,
+                name: r.businessName || 'Premium Caterer',
+                location: r.location || 'Hyderabad',
+                rating: typeof r.rating === 'number' ? r.rating : 4.9,
+                reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 85,
+                startingPrice: Number(r.startingPrice) || 350,
+                image: (r.galleryPhotos && r.galleryPhotos[0]) || (r.images && r.images[0]) || 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800',
+                type: r.type || 'Veg + Non-Veg',
+                tags: ['Verified Partner', 'Custom Menus'],
+                isVerified: true
+              }));
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (catererList.length > 0) {
+        const combined = [...catererList];
+        FALLBACK_POPULAR_CATERERS.forEach(fb => {
+          if (combined.length < 4 && !combined.some(c => c.id === fb.id || c.name === fb.name)) {
+            combined.push(fb);
+          }
+        });
+        setPopularCaterers(combined.slice(0, 4));
+      }
+    };
+
+    fetchPopularCaterers();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans overflow-x-hidden pt-14 sm:pt-[58px]">
       
-      {/* 1. DESKTOP HERO BANNER SECTION (Clean & Premium without overlapping card) */}
-      <div 
-        className="relative min-h-[190px] md:min-h-[215px] w-full flex flex-col justify-center py-5 md:py-6 overflow-hidden"
+      {/* 1. ONE UNIFIED EMERALD-GREEN HERO */}
+      <section 
+        className="relative w-full overflow-hidden text-center py-10 sm:py-12 md:py-14 select-none"
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%), url(${heroBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          background: 'radial-gradient(ellipse 90% 80% at 50% 25%, #053D2E 0%, #03281E 60%, #021B14 100%)'
         }}
       >
-        {/* Real image layer positioned absolutely to bypass sandbox background-image CSS loading issues */}
-        <img 
-          src={heroBg} 
-          alt="Luxury banquet dinner table setting"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-0"
-        />
-        {/* Explicit gradient overlay layer above the image and under the text */}
+        {/* Subtle decorative culinary background texture */}
         <div 
-          className="absolute inset-0 z-10 pointer-events-none"
+          className="absolute inset-0 opacity-15 pointer-events-none mix-blend-overlay"
           style={{
-            background: 'linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%)'
+            backgroundImage: 'radial-gradient(#D4AF37 0.8px, transparent 0.8px)',
+            backgroundSize: '24px 24px'
           }}
         />
 
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-start text-left">
-          {/* Text block aligned beautifully with premium typography */}
-          <div className="max-w-xl pl-2 sm:pl-4 md:pl-6">
-            <h1 
-              className="text-[24px] sm:text-[27px] md:text-[30px] font-display text-white tracking-tight leading-[1.12] mb-1 font-bold"
-              style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
-            >
-              Everything You Need <br />
-              for Your Event in <br />
-              <span className="text-[#DEAA38]">
-                One Trusted Platform
-              </span>
-            </h1>
-            
-            <p className="text-white/80 text-[11.5px] sm:text-xs max-w-lg mb-1 font-sans font-normal leading-relaxed">
-              From catering to decor, music to memories, we make every celebration unforgettable.
-            </p>
- 
-            <div className="flex items-center gap-1.5 mb-2.5 text-[10.5px] font-medium text-[#DEAA38]/90">
-              <span className="w-[1.5px] h-2.5 bg-[#DEAA38] inline-block"></span>
-              <span>One Platform. Many Services. Countless Memories.</span>
-            </div>
+        {/* Ambient Radial Highlights */}
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Premium CTA Button */}
-            <div>
-              <Link 
-                to="/explore" 
-                className="inline-flex items-center gap-1.5 px-4.5 py-1.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-lg font-bold text-xs tracking-wider transition-all shadow-xs cursor-pointer border border-[#DEAA38]/20"
+        {/* Hero Center Body (Clean & Centered) */}
+        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center">
+          
+          {/* Main Prominent Heading */}
+          <h1 
+            className="text-2xl sm:text-3xl md:text-[34px] lg:text-[40px] font-display font-bold text-white tracking-tight leading-[1.25] mb-2.5 sm:mb-3 max-w-3xl drop-shadow-sm text-center"
+            style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+          >
+            Explore All Caterers in One Place. <br className="hidden sm:inline" />
+            <span className="text-[#DEAA38]">Choose the Best for Every Occasion</span>
+          </h1>
+
+          {/* Supporting Text */}
+          <p className="text-white/85 text-xs sm:text-[13.5px] max-w-xl mx-auto mb-6 sm:mb-7 leading-relaxed font-sans font-medium text-center">
+            Compare verified caterers, explore menus, and choose packages that make your event special.
+          </p>
+
+          {/* Horizontal Search Bar (Single horizontal pill on desktop, clean wrapped card on mobile) */}
+          <div className="w-full max-w-3xl mx-auto">
+            <div className="bg-white rounded-2xl md:rounded-full p-2 md:p-1.5 md:pl-5 shadow-[0_16px_45px_rgba(0,0,0,0.45)] border border-white/30 flex flex-col md:flex-row items-stretch md:items-center gap-2">
+              
+              {/* Search Input for Caterer Name / Cuisine */}
+              <div className="flex-1 flex items-center gap-2 px-2.5 md:px-0 py-1.5 md:py-0">
+                <Search size={18} className="text-slate-400 shrink-0" />
+                <input 
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search by caterer name, cuisine, or keyword..."
+                  className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-xs sm:text-[13px] font-medium outline-none py-1"
+                />
+                {searchQuery && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSearchQuery('')}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Vertical Divider for Desktop */}
+              <div className="hidden md:block w-px h-7 bg-slate-200 shrink-0 mx-1" />
+
+              {/* Location Selector */}
+              <div ref={locationDropdownRef} className="relative flex items-center gap-2 px-2.5 md:px-2 py-1.5 md:py-0 border-t md:border-t-0 border-slate-100">
+                <MapPin size={17} className="text-[#DEAA38] shrink-0" />
+                
+                <div 
+                  onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
+                  className="flex items-center gap-1 cursor-pointer select-none text-left min-w-[130px] sm:min-w-[160px]"
+                >
+                  <span className="text-xs sm:text-[12.5px] font-semibold text-slate-700 truncate max-w-[150px]">
+                    {selectedLocation}
+                  </span>
+                  <ChevronDown size={14} className="text-slate-400 shrink-0 ml-auto" />
+                </div>
+
+                {/* GPS Current Location Target Button */}
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  title="Use current location"
+                  className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-[#DEAA38] transition-colors cursor-pointer shrink-0"
+                >
+                  <Crosshair size={14} />
+                </button>
+
+                {/* Location Dropdown Options */}
+                {isLocationDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 md:left-auto md:right-0 mt-2 w-full md:w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-50 text-left">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedLocation('Hyderabad, Telangana');
+                        setIsLocationDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3.5 py-1.5 text-xs font-bold text-slate-800 hover:bg-amber-50/70 hover:text-[#DEAA38] transition-colors flex items-center justify-between"
+                    >
+                      <span>All Hyderabad</span>
+                      <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded font-mono font-medium">Default</span>
+                    </button>
+                    <div className="h-px bg-slate-100 my-1" />
+                    <div className="max-h-48 overflow-y-auto no-scrollbar">
+                      {HYDERABAD_AREAS.map((area) => (
+                        <button
+                          key={area.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedLocation(`${area.name}, Hyderabad`);
+                            setIsLocationDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors truncate"
+                        >
+                          {area.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Explore Caterers Button */}
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="w-full md:w-auto px-6 py-2.5 bg-gradient-to-r from-[#DEAA38] to-[#C28824] hover:from-[#E6B84A] hover:to-[#D1972D] active:scale-95 text-[#031E17] font-bold text-xs sm:text-[13px] rounded-xl md:rounded-full tracking-wide transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
               >
                 <span>Explore Caterers</span>
-                <ArrowRight size={12} />
-              </Link>
+                <ArrowRight size={14} className="stroke-[2.5]" />
+              </button>
+
             </div>
           </div>
+
         </div>
-      </div>
+      </section>
 
-      {/* AI Menu Builder Primary Discovery Highlight */}
-      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-2.5 pb-2">
+      {/* 2. POPULAR CATERERS SECTION (Immediately below hero, matching Reference image_3d9d44db.png) */}
+      <section className="py-7 sm:py-9 bg-[#FFFDFB] border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-xl p-3 sm:p-4 border border-[#DEAA38]/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-3 group">
-            
-            {/* Background luxury glow and decorative motif */}
-            <div className="absolute right-[-40px] bottom-[-40px] w-40 h-40 bg-[#DEAA38]/10 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute left-1/4 top-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-
-            {/* Left Content */}
-            <div className="relative z-10 max-w-xl text-left">
-              <div className="inline-flex items-center gap-1 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-2 py-0.5 rounded-full text-[8.5px] font-bold uppercase tracking-wider mb-1">
-                <Sparkles size={10} className="text-[#DEAA38]" />
-                <span>Featured Smart Tool</span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight mb-1">
-                AI Menu <span className="text-[#DEAA38]">Builder</span>
-              </h2>
-              <p className="text-white/85 text-[11.5px] font-sans font-normal leading-relaxed mb-2 max-w-lg">
-                Create the perfect custom menu for your event with intelligent AI recommendations tailored to your guest count and occasion.
-              </p>
-              
-              <div className="flex flex-wrap items-center gap-1.5 text-[9.5px] text-[#E0D4BA] font-medium">
-                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle size={10} className="text-[#DEAA38]" />
-                  <span>Smart Dish Pairings</span>
-                </span>
-                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle size={10} className="text-[#DEAA38]" />
-                  <span>Pricing Optimization</span>
-                </span>
-                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle size={10} className="text-[#DEAA38]" />
-                  <span>100% Customizable</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Right Action Button */}
-            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-1 justify-center items-center md:items-end">
-              <Link
-                to="/explore"
-                className="w-full sm:w-auto px-4 py-2 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group/btn"
-              >
-                <span>Try Now</span>
-                <ArrowRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-              </Link>
-              <span className="text-[9px] text-white/70 tracking-wide text-center">
-                Explore caterers & customize packages
+          
+          {/* Header Row with Top Picks Eyebrow & View All Caterers on Right */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-5 sm:mb-6 pb-2 gap-3">
+            <div>
+              <span className="text-[#DEAA38] font-bold text-[10px] uppercase tracking-wider block mb-1">
+                — OUR TOP PICKS
               </span>
+              <h2 
+                className="text-xl sm:text-2xl md:text-[25px] font-display font-bold text-slate-900 tracking-tight"
+                style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+              >
+                Explore Popular Caterers
+              </h2>
+              <p className="text-slate-500 text-xs sm:text-[13px] font-medium mt-0.5">
+                Discover trusted caterers with delicious menus and great reviews.
+              </p>
             </div>
 
+            <Link 
+              to="/explore"
+              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full border border-[#DEAA38] text-[#C28824] hover:bg-amber-50/60 font-bold text-xs transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
+            >
+              <span>View All Caterers</span>
+              <ArrowRight size={13} className="stroke-[2.5]" />
+            </Link>
           </div>
+
+          {/* Caterers Grid (Matching image_3d9d44db.png) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-4.5 mb-2">
+            {popularCaterers.map((caterer) => (
+              <div
+                key={caterer.id}
+                onClick={() => navigate(`/caterer/${caterer.id}`)}
+                className="bg-white rounded-xl border border-slate-200/90 hover:border-[#DEAA38] shadow-2xs hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer group flex flex-col justify-between"
+              >
+                {/* Caterer Image */}
+                <div className="relative h-40 w-full overflow-hidden bg-slate-100 shrink-0">
+                  <img 
+                    src={caterer.image} 
+                    alt={caterer.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent pointer-events-none" />
+
+                  {/* Rating Badge (top-left) */}
+                  <span className="absolute top-2.5 left-2.5 bg-white/95 backdrop-blur-xs text-slate-800 font-bold text-[10px] px-2.5 py-0.5 rounded-full shadow-2xs flex items-center gap-1">
+                    <Star size={11} className="text-[#DEAA38] fill-[#DEAA38]" />
+                    <span>{Number(caterer.rating).toFixed(1)}</span>
+                    <span className="text-slate-500 font-normal">({caterer.reviewCount})</span>
+                  </span>
+
+                  {/* Heart Favorite Icon (top-right) */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-slate-500 hover:text-rose-500 shadow-2xs transition-colors cursor-pointer"
+                    title="Save to favorites"
+                  >
+                    <Heart size={13} />
+                  </button>
+                </div>
+
+                {/* Caterer Info Body */}
+                <div className="p-3.5 flex-1 flex flex-col justify-between text-left">
+                  <div>
+                    <h3 className="font-display font-bold text-sm sm:text-[14.5px] text-slate-900 group-hover:text-[#DEAA38] transition-colors line-clamp-1 mb-1">
+                      {caterer.name}
+                    </h3>
+                    
+                    {/* Location and Cuisines line with icons */}
+                    <div className="flex items-center gap-1.5 text-slate-500 text-[10.5px] font-medium mb-3">
+                      <span className="flex items-center gap-0.5 shrink-0">
+                        <MapPin size={11} className="text-slate-400 shrink-0" />
+                        <span>{caterer.location}</span>
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span className="flex items-center gap-0.5 truncate text-slate-500">
+                        <Utensils size={10} className="text-slate-400 shrink-0" />
+                        <span className="truncate">{caterer.cuisines || caterer.type}</span>
+                      </span>
+                    </div>
+
+                    {/* Category Tags at bottom of card */}
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {caterer.tags && caterer.tags.map((tag: any, i: number) => {
+                        const tagLabel = typeof tag === 'string' ? tag : tag.label;
+                        const isVeg = tagLabel.toLowerCase() === 'veg';
+                        const isNonVeg = tagLabel.toLowerCase() === 'non-veg';
+                        return (
+                          <span 
+                            key={i} 
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-semibold border flex items-center gap-1 ${
+                              isVeg 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                : isNonVeg 
+                                ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {isVeg && <span className="text-[10px]">🌱</span>}
+                            {isNonVeg && <span className="text-[10px]">🍗</span>}
+                            {!isVeg && !isNonVeg && <span className="text-[9px] text-slate-400">✓</span>}
+                            <span>{tagLabel}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
       </section>
 

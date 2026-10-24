@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import heroBg from '../assets/images/Hero-bg.png';
 import { 
   Search, 
   MapPin, 
@@ -341,14 +340,31 @@ export default function Explore() {
     const qBudget = searchParams.get('budget') || '';
     const qGuests = searchParams.get('guests') || '';
 
+    const qDiet = searchParams.get('diet') || searchParams.get('cuisine') || '';
+    const qOccasion = searchParams.get('occasion') || '';
+
+    if (qDiet) {
+      if (qDiet.toLowerCase().includes('non')) {
+        setCuisineFilter('Non-Veg');
+      } else if (qDiet.toLowerCase().includes('pure')) {
+        setCuisineFilter('Pure Veg');
+      } else if (qDiet.toLowerCase().includes('veg')) {
+        setCuisineFilter('Veg');
+      }
+    }
+
+    if (qOccasion) {
+      setOccasionFilter([qOccasion]);
+    }
+
     if (qSearch) {
       setSearchKeyword(qSearch);
       const matchedOcc = ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Housewarming', 'Engagement', 'Baby Shower', 'Festival'].find(
         o => o.toLowerCase() === qSearch.toLowerCase() || qSearch.toLowerCase().includes(o.toLowerCase())
       );
-      if (matchedOcc) {
+      if (matchedOcc && !qOccasion) {
         setOccasionFilter([matchedOcc]);
-      } else {
+      } else if (!qOccasion) {
         setOccasionFilter([]);
       }
     }
@@ -866,21 +882,21 @@ export default function Explore() {
 
         {/* 2. Premium Hero Banner */}
         <div 
-          className="relative w-full rounded-3xl overflow-hidden mb-6 shadow-md"
+          className="relative w-full rounded-2xl overflow-hidden mb-5 shadow-md"
           style={{
-            backgroundImage: `linear-gradient(rgba(2, 27, 20, 0.82), rgba(2, 27, 20, 0.65)), url(${heroBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            height: '260px'
+            background: 'radial-gradient(ellipse 90% 80% at 50% 25%, #053D2E 0%, #03281E 60%, #021B14 100%)',
+            height: '180px'
           }}
         >
-          <div className="absolute inset-0 p-6 flex flex-col justify-end text-left">
-            <h1 className="text-2xl font-display font-bold text-white tracking-tight leading-tight mb-2">
-              Premium <br />
-              <span className="text-[#DEAA38]">Catering Marketplace</span>
+          <div className="absolute inset-0 p-5 flex flex-col justify-center text-left">
+            <h1 
+              className="text-xl sm:text-2xl font-display font-bold text-white tracking-tight leading-tight mb-1"
+              style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+            >
+              Explore <span className="text-[#DEAA38]">Caterers</span>
             </h1>
             <p className="text-white/80 text-[11px] max-w-xs font-sans leading-relaxed">
-              Discover top verified caterers, customized menus and unforgettable experiences for every occasion.
+              Discover verified caterers, compare customizable packages, and filter menus for your special occasion.
             </p>
           </div>
         </div>
@@ -1573,118 +1589,25 @@ export default function Explore() {
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans pt-14 sm:pt-[58px]">
       
-      {/* 1. Hero Section: Clean & Premium dark green gradient overlay */}
+      {/* 1. Explore Page Header: Clean & Solid Deep Emerald Green Header (No obsolete photo background or separate builder) */}
       <div 
-        className="relative min-h-[190px] md:min-h-[210px] w-full flex flex-col justify-center py-5 md:py-6 overflow-hidden"
+        className="relative w-full py-6 md:py-8 overflow-hidden text-center select-none"
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%), url(${heroBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          background: 'radial-gradient(ellipse 90% 80% at 50% 25%, #053D2E 0%, #03281E 60%, #021B14 100%)'
         }}
       >
-        {/* Real image layer positioned absolutely to bypass sandbox background-image CSS loading issues */}
-        <img 
-          src={heroBg} 
-          alt="Luxury banquet dinner table setting"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-0"
-        />
-        {/* Explicit gradient overlay layer above the image and under the text */}
-        <div 
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{
-            background: 'linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%)'
-          }}
-        />
-
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-start text-left">
-          
-          <div className="max-w-2xl pl-2 sm:pl-4 md:pl-6">
-            <h1 
-              className="text-[24px] sm:text-[27px] md:text-[30px] font-display text-white tracking-tight leading-[1.12] mb-1 font-bold"
-              style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
-            >
-              Premium <br />
-              <span className="text-[#DEAA38]" style={{ fontFamily: 'Playfair Display, Georgia, serif' }}>Catering Marketplace</span>
-            </h1>
-            
-            <p 
-              className="text-white/85 text-[11.5px] sm:text-xs max-w-lg mb-1 font-sans font-light leading-relaxed"
-              style={{
-                width: '450px',
-                maxWidth: '100%',
-                paddingLeft: '2px',
-                fontFamily: 'Inter',
-                color: 'rgba(255, 255, 255, 0.75)'
-              }}
-            >
-              Discover top verified caterers, customized menus and unforgettable experiences for every occasion.
-            </p>
-          </div>
-
+        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center">
+          <h1 
+            className="text-2xl sm:text-3xl md:text-[32px] font-display font-bold text-white tracking-tight leading-[1.2] mb-1.5"
+            style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+          >
+            Explore <span className="text-[#DEAA38]">Caterers</span>
+          </h1>
+          <p className="text-white/85 text-xs sm:text-[13px] max-w-lg mx-auto font-sans font-medium">
+            Discover verified caterers, compare customizable packages, and filter menus for your special occasion.
+          </p>
         </div>
       </div>
-
-      {/* AI Menu Builder Primary Discovery Highlight */}
-      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-2.5 pb-1.5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-xl p-3 sm:p-3.5 border border-[#DEAA38]/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-3 group">
-            
-            {/* Background luxury glow and decorative motif */}
-            <div className="absolute right-[-40px] bottom-[-40px] w-40 h-40 bg-[#DEAA38]/10 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute left-1/4 top-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-
-            {/* Left Content */}
-            <div className="relative z-10 max-w-2xl text-left">
-              <div className="inline-flex items-center gap-1 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-2 py-0.5 rounded-full text-[8.5px] font-bold uppercase tracking-wider mb-1">
-                <Sparkles size={10} className="text-[#DEAA38]" />
-                <span>Featured Smart Tool</span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight mb-1">
-                AI Menu <span className="text-[#DEAA38]">Builder</span>
-              </h2>
-              <p className="text-white/85 text-[11.5px] font-sans font-normal leading-relaxed mb-2 max-w-xl">
-                Create the perfect custom menu for your event with intelligent AI recommendations tailored to your guest count and cuisine preferences.
-              </p>
-              
-              <div className="flex flex-wrap items-center gap-1.5 text-[9.5px] text-[#E0D4BA] font-medium">
-                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle2 size={10} className="text-[#DEAA38]" />
-                  <span>Smart Dish Pairings</span>
-                </span>
-                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle2 size={10} className="text-[#DEAA38]" />
-                  <span>Pricing Optimization</span>
-                </span>
-                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle2 size={10} className="text-[#DEAA38]" />
-                  <span>100% Customizable</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Right Action Button */}
-            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-1 justify-center items-center md:items-end">
-              <button
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById('explore-marketplace');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full sm:w-auto px-4 py-2 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group/btn"
-              >
-                <span>Try Now</span>
-                <ArrowRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-              </button>
-              <span className="text-[9px] text-white/70 tracking-wide text-center">
-                Explore caterers & customize packages
-              </span>
-            </div>
-
-          </div>
-        </div>
-      </section>
 
       {/* 2. Explore Premium Caterers Section - 1:1 Design Layout with Left Sidebar & Horizontal Cards */}
       <section id="explore-marketplace" className="py-5 sm:py-6 bg-white border-y border-slate-100">
