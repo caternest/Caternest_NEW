@@ -1561,32 +1561,32 @@ export default function OrderFlow() {
   return (
     <div
       className={cn(
-        "min-h-screen flex flex-col font-poppins transition-colors duration-300 bg-[#FAF8F3] pt-[88px] md:pt-[104px]"
+        "min-h-screen flex flex-col font-poppins transition-colors duration-300 bg-[#FAF8F3] pt-14 sm:pt-[58px]"
       )}
     >
       {/* Build Header */}
       {viewMode === "custom" ? (
-        <div className="bg-[#FAF7F2] border-b border-[#D6B15E]/30 sticky top-[72px] md:top-[80px] z-20 select-none shadow-xs">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between gap-3">
+        <div className="bg-[#FAF7F2] border-b border-[#D6B15E]/30 sticky top-[56px] sm:top-[58px] z-20 select-none shadow-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2 flex items-center justify-between gap-3">
             {/* Left Controls & Title Branding */}
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               {/* Back button */}
               <button
                 type="button"
                 onClick={() => setViewMode("package_detail")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFEFA] border border-[#D6B15E]/50 hover:border-[#D6B15E] text-[#0B2D23] rounded-full font-bold text-xs shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#FFFEFA] border border-[#D6B15E]/50 hover:border-[#D6B15E] text-[#0B2D23] rounded-full font-bold text-[11px] shadow-2xs hover:shadow-xs transition-all cursor-pointer shrink-0"
               >
-                <ArrowLeft size={14} className="text-[#0B2D23]" />
+                <ArrowLeft size={12} className="text-[#0B2D23]" />
                 <span>Back</span>
               </button>
 
               {/* Brand Title */}
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex flex-col text-left min-w-0">
-                  <h1 className="font-serif font-bold text-base sm:text-lg lg:text-xl tracking-tight text-[#0B2D23] uppercase leading-tight truncate">
+                  <h1 className="font-serif font-bold text-sm sm:text-base lg:text-lg tracking-tight text-[#0B2D23] uppercase leading-tight truncate">
                     {caterer.name || "ELITE CATERING"}
                   </h1>
-                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-[#B8860B] font-sans leading-none mt-0.5 truncate">
+                  <span className="text-[8.5px] sm:text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#B8860B] font-sans leading-none mt-0.5 truncate">
                     {caterer.tagline || caterer.location || "Curated Catering Menu"}
                   </span>
                 </div>
@@ -1594,12 +1594,12 @@ export default function OrderFlow() {
             </div>
 
             {/* Right Guests Selector with Editable Numeric Input */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex items-center bg-[#FFFEFA] border border-[#D6B15E]/50 rounded-lg overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={decrementGuests}
-                  className="w-7 sm:w-8 h-7.5 sm:h-8 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-r border-[#D6B15E]/40 transition-colors font-bold text-sm cursor-pointer"
+                  className="w-6.5 sm:w-7 h-6.5 sm:h-7 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-r border-[#D6B15E]/40 transition-colors font-bold text-xs cursor-pointer"
                   title="Decrease Guests"
                 >
                   −
@@ -1619,19 +1619,19 @@ export default function OrderFlow() {
                       e.currentTarget.blur();
                     }
                   }}
-                  className="w-11 sm:w-14 h-7.5 sm:h-8 text-center font-bold text-xs sm:text-sm text-[#0B2D23] bg-[#FFFEFA] outline-none focus:bg-[#FFFDF7] focus:ring-1 focus:ring-[#D6B15E]/50"
+                  className="w-10 sm:w-12 h-6.5 sm:h-7 text-center font-bold text-xs text-[#0B2D23] bg-[#FFFEFA] outline-none focus:bg-[#FFFDF7] focus:ring-1 focus:ring-[#D6B15E]/50"
                   title="Click to type guest count directly"
                 />
                 <button
                   type="button"
                   onClick={incrementGuests}
-                  className="w-7 sm:w-8 h-7.5 sm:h-8 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-l border-[#D6B15E]/40 transition-colors font-bold text-sm cursor-pointer"
+                  className="w-6.5 sm:w-7 h-6.5 sm:h-7 flex items-center justify-center text-[#0B2D23] hover:bg-[#FAF6EE] border-l border-[#D6B15E]/40 transition-colors font-bold text-xs cursor-pointer"
                   title="Increase Guests"
                 >
                   +
                 </button>
               </div>
-              <span className="font-bold text-xs text-[#0B2D23] hidden xs:inline">
+              <span className="font-bold text-[11px] text-[#0B2D23] hidden xs:inline">
                 Guests
               </span>
             </div>
@@ -1639,8 +1639,8 @@ export default function OrderFlow() {
 
           {/* Horizontal Category Tabs Row */}
           <div className="border-t border-[#D6B15E]/30 bg-[#FFFEFA]/95 backdrop-blur-xs">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 sm:py-2">
-              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 sm:py-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
                 {menuCategories.map((cat: string) => {
                   const catData = selectedPackage?.categories?.find(
                     (c: any) => c.categoryName === cat,
@@ -1662,7 +1662,7 @@ export default function OrderFlow() {
                       type="button"
                       onClick={() => setActiveCategory(cat)}
                       className={cn(
-                        "px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-[13px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1.5 border select-none shrink-0",
+                        "px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-1 border select-none shrink-0",
                         isActive
                           ? "bg-[#0B2D23] text-white border-[#D6B15E]/80 shadow-2xs"
                           : "bg-[#FFFEFA] text-[#0B2D23] hover:text-[#061D16] hover:bg-[#FAF6EE] border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-2xs",
@@ -1673,7 +1673,7 @@ export default function OrderFlow() {
                       {catLimit > 0 ? (
                         <span
                           className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                            "text-[9.5px] px-1 py-0.2 rounded-full font-bold",
                             isActive
                               ? isDone
                                 ? "bg-[#D6B15E]/30 text-[#FDF3D6] border border-[#D6B15E]/40"
@@ -1688,7 +1688,7 @@ export default function OrderFlow() {
                       ) : selectedCount > 0 ? (
                         <span
                           className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                            "text-[9.5px] px-1 py-0.2 rounded-full font-bold",
                             isActive
                               ? "bg-white/15 text-white"
                               : "bg-[#FAF6EE] text-[#7A6A4E] border border-[#D6B15E]/30",
@@ -1705,31 +1705,31 @@ export default function OrderFlow() {
           </div>
         </div>
       ) : viewMode === "package_detail" ? (
-        <div className="bg-transparent py-3 sm:py-4 z-20 relative select-none">
-          <div className="max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-2.5 sm:gap-3">
+        <div className="bg-transparent py-2 sm:py-2.5 z-20 relative select-none">
+          <div className="max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-1.5 sm:gap-2">
             {/* Breadcrumbs */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-stone-500 font-sans tracking-wide">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] sm:text-xs font-medium text-stone-500 font-sans tracking-wide">
               <Link to="/" className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600">Home</Link>
-              <ChevronRight size={12} className="text-stone-400 shrink-0" />
+              <ChevronRight size={11} className="text-stone-400 shrink-0" />
               <Link to="/explore" className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600">Explore Caterers</Link>
-              <ChevronRight size={12} className="text-stone-400 shrink-0" />
+              <ChevronRight size={11} className="text-stone-400 shrink-0" />
               <Link to={`/caterer/${id}`} className="hover:text-[#BB9C4A] transition-colors font-bold text-stone-600 truncate max-w-[140px] sm:max-w-[220px]">{caterer?.name}</Link>
-              <ChevronRight size={12} className="text-stone-400 shrink-0" />
+              <ChevronRight size={11} className="text-stone-400 shrink-0" />
               <span className="text-[#BB9C4A] font-extrabold truncate max-w-[160px] sm:max-w-[240px]">{selectedPackage?.packageName || selectedPackage?.name || "Gold Package"}</span>
             </div>
 
-            <div className="flex items-center justify-start gap-3 sm:gap-3.5">
+            <div className="flex items-center justify-start gap-2.5 sm:gap-3">
               {/* Elegant Back Arrow button */}
               <button
                 onClick={() => {
                   navigate(`/caterer/${id}`, { state: { fromOrder: true, selectedPackageId: selectedPackage?.id, guests: guests } });
                 }}
-                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-[#D5A859]/15 text-[#C2BB8B] active:scale-95 transition-all bg-white/80 border border-[#DECC9C]/60 hover:border-[#BB9C4A] cursor-pointer shrink-0 shadow-xs"
+                className="w-7.5 h-7.5 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[#D5A859]/15 text-[#C2BB8B] active:scale-95 transition-all bg-white/80 border border-[#DECC9C]/60 hover:border-[#BB9C4A] cursor-pointer shrink-0 shadow-2xs"
                 title="Back to Caterer"
               >
                 <svg
-                  width="20"
-                  height="20"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="#BB9C4A"
@@ -1743,10 +1743,10 @@ export default function OrderFlow() {
 
               {/* Brand Title with elegant styling and balanced scale */}
               <div className="flex flex-col text-left">
-                <h1 className="font-display font-bold text-2xl sm:text-3xl lg:text-4xl tracking-tight text-[#0B1F17] uppercase leading-tight">
+                <h1 className="font-display font-bold text-xl sm:text-2xl lg:text-[26px] tracking-tight text-[#0B1F17] uppercase leading-tight">
                   {selectedPackage?.packageName || "Veg Silver"}
                 </h1>
-                <span className="text-[10px] sm:text-xs font-sans font-semibold text-[#B8860B] uppercase tracking-[0.2em] mt-1">
+                <span className="text-[9.5px] sm:text-[10.5px] font-sans font-semibold text-[#B8860B] uppercase tracking-[0.16em] mt-0.5">
                   {caterer.name} • {caterer.location}
                 </span>
               </div>
@@ -2077,16 +2077,16 @@ export default function OrderFlow() {
       )}
 
       {viewMode === "package_detail" && selectedPackage && (
-        <div className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pb-8 pt-1 relative box-border">
+        <div className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pb-5 pt-0.5 relative box-border">
           {/* Outer Luxury 2-layer Bezel Frame */}
-          <div className="bg-[#FAF5EA] rounded-2xl md:rounded-3xl p-1 md:p-1.5 shadow-[0_15px_45px_rgba(21,21,21,0.08)] border border-[#DECC9C] md:border-2 md:border-[#BB9C4A] relative overflow-hidden w-full max-w-full box-border">
-            <div className="bg-[#FFFDF9] rounded-[14px] md:rounded-[22px] border border-slate-200 md:border-[#DECC9C] overflow-hidden flex flex-col relative w-full max-w-full box-border">
+          <div className="bg-[#FAF5EA] rounded-xl md:rounded-2xl p-1 md:p-1.5 shadow-[0_10px_30px_rgba(21,21,21,0.06)] border border-[#DECC9C] md:border-[#BB9C4A] relative overflow-hidden w-full max-w-full box-border">
+            <div className="bg-[#FFFDF9] rounded-lg md:rounded-xl border border-slate-200 md:border-[#DECC9C] overflow-hidden flex flex-col relative w-full max-w-full box-border">
               {/* Premium Emerald Green Header with Leaf motif */}
-              <div className="bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-white px-4 py-3.5 sm:px-6 sm:py-4.5 relative overflow-hidden select-none border-b border-[#BB9C4A]/40">
+              <div className="bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-white px-3.5 py-2.5 sm:px-5 sm:py-3.5 relative overflow-hidden select-none border-b border-[#BB9C4A]/40">
                 {/* Detailed decorative leaf watermark on the right */}
                 <svg
                   viewBox="0 0 100 100"
-                  className="absolute -right-2 bottom-0 top-0 w-32 sm:w-48 h-full text-[#032D29] opacity-45 pointer-events-none select-none"
+                  className="absolute -right-2 bottom-0 top-0 w-28 sm:w-40 h-full text-[#032D29] opacity-45 pointer-events-none select-none"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.2"
@@ -2099,14 +2099,14 @@ export default function OrderFlow() {
                   <path d="M22 75 Q 30 67 40 70" strokeWidth="0.8" />
                 </svg>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-                  <div className="flex items-center gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 relative z-10">
+                  <div className="flex items-center gap-2.5 sm:gap-3.5">
                     {/* Elegant circular brand gold crest logo */}
-                    <div className="w-11 h-11 sm:w-13 sm:h-13 bg-white rounded-full border-2 border-transparent bg-gradient-to-br from-[#F4E2B6] via-[#D4AF37] to-[#886C1D] flex items-center justify-center shadow-[0_4px_16px_rgba(184,150,46,0.25)] shrink-0 p-[2px] relative z-10 transition-transform hover:scale-105 duration-300">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white rounded-full border border-transparent bg-gradient-to-br from-[#F4E2B6] via-[#D4AF37] to-[#886C1D] flex items-center justify-center shadow-xs shrink-0 p-[1.5px] relative z-10 transition-transform hover:scale-105 duration-300">
                       <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                         <svg
                           viewBox="0 0 100 100"
-                          className="w-6 sm:w-8 h-6 sm:h-8 text-[#0F3D2E] fill-none"
+                          className="w-5 sm:w-6 h-5 sm:h-6 text-[#0F3D2E] fill-none"
                           stroke="currentColor"
                           strokeWidth="5.5"
                           strokeLinecap="round"
@@ -2131,11 +2131,11 @@ export default function OrderFlow() {
                     </div>
 
                     <div className="text-left flex-1 min-w-0">
-                      <h2 className="text-base sm:text-xl lg:text-2xl font-display font-semibold text-[#F4E2B6] tracking-wider uppercase leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] truncate">
+                      <h2 className="text-sm sm:text-base lg:text-lg font-display font-bold text-[#F4E2B6] tracking-wider uppercase leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] truncate">
                         {selectedPackage.packageName}
                       </h2>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-[10px] sm:text-[11px] text-[#E0D4BA] font-medium tracking-wide">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        <span className="text-[9.5px] sm:text-[10px] text-[#E0D4BA] font-medium tracking-wide">
                           {caterer.name} • {caterer.location}
                         </span>
                       </div>
@@ -2144,73 +2144,72 @@ export default function OrderFlow() {
 
                   <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
                     {renderVegNonVegBadge(selectedPackage.packageType || "Veg")}
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-[#D4AF37]/30 text-[9.5px] font-bold text-[#F4E2B6] font-sans">
-                      <Users size={12} className="text-[#D4AF37]" />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-[#D4AF37]/30 text-[8.5px] sm:text-[9px] font-bold text-[#F4E2B6] font-sans">
+                      <Users size={11} className="text-[#D4AF37]" />
                       Min {selectedPackage.minimumGuests || 50}+
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 lg:p-7 bg-[#FFFDF9]">
+              <div className="p-3.5 sm:p-5 bg-[#FFFDF9]">
                 {/* 2-Column Responsive Layout on Desktop, 1-Column on Mobile */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 lg:gap-4.5 items-start">
                   
                   {/* LEFT COLUMN: Package Information & Pricing Tiers */}
-                  <div className="lg:col-span-6 flex flex-col gap-4">
+                  <div className="lg:col-span-6 flex flex-col gap-3">
                     {/* Package Price Box */}
-                    <div className="relative bg-gradient-to-br from-[#FFFDF9] to-[#FAF5EA] rounded-2xl border border-[#DECC9C] p-4 sm:p-5 hover:border-[#D4AF37]/50 hover:shadow-[0_8px_24px_rgba(212,175,55,0.08)] transition-all duration-350 overflow-hidden shadow-xs flex flex-col items-center justify-center text-center">
+                    <div className="relative bg-gradient-to-br from-[#FFFDF9] to-[#FAF5EA] rounded-xl border border-[#DECC9C] p-3 sm:p-3.5 hover:border-[#D4AF37]/50 transition-all duration-300 overflow-hidden shadow-2xs flex flex-col items-center justify-center text-center">
                       {/* Corner bevel/flourish details */}
-                      <div className="absolute top-2 left-2 w-3 h-3 border-t border-l border-[#BB9C4A]/40 rounded-tl-[3px]"></div>
-                      <div className="absolute top-2 right-2 w-3 h-3 border-t border-r border-[#BB9C4A]/40 rounded-tr-[3px]"></div>
-                      <div className="absolute bottom-2 left-2 w-3 h-3 border-b border-l border-[#BB9C4A]/40 rounded-bl-[3px]"></div>
-                      <div className="absolute bottom-2 right-2 w-3 h-3 border-b border-r border-[#BB9C4A]/40 rounded-br-[3px]"></div>
+                      <div className="absolute top-1.5 left-1.5 w-2.5 h-2.5 border-t border-l border-[#BB9C4A]/40 rounded-tl-[2px]"></div>
+                      <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 border-t border-r border-[#BB9C4A]/40 rounded-tr-[2px]"></div>
+                      <div className="absolute bottom-1.5 left-1.5 w-2.5 h-2.5 border-b border-l border-[#BB9C4A]/40 rounded-bl-[2px]"></div>
+                      <div className="absolute bottom-1.5 right-1.5 w-2.5 h-2.5 border-b border-r border-[#BB9C4A]/40 rounded-br-[2px]"></div>
 
-                      <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 relative z-10 w-full px-2">
+                      <div className="flex items-center justify-center gap-2 mb-1.5 relative z-10 w-full px-2">
                         <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[#C29D38] text-[8px] select-none">⚜️</span>
-                          <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[2px] text-[#8C6D1F] uppercase text-center">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[#C29D38] text-[7.5px] select-none">⚜️</span>
+                          <span className="text-[9.5px] sm:text-[10px] font-sans font-bold tracking-[1.5px] text-[#8C6D1F] uppercase text-center">
                             PACKAGE PRICE
                           </span>
-                          <span className="text-[#C29D38] text-[8px] select-none">⚜️</span>
+                          <span className="text-[#C29D38] text-[7.5px] select-none">⚜️</span>
                         </div>
                         <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent via-[#DECC9C] to-[#C29D38] opacity-60"></div>
                       </div>
 
-                      <div className="relative z-10 flex flex-col items-center justify-center text-center my-1">
+                      <div className="relative z-10 flex flex-col items-center justify-center text-center my-0.5">
                         <span
-                          className="font-semibold text-4xl sm:text-5xl lg:text-5.5xl leading-none select-all text-transparent bg-clip-text"
+                          className="font-bold text-2xl sm:text-3xl lg:text-[34px] leading-tight select-all text-transparent bg-clip-text"
                           style={{
                             fontFamily: '"Cinzel", "Libre Baskerville", "Georgia", serif',
-                            fontWeight: 600,
-                            letterSpacing: "-1px",
+                            letterSpacing: "-0.5px",
                             background: "linear-gradient(180deg, #D4AF37 0%, #C9A227 50%, #B8860B 100%)",
                             WebkitBackgroundClip: "text",
                             WebkitTextFillColor: "transparent",
-                            filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.06))",
+                            filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.06))",
                           }}
                         >
                           ₹{currentPerPlatePrice}
                         </span>
-                        <span className="text-[11px] sm:text-[12px] font-sans font-black text-[#5C5750] uppercase tracking-[0.2em] mt-1.5">
+                        <span className="text-[10px] sm:text-[10.5px] font-sans font-bold text-[#5C5750] uppercase tracking-[0.16em] mt-0.5">
                           Per Plate
                         </span>
                       </div>
 
                       {/* Package Description / Feature highlights */}
-                      <p className="text-[11px] sm:text-xs text-stone-500 italic mt-2 text-center max-w-md">
+                      <p className="text-[10.5px] sm:text-[11px] text-stone-500 italic mt-1.5 text-center max-w-md line-clamp-2">
                         "{selectedPackage.description || "Curated premium catering spread with chef-crafted delicacies tailored for your event."}"
                       </p>
 
                       {selectedPackage.categories && selectedPackage.categories.length > 0 && (
-                        <div className="flex flex-wrap items-center justify-center gap-2 mt-3 pt-2.5 border-t border-[#DECC9C]/50 w-full">
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0F3D2E] bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-                            <Sparkles size={11} className="text-[#D4AF37]" />
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2 pt-2 border-t border-[#DECC9C]/50 w-full">
+                          <span className="inline-flex items-center gap-1 text-[9px] sm:text-[9.5px] font-bold text-[#0F3D2E] bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded-full">
+                            <Sparkles size={10} className="text-[#D4AF37]" />
                             {selectedPackage.categories.length} Food Categories
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded-full">
-                            <Utensils size={11} className="text-stone-500" />
+                          <span className="inline-flex items-center gap-1 text-[9px] sm:text-[9.5px] font-bold text-stone-600 bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded-full">
+                            <Utensils size={10} className="text-stone-500" />
                             Fully Customizable
                           </span>
                         </div>
@@ -2219,16 +2218,16 @@ export default function OrderFlow() {
 
                     {/* Pricing Slabs (Interactive Tiers) */}
                     {selectedPackage.pricingSlabs && selectedPackage.pricingSlabs.length > 0 && (
-                      <div className="bg-white/90 border border-[#DECC9C] rounded-2xl p-3.5 sm:p-4 shadow-xs">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <span className="text-[10.5px] font-sans font-bold text-[#8A6715] uppercase tracking-wider">
+                      <div className="bg-white/90 border border-[#DECC9C] rounded-xl p-2.5 sm:p-3 shadow-2xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-sans font-bold text-[#8A6715] uppercase tracking-wider">
                             Pricing Tiers
                           </span>
-                          <span className="text-[9.5px] text-stone-500">
+                          <span className="text-[9px] text-stone-500">
                             Click tier to update guest count
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                           {(() => {
                             const sortedSlabs = [...selectedPackage.pricingSlabs].sort(
                               (a: any, b: any) => a.minGuests - b.minGuests
@@ -2258,15 +2257,15 @@ export default function OrderFlow() {
                                   type="button"
                                   onClick={() => setGuests(slab.minGuests)}
                                   className={cn(
-                                    "flex flex-col justify-center items-start px-3 py-2 sm:py-2.5 rounded-xl border transition-all duration-200 text-left cursor-pointer",
+                                    "flex flex-col justify-center items-start px-2.5 py-1.5 sm:py-2 rounded-lg border transition-all duration-200 text-left cursor-pointer",
                                     isActive
-                                      ? "border-[#D4AF37] bg-gradient-to-br from-[#FFFDF9] to-[#FCFAF5] shadow-xs ring-1 ring-[#D4AF37]/50"
+                                      ? "border-[#D4AF37] bg-gradient-to-br from-[#FFFDF9] to-[#FCFAF5] shadow-2xs ring-1 ring-[#D4AF37]/50"
                                       : "border-[#DECC9C]/50 bg-[#FAF8F5] hover:border-[#DECC9C] hover:bg-white"
                                   )}
                                 >
                                   <span
                                     className={cn(
-                                      "text-[9px] font-black uppercase tracking-wider font-sans",
+                                      "text-[8.5px] font-bold uppercase tracking-wider font-sans",
                                       isActive ? "text-[#8A6715]" : "text-stone-500"
                                     )}
                                   >
@@ -2274,12 +2273,12 @@ export default function OrderFlow() {
                                   </span>
                                   <span
                                     className={cn(
-                                      "text-sm sm:text-base font-black font-display mt-0.5",
+                                      "text-xs sm:text-sm font-bold font-display mt-0.5",
                                       isActive ? "text-[#0F3D2E]" : "text-stone-800"
                                     )}
                                   >
                                     ₹{slab.price}{" "}
-                                    <span className="text-[10px] font-sans font-medium text-stone-400">
+                                    <span className="text-[9px] font-sans font-medium text-stone-400">
                                       / plate
                                     </span>
                                   </span>
@@ -2293,18 +2292,18 @@ export default function OrderFlow() {
                   </div>
 
                   {/* RIGHT COLUMN: Guest Count Controls, Estimate Summary & Continue Button */}
-                  <div className="lg:col-span-6 flex flex-col gap-4">
+                  <div className="lg:col-span-6 flex flex-col gap-3">
                     {/* Enter Guest Count Controls */}
-                    <div className="bg-white/95 border border-[#DECC9C] rounded-2xl p-3.5 sm:p-4 shadow-xs">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[11px] sm:text-[12px] font-sans font-semibold text-[#123326] uppercase tracking-[2px]">
+                    <div className="bg-white/95 border border-[#DECC9C] rounded-xl p-2.5 sm:p-3 shadow-2xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[10px] sm:text-[10.5px] font-sans font-bold text-[#123326] uppercase tracking-[1.5px]">
                           ENTER GUEST COUNT
                         </label>
-                        <span className="text-[10px] font-medium text-stone-500">
+                        <span className="text-[9.5px] font-medium text-stone-500">
                           Min: {selectedPackage.minimumGuests || 50} guests
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() =>
@@ -2315,10 +2314,10 @@ export default function OrderFlow() {
                               )
                             )
                           }
-                          className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-xl border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-lg font-bold shrink-0"
+                          className="w-8.5 h-8.5 sm:w-9 sm:h-9 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-lg border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-2xs text-base font-bold shrink-0"
                           title="Decrease 10 guests"
                         >
-                          <Minus size={16} strokeWidth={2.5} />
+                          <Minus size={14} strokeWidth={2.5} />
                         </button>
 
                         <input
@@ -2328,28 +2327,28 @@ export default function OrderFlow() {
                             const val = Math.max(0, Number(e.target.value));
                             setGuests(val);
                           }}
-                          className="flex-1 w-full h-11 sm:h-12 text-center font-sans font-black text-xl text-[#123326] bg-[#FAF8F5] focus:bg-white border border-[#DECC9C] hover:border-[#C29D38] focus:border-[#C29D38] rounded-xl outline-none transition-all shadow-inner select-all"
+                          className="flex-1 w-full h-8.5 sm:h-9 text-center font-sans font-bold text-base sm:text-lg text-[#123326] bg-[#FAF8F5] focus:bg-white border border-[#DECC9C] hover:border-[#C29D38] focus:border-[#C29D38] rounded-lg outline-none transition-all shadow-inner select-all"
                         />
 
                         <button
                           type="button"
                           onClick={() => setGuests(guests + 10)}
-                          className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-xl border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-xs text-lg font-bold shrink-0"
+                          className="w-8.5 h-8.5 sm:w-9 sm:h-9 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-lg border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-2xs text-base font-bold shrink-0"
                           title="Increase 10 guests"
                         >
-                          <Plus size={16} strokeWidth={2.5} />
+                          <Plus size={14} strokeWidth={2.5} />
                         </button>
                       </div>
                     </div>
 
                     {/* Gold Detail Estimate Summary Card */}
-                    <div className="bg-[#FCFAF7] border border-[#DECC9C] rounded-2xl p-4 sm:p-5 shadow-xs relative overflow-hidden text-left w-full box-border">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-2xl pointer-events-none"></div>
+                    <div className="bg-[#FCFAF7] border border-[#DECC9C] rounded-xl p-3 sm:p-3.5 shadow-2xs relative overflow-hidden text-left w-full box-border">
+                      <div className="absolute top-0 right-0 w-28 h-28 bg-[#D4AF37]/5 rounded-full blur-xl pointer-events-none"></div>
 
-                      <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-[#E5D2A6]">
-                        <div className="w-6.5 h-6.5 rounded-full border border-[#DECC9C] bg-[#FCFAF5] text-[#8C6D1F] flex items-center justify-center shadow-xs shrink-0">
+                      <div className="flex items-center gap-1.5 mb-2.5 pb-2 border-b border-[#E5D2A6]">
+                        <div className="w-5.5 h-5.5 rounded-full border border-[#DECC9C] bg-[#FCFAF5] text-[#8C6D1F] flex items-center justify-center shadow-2xs shrink-0">
                           <svg
-                            className="w-3.5 h-3.5 text-[#8A6715]"
+                            className="w-3 h-3 text-[#8A6715]"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -2363,17 +2362,17 @@ export default function OrderFlow() {
                             <line x1="9" y1="17" x2="15" y2="17" />
                           </svg>
                         </div>
-                        <h4 className="font-sans font-semibold text-[11px] sm:text-xs tracking-[2px] text-[#123326] uppercase">
+                        <h4 className="font-sans font-bold text-[10.5px] sm:text-[11px] tracking-[1.5px] text-[#123326] uppercase">
                           ESTIMATE SUMMARY
                         </h4>
                       </div>
 
-                      <div className="space-y-2.5">
+                      <div className="space-y-1.5 text-[10.5px] sm:text-[11px]">
                         <div className="flex justify-between items-center text-left">
-                          <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] font-sans">
+                          <span className="text-[#5C5750] font-semibold uppercase tracking-[0.5px] font-sans">
                             CATERING PACKAGE
                           </span>
-                          <span className="font-sans font-bold text-[#123326] text-xs uppercase tracking-tight truncate max-w-[200px]">
+                          <span className="font-sans font-bold text-[#123326] uppercase tracking-tight truncate max-w-[180px]">
                             {selectedPackage.packageName}
                           </span>
                         </div>
@@ -2381,10 +2380,10 @@ export default function OrderFlow() {
                         <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
 
                         <div className="flex justify-between items-center text-left">
-                          <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] font-sans">
+                          <span className="text-[#5C5750] font-semibold uppercase tracking-[0.5px] font-sans">
                             PRICE PER PLATE
                           </span>
-                          <span className="font-sans font-bold text-[#123326] text-xs sm:text-sm">
+                          <span className="font-sans font-bold text-[#123326]">
                             ₹{currentPerPlatePrice}
                           </span>
                         </div>
@@ -2392,27 +2391,27 @@ export default function OrderFlow() {
                         <div className="w-full border-t border-dashed border-[#DECC9C]/60"></div>
 
                         <div className="flex justify-between items-center text-left">
-                          <span className="text-[#5C5750] font-semibold text-[10px] sm:text-[11px] uppercase tracking-[1px] font-sans">
+                          <span className="text-[#5C5750] font-semibold uppercase tracking-[0.5px] font-sans">
                             EXPECTED GUEST COUNT
                           </span>
-                          <span className="font-sans font-bold text-[#123326] text-xs sm:text-sm">
+                          <span className="font-sans font-bold text-[#123326]">
                             {guests} Guests
                           </span>
                         </div>
 
                         {/* Estimated Total Highlight Banner */}
-                        <div className="pt-1">
-                          <div className="bg-gradient-to-r from-[#F6F0DF] to-[#EFE5CD] border border-[#DECC9C] rounded-xl p-3 sm:p-3.5 flex justify-between items-center shadow-xs">
+                        <div className="pt-0.5">
+                          <div className="bg-gradient-to-r from-[#F6F0DF] to-[#EFE5CD] border border-[#DECC9C] rounded-lg p-2.5 sm:p-3 flex justify-between items-center shadow-2xs">
                             <div className="flex flex-col text-left">
-                              <span className="text-[9.5px] font-sans font-bold text-[#B8860B] uppercase tracking-[2px]">
+                              <span className="text-[9px] font-sans font-bold text-[#B8860B] uppercase tracking-[1.5px]">
                                 ESTIMATED TOTAL
                               </span>
-                              <span className="text-[9px] text-[#5C5750] font-medium tracking-tight">
+                              <span className="text-[8.5px] text-[#5C5750] font-medium tracking-tight">
                                 Inclusive of all taxes
                               </span>
                             </div>
                             <span
-                              className="font-bold text-2xl sm:text-3xl lg:text-3.5xl leading-none"
+                              className="font-bold text-xl sm:text-2xl lg:text-[26px] leading-none"
                               style={{
                                 fontFamily: '"Cinzel", "Libre Baskerville", "Georgia", serif',
                                 letterSpacing: "-0.5px",
@@ -2430,7 +2429,7 @@ export default function OrderFlow() {
                     </div>
 
                     {/* Disclaimer Policy */}
-                    <div className="flex items-center gap-1.5 text-[10.5px] text-[#7A7369] font-medium text-left px-1">
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#7A7369] font-medium text-left px-1">
                       <span className="text-xs text-[#C29D38] font-bold shrink-0">ⓘ</span>
                       <span>Taxes and additional charges may apply as per venue policy.</span>
                     </div>
@@ -2439,11 +2438,11 @@ export default function OrderFlow() {
                     <button
                       type="button"
                       onClick={() => setViewMode("custom")}
-                      className="w-full bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-[#FDE5A9] font-sans font-bold text-xs sm:text-[13px] uppercase tracking-[2px] sm:tracking-[3px] py-3.5 px-6 rounded-xl shadow-[0_8px_24px_rgba(2,27,26,0.2)] hover:shadow-[0_12px_32px_rgba(184,150,46,0.25)] border-2 border-[#BB9C4A] hover:border-[#F4E2B6] hover:scale-[1.008] active:scale-[0.99] transition-all outline-none flex items-center justify-center gap-2 cursor-pointer group"
+                      className="w-full bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-[#FDE5A9] font-sans font-bold text-xs uppercase tracking-[2px] py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md border border-[#BB9C4A] hover:border-[#F4E2B6] hover:scale-[1.005] active:scale-[0.99] transition-all outline-none flex items-center justify-center gap-1.5 cursor-pointer group"
                     >
                       <span>CONTINUE WITH MENU</span>
                       <ChevronRight
-                        size={15}
+                        size={14}
                         className="transition-transform group-hover:translate-x-1 text-[#FDE5A9] stroke-[3]"
                       />
                     </button>
@@ -2458,16 +2457,16 @@ export default function OrderFlow() {
 
       {viewMode === "custom" && selectedPackage && (
         <>
-          <div className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
-            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+          <div className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-5">
+            <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
               {/* LEFT COLUMN: Main Menu Selection Area */}
               <div id="active-category-content" className="flex-1 min-w-0 w-full">
-                <div className="bg-[#FFFEFA] rounded-3xl border border-[#D6B15E]/40 shadow-[0_4px_24px_rgba(214,177,94,0.06)] p-4 sm:p-6 lg:p-7">
+                <div className="bg-[#FFFEFA] rounded-2xl border border-[#D6B15E]/40 shadow-xs p-4 sm:p-5 lg:p-6">
                   {/* Category Header & Controls */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#D6B15E]/30">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#D6B15E]/30">
                     <div>
                       <h2
-                        className="font-serif font-bold text-2xl sm:text-3xl lg:text-3.5xl text-[#0B2D23] leading-tight tracking-tight"
+                        className="font-serif font-bold text-xl sm:text-2xl lg:text-[24px] text-[#0B2D23] leading-tight tracking-tight"
                         style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
                       >
                         {activeCategory}
@@ -2544,7 +2543,7 @@ export default function OrderFlow() {
                   )}
 
                   {/* Menu Items Grid: Cards with thin gold borders and warm cream bg */}
-                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3">
                     {(() => {
                       const allCatItems =
                         selectedPackage.categories?.find(
@@ -2561,14 +2560,14 @@ export default function OrderFlow() {
 
                       if (filteredItems.length === 0) {
                         return (
-                          <div className="col-span-full py-12 text-center text-stone-400">
-                            <p className="text-sm font-medium">
+                          <div className="col-span-full py-8 text-center text-stone-400">
+                            <p className="text-xs sm:text-sm font-medium">
                               No dishes found matching "{categorySearchQuery}"
                             </p>
                             <button
                               type="button"
                               onClick={() => setCategorySearchQuery("")}
-                              className="mt-2 text-xs font-bold text-[#D6B15E] hover:underline cursor-pointer"
+                              className="mt-1.5 text-xs font-bold text-[#D6B15E] hover:underline cursor-pointer"
                             >
                               Clear search
                             </button>
@@ -2602,24 +2601,24 @@ export default function OrderFlow() {
                               }
                             }}
                             className={cn(
-                              "relative bg-[#FFFEFA] rounded-xl p-3 sm:p-3.5 border transition-all duration-200 flex flex-col justify-between min-h-[90px] sm:min-h-[100px] select-none",
+                              "relative bg-[#FFFEFA] rounded-lg p-2.5 sm:p-3 border transition-all duration-200 flex flex-col justify-between min-h-[80px] sm:min-h-[88px] select-none",
                               isSelected
-                                ? "border-[#D6B15E] ring-1 ring-[#D6B15E]/40 bg-[#FFFDF7] shadow-[0_4px_16px_rgba(214,177,94,0.18)]"
+                                ? "border-[#D6B15E] ring-1 ring-[#D6B15E]/40 bg-[#FFFDF7] shadow-[0_2px_12px_rgba(214,177,94,0.15)]"
                                 : isDisabled
                                   ? "border-[#D6B15E]/20 bg-[#FAF9F5] opacity-55 cursor-not-allowed shadow-none"
-                                  : "border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_10px_rgba(214,177,94,0.08)] hover:shadow-[0_4px_16px_rgba(214,177,94,0.16)] cursor-pointer",
+                                  : "border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_8px_rgba(214,177,94,0.06)] hover:shadow-[0_3px_12px_rgba(214,177,94,0.12)] cursor-pointer",
                             )}
                           >
                             {/* Top Row: Dietary Indicator (Veg / Non-Veg) & Status Badge */}
-                            <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center justify-between gap-1.5 mb-0.5">
                               <div>
                                 {isNonVeg ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 font-sans">
+                                  <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-rose-700 font-sans">
                                     <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                                     Non-Veg
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0B2D23] font-sans">
+                                  <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#0B2D23] font-sans">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                     Veg
                                   </span>
@@ -2628,21 +2627,21 @@ export default function OrderFlow() {
 
                               <div>
                                 {isPremium ? (
-                                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 px-1.5 py-0.5 rounded">
+                                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 px-1 py-0.2 rounded">
                                     Premium
                                   </span>
                                 ) : (
-                                  <span className="text-[9px] font-semibold text-stone-500 uppercase tracking-wider">
+                                  <span className="text-[8.5px] font-semibold text-stone-500 uppercase tracking-wider">
                                     Included
                                   </span>
                                 )}
                               </div>
                             </div>
 
-                            {/* Middle: Dish Name in Clean High-Readability Serif Text (NO images, NO logos, NO initials) */}
+                            {/* Middle: Dish Name */}
                             <div className="my-0.5">
                               <h3
-                                className="font-serif font-bold text-sm sm:text-[15px] text-[#0B2D23] leading-snug"
+                                className="font-serif font-bold text-[13px] sm:text-sm text-[#0B2D23] leading-snug line-clamp-1"
                                 style={{
                                   fontFamily: '"Playfair Display", Georgia, serif',
                                 }}
@@ -2652,8 +2651,8 @@ export default function OrderFlow() {
                             </div>
 
                             {/* Bottom Row: Control button */}
-                            <div className="mt-2 pt-1.5 border-t border-[#D6B15E]/20 flex items-center justify-between">
-                              <span className="text-[11px] font-medium text-stone-500">
+                            <div className="mt-1 pt-1 border-t border-[#D6B15E]/20 flex items-center justify-between">
+                              <span className="text-[10px] font-medium text-stone-500">
                                 {isSelected ? (
                                   <span className="text-[#0B2D23] font-bold">
                                     In your menu
@@ -2674,9 +2673,9 @@ export default function OrderFlow() {
                                     e.stopPropagation();
                                     toggleItem(itemName, activeCategory);
                                   }}
-                                  className="px-2.5 py-1 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] border border-[#D6B15E]/70 rounded-md text-[11px] font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
+                                  className="px-2 py-0.5 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] border border-[#D6B15E]/70 rounded text-[10px] font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
                                 >
-                                  <Check size={11} strokeWidth={3} />
+                                  <Check size={10} strokeWidth={3} />
                                   <span>Selected</span>
                                 </button>
                               ) : (
@@ -2690,13 +2689,13 @@ export default function OrderFlow() {
                                     }
                                   }}
                                   className={cn(
-                                    "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 select-none",
+                                    "px-2 py-0.5 rounded text-[10px] font-bold transition-all flex items-center gap-1 select-none",
                                     isDisabled
                                       ? "bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed"
                                       : "bg-[#FFFEFA] hover:bg-[#FAF6EE] text-[#0B2D23] border border-[#D6B15E]/60 hover:border-[#D6B15E] cursor-pointer shadow-2xs",
                                   )}
                                 >
-                                  <Plus size={11} strokeWidth={2.5} />
+                                  <Plus size={10} strokeWidth={2.5} />
                                   <span>Add</span>
                                 </button>
                               )}
@@ -2710,24 +2709,24 @@ export default function OrderFlow() {
               </div>
 
               {/* RIGHT COLUMN: Order Summary Panel (Desktop Sticky) */}
-              <div className="hidden lg:block lg:w-[320px] xl:w-[350px] shrink-0">
-                <div className="bg-[#FFFEFA] rounded-2xl border border-[#D6B15E]/50 shadow-[0_4px_20px_rgba(214,177,94,0.06)] sticky top-[150px] max-h-[calc(100vh-170px)] flex flex-col overflow-hidden">
+              <div className="hidden lg:block lg:w-[290px] xl:w-[315px] shrink-0">
+                <div className="bg-[#FFFEFA] rounded-xl border border-[#D6B15E]/50 shadow-[0_4px_16px_rgba(214,177,94,0.06)] sticky top-[108px] max-h-[calc(100vh-125px)] flex flex-col overflow-hidden">
                   {/* Panel Header */}
-                  <div className="p-3.5 pb-3 border-b border-[#D6B15E]/30 bg-[#FAF7F2]">
+                  <div className="p-3 pb-2.5 border-b border-[#D6B15E]/30 bg-[#FAF7F2]">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#B8860B] font-sans">
+                        <span className="text-[8.5px] font-bold uppercase tracking-[0.18em] text-[#B8860B] font-sans">
                           ORDER SUMMARY
                         </span>
                         <h3
-                          className="font-serif font-bold text-lg sm:text-xl text-[#0B2D23] leading-tight mt-0.5"
+                          className="font-serif font-bold text-base sm:text-lg text-[#0B2D23] leading-tight mt-0.5"
                           style={{
                             fontFamily: '"Playfair Display", Georgia, serif',
                           }}
                         >
                           {selectedPackage.packageName || "Curated Menu"}
                         </h3>
-                        <p className="text-[11px] text-stone-600 font-medium mt-0.5">
+                        <p className="text-[10.5px] text-stone-600 font-medium mt-0.5 truncate">
                           {caterer.name}
                         </p>
                       </div>
@@ -2744,7 +2743,7 @@ export default function OrderFlow() {
                               setSelectedItems({});
                             }
                           }}
-                          className="text-[10px] font-bold text-stone-400 hover:text-rose-600 transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-rose-50"
+                          className="text-[9.5px] font-bold text-stone-400 hover:text-rose-600 transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-rose-50"
                           title="Clear all selected items"
                         >
                           Clear All
@@ -2753,9 +2752,9 @@ export default function OrderFlow() {
                     </div>
 
                     {/* Guest & Base Price Row */}
-                    <div className="mt-2.5 pt-2 border-t border-[#D6B15E]/30 flex items-center justify-between text-[11px] font-semibold">
-                      <div className="flex items-center gap-1.5 text-stone-600">
-                        <Users size={12} className="text-[#D6B15E]" />
+                    <div className="mt-2 pt-1.5 border-t border-[#D6B15E]/30 flex items-center justify-between text-[10.5px] font-semibold">
+                      <div className="flex items-center gap-1 text-stone-600">
+                        <Users size={11} className="text-[#D6B15E]" />
                         <span className="text-[#0B2D23]">{guests} Guests</span>
                       </div>
                       <div className="text-[#0B2D23]">
@@ -2764,8 +2763,8 @@ export default function OrderFlow() {
                     </div>
 
                     {/* Category Completion Progress Bar */}
-                    <div className="mt-2.5 pt-2 border-t border-[#D6B15E]/30">
-                      <div className="flex items-center justify-between text-[11px] font-bold mb-1">
+                    <div className="mt-2 pt-1.5 border-t border-[#D6B15E]/30">
+                      <div className="flex items-center justify-between text-[10.5px] font-bold mb-1">
                         <span className="text-[#0B2D23]">Menu Completion</span>
                         <span
                           className={
@@ -2793,15 +2792,14 @@ export default function OrderFlow() {
                   </div>
 
                   {/* Scrollable List of Selected Items grouped by category */}
-                  <div className="flex-1 overflow-y-auto p-3.5 space-y-3 no-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-2.5 space-y-2 no-scrollbar">
                     {selectedItemsCount === 0 ? (
-                      <div className="py-8 text-center text-stone-400">
-                        <p className="font-serif text-sm text-stone-600 font-bold mb-0.5">
+                      <div className="py-6 text-center text-stone-400">
+                        <p className="font-serif text-xs sm:text-sm text-stone-600 font-bold mb-0.5">
                           Your Menu is Empty
                         </p>
-                        <p className="text-[11px] text-stone-500 max-w-[200px] mx-auto leading-relaxed">
-                          Select dishes from the categories to build your custom
-                          catering package.
+                        <p className="text-[10.5px] text-stone-500 max-w-[190px] mx-auto leading-relaxed">
+                          Select dishes from the categories to build your custom catering package.
                         </p>
                       </div>
                     ) : (
@@ -2816,28 +2814,28 @@ export default function OrderFlow() {
 
                         return (
                           <div key={cat} className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 pb-0.5 border-b border-[#D6B15E]/20">
-                              <span className="uppercase tracking-wider text-[10px] text-[#0B2D23] font-sans">
+                            <div className="flex items-center justify-between text-[10.5px] font-bold text-stone-600 pb-0.5 border-b border-[#D6B15E]/20">
+                              <span className="uppercase tracking-wider text-[9.5px] text-[#0B2D23] font-sans">
                                 {cat}
                               </span>
-                              <span className="text-[9.5px] text-[#8B6E32]">
+                              <span className="text-[9px] text-[#8B6E32]">
                                 {itemsInCat.length} selected
                               </span>
                             </div>
-                            <ul className="space-y-1">
+                            <ul className="space-y-0.5">
                               {itemsInCat.map((item: string) => (
                                 <li
                                   key={item}
-                                  className="flex items-center justify-between py-1 px-2 rounded-md bg-[#FAF7F2] hover:bg-[#FAF4E8] transition-colors text-[11px] font-semibold text-[#0B2D23] border border-[#D6B15E]/20 group"
+                                  className="flex items-center justify-between py-0.5 px-2 rounded bg-[#FAF7F2] hover:bg-[#FAF4E8] transition-colors text-[10.5px] font-semibold text-[#0B2D23] border border-[#D6B15E]/20 group"
                                 >
-                                  <span className="truncate pr-1.5">{item}</span>
+                                  <span className="truncate pr-1">{item}</span>
                                   <button
                                     type="button"
                                     onClick={() => toggleItem(item, cat)}
                                     className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
                                     title={`Remove ${item}`}
                                   >
-                                    <X size={12} />
+                                    <X size={11} />
                                   </button>
                                 </li>
                               ))}
@@ -2849,9 +2847,9 @@ export default function OrderFlow() {
                   </div>
 
                   {/* Panel Footer: Pricing Breakdown & CTA */}
-                  <div className="p-3.5 pt-3 border-t border-[#D6B15E]/30 bg-[#FAF7F2] shrink-0 space-y-2.5">
+                  <div className="p-3 pt-2.5 border-t border-[#D6B15E]/30 bg-[#FAF7F2] shrink-0 space-y-2">
                     {/* Price breakdown */}
-                    <div className="space-y-1 text-[11px]">
+                    <div className="space-y-0.5 text-[10.5px]">
                       <div className="flex justify-between text-stone-600">
                         <span>Package Subtotal ({guests} guests)</span>
                         <span className="font-semibold text-[#0B2D23]">
@@ -2866,11 +2864,11 @@ export default function OrderFlow() {
                           </span>
                         </div>
                       )}
-                      <div className="pt-1.5 border-t border-[#D6B15E]/30 flex justify-between items-baseline">
-                        <span className="font-bold text-stone-800 text-xs">
+                      <div className="pt-1 border-t border-[#D6B15E]/30 flex justify-between items-baseline">
+                        <span className="font-bold text-stone-800 text-[11px]">
                           Estimated Total
                         </span>
-                        <span className="font-serif font-bold text-xl text-[#0B2D23]">
+                        <span className="font-serif font-bold text-lg text-[#0B2D23]">
                           ₹
                           {(
                             currentPerPlatePrice * guests +
@@ -2878,7 +2876,7 @@ export default function OrderFlow() {
                           ).toLocaleString("en-IN")}
                         </span>
                       </div>
-                      <p className="text-[9.5px] text-stone-500 text-right">
+                      <p className="text-[9px] text-stone-500 text-right">
                         Inclusive of taxes & package curation
                       </p>
                     </div>
@@ -2904,15 +2902,15 @@ export default function OrderFlow() {
                           );
                         }
                       }}
-                      className="w-full py-2.5 px-4 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] rounded-lg font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow active:scale-[0.99] border border-[#D6B15E]"
+                      className="w-full py-2 px-3 bg-[#0B2D23] hover:bg-[#061D16] text-[#FDF8EE] rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm hover:shadow active:scale-[0.99] border border-[#D6B15E]"
                     >
                       <span>Proceed to Booking</span>
-                      <ArrowRight size={14} />
+                      <ArrowRight size={13} />
                     </button>
 
                     {/* Incomplete warning banner */}
                     {!allCategoriesComplete && (
-                      <div className="text-[10px] text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 rounded-lg p-2 text-center font-medium">
+                      <div className="text-[9.5px] text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 rounded p-1.5 text-center font-medium">
                         Select required items in all categories to proceed.
                       </div>
                     )}

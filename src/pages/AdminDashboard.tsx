@@ -1452,73 +1452,73 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-72 pt-20 lg:pt-22 px-4 sm:px-6 md:px-8 pb-10 w-full max-w-[1600px] overflow-x-hidden">
-          <div className="mb-4 lg:mb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-3">
+      <div className="flex-1 lg:ml-72 pt-16 lg:pt-17 px-4 sm:px-6 md:px-8 pb-8 w-full max-w-[1600px] overflow-x-hidden">
+          <div className="mb-3 lg:mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-2.5">
              <div>
-                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                 <h1 className="text-lg sm:text-xl lg:text-2xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                      Command Center
                  </h1>
-                 <p className="text-slate-500 font-medium mt-0.5 text-xs sm:text-sm">Platform performance and operations management.</p>
+                 <p className="text-slate-500 font-medium mt-0.5 text-xs">Platform performance and operations management.</p>
              </div>
           </div>
 
           {activeTab === 'overview' && (
               <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-5">
                      {stats.map((s, i) => (
-                        <div key={i} className="bg-white rounded-xl p-4 border border-slate-100 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col hover:-translate-y-0.5 group relative overflow-hidden">
-                           <div className="flex justify-between items-start mb-2.5">
-                               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105", s.bg, s.color, s.shadow)}>
-                                  <s.icon size={20} strokeWidth={2.5} />
+                        <div key={i} className="bg-white rounded-lg p-3 border border-slate-100 shadow-2xs hover:shadow-sm transition-all duration-300 flex flex-col hover:-translate-y-0.5 group relative overflow-hidden">
+                           <div className="flex justify-between items-start mb-1.5">
+                               <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shadow-xs transition-transform group-hover:scale-105", s.bg, s.color, s.shadow)}>
+                                  <s.icon size={16} strokeWidth={2.5} />
                                </div>
                            </div>
                            <div>
-                              <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 mb-0.5 tracking-tight">{s.value}</p>
-                              <p className="text-xs font-semibold text-slate-500">{s.title}</p>
+                              <p className="text-xl sm:text-2xl font-display font-bold text-slate-900 mb-0.5 tracking-tight">{s.value}</p>
+                              <p className="text-[11px] font-semibold text-slate-500">{s.title}</p>
                            </div>
                         </div>
                      ))}
                   </div>
 
-                  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-10">
-                     <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                        <h2 className="font-bold text-xl text-slate-900">Recent Partner Registrations</h2>
-                        <button onClick={() => navigate('/admin/partners')} className="text-sm font-bold text-brand-gold-600 hover:text-brand-gold-700 flex items-center gap-1 transition-colors">View All <ChevronRight size={16} /></button>
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden mb-8">
+                     <div className="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h2 className="font-bold text-base text-slate-900">Recent Partner Registrations</h2>
+                        <button onClick={() => navigate('/admin/partners')} className="text-xs font-bold text-brand-gold-600 hover:text-brand-gold-700 flex items-center gap-1 transition-colors">View All <ChevronRight size={14} /></button>
                      </div>
                      <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                            <thead>
-                              <tr className="bg-white border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wider">
-                                 <th className="px-8 py-5 font-bold">Business Name</th>
-                                 <th className="px-8 py-5 font-bold">Owner</th>
-                                 <th className="px-8 py-5 font-bold">Service Type</th>
-                                 <th className="px-8 py-5 font-bold">Date</th>
-                                 <th className="px-8 py-5 font-bold">Status</th>
-                                 <th className="px-8 py-5 font-bold">Action</th>
+                              <tr className="bg-white border-b border-slate-100 text-[10.5px] text-slate-400 uppercase tracking-wider">
+                                 <th className="px-4 py-2.5 font-bold">Business Name</th>
+                                 <th className="px-4 py-2.5 font-bold">Owner</th>
+                                 <th className="px-4 py-2.5 font-bold">Service Type</th>
+                                 <th className="px-4 py-2.5 font-bold">Date</th>
+                                 <th className="px-4 py-2.5 font-bold">Status</th>
+                                 <th className="px-4 py-2.5 font-bold">Action</th>
                               </tr>
                            </thead>
-                           <tbody className="text-sm divide-y divide-slate-100">
+                           <tbody className="text-xs divide-y divide-slate-100">
                               {activeRegistrations.length === 0 ? (
                                   <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                    <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                                       No partner registrations yet.
                                     </td>
                                   </tr>
                               ) : (
                                 activeRegistrations.map((r, idx) => (
                                    <tr key={r.id || idx} className="hover:bg-slate-50 transition-colors">
-                                      <td className="px-8 py-5 font-bold text-slate-800">{r.businessName}</td>
-                                      <td className="px-8 py-5 text-slate-600 font-medium">{r.owner}</td>
-                                      <td className="px-8 py-5 text-slate-600 font-medium">{r.type}</td>
-                                      <td className="px-8 py-5 text-slate-500 text-sm whitespace-nowrap">{r.date || 'N/A'}</td>
-                                      <td className="px-8 py-5">
-                                         <span className={cn("px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider shadow-sm", r.status === 'Approved' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : r.status === 'Pending Approval' ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-red-50 text-red-700 border border-red-200")}>
+                                      <td className="px-4 py-2.5 font-bold text-slate-800">{r.businessName}</td>
+                                      <td className="px-4 py-2.5 text-slate-600 font-medium">{r.owner}</td>
+                                      <td className="px-4 py-2.5 text-slate-600 font-medium">{r.type}</td>
+                                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{r.date || 'N/A'}</td>
+                                      <td className="px-4 py-2.5">
+                                         <span className={cn("px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider shadow-2xs", r.status === 'Approved' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : r.status === 'Pending Approval' ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-red-50 text-red-700 border border-red-200")}>
                                             {r.status}
                                          </span>
                                       </td>
-                                      <td className="px-8 py-5 flex flex-wrap gap-2">
-                                            <Link to={`/admin/caterers/view/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border border-slate-200 px-3.5 py-1.5 rounded-lg transition-colors">View</Link>
-                                            <Link to={`/admin/caterers/edit/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border border-slate-200 px-3.5 py-1.5 rounded-lg transition-colors">Edit</Link>
+                                      <td className="px-4 py-2.5 flex flex-wrap gap-1.5">
+                                            <Link to={`/admin/caterers/view/${r.id}`} className="text-[10px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-2xs border border-slate-200 px-2.5 py-1 rounded transition-colors">View</Link>
+                                            <Link to={`/admin/caterers/edit/${r.id}`} className="text-[10px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-2xs border border-slate-200 px-2.5 py-1 rounded transition-colors">Edit</Link>
                                       </td>
                                    </tr>
                                 ))
@@ -1804,58 +1804,58 @@ export default function AdminDashboard() {
           {activeTab === 'orders' && (
               <div className="space-y-4">
                   {/* Order statistics */}
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
-                      <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200">
-                          <p className="text-[10px] font-bold text-slate-500 uppercase">Total Orders</p>
-                          <p className="text-2xl font-bold font-display text-slate-900 mt-0.5">{orders.length}</p>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-slate-500 uppercase">Total Orders</p>
+                          <p className="text-xl font-bold font-display text-slate-900 mt-0.5">{orders.length}</p>
                       </div>
-                      <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200">
-                          <p className="text-[10px] font-bold text-amber-600 uppercase font-poppins">Pending Review</p>
-                          <p className="text-2xl font-bold font-display text-amber-600 mt-0.5">
+                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-amber-600 uppercase font-poppins">Pending Review</p>
+                          <p className="text-xl font-bold font-display text-amber-600 mt-0.5">
                               {orders.filter(o => ['pending', 'Submitted', 'Pending Caterer Review', 'updated_by_customer'].includes(o.status)).length}
                           </p>
                       </div>
-                      <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200">
-                          <p className="text-[10px] font-bold text-green-700 uppercase font-poppins">Approved & Active</p>
-                          <p className="text-2xl font-bold font-display text-green-700 mt-0.5">
+                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-green-700 uppercase font-poppins">Approved & Active</p>
+                          <p className="text-xl font-bold font-display text-green-700 mt-0.5">
                               {orders.filter(o => ['Approved', 'approved'].includes(o.status)).length}
                           </p>
                       </div>
-                      <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200">
-                          <p className="text-[10px] font-bold text-slate-700 uppercase font-poppins">Completed</p>
-                          <p className="text-2xl font-bold font-display text-slate-700 mt-0.5">
+                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-slate-700 uppercase font-poppins">Completed</p>
+                          <p className="text-xl font-bold font-display text-slate-700 mt-0.5">
                               {orders.filter(o => ['Completed', 'completed'].includes(o.status)).length}
                           </p>
                       </div>
-                      <div className="bg-white p-3.5 rounded-xl shadow-2xs border border-slate-200">
-                          <p className="text-[10px] font-bold text-red-600 uppercase font-poppins">Rejected</p>
-                          <p className="text-2xl font-bold font-display text-red-600 mt-0.5">
+                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-red-600 uppercase font-poppins">Rejected</p>
+                          <p className="text-xl font-bold font-display text-red-600 mt-0.5">
                               {orders.filter(o => ['rejected', 'Rejected'].includes(o.status)).length}
                           </p>
                       </div>
                   </div>
 
                   {/* Filter panel */}
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
-                      <div className="flex flex-col md:flex-row gap-3">
+                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                      <div className="flex flex-col md:flex-row gap-2.5">
                           <div className="flex-1 relative">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                               <input 
                                   type="text"
                                   placeholder="Search by Order ID, Customer, or Caterer..."
                                   value={adminSearch}
                                   onChange={(e) => setAdminSearch(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:border-brand-gold-500 outline-none font-medium"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1 text-xs focus:border-brand-gold-500 outline-none font-medium"
                               />
                           </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                           <div>
-                              <label className="block text-[10.5px] font-bold text-slate-600 mb-0.5">Caterer Partner</label>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Caterer Partner</label>
                               <select 
                                   value={adminCatererFilter}
                                   onChange={(e) => setAdminCatererFilter(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold"
                               >
                                   <option value="">All partners</option>
                                   {Array.from(new Set(orders.map(o => o.catererName || 'Unknown'))).filter(Boolean).map(c => (
@@ -1864,11 +1864,11 @@ export default function AdminDashboard() {
                               </select>
                           </div>
                           <div>
-                              <label className="block text-[10.5px] font-bold text-slate-600 mb-0.5">Order Status</label>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Order Status</label>
                               <select 
                                   value={adminStatusFilter}
                                   onChange={(e) => setAdminStatusFilter(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold"
                               >
                                   <option value="">All statuses</option>
                                   <option value="pending">Pending</option>
@@ -1882,32 +1882,32 @@ export default function AdminDashboard() {
                               </select>
                           </div>
                           <div>
-                              <label className="block text-[10.5px] font-bold text-slate-600 mb-0.5">Event Date</label>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Event Date</label>
                               <input 
                                   type="date"
                                   value={adminEventDateFilter}
                                   onChange={(e) => setAdminEventDateFilter(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none focus:border-brand-gold-500"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium outline-none focus:border-brand-gold-500"
                               />
                           </div>
                       </div>
                   </div>
 
                   {/* Table */}
-                  <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
                       <div className="overflow-x-auto">
                           <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
-                              <thead className="bg-slate-50 border-b border-slate-200 text-[10.5px] text-slate-500 font-bold uppercase tracking-wider">
+                              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                                   <tr>
-                                      <th className="px-4 py-2.5">Order ID</th>
-                                      <th className="px-4 py-2.5">Customer</th>
-                                      <th className="px-4 py-2.5">Caterer Partner</th>
-                                      <th className="px-4 py-2.5">Event Date</th>
-                                      <th className="px-4 py-2.5">Package & Guests</th>
-                                      <th className="px-4 py-2.5">Total Amount</th>
-                                      <th className="px-4 py-2.5">Status</th>
-                                      <th className="px-4 py-2.5">Created Date</th>
-                                      <th className="px-4 py-2.5 text-center">Actions</th>
+                                      <th className="px-3 py-1.5">Order ID</th>
+                                      <th className="px-3 py-1.5">Customer</th>
+                                      <th className="px-3 py-1.5">Caterer Partner</th>
+                                      <th className="px-3 py-1.5">Event Date</th>
+                                      <th className="px-3 py-1.5">Package & Guests</th>
+                                      <th className="px-3 py-1.5">Total Amount</th>
+                                      <th className="px-3 py-1.5">Status</th>
+                                      <th className="px-3 py-1.5">Created Date</th>
+                                      <th className="px-3 py-1.5 text-center">Actions</th>
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -1921,17 +1921,17 @@ export default function AdminDashboard() {
                                       return matchesSearch && matchesCaterer && matchesStatus && matchesEventDate;
                                   }).map((ord) => (
                                       <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
-                                          <td className="px-4 py-2.5 font-mono font-bold text-slate-700 text-[11px]">{ord.id}</td>
-                                          <td className="px-4 py-2.5 font-bold text-slate-900">{ord.customerName}</td>
-                                          <td className="px-4 py-2.5 text-slate-700 font-medium">{ord.catererName}</td>
-                                          <td className="px-4 py-2.5 text-slate-600 font-medium">{ord.eventDate || 'N/A'}</td>
-                                          <td className="px-4 py-2.5 text-[11px] text-slate-600">
+                                          <td className="px-3 py-1.5 font-mono font-bold text-slate-700 text-[10.5px]">{ord.id}</td>
+                                          <td className="px-3 py-1.5 font-bold text-slate-900">{ord.customerName}</td>
+                                          <td className="px-3 py-1.5 text-slate-700 font-medium">{ord.catererName}</td>
+                                          <td className="px-3 py-1.5 text-slate-600 font-medium">{ord.eventDate || 'N/A'}</td>
+                                          <td className="px-3 py-1.5 text-[10.5px] text-slate-600">
                                               <span className="font-bold">{ord.packageDetails?.packageName || 'Custom'}</span><br/>
                                               <span>{ord.guests} guests</span>
                                           </td>
-                                          <td className="px-4 py-2.5 font-bold text-slate-950">₹{ord.totalEstimate?.toLocaleString()}</td>
-                                          <td className="px-4 py-2.5">
-                                              <span className={cn("px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider", 
+                                          <td className="px-3 py-1.5 font-bold text-slate-950">₹{ord.totalEstimate?.toLocaleString()}</td>
+                                          <td className="px-3 py-1.5">
+                                              <span className={cn("px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider", 
                                                   ['Approved', 'approved'].includes(ord.status) ? "bg-green-100 text-green-800" :
                                                   ['Rejected', 'rejected', 'Cancelled', 'cancelled'].includes(ord.status) ? "bg-rose-100 text-rose-800" :
                                                   "bg-amber-100 text-amber-800"
@@ -1939,14 +1939,14 @@ export default function AdminDashboard() {
                                                   {ord.status}
                                               </span>
                                           </td>
-                                          <td className="px-4 py-2.5 text-[11px] text-slate-500">{new Date(ord.created_at).toLocaleDateString()}</td>
-                                          <td className="px-4 py-2.5 text-center">
+                                          <td className="px-3 py-1.5 text-[10.5px] text-slate-500">{new Date(ord.created_at).toLocaleDateString()}</td>
+                                          <td className="px-3 py-1.5 text-center">
                                               <button 
                                                   onClick={() => {
                                                       setSelectedAdminOrder(ord);
                                                       setAdminMemoText(ord.internal_notes || ord.internalNotes || '');
                                                   }} 
-                                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-md text-[11px] font-bold transition-all text-slate-700"
+                                                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded text-[10px] font-bold transition-all text-slate-700"
                                               >
                                                   View / Manage
                                               </button>

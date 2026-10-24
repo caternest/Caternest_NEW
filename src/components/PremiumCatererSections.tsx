@@ -1174,7 +1174,7 @@ export const MenuPackagesCard: React.FC<SectionProps & {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mt-2 max-w-[1050px] mx-auto justify-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5 mt-2 max-w-[960px] mx-auto justify-center">
         {packageTiers.map((pkg) => {
           // If hidden and user is not owner/admin, hide it from the UI completely
           if (pkg.visible === false && !isOwnerOrAdmin) return null;
@@ -1244,44 +1244,44 @@ export const MenuPackagesCard: React.FC<SectionProps & {
             <div
               key={pkg.id}
               className={cn(
-                "rounded-2xl p-4 pt-5 pb-4 transition-all duration-300 relative flex flex-col justify-between group hover:-translate-y-1 hover:shadow-lg max-w-[275px] mx-auto w-full min-h-[310px] border",
+                "rounded-xl p-3 pt-3.5 pb-3 transition-all duration-300 relative flex flex-col justify-between group hover:-translate-y-0.5 hover:shadow-md max-w-[260px] mx-auto w-full min-h-[270px] border",
                 pkg.visible === false && "opacity-60 border-dashed bg-stone-100",
-                isHighlighted ? "ring-3 ring-[#DEAA38] ring-offset-2 shadow-[0_0_20px_rgba(212,175,55,0.35)] border-[#DEAA38] scale-[1.01]" : ""
+                isHighlighted ? "ring-2 ring-[#DEAA38] ring-offset-1 shadow-[0_0_16px_rgba(212,175,55,0.3)] border-[#DEAA38] scale-[1.01]" : ""
               )}
               style={{
                 background: tStyle.background,
                 borderColor: isHighlighted ? "#DEAA38" : tStyle.borderColor,
-                boxShadow: isHighlighted ? "0 8px 25px rgba(212,175,55,0.2)" : "0 4px 18px rgba(0,0,0,0.04)",
+                boxShadow: isHighlighted ? "0 6px 20px rgba(212,175,55,0.18)" : "0 3px 14px rgba(0,0,0,0.04)",
               }}
             >
-              <CrownOrnament theme={theme} size={26} />
+              <CrownOrnament theme={theme} size={22} />
 
               {/* Floating edit button */}
               {isOwnerOrAdmin && (
                 <button
                   type="button"
                   onClick={() => handleOpenEdit(pkg.id)}
-                  className="absolute top-2.5 left-2.5 bg-white/95 text-slate-800 hover:text-black border border-stone-200 shadow-2xs p-1 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition z-40"
+                  className="absolute top-2 left-2 bg-white/95 text-slate-800 hover:text-black border border-stone-200 shadow-2xs p-1 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition z-40"
                   title="Edit Package"
                 >
-                  <Pencil size={10} />
+                  <Pencil size={9.5} />
                 </button>
               )}
 
               {isHighlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#DEAA38] text-white font-sans font-black text-[8.5px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm border border-amber-300 z-50">
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#DEAA38] text-white font-sans font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-2xs border border-amber-300 z-50">
                   Last Selected
                 </div>
               )}
 
               {pkg.popular && !isHighlighted && (
-                <div className="absolute -top-2.5 right-3 bg-[#C21111] text-white font-extrabold text-[7.5px] uppercase px-2.5 py-0.5 rounded-full shadow-2xs tracking-wider border border-red-500/10 z-35">
+                <div className="absolute -top-2 right-2.5 bg-[#C21111] text-white font-extrabold text-[7px] uppercase px-2 py-0.5 rounded-full shadow-2xs tracking-wider border border-red-500/10 z-35">
                   Popular
                 </div>
               )}
 
               {pkg.visible === false && (
-                <div className="absolute top-2.5 right-3 bg-slate-800 text-slate-100 font-extrabold text-[7.5px] uppercase px-2 py-0.5 rounded-full shadow-2xs tracking-wider z-35">
+                <div className="absolute top-2 right-2.5 bg-slate-800 text-slate-100 font-extrabold text-[7px] uppercase px-1.5 py-0.5 rounded-full shadow-2xs tracking-wider z-35">
                   Hidden
                 </div>
               )}
@@ -1293,23 +1293,23 @@ export const MenuPackagesCard: React.FC<SectionProps & {
                       className="font-bold text-center tracking-[0.3px] line-clamp-1"
                       style={{
                         fontFamily: "'Cormorant Garamond', Georgia, serif",
-                        fontSize: "21px",
-                        lineHeight: "25px",
+                        fontSize: "17px",
+                        lineHeight: "21px",
                         color: "#2A2A2A",
-                        marginTop: "8px",
-                        marginBottom: "4px"
+                        marginTop: "4px",
+                        marginBottom: "2px"
                       }}
                     >
                       {pkg.name}
                     </h3>
-                    <div className="flex justify-center mb-2">
+                    <div className="flex justify-center mb-1.5">
                       {pkg.type === "veg" ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[8.5px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                           Veg Package
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[8.5px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                           Non-Veg Package
                         </span>
@@ -1317,12 +1317,12 @@ export const MenuPackagesCard: React.FC<SectionProps & {
                     </div>
                   </div>
 
-                  <div className="text-center" style={{ marginBottom: "10px" }}>
+                  <div className="text-center" style={{ marginBottom: "6px" }}>
                     <div className="inline-flex items-baseline text-[#1E1E1E] justify-center font-sans">
                       <span 
                         className="font-extrabold tracking-tight leading-none"
                         style={{
-                          fontSize: "26px",
+                          fontSize: "22px",
                           color: "#1E1E1E",
                         }}
                       >
@@ -1331,7 +1331,7 @@ export const MenuPackagesCard: React.FC<SectionProps & {
                       <span 
                         className="font-medium leading-none ml-1 uppercase"
                         style={{
-                          fontSize: "11px",
+                          fontSize: "10px",
                           color: "#8C8C8C",
                         }}
                       >
@@ -1342,11 +1342,11 @@ export const MenuPackagesCard: React.FC<SectionProps & {
 
                   {pkg.desc && (
                     <p 
-                      className="font-sans font-normal text-center mx-auto max-w-[90%] line-clamp-2 italic text-slate-500"
+                      className="font-sans font-normal text-center mx-auto max-w-[92%] line-clamp-2 italic text-slate-500"
                       style={{
-                        fontSize: "11px",
-                        lineHeight: "15px",
-                        marginBottom: "10px"
+                        fontSize: "10px",
+                        lineHeight: "13px",
+                        marginBottom: "6px"
                       }}
                     >
                       "{pkg.desc}"
@@ -1355,55 +1355,55 @@ export const MenuPackagesCard: React.FC<SectionProps & {
                 </div>
 
                 <div 
-                  className="space-y-1.5 p-2.5 bg-white rounded-xl border border-[#EFE7DA] font-sans w-full"
-                  style={{ marginBottom: "12px" }}
+                  className="space-y-1 p-2 bg-white rounded-lg border border-[#EFE7DA] font-sans w-full"
+                  style={{ marginBottom: "8px" }}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <div className="text-[#D4AF37] shrink-0">
-                      <Users size={13} strokeWidth={2.2} />
+                      <Users size={12} strokeWidth={2.2} />
                     </div>
                     <span 
                       className="font-sans font-semibold text-left leading-tight text-slate-700"
                       style={{
-                        fontSize: "11.5px",
+                        fontSize: "10.5px",
                       }}
                     >
                       Min {pkg.guests || 50}+ Guests
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <div className="text-[#D4AF37] shrink-0">
-                      <ChefHat size={13} strokeWidth={2.2} />
+                      <ChefHat size={12} strokeWidth={2.2} />
                     </div>
                     <span 
                       className="font-sans font-semibold text-left leading-tight text-slate-700"
                       style={{
-                        fontSize: "11.5px",
+                        fontSize: "10.5px",
                       }}
                     >
                       {pkg.items ? pkg.items.length : (pkg.categoriesCount * 2 || 12)} Custom Dishes
                     </span>
                   </div>
 
-                  <div className="flex justify-center pt-1 border-t border-amber-100/40">
-                    <span className="inline-flex items-center gap-1 text-[8.5px] font-bold uppercase tracking-wider text-amber-700/80">
+                  <div className="flex justify-center pt-0.5 border-t border-amber-100/40">
+                    <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider text-amber-700/80">
                       ✦ Customizable Menu
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5 mt-auto">
+              <div className="flex flex-col gap-1 mt-auto">
                 <Link
                   to={`/order/${caterer.id}`}
                   state={{ packageIdx: pkg.id, customGuestCount: guestCount }}
                   className={cn(
-                    "flex items-center justify-center gap-1.5 w-full h-[34px] rounded-lg font-sans font-bold text-[11px] uppercase tracking-[0.5px] transition-all duration-300 active:scale-95 cursor-pointer shadow-2xs hover:brightness-105",
+                    "flex items-center justify-center gap-1 w-full h-[30px] rounded-md font-sans font-bold text-[10px] uppercase tracking-[0.5px] transition-all duration-300 active:scale-95 cursor-pointer shadow-2xs hover:brightness-105",
                     tStyle.buttonClass,
                   )}
                 >
-                  Book Now <ChevronRight size={11} className="stroke-[3]" />
+                  Book Now <ChevronRight size={10} className="stroke-[3]" />
                 </Link>
 
                 <button
@@ -1411,7 +1411,7 @@ export const MenuPackagesCard: React.FC<SectionProps & {
                     setDetailPkg(pkg);
                     setDetailModalOpen(true);
                   }}
-                  className="w-full text-center font-sans font-bold text-[10px] uppercase tracking-[0.5px] text-[#A27008] hover:text-[#71520D] transition cursor-pointer mt-0.5"
+                  className="w-full text-center font-sans font-bold text-[9.5px] uppercase tracking-[0.5px] text-[#A27008] hover:text-[#71520D] transition cursor-pointer"
                 >
                   View Details
                 </button>

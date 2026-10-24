@@ -1571,17 +1571,16 @@ export default function Explore() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDFB] font-sans">
+    <div className="min-h-screen bg-[#FFFDFB] font-sans pt-14 sm:pt-[58px]">
       
       {/* 1. Hero Section: Clean & Premium dark green gradient overlay */}
       <div 
-        className="relative min-h-[260px] md:min-h-[300px] w-full flex flex-col justify-center py-8 md:py-12 overflow-hidden"
+        className="relative min-h-[190px] md:min-h-[210px] w-full flex flex-col justify-center py-5 md:py-6 overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(2, 27, 20, 0.92) 0%, rgba(2, 27, 20, 0.82) 28%, rgba(2, 27, 20, 0.55) 55%, rgba(2, 27, 20, 0.20) 75%, rgba(2, 27, 20, 0.00) 100%), url(${heroBg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          marginTop: '-51px'
+          backgroundRepeat: 'no-repeat'
         }}
       >
         {/* Real image layer positioned absolutely to bypass sandbox background-image CSS loading issues */}
@@ -1601,9 +1600,9 @@ export default function Explore() {
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-start text-left">
           
-          <div className="max-w-2xl pl-4 sm:pl-8 md:pl-12 lg:pl-16">
+          <div className="max-w-2xl pl-2 sm:pl-4 md:pl-6">
             <h1 
-              className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.5rem] font-display text-white tracking-tight leading-[1.1] mb-2.5 font-semibold"
+              className="text-[24px] sm:text-[27px] md:text-[30px] font-display text-white tracking-tight leading-[1.12] mb-1 font-bold"
               style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
             >
               Premium <br />
@@ -1611,11 +1610,11 @@ export default function Explore() {
             </h1>
             
             <p 
-              className="text-white/85 text-xs sm:text-[13px] max-w-lg mb-2 font-sans font-light leading-relaxed"
+              className="text-white/85 text-[11.5px] sm:text-xs max-w-lg mb-1 font-sans font-light leading-relaxed"
               style={{
                 width: '450px',
                 maxWidth: '100%',
-                paddingLeft: '4px',
+                paddingLeft: '2px',
                 fontFamily: 'Inter',
                 color: 'rgba(255, 255, 255, 0.75)'
               }}
@@ -1628,57 +1627,57 @@ export default function Explore() {
       </div>
 
       {/* AI Menu Builder Primary Discovery Highlight */}
-      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-4 pb-2">
+      <section className="bg-gradient-to-b from-[#FFFDFB] to-slate-50/60 pt-2.5 pb-1.5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-2xl p-4 sm:p-5 lg:p-6 border border-[#DEAA38]/30 shadow-md relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 group">
+          <div className="bg-gradient-to-r from-[#021B1A] via-[#052922] to-[#0A3A34] text-white rounded-xl p-3 sm:p-3.5 border border-[#DEAA38]/30 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-3 group">
             
             {/* Background luxury glow and decorative motif */}
-            <div className="absolute right-[-40px] bottom-[-40px] w-52 h-52 bg-[#DEAA38]/12 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute left-1/4 top-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute right-[-40px] bottom-[-40px] w-40 h-40 bg-[#DEAA38]/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute left-1/4 top-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
 
             {/* Left Content */}
             <div className="relative z-10 max-w-2xl text-left">
-              <div className="inline-flex items-center gap-1.5 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest mb-2">
-                <Sparkles size={11} className="text-[#DEAA38]" />
+              <div className="inline-flex items-center gap-1 bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/35 px-2 py-0.5 rounded-full text-[8.5px] font-bold uppercase tracking-wider mb-1">
+                <Sparkles size={10} className="text-[#DEAA38]" />
                 <span>Featured Smart Tool</span>
               </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-display font-bold text-white tracking-tight mb-1.5">
+              <h2 className="text-lg sm:text-xl font-display font-bold text-white tracking-tight mb-1">
                 AI Menu <span className="text-[#DEAA38]">Builder</span>
               </h2>
-              <p className="text-white/85 text-xs sm:text-[13px] font-sans font-normal leading-relaxed mb-2.5 max-w-xl">
-                Create the perfect custom menu for your event with intelligent AI recommendations. Tailored specifically to your guest count, occasion, and cuisine preferences.
+              <p className="text-white/85 text-[11.5px] font-sans font-normal leading-relaxed mb-2 max-w-xl">
+                Create the perfect custom menu for your event with intelligent AI recommendations tailored to your guest count and cuisine preferences.
               </p>
               
-              <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] text-[#E0D4BA] font-medium">
-                <span className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle2 size={11} className="text-[#DEAA38]" />
+              <div className="flex flex-wrap items-center gap-1.5 text-[9.5px] text-[#E0D4BA] font-medium">
+                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle2 size={10} className="text-[#DEAA38]" />
                   <span>Smart Dish Pairings</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle2 size={11} className="text-[#DEAA38]" />
+                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle2 size={10} className="text-[#DEAA38]" />
                   <span>Pricing Optimization</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
-                  <CheckCircle2 size={11} className="text-[#DEAA38]" />
+                <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-xs">
+                  <CheckCircle2 size={10} className="text-[#DEAA38]" />
                   <span>100% Customizable</span>
                 </span>
               </div>
             </div>
 
             {/* Right Action Button */}
-            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-2 justify-center items-center md:items-end">
+            <div className="relative z-10 shrink-0 self-stretch md:self-center flex flex-col sm:flex-row md:flex-col gap-1 justify-center items-center md:items-end">
               <button
                 type="button"
                 onClick={() => {
                   const el = document.getElementById('explore-marketplace');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer group/btn"
+                className="w-full sm:w-auto px-4 py-2 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer group/btn"
               >
                 <span>Try Now</span>
-                <ArrowRight size={13} className="group-hover/btn:translate-x-1 transition-transform" />
+                <ArrowRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
               </button>
-              <span className="text-[10px] text-white/70 tracking-wide text-center">
+              <span className="text-[9px] text-white/70 tracking-wide text-center">
                 Explore caterers & customize packages
               </span>
             </div>
@@ -1688,27 +1687,27 @@ export default function Explore() {
       </section>
 
       {/* 2. Explore Premium Caterers Section - 1:1 Design Layout with Left Sidebar & Horizontal Cards */}
-      <section id="explore-marketplace" className="py-8 sm:py-10 bg-white border-y border-slate-100">
+      <section id="explore-marketplace" className="py-5 sm:py-6 bg-white border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div 
-            className="flex flex-col md:flex-row md:items-end justify-between mb-4 pb-3 border-b border-slate-100"
+            className="flex flex-col md:flex-row md:items-end justify-between mb-3 pb-2 border-b border-slate-100"
           >
             <div>
-              <h2 className="text-xl md:text-2xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <h2 className="text-lg md:text-xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                 Explore <span className="text-[#DEAA38]">Premium</span> Caterers
               </h2>
-              <p className="text-slate-400 text-[11px] font-bold mt-0.5">Hyderabad, Telangana, India</p>
+              <p className="text-slate-400 text-[10.5px] font-bold mt-0.5">Hyderabad, Telangana, India</p>
             </div>
             
-            <div className="flex items-center gap-3 mt-3 md:mt-0 justify-between md:justify-end w-full md:w-auto">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{filteredCaterers.length} Caterers Found</span>
+            <div className="flex items-center gap-2.5 mt-2 md:mt-0 justify-between md:justify-end w-full md:w-auto">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{filteredCaterers.length} Caterers Found</span>
               <div className="flex items-center relative">
-                <span className="text-xs font-bold text-slate-500 mr-2 whitespace-nowrap">Sort by:</span>
+                <span className="text-[11px] font-bold text-slate-500 mr-1.5 whitespace-nowrap">Sort by:</span>
                  <select 
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value)}
-                  className="appearance-none bg-slate-50 border border-slate-200 rounded-full px-4 py-1.5 pr-8 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer hover:border-brand-gold-500/50 transition-colors"
+                  className="appearance-none bg-slate-50 border border-slate-200 rounded-full px-3 py-1 pr-7 text-[11px] font-bold text-slate-700 focus:outline-none cursor-pointer hover:border-brand-gold-500/50 transition-colors"
                 >
                   <option value="Popularity">Popularity</option>
                   <option value="Price: Low to High">Price: Low to High</option>
@@ -1723,18 +1722,18 @@ export default function Explore() {
                     </>
                   )}
                 </select>
-                <ChevronRight size={12} className="absolute right-3.5 rotate-90 text-slate-400 pointer-events-none" />
+                <ChevronRight size={11} className="absolute right-2.5 rotate-90 text-slate-400 pointer-events-none" />
               </div>
             </div>
           </div>
 
           {/* Polished Premium Horizontal Filter Bar matching Image */}
           <div 
-            className="flex flex-wrap items-center justify-between gap-2.5 mb-5 bg-white p-2 sm:px-4 sm:py-2 rounded-xl md:rounded-full border border-slate-200/90 shadow-2xs"
-            style={{ marginTop: '-17px' }}
+            className="flex flex-wrap items-center justify-between gap-2 mb-3.5 bg-white p-1.5 sm:px-3 sm:py-1.5 rounded-lg md:rounded-full border border-slate-200/90 shadow-2xs"
+            style={{ marginTop: '-12px' }}
           >
             {/* Primary Filters (Left Group) */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
               
               {/* 1. Cuisine Pills */}
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1987,16 +1986,16 @@ export default function Explore() {
           )}
 
           {/* Caterers Cards List - Full Width Horizontal Cards */}
-          <div className="w-full space-y-5">
+          <div className="w-full space-y-2.5">
               {filteredCaterers.length === 0 ? (
-                <div className="bg-[#FFFDFB] rounded-3xl p-12 text-center border border-slate-100 max-w-md mx-auto">
-                  <ChefHat className="text-slate-300 w-12 h-12 mx-auto mb-3" />
-                  <h3 className="text-base font-display font-extrabold text-slate-900 mb-1">No matching caterers found</h3>
+                <div className="bg-[#FFFDFB] rounded-2xl p-8 text-center border border-slate-100 max-w-md mx-auto">
+                  <ChefHat className="text-slate-300 w-10 h-10 mx-auto mb-2" />
+                  <h3 className="text-sm font-display font-extrabold text-slate-900 mb-0.5">No matching caterers found</h3>
                   <p className="text-slate-400 text-xs font-semibold">Try adjusting your budget slider or occasion filters.</p>
                   <button 
                     type="button"
                     onClick={clearAllFilters} 
-                    className="mt-4 px-5 py-2 bg-[#0f2922] text-white font-bold text-xs rounded-xl hover:bg-[#173D32] transition-colors"
+                    className="mt-3 px-4 py-1.5 bg-[#0f2922] text-white font-bold text-xs rounded-lg hover:bg-[#173D32] transition-colors"
                   >
                     Reset Filters
                   </button>
@@ -2005,34 +2004,34 @@ export default function Explore() {
                 filteredCaterers.map((caterer) => (
                   <div 
                     key={caterer.id}
-                    className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 hover:border-brand-gold-500/60 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col md:flex-row overflow-hidden relative group"
+                    className="bg-white rounded-xl border border-slate-200/80 hover:border-brand-gold-500/60 shadow-2xs hover:shadow-sm transition-all duration-300 flex flex-col md:flex-row overflow-hidden relative group max-h-none md:max-h-[175px]"
                   >
                     {/* Image Column */}
-                    <div className="relative w-full md:w-[210px] h-36 md:h-auto shrink-0 overflow-hidden">
+                    <div className="relative w-full md:w-[185px] h-32 md:h-auto shrink-0 overflow-hidden">
                       <CardImageSlider images={caterer.images} name={caterer.name} />
                       
                       {/* Overlapping circular brand logo placed on the image like Image 1 */}
-                      <div className="absolute bottom-2.5 left-2.5 w-11 h-11 bg-white rounded-full p-0.5 border border-[#DEAA38] shadow-sm z-10 flex items-center justify-center overflow-hidden">
+                      <div className="absolute bottom-2 left-2 w-9 h-9 bg-white rounded-full p-0.5 border border-[#DEAA38] shadow-sm z-10 flex items-center justify-center overflow-hidden">
                         {caterer.logo ? (
                           <SafeImage src={caterer.logo} alt="Logo" className="w-full h-full object-contain rounded-full" fallbackType="avatar" />
                         ) : (
-                          <span className="font-display font-black text-[#DEAA38] text-xs uppercase">
+                          <span className="font-display font-black text-[#DEAA38] text-[10px] uppercase">
                             {(caterer.name || 'CR').substring(0, 2)}
                           </span>
                         )}
                       </div>
 
-                      <button type="button" className="absolute top-2.5 right-2.5 w-7 h-7 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-slate-400 hover:text-rose-500 transition-colors shadow-2xs z-10">
-                        <Heart size={13} />
+                      <button type="button" className="absolute top-2 right-2 w-6 h-6 bg-white/90 backdrop-blur-md rounded-full flex justify-center items-center text-slate-400 hover:text-rose-500 transition-colors shadow-2xs z-10">
+                        <Heart size={11} />
                       </button>
                     </div>
 
                     {/* Middle Column Details */}
-                    <div className="flex-1 p-3.5 md:p-4 flex flex-col justify-between text-left md:pr-3">
+                    <div className="flex-1 p-2.5 md:p-3 flex flex-col justify-between text-left md:pr-2.5">
                       <div>
                         {/* Dynamic Platform Badges/Tags */}
                         {caterer.badges && caterer.badges.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 mb-1.5 items-center">
+                          <div className="flex flex-wrap gap-1 mb-1 items-center">
                             {caterer.badges.filter((b: any) => b.is_active).map((b: any) => {
                               const styleCfg = STYLE_VARIANT_CONFIG[b.style_variant as BadgeStyleVariant] || STYLE_VARIANT_CONFIG.emerald;
                               const BadgeIcon = getBadgeIconComponent(b.icon);
@@ -2041,24 +2040,24 @@ export default function Explore() {
                                   key={b.id || b.slug}
                                   className={cn(
                                     styleCfg.desktopClasses,
-                                    "px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider flex items-center gap-1 shadow-2xs"
+                                    "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5 shadow-2xs"
                                   )}
                                 >
-                                  <BadgeIcon size={9} className="shrink-0 stroke-[2.5]" />
+                                  <BadgeIcon size={8} className="shrink-0 stroke-[2.5]" />
                                   <span>{b.label}</span>
                                 </span>
                               );
                             })}
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-1.5 mb-1.5 items-center">
+                          <div className="flex flex-wrap gap-1 mb-1 items-center">
                             {caterer.isVerified && (
-                              <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider">
+                              <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
                                 ✓ Verified
                               </span>
                             )}
                             {caterer.isPremium && (
-                              <span className="bg-amber-50 text-amber-800 border border-amber-100 px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider">
+                              <span className="bg-amber-50 text-amber-800 border border-amber-100 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
                                 ✦ Premium Partner
                               </span>
                             )}
@@ -2066,80 +2065,80 @@ export default function Explore() {
                         )}
 
                         {/* Title with verified check icon */}
-                        <h3 className="text-base md:text-lg font-display font-extrabold text-slate-900 group-hover:text-brand-gold-600 transition-colors leading-tight mb-0.5 flex items-center gap-1.5">
+                        <h3 className="text-sm md:text-[15px] font-display font-extrabold text-slate-900 group-hover:text-brand-gold-600 transition-colors leading-tight mb-0.5 flex items-center gap-1">
                           {caterer.name}
-                          <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[7.5px] font-bold shadow-xs shrink-0">✓</span>
+                          <span className="w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[7px] font-bold shadow-xs shrink-0">✓</span>
                         </h3>
 
                         {/* Rating, Reviews & Location info */}
-                        <div className="flex flex-wrap items-center text-slate-500 text-xs font-semibold mb-1.5 gap-2">
-                          <span className="flex items-center gap-1">
-                            <Star size={11} className="text-[#DEAA38] fill-[#DEAA38]" /> 
+                        <div className="flex flex-wrap items-center text-slate-500 text-[10.5px] font-semibold mb-1 gap-1.5">
+                          <span className="flex items-center gap-0.5">
+                            <Star size={10} className="text-[#DEAA38] fill-[#DEAA38]" /> 
                             <span>{Number(caterer.rating).toFixed(1)}</span>
-                            <span className="text-slate-400 font-normal text-[11px]">({caterer.reviewCount.toLocaleString()})</span>
+                            <span className="text-slate-400 font-normal text-[10px]">({caterer.reviewCount.toLocaleString()})</span>
                           </span>
                           <span className="text-slate-300">|</span>
-                          <span className="flex items-center gap-0.5 text-[11px]"><MapPin size={11} className="text-slate-400" /> {caterer.location}</span>
+                          <span className="flex items-center gap-0.5 text-[10px]"><MapPin size={10} className="text-slate-400" /> {caterer.location}</span>
                           {caterer.distanceKm !== undefined && caterer.distanceKm !== null && (
                             <>
                               <span className="text-slate-300">|</span>
-                              <span className="flex items-center gap-1 text-[#b47a00] bg-amber-500/5 px-2 py-0.5 rounded-full font-mono border border-amber-500/10 text-[10px]">
-                                📍 {caterer.distanceKm.toFixed(1)} KM • {caterer.drivingTimeMins} mins away
+                              <span className="flex items-center gap-0.5 text-[#b47a00] bg-amber-500/5 px-1.5 py-0.5 rounded-full font-mono border border-amber-500/10 text-[9.5px]">
+                                📍 {caterer.distanceKm.toFixed(1)} KM • {caterer.drivingTimeMins}m
                               </span>
                             </>
                           )}
                         </div>
 
                         {/* Dietary preferences pills */}
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          <span className="px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase bg-slate-50 text-slate-600 rounded border border-slate-150 flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Veg
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          <span className="px-1 py-0.5 text-[7.5px] font-bold tracking-wider uppercase bg-slate-50 text-slate-600 rounded border border-slate-150 flex items-center gap-0.5">
+                            <div className="w-1 h-1 rounded-full bg-emerald-500" /> Veg
                           </span>
-                          <span className="px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase bg-slate-50 text-slate-600 rounded border border-slate-150 flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Non-Veg
+                          <span className="px-1 py-0.5 text-[7.5px] font-bold tracking-wider uppercase bg-slate-50 text-slate-600 rounded border border-slate-150 flex items-center gap-0.5">
+                            <div className="w-1 h-1 rounded-full bg-rose-500" /> Non-Veg
                           </span>
-                          <span className="px-1.5 py-0.5 text-[8px] font-bold tracking-wider uppercase bg-slate-50 text-slate-600 rounded border border-slate-150 flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#DEAA38]" /> Live Counters
+                          <span className="px-1 py-0.5 text-[7.5px] font-bold tracking-wider uppercase bg-slate-50 text-slate-600 rounded border border-slate-150 flex items-center gap-0.5">
+                            <div className="w-1 h-1 rounded-full bg-[#DEAA38]" /> Live Counters
                           </span>
                         </div>
 
                         {/* Micro performance indicators */}
-                        <div className="flex items-center gap-3 text-[10.5px] font-bold text-slate-500 mb-1.5">
-                          <div className="flex items-center gap-1"><Users size={11} className="text-slate-400" /> 800+ Events</div>
-                          <div className="flex items-center gap-1"><Award size={11} className="text-slate-400" /> {caterer.years || '5+ Years'}</div>
+                        <div className="flex items-center gap-2.5 text-[9.5px] font-bold text-slate-500 mb-1">
+                          <div className="flex items-center gap-0.5"><Users size={10} className="text-slate-400" /> 800+ Events</div>
+                          <div className="flex items-center gap-0.5"><Award size={10} className="text-slate-400" /> {caterer.years || '5+ Years'}</div>
                         </div>
                       </div>
 
-                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider line-clamp-1 border-t border-slate-100 pt-1.5">
+                      <p className="text-slate-400 text-[9px] font-bold uppercase tracking-wider line-clamp-1 border-t border-slate-100 pt-1">
                         Speciality: <span className="text-slate-600 font-semibold">Hyderabadi, North Indian, Chinese</span>
                       </p>
                     </div>
 
                     {/* Right Column: Pricing & Action buttons */}
-                    <div className="w-full md:w-[155px] p-3.5 md:p-4 bg-slate-50/50 md:border-l border-dashed border-slate-200 flex flex-col sm:flex-row md:flex-col justify-between md:justify-center items-center md:text-center shrink-0 gap-3 md:gap-0">
-                      <div className="text-left md:text-center flex sm:flex-col justify-between sm:justify-start items-center sm:items-start md:items-center w-full sm:w-auto md:w-full mb-0 md:mb-3">
+                    <div className="w-full md:w-[140px] p-2.5 md:p-3 bg-slate-50/50 md:border-l border-dashed border-slate-200 flex flex-col sm:flex-row md:flex-col justify-between md:justify-center items-center md:text-center shrink-0 gap-2 md:gap-0">
+                      <div className="text-left md:text-center flex sm:flex-col justify-between sm:justify-start items-center sm:items-start md:items-center w-full sm:w-auto md:w-full mb-0 md:mb-2">
                         <div>
-                          <p className="text-[8.5px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Starting from</p>
-                          <p className="font-display font-extrabold text-xl md:text-2xl text-slate-900 leading-none">
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-0.5">Starting from</p>
+                          <p className="font-display font-extrabold text-lg md:text-xl text-slate-900 leading-none">
                             ₹{caterer.startingPrice} 
-                            <span className="text-[10px] font-sans font-medium text-slate-400 inline-block ml-0.5">/ plate</span>
+                            <span className="text-[9px] font-sans font-medium text-slate-400 inline-block ml-0.5">/ plate</span>
                           </p>
                         </div>
-                        <p className="text-[9px] text-slate-400 font-semibold mt-1 whitespace-nowrap">Min. {caterer.minimumGuests || 50} Plates</p>
+                        <p className="text-[8.5px] text-slate-400 font-semibold mt-0.5 whitespace-nowrap">Min. {caterer.minimumGuests || 50} Plates</p>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-1 gap-1.5 w-full">
+                      <div className="grid grid-cols-2 md:grid-cols-1 gap-1 w-full">
                         <button 
                           type="button"
                           onClick={() => navigate(`/caterer/${caterer.id}?tab=menu`)} 
-                          className="w-full py-2 bg-[#0f2922] hover:bg-[#173D32] text-white rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex justify-center items-center min-h-[34px] active:scale-95"
+                          className="w-full py-1.5 bg-[#0f2922] hover:bg-[#173D32] text-white rounded-md font-bold text-[9.5px] uppercase tracking-wider transition-all cursor-pointer flex justify-center items-center min-h-[28px] active:scale-95"
                         >
                           View Menu
                         </button>
                         <button 
                           type="button"
                           onClick={() => navigate(`/caterer/${caterer.id}`)} 
-                          className="w-full py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer min-h-[34px] active:scale-95 flex justify-center items-center"
+                          className="w-full py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md font-bold text-[9.5px] uppercase tracking-wider transition-all cursor-pointer min-h-[28px] active:scale-95 flex justify-center items-center"
                         >
                           Quick View
                         </button>

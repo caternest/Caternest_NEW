@@ -4425,14 +4425,14 @@ export default function CatererDetails() {
       <div className="w-full bg-[#FCFAF6] md:bg-[#e9f6e3] relative overflow-x-hidden min-h-screen pb-12">
 
         {/* TOP ROW: BREADCRUMBS & NAVIGATION BUTTONS */}
-        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 pt-2 md:pt-8 pb-3 md:pb-5 mt-2 md:mt-[85px] lg:mt-[96px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 font-sans relative z-30 border-b border-[#D4AF37]/20">
+        <div className="max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 pt-2 md:pt-3 pb-2 md:pb-2.5 mt-1 md:mt-[58px] lg:mt-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-3 font-sans relative z-30 border-b border-[#D4AF37]/20">
           {/* Breadcrumbs */}
-          <div className="hidden md:flex items-center gap-2 text-xs sm:text-sm text-stone-600 font-medium">
+          <div className="hidden md:flex items-center gap-2 text-xs text-stone-600 font-medium">
             <Link to="/" className="hover:text-[#D4AF37] transition-all">Home</Link>
-            <ChevronRight size={12} className="text-stone-400" />
+            <ChevronRight size={11} className="text-stone-400" />
             <Link to="/explore" className="hover:text-[#D4AF37] transition-all">Caterers</Link>
-            <ChevronRight size={12} className="text-stone-400" />
-            <span className="font-semibold text-[#D4AF37] bg-stone-100 px-2.5 py-1 rounded-md border border-[#D4AF37]/30">{targetCatererObj.brandName || targetCatererObj.name}</span>
+            <ChevronRight size={11} className="text-stone-400" />
+            <span className="font-semibold text-[#D4AF37] bg-stone-100 px-2 py-0.5 rounded border border-[#D4AF37]/30">{targetCatererObj.brandName || targetCatererObj.name}</span>
           </div>
 
           {/* Action Row */}
@@ -4442,7 +4442,7 @@ export default function CatererDetails() {
                 <button
                   type="button"
                   onClick={handleSaveChanges}
-                  className="flex items-center gap-1.5 bg-[#01A378] hover:bg-[#028b67] text-white px-4 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[10px] cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1.5 bg-[#01A378] hover:bg-[#028b67] text-white px-3 py-1.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[9.5px] cursor-pointer shadow-[0_4px_15px_rgba(1,163,120,0.25)] hover:scale-105 active:scale-95"
                 >
                   SAVE CHANGES
                 </button>
@@ -4452,7 +4452,7 @@ export default function CatererDetails() {
                     setIsEditing(false);
                     setEditedCaterer({ ...caterer });
                   }}
-                  className="flex items-center gap-1.5 bg-[#D11A2A] hover:bg-[#b01421] text-white px-4 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[10px] cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1.5 bg-[#D11A2A] hover:bg-[#b01421] text-white px-3 py-1.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 text-[9.5px] cursor-pointer shadow-[0_4px_15px_rgba(209,26,42,0.25)] hover:scale-105 active:scale-95"
                 >
                   CANCEL
                 </button>
@@ -4467,14 +4467,14 @@ export default function CatererDetails() {
                     setEditedCaterer({ ...caterer });
                   }
                 }}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-4.5 py-2 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] text-[10px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                className="flex items-center gap-1.5 bg-gradient-to-r from-[#DEAA38] via-[#E2B34B] to-[#C28824] hover:from-[#E2B34B] hover:to-[#DEAA38] text-white px-3.5 py-1.5 rounded-full font-extrabold tracking-widest uppercase transition-all duration-300 border border-[#DEAA38]/30 shadow-[0_4px_15px_rgba(222,170,56,0.25)] text-[9.5px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
               >
                 Edit Profile
               </button>
             )}
             <button 
               onClick={handleShare}
-              className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200/80 text-stone-800 px-4 py-2 rounded-full font-bold transition-all duration-300 border border-[#D4AF37]/35 text-[10px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+              className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200/80 text-stone-800 px-3 py-1.5 rounded-full font-bold transition-all duration-300 border border-[#D4AF37]/35 text-[9.5px] cursor-pointer hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
             >
               Share
             </button>
@@ -4482,29 +4482,29 @@ export default function CatererDetails() {
         </div>
 
         {/* SECTION 1: HERO CONTAINER WITH INTEGRATED COVER BANNER */}
-        <div className="hidden md:block max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mb-[20px] mt-[1px] relative z-20 lg:h-[364.875px]">
-          <div className="bg-[#0b0b0b] rounded-[2rem] border border-[#D4AF37]/30 overflow-hidden relative shadow-[0_12px_40px_rgba(0,0,0,0.5)] h-full">
+        <div className="hidden md:block max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mb-3 mt-1 relative z-20 lg:h-[220px]">
+          <div className="bg-[#0b0b0b] rounded-2xl border border-[#D4AF37]/30 overflow-hidden relative shadow-[0_8px_30px_rgba(0,0,0,0.4)] h-full">
             
             {/* Split layout: text and details on left, image with gradient overlay on right */}
-            <div className="flex flex-col lg:flex-row h-full min-h-[220px]">
+            <div className="flex flex-col lg:flex-row h-full min-h-[190px]">
               
               {/* Left Details Panel */}
-              <div className="flex-1 p-6 sm:p-8 md:p-10 lg:p-12 flex flex-col justify-between relative z-10 text-left h-full">
+              <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col justify-between relative z-10 text-left h-full">
                 
                 {/* Brand Logo & Name Block */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-6 lg:gap-8">
+                <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-5">
                   
                   {/* Circular Crest Logo */}
                   <div className="relative shrink-0">
-                    <div className="w-24 h-24 sm:w-30 sm:h-30 md:w-38 md:h-38 lg:w-44 lg:h-44 bg-[#0b0b0b] rounded-full border-2 border-[#D4AF37] flex items-center justify-center relative shadow-[0_8px_24px_rgba(0,0,0,0.4)] overflow-hidden ring-4 ring-[#D4AF37]/20 ring-offset-4 ring-offset-[#0b0b0b]">
+                    <div className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 bg-[#0b0b0b] rounded-full border-2 border-[#D4AF37] flex items-center justify-center relative shadow-[0_6px_18px_rgba(0,0,0,0.35)] overflow-hidden ring-2 ring-[#D4AF37]/20 ring-offset-2 ring-offset-[#0b0b0b]">
                       {editedCaterer && isEditing ? (
                         <>
                           {editedCaterer.logo ? (
                             <img src={editedCaterer.logo} alt="Logo" className="w-full h-full object-cover rounded-full" />
                           ) : (
-                            <span className="font-serif font-bold text-[#D4AF37] text-2xl md:text-3xl">{editedCaterer.brandName?.substring(0, 2) || "CN"}</span>
+                            <span className="font-serif font-bold text-[#D4AF37] text-xl md:text-2xl">{editedCaterer.brandName?.substring(0, 2) || "CN"}</span>
                           )}
-                          <label className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-white text-[9px] font-bold uppercase cursor-pointer rounded-full opacity-0 hover:opacity-100 transition duration-200">
+                          <label className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-white text-[8.5px] font-bold uppercase cursor-pointer rounded-full opacity-0 hover:opacity-100 transition duration-200">
                             <span>Upload 🔒</span>
                             <input
                               type="file"
@@ -4523,9 +4523,9 @@ export default function CatererDetails() {
                       ) : targetCatererObj.logo ? (
                         <img src={targetCatererObj.logo} alt="Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
                       ) : (
-                        <div className="flex flex-col items-center justify-center text-center p-2 rounded-full">
-                          <span className="text-[#D4AF37] text-2xl sm:text-3xl">👑</span>
-                          <span className="font-serif font-black text-[#D4AF37] text-base sm:text-lg">
+                        <div className="flex flex-col items-center justify-center text-center p-1.5 rounded-full">
+                          <span className="text-[#D4AF37] text-xl sm:text-2xl">👑</span>
+                          <span className="font-serif font-black text-[#D4AF37] text-sm sm:text-base">
                             {targetCatererObj.brandName?.substring(0, 2) || targetCatererObj.name?.substring(0, 2) || "CN"}
                           </span>
                         </div>
@@ -4535,13 +4535,13 @@ export default function CatererDetails() {
 
                   {/* Brand details */}
                   <div className="text-center sm:text-left flex flex-col justify-center">
-                    <div className="flex flex-row flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                      <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-white tracking-tight leading-tight">
+                    <div className="flex flex-row flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <h1 className="text-2xl sm:text-[26px] md:text-3xl font-serif font-bold text-white tracking-tight leading-tight">
                         {targetCatererObj.brandName || targetCatererObj.name}
                       </h1>
                       {targetCatererObj.status === "Approved" && (
-                        <span className="inline-flex items-center justify-center text-[#D4AF37] ml-1 shrink-0" title="Verified Check">
-                          <svg className="w-6 h-6 sm:w-7 sm:h-7 drop-shadow-[0_2px_4px_rgba(212,175,55,0.3)]" fill="currentColor" viewBox="0 0 24 24">
+                        <span className="inline-flex items-center justify-center text-[#D4AF37] ml-0.5 shrink-0" title="Verified Check">
+                          <svg className="w-5 h-5 drop-shadow-[0_2px_4px_rgba(212,175,55,0.3)]" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2l2.4 1.4 2.7-.4.9 2.6 2.5 1.1-.4 2.7 1.8 2-1.3 2.4.9 2.7-2.2 1.6-.9 2.6-2.7-.4-2.1 1.8-2.1-1.8-2.7.4-.9-2.6-2.2-1.6.9-2.7-1.3-2.4 1.8-2-.4-2.7 2.5-1.1.9-2.6 2.7.4L12 2zm-1 13.5l5.5-5.5-1.4-1.4-4.1 4.1-1.9-1.9-1.4 1.4 3.3 3.3z" />
                           </svg>
                         </span>
@@ -4549,7 +4549,7 @@ export default function CatererDetails() {
                     </div>
 
                     {targetCatererObj.tagline && (
-                      <p className="text-[#D4AF37] text-xs sm:text-sm font-extrabold tracking-widest uppercase mt-1.5 opacity-95">
+                      <p className="text-[#D4AF37] text-[11px] sm:text-xs font-bold tracking-wider uppercase mt-1 opacity-95">
                         ✦ {targetCatererObj.tagline}
                       </p>
                     )}
@@ -4558,51 +4558,51 @@ export default function CatererDetails() {
                 </div>
 
                 {/* Experience Information Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6 pt-5 border-t border-[#D4AF37]/20 w-full font-sans">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3 pt-3 border-t border-[#D4AF37]/20 w-full font-sans">
                   
                   {/* Block 1 */}
-                  <div className="flex items-center gap-3.5 text-left">
+                  <div className="flex items-center gap-2.5 text-left">
                     {(() => {
                       const IconComp = getHeroIconComponent(targetCatererObj.heroCard1Icon, ChefHat);
-                      return <IconComp size={22} className="text-[#D4AF37] shrink-0 stroke-[1.5]" />;
+                      return <IconComp size={18} className="text-[#D4AF37] shrink-0 stroke-[1.5]" />;
                     })()}
                     <div className="flex flex-col">
-                      <span className="font-sans font-black text-white text-sm md:text-base tracking-wide leading-tight">
+                      <span className="font-sans font-black text-white text-xs md:text-sm tracking-wide leading-tight">
                         {targetCatererObj.heroCard1Title || "Fine Dining"}
                       </span>
-                      <span className="font-sans text-[11px] text-[#D4AF37] font-extrabold tracking-wider uppercase leading-tight mt-0.5 opacity-85">
+                      <span className="font-sans text-[10px] text-[#D4AF37] font-bold tracking-wider uppercase leading-tight mt-0.5 opacity-85">
                         {targetCatererObj.heroCard1Text || "Premium Catering"}
                       </span>
                     </div>
                   </div>
 
                   {/* Block 2 */}
-                  <div className="flex items-center gap-3.5 text-left">
+                  <div className="flex items-center gap-2.5 text-left">
                     {(() => {
                       const IconComp = getHeroIconComponent(targetCatererObj.heroCard2Icon, Award);
-                      return <IconComp size={22} className="text-[#D4AF37] shrink-0 stroke-[1.5]" />;
+                      return <IconComp size={18} className="text-[#D4AF37] shrink-0 stroke-[1.5]" />;
                     })()}
                     <div className="flex flex-col">
-                      <span className="font-sans font-black text-white text-sm md:text-base tracking-wide leading-tight">
+                      <span className="font-sans font-black text-white text-xs md:text-sm tracking-wide leading-tight">
                         {targetCatererObj.heroCard2Value || (targetCatererObj.experience ? (targetCatererObj.experience.toString().includes("Year") ? targetCatererObj.experience : `${targetCatererObj.experience}+ Years`) : "20+ Years")}
                       </span>
-                      <span className="font-sans text-[11px] text-[#D4AF37] font-extrabold tracking-wider uppercase leading-tight mt-0.5 opacity-85">
+                      <span className="font-sans text-[10px] text-[#D4AF37] font-bold tracking-wider uppercase leading-tight mt-0.5 opacity-85">
                         {targetCatererObj.heroCard2Text || "Experience"}
                       </span>
                     </div>
                   </div>
 
                   {/* Block 3 */}
-                  <div className="flex items-center gap-3.5 text-left">
+                  <div className="flex items-center gap-2.5 text-left">
                     {(() => {
                       const IconComp = getHeroIconComponent(targetCatererObj.heroCard3Icon, MapPin);
-                      return <IconComp size={22} className="text-[#D4AF37] shrink-0 stroke-[1.5]" />;
+                      return <IconComp size={18} className="text-[#D4AF37] shrink-0 stroke-[1.5]" />;
                     })()}
                     <div className="flex flex-col">
-                      <span className="font-sans font-black text-white text-sm md:text-base tracking-wide leading-tight">
+                      <span className="font-sans font-black text-white text-xs md:text-sm tracking-wide leading-tight">
                         {targetCatererObj.heroCard3Value || targetCatererObj.address || "Hyderabad, Telangana"}
                       </span>
-                      <span className="font-sans text-[11px] text-[#D4AF37] font-extrabold tracking-wider uppercase leading-tight mt-0.5 opacity-85">
+                      <span className="font-sans text-[10px] text-[#D4AF37] font-bold tracking-wider uppercase leading-tight mt-0.5 opacity-85">
                         {targetCatererObj.heroCard3Text || "Serving Across Telangana"}
                       </span>
                     </div>
@@ -4613,11 +4613,11 @@ export default function CatererDetails() {
               </div>
 
               {/* Right Cover Image Panel with gradient overlay */}
-              <div className="w-full lg:w-[45%] h-48 lg:h-full relative overflow-hidden shrink-0">
+              <div className="w-full lg:w-[42%] h-40 lg:h-full relative overflow-hidden shrink-0">
                 <img 
                   src={editedCaterer && isEditing ? (editedCaterer.coverBanner || fallbackBanner) : (fallbackBanner || "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200&auto=format&fit=crop")} 
                   alt="Cover Banner" 
-                  className="w-full h-full object-cover lg:h-[366.891px]"
+                  className="w-full h-full object-cover lg:h-[220px]"
                   referrerPolicy="no-referrer"
                 />
                 
@@ -4625,28 +4625,28 @@ export default function CatererDetails() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0b] via-transparent to-transparent lg:bg-gradient-to-r lg:from-[#0b0b0b] lg:via-[#0b0b0b]/30 lg:to-transparent z-10"></div>
                 
                 {/* Heart/Wishlist Button */}
-                <div className="absolute top-4 right-4 z-25 flex items-center gap-2">
+                <div className="absolute top-3 right-3 z-25 flex items-center gap-1.5">
                   {isOwnerOrAdmin && (
                     <button
                       type="button"
                       onClick={() => openEditModal("hero")}
-                      className="w-10 h-10 rounded-full bg-[#0b0b0b]/80 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-[#0b0b0b] transition-all flex items-center justify-center shadow-md border border-[#D4AF37]/35 cursor-pointer"
+                      className="w-8 h-8 rounded-full bg-[#0b0b0b]/80 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-[#0b0b0b] transition-all flex items-center justify-center shadow-md border border-[#D4AF37]/35 cursor-pointer"
                       title="Edit Hero & Profile Details"
                     >
-                      <Pencil size={15} className="stroke-current stroke-[2]" />
+                      <Pencil size={13} className="stroke-current stroke-[2]" />
                     </button>
                   )}
                   <button
                     type="button"
-                    className="w-10 h-10 rounded-full bg-[#0b0b0b]/80 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-[#0b0b0b] transition-all flex items-center justify-center shadow-md border border-[#D4AF37]/35 cursor-pointer"
+                    className="w-8 h-8 rounded-full bg-[#0b0b0b]/80 hover:bg-[#D4AF37] text-[#D4AF37] hover:text-[#0b0b0b] transition-all flex items-center justify-center shadow-md border border-[#D4AF37]/35 cursor-pointer"
                     title="Save to Shortlist"
                   >
-                    <Heart size={16} className="fill-none stroke-current stroke-[2.5]" />
+                    <Heart size={14} className="fill-none stroke-current stroke-[2.5]" />
                   </button>
                 </div>
 
                 {isOwnerOrAdmin && isEditing && (
-                  <label className="absolute bottom-4 right-4 z-25 flex items-center gap-1.5 bg-[#0b0b0b]/90 hover:bg-[#D4AF37]/95 text-[#D4AF37] hover:text-[#0b0b0b] px-3.5 py-1.5 rounded-full font-bold transition-all border border-[#D4AF37]/35 shadow-sm text-xs cursor-pointer font-sans">
+                  <label className="absolute bottom-3 right-3 z-25 flex items-center gap-1 bg-[#0b0b0b]/90 hover:bg-[#D4AF37]/95 text-[#D4AF37] hover:text-[#0b0b0b] px-2.5 py-1 rounded-full font-bold transition-all border border-[#D4AF37]/35 shadow-sm text-[10px] cursor-pointer font-sans">
                     Change Cover 🔒
                     <input
                       type="file"
@@ -4670,8 +4670,8 @@ export default function CatererDetails() {
         </div>
 
         {/* SECTION 1.5: TABS BAR SYSTEM */}
-        <div className="hidden md:block max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mt-4 mb-6 relative z-30 font-sans">
-          <div className="bg-[#0b0b0b]/95 p-1.5 rounded-2xl border border-[#D4AF37]/35 flex flex-wrap md:flex-nowrap gap-1 shadow-lg overflow-x-auto no-scrollbar justify-start md:justify-center w-full backdrop-blur-md">
+        <div className="hidden md:block max-w-[1280px] lg:max-w-[1320px] xl:max-w-[1360px] w-[95%] mx-auto px-4 sm:px-6 lg:px-8 mt-2.5 mb-3.5 relative z-30 font-sans">
+          <div className="bg-[#0b0b0b]/95 p-1 rounded-xl border border-[#D4AF37]/35 flex flex-wrap md:flex-nowrap gap-1 shadow-md overflow-x-auto no-scrollbar justify-start md:justify-center w-full backdrop-blur-md">
             {[
               "Overview",
               "Packages",
@@ -4686,29 +4686,29 @@ export default function CatererDetails() {
                   key={tab}
                   onClick={() => handleTabClick(tab)}
                   className={cn(
-                    "px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase whitespace-nowrap transition-all duration-300 flex items-center gap-2 cursor-pointer border",
+                    "px-3.5 py-1.5 rounded-lg font-bold text-[11px] tracking-wider uppercase whitespace-nowrap transition-all duration-300 flex items-center gap-1.5 cursor-pointer border",
                     isActive
-                      ? "bg-[#D4AF37] text-[#0b0b0b] border-[#D4AF37] shadow-md"
+                      ? "bg-[#D4AF37] text-[#0b0b0b] border-[#D4AF37] shadow-sm"
                       : "bg-transparent text-slate-300 hover:text-white hover:bg-white/5 border-transparent",
                   )}
                 >
                   {tab === "Overview" && (
-                    <LayoutGrid size={13} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
+                    <LayoutGrid size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   {tab === "Packages" && (
-                    <Package size={13} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
+                    <Package size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   {tab === "Menu" && (
-                    <MenuSquare size={13} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
+                    <MenuSquare size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   {tab === "Gallery" && (
-                    <ImageIcon size={13} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
+                    <ImageIcon size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   {tab === "Reviews" && (
-                    <Star size={13} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
+                    <Star size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   {tab === "About Us" && (
-                    <User size={13} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
+                    <User size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   <span>{tab}</span>
                 </button>

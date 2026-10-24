@@ -262,37 +262,37 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
 
   const isHome = location.pathname === '/';
   const navClass = cn(
-    'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-    isScrolled ? 'glass py-1.5 sm:py-2 shadow-xs' : 'bg-white py-2 sm:py-2.5 shadow-xs'
+    'fixed top-0 left-0 right-0 z-50 transition-all duration-300 h-14 sm:h-[58px] flex items-center',
+    isScrolled ? 'glass shadow-xs' : 'bg-white shadow-xs'
   );
 
   const textClass = cn(
-    'transition-colors font-medium font-poppins text-xs sm:text-[13px]',
+    'transition-colors font-medium font-poppins text-xs',
     'text-slate-700 hover:text-brand-gold-600 font-semibold'
   );
 
   return (
     <nav className={navClass} id="main-navigation-navbar">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex justify-between items-center bg-transparent">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group" id="navbar-logo-link">
-            <div className="bg-brand-gold-500 p-1.5 rounded-lg text-white group-hover:scale-105 transition-transform shadow-xs">
-              <ChefHat size={22} />
+          <Link to="/" className="flex items-center gap-2 group" id="navbar-logo-link">
+            <div className="bg-brand-gold-500 p-1.5 rounded-md text-white group-hover:scale-105 transition-transform shadow-2xs">
+              <ChefHat size={19} />
             </div>
-            <div className="flex flex-col border-l-2 border-brand-green-100 pl-2.5">
-              <span className="text-lg sm:text-xl font-bold font-display tracking-tight text-brand-green-900 leading-tight">
+            <div className="flex flex-col border-l-2 border-brand-green-100 pl-2">
+              <span className="text-base sm:text-lg font-bold font-display tracking-tight text-brand-green-900 leading-none">
                 PlanMyChoice
               </span>
-              <span className="text-[8px] uppercase font-poppins tracking-wider text-brand-gold-600 font-bold">
+              <span className="text-[7.5px] uppercase font-poppins tracking-wider text-brand-gold-600 font-bold mt-0.5">
                 Making Every Event Special
               </span>
             </div>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-5 sm:gap-6" id="desktop-links-container">
-            <div className="flex items-center gap-4 sm:gap-5">
+          <div className="hidden md:flex items-center gap-4 sm:gap-5" id="desktop-links-container">
+            <div className="flex items-center gap-3.5 sm:gap-4">
               {navLinks.map((link) => {
                 const isExplore = link.name === 'Explore Caterers';
                 const isMarketplace = homepageMode === 'marketplace';
@@ -321,23 +321,23 @@ export default function Navbar({ homepageMode: _unused }: { homepageMode?: strin
                 );
               })}
             </div>
-            <div className="flex items-center gap-3 border-l pl-4 sm:pl-5 border-slate-200 relative">
+            <div className="flex items-center gap-2.5 border-l pl-3.5 sm:pl-4 border-slate-200 relative">
               {user && user.roles.includes('admin') && (
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 border border-red-100 rounded-full text-red-800 text-[9px] uppercase tracking-wider font-bold shadow-2xs">
+                  <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-100 rounded-full text-red-800 text-[8.5px] uppercase tracking-wider font-bold shadow-2xs">
                       Admin Mode
                   </div>
               )}
               {!user ? (
-                <div className="flex items-center gap-2 sm:gap-2.5" id="navbar-anonymous-actions">
-                  <Link to="/caterer-login" className="flex items-center gap-1.5 px-3 py-1.5 font-poppins font-medium text-xs text-brand-gold-700 bg-brand-gold-50 hover:bg-brand-gold-100 rounded-full transition-colors border border-brand-gold-100">
-                    <ChefHat size={14} /> Caterer Login
+                <div className="flex items-center gap-2" id="navbar-anonymous-actions">
+                  <Link to="/caterer-login" className="flex items-center gap-1 px-2.5 py-1 font-poppins font-medium text-[11px] text-brand-gold-700 bg-brand-gold-50 hover:bg-brand-gold-100 rounded-full transition-colors border border-brand-gold-100">
+                    <ChefHat size={12} /> Caterer Login
                   </Link>
-                  <Link to="/login" className="px-3 py-1.5 font-poppins font-medium text-xs text-slate-700 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
+                  <Link to="/login" className="px-2.5 py-1 font-poppins font-medium text-[11px] text-slate-700 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors">
                     Login
                   </Link>
                   <Link 
                     to="/signup" 
-                    className="px-3.5 py-1.5 rounded-full font-poppins text-xs font-semibold transition-all bg-brand-green-900 text-white hover:bg-brand-green-800 shadow-sm"
+                    className="px-3 py-1 rounded-full font-poppins text-[11px] font-semibold transition-all bg-brand-green-900 text-white hover:bg-brand-green-800 shadow-2xs"
                   >
                     Sign Up
                   </Link>
