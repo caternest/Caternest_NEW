@@ -325,11 +325,11 @@ export default function Explore() {
   const [filteredCaterers, setFilteredCaterers] = useState<any[]>([]);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   
-  // Active Filter States
+  // Active Filter States (Clean Defaults: No pre-selected filters)
   const [cuisineFilter, setCuisineFilter] = useState<string>('Both'); // Veg, Non-Veg, Both, Pure Veg
-  const [occasionFilter, setOccasionFilter] = useState<string[]>(['Wedding']); // Pre-selected 'Wedding'
-  const [budgetFilter, setBudgetFilter] = useState<number>(600); // Pre-selected ₹300 - ₹600
-  const [guestsFilter, setGuestsFilter] = useState<string[]>(['200 - 500']); // Pre-selected '200 - 500'
+  const [occasionFilter, setOccasionFilter] = useState<string[]>([]);
+  const [budgetFilter, setBudgetFilter] = useState<number>(1000); // 1000 = All Budgets
+  const [guestsFilter, setGuestsFilter] = useState<string[]>([]);
   const [sortOption, setSortOption] = useState<string>('Popularity');
   const [isLiveCounters, setIsLiveCounters] = useState<boolean>(false);
   const [isVerifiedOnly, setIsVerifiedOnly] = useState<boolean>(false);
@@ -351,10 +351,14 @@ export default function Explore() {
       } else if (qDiet.toLowerCase().includes('veg')) {
         setCuisineFilter('Veg');
       }
+    } else {
+      setCuisineFilter('Both');
     }
 
     if (qOccasion) {
       setOccasionFilter([qOccasion]);
+    } else if (!qSearch) {
+      setOccasionFilter([]);
     }
 
     if (qSearch) {
@@ -367,7 +371,10 @@ export default function Explore() {
       } else if (!qOccasion) {
         setOccasionFilter([]);
       }
+    } else {
+      setSearchKeyword('');
     }
+
     if (qLocation) {
       setSearchLocation(qLocation);
     }
@@ -392,6 +399,8 @@ export default function Explore() {
       else if (qBudget === '400-600') setBudgetFilter(600);
       else if (qBudget === '600-800') setBudgetFilter(800);
       else if (qBudget === '800+') setBudgetFilter(1000);
+    } else {
+      setBudgetFilter(1000);
     }
     if (qGuests) {
       setSearchGuests(qGuests);
@@ -401,6 +410,8 @@ export default function Explore() {
       else if (qGuests === '200-500') setGuestsFilter(['200 - 500']);
       else if (qGuests === '500-1000') setGuestsFilter(['500 - 1000']);
       else if (qGuests === '1000+') setGuestsFilter(['1000+']);
+    } else {
+      setGuestsFilter([]);
     }
   }, [searchParams]);
 
@@ -1257,15 +1268,8 @@ export default function Explore() {
                         <p className="text-[9px] text-slate-400 font-bold">Min. {caterer.minimumGuests || 50} Plates</p>
                       </div>
 
-                      {/* Stacked CTA Buttons */}
-                      <div className="grid grid-cols-2 gap-2 w-full">
-                        <button 
-                          type="button"
-                          onClick={() => navigate(`/caterer/${caterer.id}`)}
-                          className="w-full py-3 border border-slate-200 text-slate-700 rounded-lg text-xs font-bold bg-white active:bg-slate-50 transition-colors cursor-pointer"
-                        >
-                          Quick View
-                        </button>
+                      {/* Single Full-Width CTA Button */}
+                      <div className="w-full">
                         <button 
                           type="button"
                           onClick={() => navigate(`/caterer/${caterer.id}?tab=menu`)}
@@ -1846,13 +1850,15 @@ export default function Explore() {
 
             {/* Action Buttons (Right Group) */}
             <div className="flex items-center gap-3 shrink-0 ml-auto">
-              <button 
-                type="button"
-                onClick={clearAllFilters}
-                className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer px-2 py-1 select-none whitespace-nowrap"
-              >
-                Clear All
-              </button>
+              {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0 || cuisineFilter !== 'Both' || (searchKeyword && searchKeyword.trim() !== '')) && (
+                <button 
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors cursor-pointer px-2 py-1 select-none whitespace-nowrap"
+                >
+                  Clear All
+                </button>
+              )}
 
               <button 
                 type="button"
@@ -2050,20 +2056,13 @@ export default function Explore() {
                         <p className="text-[8.5px] text-slate-400 font-semibold mt-0.5 whitespace-nowrap">Min. {caterer.minimumGuests || 50} Plates</p>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-1 gap-1 w-full">
+                      <div className="w-full">
                         <button 
                           type="button"
                           onClick={() => navigate(`/caterer/${caterer.id}?tab=menu`)} 
-                          className="w-full py-1.5 bg-[#0f2922] hover:bg-[#173D32] text-white rounded-md font-bold text-[9.5px] uppercase tracking-wider transition-all cursor-pointer flex justify-center items-center min-h-[28px] active:scale-95"
+                          className="w-full py-2 bg-[#0f2922] hover:bg-[#173D32] text-white rounded-md font-bold text-[10.5px] uppercase tracking-wider transition-all cursor-pointer flex justify-center items-center min-h-[32px] active:scale-95 shadow-2xs"
                         >
                           View Menu
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => navigate(`/caterer/${caterer.id}`)} 
-                          className="w-full py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md font-bold text-[9.5px] uppercase tracking-wider transition-all cursor-pointer min-h-[28px] active:scale-95 flex justify-center items-center"
-                        >
-                          Quick View
                         </button>
                       </div>
                     </div>
@@ -2072,113 +2071,6 @@ export default function Explore() {
                 ))
               )}
             </div>
-        </div>
-      </section>
-
-      {/* 5. Trust Badges row - Compact padding, perfect alignment */}
-      <section className="py-8 bg-slate-50 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { title: 'Verified & Trusted', desc: 'Only verified & top-rated caterers', icon: ShieldCheck },
-              { title: 'Transparent Pricing', desc: 'No hidden charges, clear & honest pricing', icon: Tag },
-              { title: 'Instant Quotes', desc: 'Get quotes in just a few minutes', icon: Smartphone },
-              { title: '24x7 Support', desc: "We're here to help you anytime", icon: ChefHat }
-            ].map((badge, idx) => (
-              <div key={idx} className="flex flex-col items-center text-center p-3.5 bg-white rounded-xl border border-slate-100/80 hover:shadow-sm transition-shadow group">
-                <div className="w-10 h-10 rounded-full bg-brand-gold-500/10 text-[#DEAA38] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                  <badge.icon size={18} className="stroke-[1.5]" />
-                </div>
-                <h5 className="text-[11px] font-black text-slate-800 leading-tight mb-0.5">{badge.title}</h5>
-                <p className="text-[9px] text-slate-400 font-semibold leading-tight">{badge.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Bottom Bento Promotional Section - Tightly aligned, compact gaps, high graphic polish */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Block 1: AI Menu Builder Promo */}
-            <div className="bg-gradient-to-br from-[#051410] to-[#0f2922] text-white rounded-[2rem] p-7 flex flex-col justify-between h-[280px] relative overflow-hidden group border border-slate-800 shadow-lg">
-              <div className="absolute right-[-20px] bottom-[-20px] w-40 h-40 opacity-20 group-hover:opacity-30 transition-opacity">
-                <img 
-                  src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400" 
-                  alt="Elegant Food Plate" 
-                  className="w-full h-full object-cover rounded-full"
-                />
-              </div>
-              <div>
-                <span className="bg-[#DEAA38]/20 text-[#DEAA38] border border-[#DEAA38]/20 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest inline-block mb-2">
-                  New Feature
-                </span>
-                <h3 className="text-xl font-display font-extrabold tracking-tight mb-1 text-white">AI Menu Builder</h3>
-                <p className="text-slate-300 text-[11px] font-medium leading-relaxed max-w-[200px]">Create the perfect custom menu for your event with AI suggestions.</p>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  const el = document.getElementById('explore-marketplace');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }} 
-                className="self-start py-2 px-4 bg-[#DEAA38] hover:bg-[#c28824] text-[#051410] rounded-lg font-bold text-xs transition-colors flex items-center gap-1 shadow-md cursor-pointer"
-              >
-                <span>Try Now</span>
-                <ArrowRight size={12} />
-              </button>
-            </div>
-
-            {/* Block 2: Download PlanMyChoice App Promo (Coming Soon) */}
-            <div className="bg-slate-50 border border-slate-200/80 text-slate-900 rounded-[2rem] p-7 flex flex-col justify-between h-[280px] relative overflow-hidden group shadow-md">
-              <div className="absolute right-[-10px] bottom-[-10px] w-36 h-40 opacity-30 group-hover:opacity-40 transition-opacity flex items-end">
-                <div className="border-[4px] border-slate-950 rounded-xl w-full h-32 bg-slate-900 overflow-hidden relative shadow-sm">
-                  <div className="bg-[#DEAA38] h-1.5 w-10 mx-auto mt-1 rounded-full" />
-                  <div className="p-2 text-[6px] text-white font-black">PlanMyChoice App</div>
-                </div>
-              </div>
-              <div>
-                <span className="bg-[#DEAA38]/15 text-[#886C1D] border border-[#DEAA38]/30 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1 mb-2">
-                  <Clock size={10} className="text-[#DEAA38]" /> Coming Soon
-                </span>
-                <h3 className="text-xl font-display font-extrabold tracking-tight mb-1 text-slate-900">Download App</h3>
-                <p className="text-slate-500 text-[11px] font-medium leading-relaxed max-w-[200px]">
-                  Book premium caterers, customize dishes, and track your events on the go.
-                </p>
-              </div>
-              
-              {/* Coming Soon status box */}
-              <div className="self-start flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                <Smartphone size={16} className="text-[#DEAA38]" />
-                <span className="text-[11px] font-bold text-slate-700">iOS & Android App Launching Soon</span>
-              </div>
-            </div>
-
-            {/* Block 3: Become a Partner Promo */}
-            <div className="bg-gradient-to-br from-[#0f2922] to-[#051410] text-white rounded-[2rem] p-7 flex flex-col justify-between h-[280px] relative overflow-hidden group border border-slate-800 shadow-lg">
-              <div className="absolute right-[-20px] bottom-[-20px] w-40 h-40 opacity-20 group-hover:opacity-30 transition-opacity">
-                <img 
-                  src="https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=400" 
-                  alt="Become a partner chef" 
-                  className="w-full h-full object-cover rounded-full"
-                />
-              </div>
-              <div>
-                <h3 className="text-xl font-display font-extrabold tracking-tight mb-1 text-white">Become a Partner</h3>
-                <p className="text-slate-300 text-[11px] font-medium leading-relaxed max-w-[200px]">Grow your brand and business with India's best marketplace network.</p>
-              </div>
-              <Link 
-                to="/partner-selection" 
-                className="self-start py-2 px-4 bg-white hover:bg-slate-50 text-[#051410] rounded-lg font-bold text-xs transition-colors flex items-center gap-1 shadow-md cursor-pointer"
-              >
-                <span>Register Now</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-          </div>
         </div>
       </section>
 

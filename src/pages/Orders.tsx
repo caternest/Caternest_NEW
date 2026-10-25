@@ -47,55 +47,110 @@ function getBookingThumbnail(order: any): string {
 }
 
 // Helper to check if event date has passed
+// Helper to format a single date cleanly with zero timezone distortion
+function formatSingleDate(dateStr: string): { formatted: string; weekday: string } {
+  if (!dateStr || dateStr.trim() === "" || dateStr === "2026" || dateStr === "2026-01-01") {
+    return { formatted: "Date Scheduled", weekday: "" };
+  }
+  const clean = dateStr.trim();
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  // 1. Check YYYY-MM-DD
+  const isoMatch = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10) - 1;
+    const day = parseInt(isoMatch[3], 10);
+    const d = new Date(year, month, day);
+    return {
+      formatted: `${day.toString().padStart(2, '0')} ${months[month]} ${year}`,
+      weekday: `(${days[d.getDay()]})`
+    };
+  }
+
+  // 2. Check DD Mon YYYY (e.g. 25 Oct 2026)
+  const dmyMatch = clean.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const mStr = dmyMatch[2].toLowerCase().substring(0, 3);
+    const mIdx = months.map(m => m.toLowerCase()).indexOf(mStr);
+    const year = parseInt(dmyMatch[3], 10);
+    if (mIdx !== -1) {
+      const d = new Date(year, mIdx, day);
+      return {
+        formatted: `${day.toString().padStart(2, '0')} ${months[mIdx]} ${year}`,
+        weekday: `(${days[d.getDay()]})`
+      };
+    }
+  }
+
+  // 3. Check DD Mon (without year)
+  const dmMatch = clean.match(/^(\d{1,2})\s+([A-Za-z]{3,9})/);
+  if (dmMatch) {
+    const day = parseInt(dmMatch[1], 10);
+    const mStr = dmMatch[2].toLowerCase().substring(0, 3);
+    const mIdx = months.map(m => m.toLowerCase()).indexOf(mStr);
+    if (mIdx !== -1) {
+      const year = new Date().getFullYear();
+      const d = new Date(year, mIdx, day);
+      return {
+        formatted: `${day.toString().padStart(2, '0')} ${months[mIdx]} ${year}`,
+        weekday: `(${days[d.getDay()]})`
+      };
+    }
+  }
+
+  return { formatted: clean, weekday: "" };
+}
+
+// Helper to check if event date has passed
 function isEventPassed(eventDateStr: string): boolean {
   if (!eventDateStr) return false;
   try {
-    const parts = eventDateStr.split('-');
-    if (parts.length !== 3) return false;
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    
+    const parts = eventDateStr.split(',').map(p => p.trim()).filter(Boolean);
+    const targetDate = parts[parts.length - 1]; // check latest date if multiple
+    const parsed = formatSingleDate(targetDate);
+    if (!parsed || !parsed.formatted) return false;
+
+    const m = parsed.formatted.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/);
+    if (!m) return false;
+
+    const day = parseInt(m[1], 10);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months.indexOf(m[2]);
+    const year = parseInt(m[3], 10);
+    if (month === -1) return false;
+
     const evDate = new Date(year, month, day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     evDate.setHours(0, 0, 0, 0);
-    
+
     return evDate.getTime() < today.getTime();
   } catch {
     return false;
   }
 }
 
-// Date formatter matching reference card: "25 Oct 2026", "(Friday)"
+// Date formatter matching reference card: "25 Oct 2026", "(Sunday)"
 function formatEventDate(dateStr: string): { formatted: string; weekday: string } {
-  if (!dateStr) return { formatted: "Date TBD", weekday: "" };
-  try {
-    const parts = dateStr.split('-');
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const d = new Date(year, month, day);
-      return {
-        formatted: `${day.toString().padStart(2, '0')} ${months[month]} ${year}`,
-        weekday: `(${days[d.getDay()]})`
-      };
-    }
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
-      return {
-        formatted: `${d.getDate().toString().padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`,
-        weekday: `(${days[d.getDay()]})`
-      };
-    }
-  } catch {
-    // fallback
+  if (!dateStr || !dateStr.trim() || dateStr === "2026" || dateStr === "2026-01-01") {
+    return { formatted: "Date Scheduled", weekday: "" };
   }
-  return { formatted: dateStr, weekday: "" };
+  
+  if (dateStr.includes(",")) {
+    const dates = dateStr.split(",").map(d => d.trim()).filter(Boolean);
+    if (dates.length > 1) {
+      const first = formatSingleDate(dates[0]);
+      return {
+        formatted: `${first.formatted} (+${dates.length - 1} more)`,
+        weekday: first.weekday
+      };
+    }
+  }
+
+  return formatSingleDate(dateStr);
 }
 
 function cleanLocation(loc: string): string {
@@ -684,8 +739,8 @@ export default function Orders() {
         badgeText: 'Completed',
         badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
         icon: <Check size={14} className="stroke-[3]" />,
-        subtext: formatted ? `Completed on ${formatted}` : 'Booking Completed',
-        canRebook: true
+        subtext: formatted && !formatted.includes("Scheduled") ? `Completed on ${formatted}` : 'Booking Completed',
+        canRebook: false
       };
     }
 
@@ -711,7 +766,7 @@ export default function Orders() {
 
     if (norm === 'approved') {
       return {
-        badgeText: 'Approved',
+        badgeText: 'Caterer Approved',
         badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
         icon: <Check size={14} className="stroke-[3]" />,
         subtext: 'Active - Scheduled',
@@ -737,6 +792,29 @@ export default function Orders() {
       subtext: 'Waiting for caterer approval',
       canRebook: false
     };
+  };
+
+  const getOrderTotalAmount = (order: any): number => {
+    if (order.totalEstimate && Number(order.totalEstimate) > 0) return Number(order.totalEstimate);
+    if (order.totalAmount && Number(order.totalAmount) > 0) return Number(order.totalAmount);
+    if (order.amount && Number(order.amount) > 0) return Number(order.amount);
+    const g = Number(order.guests ?? order.guestCount ?? 0);
+    const p = Number(order.pricePerPlate ?? (order.packageDetails?.startingPrice || order.packageDetails?.price || 0));
+    const fee = Number(order.platformFee ?? 0);
+    if (g > 0 && p > 0) return (g * p) + fee;
+    return 0;
+  };
+
+  const getOrderGuests = (order: any): number => {
+    return Number(order.guests ?? order.guestCount ?? 0) || 50;
+  };
+
+  const getOrderPricePerPlate = (order: any): number => {
+    const p = Number(order.pricePerPlate ?? (order.packageDetails?.startingPrice || order.packageDetails?.price || 0));
+    if (p > 0) return p;
+    const tot = getOrderTotalAmount(order);
+    const g = getOrderGuests(order);
+    return tot > 0 && g > 0 ? Math.round(tot / g) : 350;
   };
 
   return (
@@ -1142,7 +1220,7 @@ export default function Orders() {
                       </div>
 
                       {/* Optional Sub-status pill */}
-                      {cardStatus.badgeText === 'Approved' && (
+                      {cardStatus.badgeText === 'Caterer Approved' && (
                         <div className="pt-0.5">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[12px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                             Active - In Progress
@@ -1180,7 +1258,7 @@ export default function Orders() {
                       <span>Guests</span>
                     </div>
                     <p className="font-bold text-[14px] sm:text-[16px] text-stone-900 mt-1 font-sans">
-                      {o.guests || o.guestCount || 50}
+                      {getOrderGuests(o)}
                     </p>
                     <p className="text-[13px] sm:text-[14px] text-stone-500 font-sans">
                       People
@@ -1196,10 +1274,10 @@ export default function Orders() {
                       <span>Estimated Amount</span>
                     </div>
                     <p className="font-bold text-[14px] sm:text-[16px] text-stone-900 mt-1 font-sans">
-                      ₹{o.totalEstimate ? Number(o.totalEstimate).toLocaleString("en-IN") : "0"}
+                      ₹{getOrderTotalAmount(o).toLocaleString("en-IN")}
                     </p>
                     <p className="text-[13px] sm:text-[14px] text-stone-500 font-sans">
-                      ₹{o.pricePerPlate || (o.guests && o.totalEstimate ? Math.round(Number(o.totalEstimate) / Number(o.guests)) : 0)} per person
+                      ₹{getOrderPricePerPlate(o)} per person
                     </p>
                   </div>
 
@@ -1225,18 +1303,6 @@ export default function Orders() {
                       >
                         View Details
                       </button>
-
-                      {/* Rebook button strictly shown ONLY for completed bookings */}
-                      {cardStatus.canRebook && (
-                        <button
-                          type="button"
-                          onClick={() => handleRepeatBookingInitiate(o)}
-                          className="px-4 sm:px-5 py-2 sm:py-2.5 bg-[#064E3B] hover:bg-[#043d2e] text-white rounded-xl font-sans font-semibold text-[14px] transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <RotateCcw size={15} />
-                          <span>Rebook</span>
-                        </button>
-                      )}
 
                       {/* 3-Dot More Menu */}
                       <div className="relative">
@@ -1417,11 +1483,11 @@ export default function Orders() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Guests</p>
-                    <p className="text-xs sm:text-sm font-bold text-stone-900">{selectedQuickViewOrder.guests || 50} Pax</p>
+                    <p className="text-xs sm:text-sm font-bold text-stone-900">{getOrderGuests(selectedQuickViewOrder)} Pax</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Total Price</p>
-                    <p className="text-xs sm:text-sm font-bold text-[#D9A62E]">₹{Number(selectedQuickViewOrder.totalEstimate || 0).toLocaleString("en-IN")}</p>
+                    <p className="text-xs sm:text-sm font-bold text-[#D9A62E]">₹{getOrderTotalAmount(selectedQuickViewOrder).toLocaleString("en-IN")}</p>
                   </div>
                 </div>
 
@@ -1505,21 +1571,7 @@ export default function Orders() {
                   Close
                 </button>
 
-                {/* Rebook button strictly shown ONLY for completed bookings */}
-                {normalizeStatus(selectedQuickViewOrder.status) === 'completed' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ord = selectedQuickViewOrder;
-                      setSelectedQuickViewOrder(null);
-                      handleRepeatBookingInitiate(ord);
-                    }}
-                    className="px-5 py-2.5 bg-[#064E3B] hover:bg-[#043d2e] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <RotateCcw size={14} />
-                    <span>Rebook This Event</span>
-                  </button>
-                )}
+                {/* Close action */}
 
                 {(user?.roles?.includes('admin') || user?.roles?.includes('partner')) && (
                   <div className="flex items-center gap-2">

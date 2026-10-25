@@ -1128,11 +1128,8 @@ export default function OrderFlow() {
     const day = parseInt(parts[2], 10);
     const d = new Date(year, month, day);
     if (isNaN(d.getTime())) return;
-    const formatted = d.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      weekday: "short",
-    });
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const formatted = `${day.toString().padStart(2, '0')} ${months[month]} ${year}`;
     if (!selectedDates.includes(formatted)) {
       const newDates = [...selectedDates, formatted];
       setSelectedDates(newDates);
@@ -1147,11 +1144,8 @@ export default function OrderFlow() {
   };
 
   const formatCalendarDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      weekday: "short",
-    });
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
   const isDateSelected = (date: Date) => {
@@ -1265,17 +1259,24 @@ export default function OrderFlow() {
       return;
     }
 
+    const finalEventDate = (orderForm.date || selectedDates.join(", ")).trim();
+    if (!finalEventDate) {
+      toast("Please select an event date before confirming your booking.", "error");
+      return;
+    }
+
     console.log("[TRACE_LOG #6] Before newOrder object creation");
     const compiledVenue = venueName 
       ? `${venueName} ${venueType ? `(${venueType})` : ""}, Address: ${orderForm.venue}` 
       : orderForm.venue;
 
-    const compiledNotes = [
-      selectedMeals.length > 0 ? `Meals: ${selectedMeals.join(", ")}` : "",
-      selectedMeals.length > 0 ? `Timings: ${selectedMeals.map(m => `${m} (${mealTimings[m] || "N/A"})`).join(" | ")}` : "",
-      mapLocation ? `Google Map: ${mapLocation}` : "",
-      orderForm.notes ? `Special Instructions: ${orderForm.notes}` : ""
-    ].filter(Boolean).join("\n");
+    // Detect any dietary preference tags clicked by the user
+    const dietaryTagOptions = ["No Onion", "Jain Food", "Less Spice", "Kids Menu", "Separate Serving"];
+    const detectedDietary = dietaryTagOptions.filter(tag => 
+      orderForm.notes.toLowerCase().includes(tag.toLowerCase())
+    );
+
+    const calculatedTotal = currentPerPlatePrice * guests + platformFee;
 
     const newOrder = {
       id: Math.random().toString(36).substr(2, 9),
@@ -1286,25 +1287,38 @@ export default function OrderFlow() {
       customerName: orderForm.name.trim(),
       phone: orderForm.phone.trim(),
       customerPhone: orderForm.phone.trim(),
-      eventDate: orderForm.date || selectedDates.join(", "),
-      eventType: orderForm.type,
+      eventDate: finalEventDate,
+      eventDates: selectedDates.length > 0 ? selectedDates : [finalEventDate],
+      eventType: orderForm.type || "Wedding",
       guests: guests,
       guestCount: guests,
       venue: compiledVenue || "",
       address: compiledVenue || "",
+      venueName: venueName || "",
+      venueType: venueType || "",
+      venueAddress: orderForm.venue || "",
+      mapLocation: mapLocation || "",
+      googleMapsUrl: mapLocation ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapLocation)}` : "",
       latitude: venueLat,
       longitude: venueLng,
-      specialNotes: compiledNotes || "",
-      notes: compiledNotes || "",
+      mealSelection: selectedMeals.length > 0 ? selectedMeals.join(", ") : "Lunch",
+      mealTimings: mealTimings,
+      dietaryPreferences: detectedDietary,
+      specialInstructions: orderForm.notes ? orderForm.notes.trim() : "",
+      specialNotes: orderForm.notes ? orderForm.notes.trim() : "",
+      notes: orderForm.notes ? orderForm.notes.trim() : "",
       packageDetails: selectedPackage,
       matchedSlab: matchingSlab,
       selectedItems: Object.keys(selectedItems).filter(
         (k: string) => selectedItems[k],
       ),
-      totalEstimate: currentPerPlatePrice * guests + platformFee,
+      totalEstimate: calculatedTotal,
+      totalAmount: calculatedTotal,
+      amount: calculatedTotal,
       platformFeePerPlate: platformFeePerPlate,
       pricePerPlate: currentPerPlatePrice,
       platformFee: platformFee,
+      foodCost: currentPerPlatePrice * guests,
       status: "Pending Approval",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

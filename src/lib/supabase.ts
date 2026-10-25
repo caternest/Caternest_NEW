@@ -587,6 +587,12 @@ export async function syncLocalTableToSupabase(tableName: string, localData: any
         if (sanitized.eventDate) {
           sanitized.eventDate = parseToDbDate(sanitized.eventDate);
         }
+        if (!sanitized.guestCount && sanitized.guests) {
+          sanitized.guestCount = Number(sanitized.guests);
+        }
+        if (!sanitized.totalAmount && sanitized.totalEstimate) {
+          sanitized.totalAmount = Number(sanitized.totalEstimate);
+        }
       }
 
 
