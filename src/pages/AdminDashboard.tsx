@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut, Award, Plus, Edit2, X } from 'lucide-react';
+import { 
+  Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, 
+  ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, 
+  Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut, Award, Plus, Edit2, 
+  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Download, Database 
+} from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '../components/Toast';
@@ -56,6 +61,33 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<string | null>(null);
+
+  // Caterer management enhanced states
+  const [catererToDelete, setCatererToDelete] = useState<any | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'archive' | 'permanent'>('archive');
+  const [confirmCatererNameInput, setConfirmCatererNameInput] = useState('');
+  const [isDeletingCaterer, setIsDeletingCaterer] = useState(false);
+
+  // Single order delete state
+  const [orderToDelete, setOrderToDelete] = useState<any | null>(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+
+  // Clear all orders modal states
+  const [showClearAllOrdersModal, setShowClearAllOrdersModal] = useState(false);
+  const [clearAllConfirmText, setClearAllConfirmText] = useState('');
+  const [isClearingAllOrders, setIsClearingAllOrders] = useState(false);
+  const [orderSummaryStats, setOrderSummaryStats] = useState<{
+    totalOrders: number;
+    orderNotificationsCount: number;
+    breakdown: Record<string, number>;
+    totalRevenue: number;
+  }>({
+    totalOrders: 0,
+    orderNotificationsCount: 0,
+    breakdown: {},
+    totalRevenue: 0
+  });
+  const [orderStatusTab, setOrderStatusTab] = useState<'all' | 'pending' | 'approved' | 'completed' | 'rejected' | 'changes_requested'>('all');
 
   // Admin order filter and detail states
   const [adminSearch, setAdminSearch] = useState('');
@@ -954,6 +986,204 @@ export default function AdminDashboard() {
     toast(`Caterer marked as ${newStatus}`, 'success');
   };
 
+  // Caterer Hide / Unhide handler
+  const handleToggleHideCaterer = async (caterer: any) => {
+    const isCurrentlyHidden = caterer.status === 'Hidden';
+    const endpoint = isCurrentlyHidden 
+      ? `/api/admin/caterers/${caterer.id}/unhide` 
+      : `/api/admin/caterers/${caterer.id}/hide`;
+    const nextStatus = isCurrentlyHidden ? 'Approved' : 'Hidden';
+
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast(
+          isCurrentlyHidden 
+            ? `Caterer '${caterer.businessName || caterer.name}' unhidden and visible on marketplace.`
+            : `Caterer '${caterer.businessName || caterer.name}' hidden from public website.`, 
+          'success'
+        );
+      } else {
+        const supabase = getSupabase() as any;
+        if (supabase) {
+          await supabase.from('caterer_registrations').update({ status: nextStatus }).eq('id', caterer.id);
+        }
+        toast(`Caterer marked as ${nextStatus}`, 'success');
+      }
+
+      const updated = registrations.map(r => r.id === caterer.id ? { ...r, status: nextStatus } : r);
+      setRegistrations(updated);
+      safeSaveRegistrations(updated);
+      await logAudit(isCurrentlyHidden ? 'Caterer Restored' : 'Caterer Hidden', caterer.businessName || caterer.id);
+      fetchSupabaseData();
+    } catch (err: any) {
+      toast("Error changing caterer visibility: " + (err.message || err), 'error');
+    }
+  };
+
+  // Caterer deletion handler with modal support
+  const executeDeleteCaterer = async () => {
+    if (!catererToDelete) return;
+    const isPermanent = deleteMode === 'permanent';
+    if (isPermanent && confirmCatererNameInput.trim().toLowerCase() !== (catererToDelete.businessName || catererToDelete.name || '').trim().toLowerCase()) {
+      toast("Please type the exact caterer business name to confirm permanent deletion", "error");
+      return;
+    }
+
+    setIsDeletingCaterer(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(`/api/admin/caterers/${catererToDelete.id}?permanent=${isPermanent}`, {
+        method: 'DELETE',
+        headers
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast(data.message || `Caterer ${isPermanent ? 'permanently deleted' : 'moved to trash'} successfully.`, 'success');
+      } else {
+        const supabase = getSupabase() as any;
+        if (supabase) {
+          if (isPermanent) {
+            await supabase.from('caterer_badges').delete().eq('caterer_id', catererToDelete.id);
+            await supabase.from('notifications').delete().eq('catererId', catererToDelete.id);
+            await supabase.from('caterer_registrations').delete().eq('id', catererToDelete.id);
+          } else {
+            await supabase.from('caterer_registrations').update({
+              status: 'Trashed',
+              deletedDate: new Date().toISOString(),
+              deletedBy: adminEmail
+            }).eq('id', catererToDelete.id);
+          }
+        }
+        toast(`Caterer ${isPermanent ? 'permanently deleted' : 'moved to trash'}.`, 'success');
+      }
+
+      if (isPermanent) {
+        const updated = registrations.filter(r => r.id !== catererToDelete.id);
+        setRegistrations(updated);
+        safeSaveRegistrations(updated);
+      } else {
+        const updated = registrations.map(r => r.id === catererToDelete.id ? { ...r, status: 'Trashed', deletedDate: new Date().toISOString(), deletedBy: adminEmail } : r);
+        setRegistrations(updated);
+        safeSaveRegistrations(updated);
+      }
+
+      await logAudit(isPermanent ? 'Permanently Deleted' : 'Moved to Trash', catererToDelete.businessName || catererToDelete.id);
+      setCatererToDelete(null);
+      setConfirmCatererNameInput('');
+      fetchSupabaseData();
+    } catch (err: any) {
+      toast("Error deleting caterer: " + (err.message || err), "error");
+    } finally {
+      setIsDeletingCaterer(false);
+    }
+  };
+
+  // Single Order deletion handler
+  const executeDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setIsDeletingOrder(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch(`/api/admin/orders/${orderToDelete.id}`, {
+        method: 'DELETE',
+        headers
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast(`Order #${orderToDelete.id} deleted successfully`, 'success');
+      } else {
+        const supabase = getSupabase() as any;
+        if (supabase) {
+          await supabase.from('notifications').delete().eq('orderId', orderToDelete.id);
+          await supabase.from('orders').delete().eq('id', orderToDelete.id);
+        }
+        toast(`Order #${orderToDelete.id} removed`, 'success');
+      }
+
+      const updated = orders.filter(o => o.id !== orderToDelete.id);
+      setOrders(updated);
+      localStorage.setItem('orders', JSON.stringify(updated));
+      await logAudit('Order Deleted', `Order #${orderToDelete.id} (${orderToDelete.customerName})`);
+      setOrderToDelete(null);
+      fetchSupabaseData();
+    } catch (err: any) {
+      toast("Failed to delete order: " + (err.message || err), 'error');
+    } finally {
+      setIsDeletingOrder(false);
+    }
+  };
+
+  // Live order stats fetching for Clear All modal
+  const fetchLiveOrderStats = async () => {
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch('/api/admin/orders-summary', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setOrderSummaryStats({
+            totalOrders: data.totalOrders,
+            orderNotificationsCount: data.orderNotificationsCount,
+            breakdown: data.breakdown || {},
+            totalRevenue: data.totalRevenue || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch order summary stats:", e);
+    }
+  };
+
+  const handleOpenClearAllModal = async () => {
+    setClearAllConfirmText('');
+    await fetchLiveOrderStats();
+    setShowClearAllOrdersModal(true);
+  };
+
+  // Clear All Orders execution handler
+  const executeClearAllOrders = async () => {
+    if (clearAllConfirmText !== 'DELETE ALL ORDERS') {
+      toast('Please type DELETE ALL ORDERS to confirm.', 'error');
+      return;
+    }
+
+    setIsClearingAllOrders(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch('/api/admin/orders/clear-all', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ confirmation: 'DELETE ALL ORDERS' })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast(`Cleared ${data.clearedOrdersCount} orders! Automated backup saved: ${data.backupFileName}`, 'success');
+        setOrders([]);
+        localStorage.setItem('orders', JSON.stringify([]));
+        await logAudit('Clear All Orders', `Purged ${data.clearedOrdersCount} orders with backup ${data.backupFileName}`);
+        setShowClearAllOrdersModal(false);
+        setClearAllConfirmText('');
+        fetchSupabaseData();
+      } else {
+        toast(data.error || 'Failed to clear order history', 'error');
+      }
+    } catch (err: any) {
+      toast("Error executing clear all: " + (err.message || err), 'error');
+    } finally {
+      setIsClearingAllOrders(false);
+    }
+  };
+
   const handleApproveProfileUpdate = async (id: string) => {
       const item = registrations.find(r => r.id === id);
       if (!item) {
@@ -1324,7 +1554,7 @@ export default function AdminDashboard() {
              <button onClick={() => { navigate('/admin/partners'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'partners' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                 <Building size={18} /> 
                 <div className="flex-1 flex justify-between items-center">
-                    Partner Registrations
+                    Caterer Management
                     {activeRegistrations.filter(r => r.status === 'Pending Approval').length > 0 && (
                         <span className="bg-brand-gold-500 text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-bold">
                             {activeRegistrations.filter(r => r.status === 'Pending Approval').length}
@@ -1344,10 +1574,10 @@ export default function AdminDashboard() {
                 </div>
              </button>
              <button onClick={() => { navigate('/admin/orders'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
-                <CreditCard size={18} /> All Orders
+                <CreditCard size={18} /> Order History Management
              </button>
              <button onClick={() => { setActiveTab('users'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm", activeTab === 'users' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
-                <Users size={18} /> Users & Accounts
+                <Users size={18} /> Customer Management
              </button>
              
              <div className="pt-6 mt-6 border-t border-slate-800">
@@ -1364,7 +1594,7 @@ export default function AdminDashboard() {
                     </div>
                  </button>
                  <button onClick={() => { setActiveTab('audit'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm mt-1.5", activeTab === 'audit' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
-                    <Clock size={18} /> Audit Log
+                    <Clock size={18} /> Admin Activity & Audit Logs
                  </button>
                  <button onClick={() => { setActiveTab('settings'); setIsMobileSidebarOpen(false); }} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-left text-sm mt-1.5", activeTab === 'settings' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
                     <Sliders size={18} /> Platform Settings
@@ -1385,7 +1615,7 @@ export default function AdminDashboard() {
                 <button onClick={() => navigate('/admin/partners')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'partners' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <Building size={18} /> 
                    <div className="flex-1 flex justify-between items-center">
-                       Partner Registrations
+                       Caterer Management
                        {activeRegistrations.filter(r => r.status === 'Pending Approval').length > 0 && (
                            <span className="bg-brand-gold-500 text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-bold">
                                {activeRegistrations.filter(r => r.status === 'Pending Approval').length}
@@ -1405,13 +1635,13 @@ export default function AdminDashboard() {
                    </div>
                 </button>
                 <button onClick={() => navigate('/admin/orders')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'orders' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
-                   <CreditCard size={18} /> All Orders
+                   <CreditCard size={18} /> Order History Management
                 </button>
                 {false && <button onClick={() => setActiveTab('images')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'images' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
                    <Image size={18} /> Food Image Library
                 </button>}
                 <button onClick={() => setActiveTab('users')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm", activeTab === 'users' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-white")}>
-                   <Users size={18} /> Users & Accounts
+                   <Users size={18} /> Customer Management
                 </button>
                 
                 <div className="pt-6 mt-6 border-t border-slate-800">
@@ -1428,7 +1658,7 @@ export default function AdminDashboard() {
                        </div>
                     </button>
                     <button onClick={() => setActiveTab('audit')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm mt-1.5", activeTab === 'audit' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
-                       <Clock size={18} /> Audit Log
+                       <Clock size={18} /> Admin Activity & Audit Logs
                     </button>
                     <button onClick={() => setActiveTab('settings')} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all text-sm mt-1.5", activeTab === 'settings' ? "bg-slate-800 text-brand-gold-500 shadow-inner" : "hover:bg-slate-800 hover:text-slate-300 text-slate-400")}>
                        <Sliders size={18} /> Platform Settings
@@ -1564,33 +1794,83 @@ export default function AdminDashboard() {
                                         </td>
                                         <td className="px-8 py-5 text-slate-500 text-sm whitespace-nowrap">{r.date || 'N/A'}</td>
                                         <td className="px-8 py-5">
-                                            <span className={cn("px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider shadow-sm", r.status === 'Approved' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : r.status === 'Pending Approval' ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-red-50 text-red-700 border border-red-200")}>
-                                            {r.status}
-                                            </span>
+                                            {r.status === 'Approved' ? (
+                                                <span className="px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs flex items-center gap-1.5 w-fit">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                                                </span>
+                                            ) : r.status === 'Hidden' ? (
+                                                <span className="px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300 shadow-xs flex items-center gap-1.5 w-fit">
+                                                    <EyeOff size={11} className="text-slate-500" /> Hidden
+                                                </span>
+                                            ) : r.status === 'Suspended' ? (
+                                                <span className="px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-800 border border-orange-200 shadow-xs w-fit block">
+                                                    Suspended
+                                                </span>
+                                            ) : r.status === 'Pending Approval' ? (
+                                                <span className="px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 shadow-xs w-fit block">
+                                                    Pending Review
+                                                </span>
+                                            ) : (
+                                                <span className="px-3 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-800 border border-rose-200 shadow-xs w-fit block">
+                                                    {r.status}
+                                                </span>
+                                            )}
                                         </td>
-                                        <td className="px-8 py-5 flex flex-wrap gap-2">
+                                        <td className="px-8 py-5 flex flex-wrap items-center gap-2">
                                             <button 
                                                 onClick={() => setManagingBadgesCaterer(r)} 
-                                                className="text-[11px] font-bold text-[#A27008] hover:text-slate-900 bg-amber-50 hover:bg-amber-100 shadow-sm border border-amber-200/60 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                                className="text-[11px] font-bold text-[#A27008] hover:text-slate-900 bg-amber-50 hover:bg-amber-100 shadow-xs border border-amber-200/60 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                                                 title="Manage Caterer Platform Badges"
                                             >
                                                 <Award size={12} className="text-[#DEAA38]" /> Badges
                                             </button>
-                                            <Link to={`/admin/caterers/view/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border border-slate-200 px-3.5 py-1.5 rounded-lg transition-colors">View</Link>
-                                            <Link to={`/admin/caterers/edit/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-sm border border-slate-200 px-3.5 py-1.5 rounded-lg transition-colors">Edit</Link>
-                                            {r.status !== 'Approved' && (
-                                                <button onClick={() => handleAction(r.id, 'Approved')} className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 shadow-sm border border-emerald-200/50 px-3.5 py-1.5 rounded-lg transition-colors">Approve</button>
+                                            <Link to={`/admin/caterers/view/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-xs border border-slate-200 px-3 py-1.5 rounded-lg transition-colors">View</Link>
+                                            <Link to={`/admin/caterers/edit/${r.id}`} className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 shadow-xs border border-slate-200 px-3 py-1.5 rounded-lg transition-colors">Edit</Link>
+
+                                            {/* Hide / Unhide Action */}
+                                            {r.status === 'Hidden' ? (
+                                                <button 
+                                                    onClick={() => handleToggleHideCaterer(r)} 
+                                                    className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 shadow-xs border border-emerald-300 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                                    title="Make caterer visible on public marketplace"
+                                                >
+                                                    <Eye size={12} className="text-emerald-600" /> Unhide
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => handleToggleHideCaterer(r)} 
+                                                    className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 shadow-xs border border-slate-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                                    title="Hide caterer from public listings and search"
+                                                >
+                                                    <EyeOff size={12} className="text-slate-500" /> Hide
+                                                </button>
                                             )}
-                                            {r.status !== 'Rejected' && (
-                                                <button onClick={() => handleAction(r.id, 'Rejected')} className="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 shadow-sm border border-amber-200/50 px-3.5 py-1.5 rounded-lg transition-colors">Reject</button>
+
+                                            {r.status !== 'Approved' && r.status !== 'Hidden' && (
+                                                <button onClick={() => handleAction(r.id, 'Approved')} className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 shadow-xs border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors">Approve</button>
                                             )}
-                                            {r.status !== 'Suspended' && r.status === 'Approved' && (
-                                                <button onClick={() => handleAction(r.id, 'Suspended')} className="text-[11px] font-bold text-orange-700 hover:text-orange-900 bg-orange-50 hover:bg-orange-100 shadow-sm border border-orange-200/50 px-3.5 py-1.5 rounded-lg transition-colors">Suspend</button>
+                                            {r.status !== 'Rejected' && r.status !== 'Hidden' && r.status !== 'Suspended' && (
+                                                <button onClick={() => handleAction(r.id, 'Rejected')} className="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 shadow-xs border border-amber-200 px-3 py-1.5 rounded-lg transition-colors">Reject</button>
+                                            )}
+                                            {r.status !== 'Suspended' && (r.status === 'Approved' || r.status === 'Hidden') && (
+                                                <button onClick={() => handleAction(r.id, 'Suspended')} className="text-[11px] font-bold text-orange-700 hover:text-orange-900 bg-orange-50 hover:bg-orange-100 shadow-xs border border-orange-200 px-3 py-1.5 rounded-lg transition-colors">Suspend</button>
                                             )}
                                             {r.status === 'Suspended' && (
-                                                <button onClick={() => handleAction(r.id, 'Approved')} className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 shadow-sm border border-emerald-200/50 px-3.5 py-1.5 rounded-lg transition-colors">Reactivate</button>
+                                                <button onClick={() => handleAction(r.id, 'Approved')} className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 shadow-xs border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors">Reactivate</button>
                                             )}
-                                            <button onClick={() => setDeleteConfirm(r.id)} className="text-[11px] font-bold text-red-700 hover:text-white bg-red-50 hover:bg-red-600 shadow-sm border border-red-200/50 hover:border-red-600 px-3.5 py-1.5 rounded-lg transition-colors">Delete</button>
+
+                                            {/* Delete Caterer Modal trigger */}
+                                            <button 
+                                                onClick={() => {
+                                                    setCatererToDelete(r);
+                                                    setDeleteMode('archive');
+                                                    setConfirmCatererNameInput('');
+                                                }} 
+                                                className="text-[11px] font-bold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 shadow-xs border border-rose-200 hover:border-rose-600 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                                title="Delete or Archive Caterer"
+                                            >
+                                                <Trash2 size={12} /> Delete
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -1790,167 +2070,291 @@ export default function AdminDashboard() {
 
           {activeTab === 'orders' && (
               <div className="space-y-4">
-                  {/* Order statistics */}
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
-                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
-                          <p className="text-[9.5px] font-bold text-slate-500 uppercase">Total Orders</p>
+                  {/* Order History Management Header */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                          <div className="flex items-center gap-2">
+                              <CreditCard className="text-brand-green-900" size={22} />
+                              <h2 className="text-xl font-bold font-display text-slate-900 tracking-tight">
+                                  Order History Management
+                              </h2>
+                          </div>
+                          <p className="text-slate-500 font-medium text-xs mt-1">
+                              Platform-wide order lifecycle tracking, customer event details, and administrative controls.
+                          </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5">
+                          <button
+                              onClick={fetchSupabaseData}
+                              className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                              title="Refresh orders from database"
+                          >
+                              <RefreshCw size={13} /> Refresh
+                          </button>
+
+                          <button
+                              onClick={handleOpenClearAllModal}
+                              className="px-4 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                              title="Safely backup and clear order history"
+                          >
+                              <Trash2 size={14} /> Clear All Order History
+                          </button>
+                      </div>
+                  </div>
+
+                  {/* Order Statistics Banner */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                      <div className="bg-white p-3 rounded-xl shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">Total Orders</p>
                           <p className="text-xl font-bold font-display text-slate-900 mt-0.5">{orders.length}</p>
                       </div>
-                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
-                          <p className="text-[9.5px] font-bold text-amber-600 uppercase font-poppins">Pending Review</p>
-                          <p className="text-xl font-bold font-display text-amber-600 mt-0.5">
+                      <div className="bg-white p-3 rounded-xl shadow-2xs border border-amber-200/60 bg-amber-50/20">
+                          <p className="text-[9.5px] font-bold text-amber-700 uppercase tracking-wider">Pending Review</p>
+                          <p className="text-xl font-bold font-display text-amber-700 mt-0.5">
                               {orders.filter(o => ['pending', 'Submitted', 'Pending Caterer Review', 'updated_by_customer'].includes(o.status)).length}
                           </p>
                       </div>
-                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
-                          <p className="text-[9.5px] font-bold text-green-700 uppercase font-poppins">Approved & Active</p>
-                          <p className="text-xl font-bold font-display text-green-700 mt-0.5">
+                      <div className="bg-white p-3 rounded-xl shadow-2xs border border-emerald-200/60 bg-emerald-50/20">
+                          <p className="text-[9.5px] font-bold text-emerald-800 uppercase tracking-wider">Approved</p>
+                          <p className="text-xl font-bold font-display text-emerald-800 mt-0.5">
                               {orders.filter(o => ['Approved', 'approved'].includes(o.status)).length}
                           </p>
                       </div>
-                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
-                          <p className="text-[9.5px] font-bold text-slate-700 uppercase font-poppins">Completed</p>
+                      <div className="bg-white p-3 rounded-xl shadow-2xs border border-slate-200">
+                          <p className="text-[9.5px] font-bold text-slate-700 uppercase tracking-wider">Completed</p>
                           <p className="text-xl font-bold font-display text-slate-700 mt-0.5">
                               {orders.filter(o => ['Completed', 'completed'].includes(o.status)).length}
                           </p>
                       </div>
-                      <div className="bg-white p-2.5 rounded-lg shadow-2xs border border-slate-200">
-                          <p className="text-[9.5px] font-bold text-red-600 uppercase font-poppins">Rejected</p>
-                          <p className="text-xl font-bold font-display text-red-600 mt-0.5">
-                              {orders.filter(o => ['rejected', 'Rejected'].includes(o.status)).length}
+                      <div className="bg-white p-3 rounded-xl shadow-2xs border border-blue-200/60 bg-blue-50/20">
+                          <p className="text-[9.5px] font-bold text-blue-700 uppercase tracking-wider">Changes Req.</p>
+                          <p className="text-xl font-bold font-display text-blue-700 mt-0.5">
+                              {orders.filter(o => ['changes_requested', 'Changes Requested'].includes(o.status)).length}
+                          </p>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl shadow-2xs border border-rose-200/60 bg-rose-50/20">
+                          <p className="text-[9.5px] font-bold text-rose-700 uppercase tracking-wider">Rejected</p>
+                          <p className="text-xl font-bold font-display text-rose-700 mt-0.5">
+                              {orders.filter(o => ['rejected', 'Rejected', 'cancelled', 'Cancelled'].includes(o.status)).length}
                           </p>
                       </div>
                   </div>
 
                   {/* Filter panel */}
-                  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs space-y-2">
-                      <div className="flex flex-col md:flex-row gap-2.5">
-                          <div className="flex-1 relative">
-                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
+                      {/* Status Tab Chips */}
+                      <div className="flex flex-wrap gap-1.5 pb-2 border-b border-slate-100">
+                          {[
+                              { id: 'all', label: 'All Orders', count: orders.length },
+                              { id: 'pending', label: 'Pending', count: orders.filter(o => ['pending', 'Submitted', 'Pending Caterer Review', 'updated_by_customer'].includes(o.status)).length },
+                              { id: 'approved', label: 'Approved', count: orders.filter(o => ['Approved', 'approved'].includes(o.status)).length },
+                              { id: 'completed', label: 'Completed', count: orders.filter(o => ['Completed', 'completed'].includes(o.status)).length },
+                              { id: 'changes_requested', label: 'Changes Requested', count: orders.filter(o => ['changes_requested', 'Changes Requested'].includes(o.status)).length },
+                              { id: 'rejected', label: 'Rejected', count: orders.filter(o => ['rejected', 'Rejected', 'cancelled', 'Cancelled'].includes(o.status)).length },
+                          ].map((tab) => (
+                              <button
+                                  key={tab.id}
+                                  type="button"
+                                  onClick={() => setOrderStatusTab(tab.id as any)}
+                                  className={cn(
+                                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                                      orderStatusTab === tab.id
+                                          ? "bg-slate-900 text-brand-gold-400 shadow-xs"
+                                          : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                  )}
+                              >
+                                  <span>{tab.label}</span>
+                                  <span className={cn(
+                                      "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                                      orderStatusTab === tab.id ? "bg-slate-800 text-brand-gold-300" : "bg-slate-200 text-slate-700"
+                                  )}>
+                                      {tab.count}
+                                  </span>
+                              </button>
+                          ))}
+                      </div>
+
+                      {/* Inputs row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-center">
+                          <div className="relative sm:col-span-2">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                               <input 
                                   type="text"
-                                  placeholder="Search by Order ID, Customer, or Caterer..."
+                                  placeholder="Search Order ID, Customer, Phone, or Caterer..."
                                   value={adminSearch}
                                   onChange={(e) => setAdminSearch(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1 text-xs focus:border-brand-gold-500 outline-none font-medium"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:border-brand-gold-500 outline-none font-medium"
                               />
                           </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                           <div>
-                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Caterer Partner</label>
                               <select 
                                   value={adminCatererFilter}
                                   onChange={(e) => setAdminCatererFilter(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800"
                               >
-                                  <option value="">All partners</option>
+                                  <option value="">All Caterer Partners</option>
                                   {Array.from(new Set(orders.map(o => o.catererName || 'Unknown'))).filter(Boolean).map(c => (
                                       <option key={c} value={c}>{c}</option>
                                   ))}
                               </select>
                           </div>
-                          <div>
-                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Order Status</label>
-                              <select 
-                                  value={adminStatusFilter}
-                                  onChange={(e) => setAdminStatusFilter(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold"
-                              >
-                                  <option value="">All statuses</option>
-                                  <option value="pending">Pending</option>
-                                  <option value="Submitted">Submitted</option>
-                                  <option value="Approved">Approved</option>
-                                  <option value="changes_requested">Changes Requested</option>
-                                  <option value="updated_by_customer">Updated By Customer</option>
-                                  <option value="Completed">Completed</option>
-                                  <option value="Cancelled">Cancelled</option>
-                                  <option value="Rejected">Rejected</option>
-                              </select>
-                          </div>
-                          <div>
-                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Event Date</label>
+                          <div className="flex gap-2 items-center">
                               <input 
                                   type="date"
                                   value={adminEventDateFilter}
                                   onChange={(e) => setAdminEventDateFilter(e.target.value)}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium outline-none focus:border-brand-gold-500"
+                                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none focus:border-brand-gold-500"
                               />
+                              {(adminSearch || adminCatererFilter || adminEventDateFilter || orderStatusTab !== 'all') && (
+                                  <button
+                                      type="button"
+                                      onClick={() => {
+                                          setAdminSearch('');
+                                          setAdminCatererFilter('');
+                                          setAdminEventDateFilter('');
+                                          setOrderStatusTab('all');
+                                      }}
+                                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer"
+                                  >
+                                      Reset
+                                  </button>
+                              )}
                           </div>
                       </div>
                   </div>
 
-                  {/* Table */}
-                  <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
+                  {/* Orders Table */}
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
                       <div className="overflow-x-auto">
                           <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
                               <thead className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                                   <tr>
-                                      <th className="px-3 py-1.5">Order ID</th>
-                                      <th className="px-3 py-1.5">Customer</th>
-                                      <th className="px-3 py-1.5">Caterer Partner</th>
-                                      <th className="px-3 py-1.5">Event Date</th>
-                                      <th className="px-3 py-1.5">Package & Guests</th>
-                                      <th className="px-3 py-1.5">Total Amount</th>
-                                      <th className="px-3 py-1.5">Status</th>
-                                      <th className="px-3 py-1.5">Created Date</th>
-                                      <th className="px-3 py-1.5 text-center">Actions</th>
+                                      <th className="px-4 py-3">Order ID</th>
+                                      <th className="px-4 py-3">Customer Details</th>
+                                      <th className="px-4 py-3">Caterer Partner</th>
+                                      <th className="px-4 py-3">Event Date</th>
+                                      <th className="px-4 py-3">Package & Guests</th>
+                                      <th className="px-4 py-3">Total Amount</th>
+                                      <th className="px-4 py-3">Status</th>
+                                      <th className="px-4 py-3 text-center">Actions</th>
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                   {orders.filter((o) => {
-                                      const matchesSearch = o.id.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                      const matchesSearch = 
+                                          o.id?.toLowerCase().includes(adminSearch.toLowerCase()) ||
                                           (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerPhone || o.phone || '').includes(adminSearch) ||
+                                          (o.customerEmail || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
                                           (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
+
                                       const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
-                                      const matchesStatus = !adminStatusFilter || o.status?.toLowerCase() === adminStatusFilter.toLowerCase();
                                       const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
-                                      return matchesSearch && matchesCaterer && matchesStatus && matchesEventDate;
+
+                                      let matchesTab = true;
+                                      const s = (o.status || '').toLowerCase();
+                                      if (orderStatusTab === 'pending') {
+                                          matchesTab = ['pending', 'submitted', 'pending caterer review', 'updated_by_customer'].includes(s);
+                                      } else if (orderStatusTab === 'approved') {
+                                          matchesTab = ['approved'].includes(s);
+                                      } else if (orderStatusTab === 'completed') {
+                                          matchesTab = ['completed'].includes(s);
+                                      } else if (orderStatusTab === 'changes_requested') {
+                                          matchesTab = ['changes_requested', 'changes requested'].includes(s);
+                                      } else if (orderStatusTab === 'rejected') {
+                                          matchesTab = ['rejected', 'cancelled'].includes(s);
+                                      }
+
+                                      return matchesSearch && matchesCaterer && matchesEventDate && matchesTab;
                                   }).map((ord) => (
                                       <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
-                                          <td className="px-3 py-1.5 font-mono font-bold text-slate-700 text-[10.5px]">{ord.id}</td>
-                                          <td className="px-3 py-1.5 font-bold text-slate-900">{ord.customerName}</td>
-                                          <td className="px-3 py-1.5 text-slate-700 font-medium">{ord.catererName}</td>
-                                          <td className="px-3 py-1.5 text-slate-600 font-medium">{ord.eventDate || 'N/A'}</td>
-                                          <td className="px-3 py-1.5 text-[10.5px] text-slate-600">
-                                              <span className="font-bold">{ord.packageDetails?.packageName || 'Custom'}</span><br/>
-                                              <span>{ord.guests} guests</span>
+                                          <td className="px-4 py-3 font-mono font-bold text-slate-700 text-[11px]">
+                                              #{ord.id}
                                           </td>
-                                          <td className="px-3 py-1.5 font-bold text-slate-950">₹{ord.totalEstimate?.toLocaleString()}</td>
-                                          <td className="px-3 py-1.5">
-                                              <span className={cn("px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider", 
-                                                  ['Approved', 'approved'].includes(ord.status) ? "bg-green-100 text-green-800" :
-                                                  ['Rejected', 'rejected', 'Cancelled', 'cancelled'].includes(ord.status) ? "bg-rose-100 text-rose-800" :
-                                                  "bg-amber-100 text-amber-800"
+                                          <td className="px-4 py-3">
+                                              <p className="font-bold text-slate-900">{ord.customerName || 'Customer'}</p>
+                                              <p className="text-[10px] text-slate-500 font-medium">{ord.customerPhone || ord.phone || 'No phone'}</p>
+                                          </td>
+                                          <td className="px-4 py-3 text-slate-700 font-medium">
+                                              {ord.catererName || 'Caterer Partner'}
+                                          </td>
+                                          <td className="px-4 py-3 text-slate-700 font-medium whitespace-nowrap">
+                                              {ord.eventDate || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-[11px] text-slate-600">
+                                              <span className="font-bold text-slate-800">{ord.packageDetails?.packageName || ord.packageSelected || 'Custom'}</span>
+                                              <span className="block text-[10px] text-slate-500">{ord.guests || ord.guestCount || 0} guests</span>
+                                          </td>
+                                          <td className="px-4 py-3 font-bold text-slate-950">
+                                              ₹{(Number(ord.totalEstimate) || Number(ord.totalAmount) || 0).toLocaleString()}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                              <span className={cn(
+                                                  "px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider", 
+                                                  ['Approved', 'approved'].includes(ord.status) ? "bg-emerald-50 text-emerald-800 border border-emerald-200" :
+                                                  ['Rejected', 'rejected', 'Cancelled', 'cancelled'].includes(ord.status) ? "bg-rose-50 text-rose-800 border border-rose-200" :
+                                                  ['changes_requested', 'Changes Requested'].includes(ord.status) ? "bg-blue-50 text-blue-800 border border-blue-200" :
+                                                  ['Completed', 'completed'].includes(ord.status) ? "bg-slate-100 text-slate-800 border border-slate-200" :
+                                                  "bg-amber-50 text-amber-800 border border-amber-200"
                                               )}>
                                                   {ord.status}
                                               </span>
                                           </td>
-                                          <td className="px-3 py-1.5 text-[10.5px] text-slate-500">{new Date(ord.created_at).toLocaleDateString()}</td>
-                                          <td className="px-3 py-1.5 text-center">
-                                              <button 
-                                                  onClick={() => {
-                                                      setSelectedAdminOrder(ord);
-                                                      setAdminMemoText(ord.internal_notes || ord.internalNotes || '');
-                                                  }} 
-                                                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded text-[10px] font-bold transition-all text-slate-700"
-                                              >
-                                                  View / Manage
-                                              </button>
+                                          <td className="px-4 py-3 text-center">
+                                              <div className="flex items-center justify-center gap-1.5">
+                                                  <button 
+                                                      onClick={() => {
+                                                          setSelectedAdminOrder(ord);
+                                                          setAdminMemoText(ord.internal_notes || ord.internalNotes || '');
+                                                      }} 
+                                                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg text-[10.5px] font-bold transition-all text-slate-700 cursor-pointer"
+                                                  >
+                                                      View / Manage
+                                                  </button>
+                                                  <button
+                                                      type="button"
+                                                      onClick={() => setOrderToDelete(ord)}
+                                                      className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg border border-rose-200 hover:border-rose-600 transition-all cursor-pointer"
+                                                      title="Delete this order"
+                                                  >
+                                                      <Trash2 size={13} />
+                                                  </button>
+                                              </div>
                                           </td>
                                       </tr>
                                   ))}
                                   {orders.filter((o) => {
-                                      const matchesSearch = o.id.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                      const matchesSearch = 
+                                          o.id?.toLowerCase().includes(adminSearch.toLowerCase()) ||
                                           (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerPhone || o.phone || '').includes(adminSearch) ||
+                                          (o.customerEmail || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
                                           (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
+
                                       const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
-                                      const matchesStatus = !adminStatusFilter || o.status?.toLowerCase() === adminStatusFilter.toLowerCase();
                                       const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
-                                      return matchesSearch && matchesCaterer && matchesStatus && matchesEventDate;
+
+                                      let matchesTab = true;
+                                      const s = (o.status || '').toLowerCase();
+                                      if (orderStatusTab === 'pending') {
+                                          matchesTab = ['pending', 'submitted', 'pending caterer review', 'updated_by_customer'].includes(s);
+                                      } else if (orderStatusTab === 'approved') {
+                                          matchesTab = ['approved'].includes(s);
+                                      } else if (orderStatusTab === 'completed') {
+                                          matchesTab = ['completed'].includes(s);
+                                      } else if (orderStatusTab === 'changes_requested') {
+                                          matchesTab = ['changes_requested', 'changes requested'].includes(s);
+                                      } else if (orderStatusTab === 'rejected') {
+                                          matchesTab = ['rejected', 'cancelled'].includes(s);
+                                      }
+
+                                      return matchesSearch && matchesCaterer && matchesEventDate && matchesTab;
                                   }).length === 0 && (
                                       <tr>
-                                          <td colSpan={9} className="px-4 py-8 text-center text-slate-500 font-medium">No orders matched the selected filters.</td>
+                                          <td colSpan={8} className="px-4 py-12 text-center text-slate-500 font-medium">
+                                              No orders matched the selected filters.
+                                          </td>
                                       </tr>
                                   )}
                               </tbody>
@@ -3287,40 +3691,317 @@ export default function AdminDashboard() {
           </div>
       )}
 
-      {/* Delete To Trash Modal */}
+      {/* Delete To Trash Modal (Fallback compatibility) */}
       {deleteConfirm && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl">
                   <h3 className="text-xl font-bold font-display text-slate-800 mb-2">Move Caterer to Trash?</h3>
-                  <p className="text-slate-600 mb-8 max-w-xs">
+                  <p className="text-slate-600 mb-8 max-w-xs text-xs">
                       The caterer will be removed from active listings and moved to Trash. You can restore it later.
                   </p>
                   <div className="flex gap-3">
-                      <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition">Cancel</button>
-                      <button onClick={() => moveToTrash(deleteConfirm)} className="flex-1 px-4 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition">Move To Trash</button>
+                      <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 text-xs transition cursor-pointer">Cancel</button>
+                      <button onClick={() => moveToTrash(deleteConfirm)} className="flex-1 px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-xs transition cursor-pointer">Move To Trash</button>
                   </div>
               </div>
           </div>
       )}
 
-      {/* Permanent Delete Modal */}
+      {/* Permanent Delete Modal (Fallback compatibility) */}
       {permanentDeleteConfirm && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl">
                   <h3 className="text-xl font-bold font-display text-red-600 mb-2 flex items-center gap-2"><AlertCircle size={20} /> Permanently Delete Caterer?</h3>
-                  <p className="font-bold text-slate-800 mb-2">This action cannot be undone.</p>
-                  <p className="text-sm text-slate-600 mb-4">The following will be removed forever:</p>
-                  <ul className="text-sm text-slate-600 mb-8 list-disc pl-5 space-y-1">
-                      <li>Profile</li>
-                      <li>Menus</li>
-                      <li>Packages</li>
-                      <li>Gallery</li>
-                      <li>Documents</li>
+                  <p className="font-bold text-slate-800 mb-2 text-xs">This action cannot be undone.</p>
+                  <p className="text-xs text-slate-600 mb-3">The following will be removed forever:</p>
+                  <ul className="text-xs text-slate-600 mb-6 list-disc pl-5 space-y-1">
+                      <li>Profile & Listings</li>
+                      <li>Menus & Packages</li>
+                      <li>Gallery Media</li>
                       <li>Login Account</li>
                   </ul>
                   <div className="flex gap-3">
-                      <button onClick={() => setPermanentDeleteConfirm(null)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition">Cancel</button>
-                      <button onClick={() => executePermanentDelete(permanentDeleteConfirm)} className="flex-1 px-4 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition">Delete Forever</button>
+                      <button onClick={() => setPermanentDeleteConfirm(null)} className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 text-xs transition cursor-pointer">Cancel</button>
+                      <button onClick={() => executePermanentDelete(permanentDeleteConfirm)} className="flex-1 px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-xs transition cursor-pointer">Delete Forever</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Comprehensive Caterer Deletion Modal */}
+      {catererToDelete && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200">
+                  <div className="flex items-center gap-3 mb-4">
+                      <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
+                          deleteMode === 'permanent' ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"
+                      )}>
+                          {deleteMode === 'permanent' ? <ShieldAlert size={26} /> : <AlertTriangle size={26} />}
+                      </div>
+                      <div>
+                          <h3 className="text-xl font-bold font-display text-slate-900">
+                              {deleteMode === 'permanent' ? 'Permanent Caterer Deletion' : 'Move Caterer to Trash'}
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium">
+                              Managing: <strong className="text-slate-800">{catererToDelete.businessName || catererToDelete.name || catererToDelete.owner}</strong>
+                          </p>
+                      </div>
+                  </div>
+
+                  {/* Mode Selector Tabs */}
+                  <div className="flex rounded-xl bg-slate-100 p-1 mb-5">
+                      <button
+                          type="button"
+                          onClick={() => { setDeleteMode('archive'); setConfirmCatererNameInput(''); }}
+                          className={cn(
+                              "flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                              deleteMode === 'archive' 
+                                  ? "bg-white text-slate-800 shadow-sm" 
+                                  : "text-slate-500 hover:text-slate-700"
+                          )}
+                      >
+                          📦 Safe Archive (Move to Trash)
+                      </button>
+                      <button
+                          type="button"
+                          onClick={() => { setDeleteMode('permanent'); setConfirmCatererNameInput(''); }}
+                          className={cn(
+                              "flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                              deleteMode === 'permanent' 
+                                  ? "bg-rose-600 text-white shadow-sm" 
+                                  : "text-rose-600 hover:text-rose-700"
+                          )}
+                      >
+                          ⚠️ Permanent Delete
+                      </button>
+                  </div>
+
+                  {deleteMode === 'archive' ? (
+                      <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 mb-6">
+                          <p className="text-xs text-amber-900 leading-relaxed mb-2 font-medium">
+                              <strong>Safe Archive Action:</strong> This caterer will be immediately unlisted and hidden from public search and Explore listings.
+                          </p>
+                          <ul className="text-xs text-amber-800/90 space-y-1 list-disc pl-4">
+                              <li>Status changed to <code className="font-bold bg-amber-100 px-1 py-0.5 rounded">Trashed</code>.</li>
+                              <li>Their menus, packages, pricing, and account will remain safe in storage.</li>
+                              <li>You can restore this caterer anytime from the <strong>Trash</strong> tab.</li>
+                          </ul>
+                      </div>
+                  ) : (
+                      <div className="space-y-4 mb-6">
+                          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+                              <p className="text-xs font-bold text-rose-900 mb-2">
+                                  CRITICAL: This action cannot be undone!
+                              </p>
+                              <p className="text-xs text-rose-800/90 leading-relaxed mb-2">
+                                  Permanently deleting this caterer will purge:
+                              </p>
+                              <ul className="text-xs text-rose-700 space-y-1 list-disc pl-4 mb-3">
+                                  <li>Public listing & profile record in Supabase</li>
+                                  <li>Uploaded menus, custom dishes, & package tiers</li>
+                                  <li>Gallery media, branches, and certificates</li>
+                                  <li>Assigned platform badges and notifications</li>
+                                  <li>Associated partner login credentials</li>
+                              </ul>
+                              <p className="text-[11px] text-slate-600 italic bg-white/80 p-2 rounded-lg border border-rose-100">
+                                  Note: Any existing customer order history records tied to this caterer are preserved for accounting and transaction audit integrity.
+                              </p>
+                          </div>
+
+                          <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                  To confirm permanent deletion, type the caterer's exact business name:
+                                  <span className="block font-mono text-rose-600 font-extrabold mt-0.5 select-all">
+                                      {catererToDelete.businessName || catererToDelete.name}
+                                  </span>
+                              </label>
+                              <input
+                                  type="text"
+                                  placeholder="Type business name here..."
+                                  value={confirmCatererNameInput}
+                                  onChange={(e) => setConfirmCatererNameInput(e.target.value)}
+                                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono"
+                              />
+                          </div>
+                      </div>
+                  )}
+
+                  <div className="flex gap-3">
+                      <button 
+                          type="button"
+                          onClick={() => {
+                              setCatererToDelete(null);
+                              setConfirmCatererNameInput('');
+                          }} 
+                          disabled={isDeletingCaterer}
+                          className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          type="button"
+                          onClick={executeDeleteCaterer}
+                          disabled={isDeletingCaterer || (deleteMode === 'permanent' && confirmCatererNameInput.trim().toLowerCase() !== (catererToDelete.businessName || catererToDelete.name || '').trim().toLowerCase())}
+                          className={cn(
+                              "flex-1 px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-sm",
+                              deleteMode === 'permanent' 
+                                  ? "bg-rose-600 hover:bg-rose-700" 
+                                  : "bg-amber-600 hover:bg-amber-700"
+                          )}
+                      >
+                          {isDeletingCaterer 
+                              ? 'Processing...' 
+                              : deleteMode === 'permanent' 
+                                  ? 'Permanently Delete Caterer' 
+                                  : 'Move to Trash'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Single Order Deletion Modal */}
+      {orderToDelete && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200">
+                  <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                          <Trash2 size={24} />
+                      </div>
+                      <div>
+                          <h3 className="text-lg font-bold font-display text-slate-900">Delete Order #{orderToDelete.id}?</h3>
+                          <p className="text-xs text-slate-500">Customer: <strong className="text-slate-800">{orderToDelete.customerName}</strong></p>
+                      </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 mb-5 space-y-2 text-xs">
+                      <div className="flex justify-between">
+                          <span className="text-slate-500">Caterer:</span>
+                          <span className="font-bold text-slate-800">{orderToDelete.catererName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                          <span className="text-slate-500">Event Date:</span>
+                          <span className="font-bold text-slate-800">{orderToDelete.eventDate || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                          <span className="text-slate-500">Guests & Package:</span>
+                          <span className="font-bold text-slate-800">{orderToDelete.guests || 0} guests • {orderToDelete.packageDetails?.packageName || 'Custom'}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-slate-200/60 pt-2 font-bold">
+                          <span className="text-slate-700">Total Amount:</span>
+                          <span className="text-brand-green-900">₹{(Number(orderToDelete.totalEstimate) || Number(orderToDelete.totalAmount) || 0).toLocaleString()}</span>
+                      </div>
+                  </div>
+
+                  <p className="text-xs text-rose-600 font-medium mb-6">
+                      ⚠️ This will permanently delete this order and its associated notification records from the database. This action cannot be reversed.
+                  </p>
+
+                  <div className="flex gap-3">
+                      <button 
+                          type="button"
+                          onClick={() => setOrderToDelete(null)}
+                          disabled={isDeletingOrder}
+                          className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          type="button"
+                          onClick={executeDeleteOrder}
+                          disabled={isDeletingOrder}
+                          className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                      >
+                          {isDeletingOrder ? 'Deleting...' : 'Delete Order'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Clear All Website-Wide Order History Modal */}
+      {showClearAllOrdersModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-rose-200">
+                  <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-600/30">
+                          <ShieldAlert size={28} />
+                      </div>
+                      <div>
+                          <h3 className="text-xl font-bold font-display text-slate-900">Clear All Order History</h3>
+                          <p className="text-xs text-rose-600 font-bold tracking-wide uppercase">Website-Wide Order Purge</p>
+                      </div>
+                  </div>
+
+                  {/* Impact Summary */}
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-4">
+                      <div className="flex items-center justify-between text-xs font-bold text-rose-900 mb-2">
+                          <span>Live Database Impact</span>
+                          <span className="bg-rose-200/80 text-rose-900 px-2 py-0.5 rounded-full text-[10px]">Production</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100">
+                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Orders to Delete</span>
+                              <span className="text-lg font-extrabold text-rose-700">{orderSummaryStats?.totalOrders !== undefined ? orderSummaryStats.totalOrders : orders.length}</span>
+                          </div>
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100">
+                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Order Notifications</span>
+                              <span className="text-lg font-extrabold text-rose-700">{orderSummaryStats?.orderNotificationsCount !== undefined ? orderSummaryStats.orderNotificationsCount : 'All linked'}</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Safety Guarantees */}
+                  <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 mb-4 space-y-1.5 text-xs text-emerald-900">
+                      <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                          <Database size={14} /> Preserved & Protected Data (100% Intact):
+                      </p>
+                      <ul className="text-[11.5px] text-emerald-800/90 space-y-1 list-disc pl-4">
+                          <li>Customer and admin user accounts & auth profiles</li>
+                          <li>Caterer listings, menus, packages, pricing & photos</li>
+                          <li>Platform settings, badges, and system configurations</li>
+                          <li><strong>Zero TRUNCATE CASCADE:</strong> Only order rows are targeted</li>
+                      </ul>
+                      <p className="text-[11px] text-brand-green-900 font-bold pt-1 flex items-center gap-1">
+                          <Download size={13} /> Automated JSON backup snapshot is generated before deletion.
+                      </p>
+                  </div>
+
+                  {/* Confirmation Input Requirement */}
+                  <div className="mb-6">
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                          To execute website-wide cleanup, type <span className="font-mono text-rose-700 font-extrabold select-all">DELETE ALL ORDERS</span> below:
+                      </label>
+                      <input
+                          type="text"
+                          placeholder="Type DELETE ALL ORDERS"
+                          value={clearAllConfirmText}
+                          onChange={(e) => setClearAllConfirmText(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono font-bold tracking-wider"
+                      />
+                  </div>
+
+                  <div className="flex gap-3">
+                      <button 
+                          type="button"
+                          onClick={() => {
+                              setShowClearAllOrdersModal(false);
+                              setClearAllConfirmText('');
+                          }}
+                          disabled={isClearingAllOrders}
+                          className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          type="button"
+                          onClick={executeClearAllOrders}
+                          disabled={isClearingAllOrders || clearAllConfirmText !== 'DELETE ALL ORDERS'}
+                          className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                          {isClearingAllOrders ? 'Backing Up & Clearing...' : 'Confirm Purge All Orders'}
+                      </button>
                   </div>
               </div>
           </div>

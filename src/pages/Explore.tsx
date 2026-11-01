@@ -574,8 +574,7 @@ export default function Explore() {
       if (raw) {
         try {
           const allRegs = JSON.parse(raw);
-          if (Array.isArray(allRegs)) {
-            const approved = allRegs.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved'));
+            const approved = allRegs.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved') && r.status !== 'Hidden' && r.status !== 'Suspended' && r.status !== 'Trashed');
             const formatted = approved.map((r: any) => {
               const assignedBadges = (badgesMap && badgesMap[r.id]) ? badgesMap[r.id].filter(b => b.is_active) : [];
               const isVerifiedBadge = assignedBadges.some(b => b.slug === 'verified' && b.is_active);
@@ -610,7 +609,6 @@ export default function Explore() {
                 allCaterers.push(c);
               }
             });
-          }
         } catch (e) {
           console.error(e);
         }
