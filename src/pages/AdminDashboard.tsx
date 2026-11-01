@@ -4,7 +4,7 @@ import {
   Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, 
   ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, 
   Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut, Award, Plus, Edit2, 
-  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Download, Database 
+  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Download, Database, Loader2 
 } from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -76,6 +76,13 @@ export default function AdminDashboard() {
   const [showClearAllOrdersModal, setShowClearAllOrdersModal] = useState(false);
   const [clearAllConfirmText, setClearAllConfirmText] = useState('');
   const [isClearingAllOrders, setIsClearingAllOrders] = useState(false);
+  const [isTestingDryRun, setIsTestingDryRun] = useState(false);
+  const [verifiedBackupInfo, setVerifiedBackupInfo] = useState<{
+    filename: string;
+    downloadUrl: string;
+    sizeBytes: number;
+    previewTargets?: any;
+  } | null>(null);
   const [orderSummaryStats, setOrderSummaryStats] = useState<{
     totalOrders: number;
     orderNotificationsCount: number;
@@ -1145,12 +1152,46 @@ export default function AdminDashboard() {
 
   const handleOpenClearAllModal = async () => {
     setClearAllConfirmText('');
+    setVerifiedBackupInfo(null);
     await fetchLiveOrderStats();
     setShowClearAllOrdersModal(true);
   };
 
-  // Clear All Orders execution handler
+  // Dry-run test handler (non-destructive validation)
+  const executeDryRunTest = async () => {
+    if (isTestingDryRun || isClearingAllOrders) return;
+    setIsTestingDryRun(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch('/api/admin/orders/clear-all', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ dryRun: true })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast(`Dry-run passed! Backup verified (${data.byteSize} bytes in Supabase Storage). All ${data.pendingOrdersCount} orders remain safe.`, 'success');
+        setVerifiedBackupInfo({
+          filename: data.backupFileName,
+          downloadUrl: `/api/admin/orders/backups/${data.backupFileName}`,
+          sizeBytes: data.byteSize || 0,
+          previewTargets: data.previewTargets
+        });
+      } else {
+        toast(data.error || data.details || 'Dry-run verification test failed.', 'error');
+      }
+    } catch (err: any) {
+      toast("Dry-run test error: " + (err.message || err), 'error');
+    } finally {
+      setIsTestingDryRun(false);
+    }
+  };
+
+  // Clear All Orders execution handler (Strict confirmation required)
   const executeClearAllOrders = async () => {
+    if (isClearingAllOrders || isTestingDryRun) return; // Concurrency protection against duplicate clicks
+
     if (clearAllConfirmText !== 'DELETE ALL ORDERS') {
       toast('Please type DELETE ALL ORDERS to confirm.', 'error');
       return;
@@ -1167,7 +1208,7 @@ export default function AdminDashboard() {
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
-        toast(`Cleared ${data.clearedOrdersCount} orders! Automated backup saved: ${data.backupFileName}`, 'success');
+        toast(`Cleared ${data.clearedOrdersCount} orders! Automated backup saved in Supabase Storage: ${data.backupFileName}`, 'success');
         setOrders([]);
         localStorage.setItem('orders', JSON.stringify([]));
         await logAudit('Clear All Orders', `Purged ${data.clearedOrdersCount} orders with backup ${data.backupFileName}`);
@@ -1175,7 +1216,9 @@ export default function AdminDashboard() {
         setClearAllConfirmText('');
         fetchSupabaseData();
       } else {
-        toast(data.error || 'Failed to clear order history', 'error');
+        const errorMsg = data.error || data.details || 'Failed to clear order history';
+        toast(errorMsg, 'error');
+        console.error('[CLEAR ALL ERROR RESPONSE]:', data);
       }
     } catch (err: any) {
       toast("Error executing clear all: " + (err.message || err), 'error');
@@ -2880,6 +2923,7 @@ export default function AdminDashboard() {
         setIsSortOpen={setIsSortOpen}
         expandedOrderIds={expandedOrderIds}
         setExpandedOrderIds={setExpandedOrderIds}
+        onOpenClearAllOrders={handleOpenClearAllModal}
       />
 
       {/* Create New Platform Badge Modal */}
@@ -3964,8 +4008,51 @@ export default function AdminDashboard() {
                           <li><strong>Zero TRUNCATE CASCADE:</strong> Only order rows are targeted</li>
                       </ul>
                       <p className="text-[11px] text-brand-green-900 font-bold pt-1 flex items-center gap-1">
-                          <Download size={13} /> Automated JSON backup snapshot is generated before deletion.
+                          <Download size={13} /> Automated JSON backup snapshot is generated & saved to Supabase Storage before deletion.
                       </p>
+                  </div>
+
+                  {/* Dry Run Test Verification Banner */}
+                  {verifiedBackupInfo && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3.5 mb-4 text-xs text-blue-900 flex items-center justify-between gap-2 shadow-2xs">
+                          <div className="min-w-0">
+                              <span className="font-bold flex items-center gap-1.5 text-blue-950">
+                                  <Check size={14} className="text-emerald-600 stroke-[3]" /> Dry-Run Passed: Backup Verified in Storage
+                              </span>
+                              <span className="text-[10.5px] text-blue-700 font-mono block mt-0.5 truncate max-w-[260px]">
+                                  {verifiedBackupInfo.filename} ({verifiedBackupInfo.sizeBytes} bytes)
+                              </span>
+                          </div>
+                          <a
+                              href={verifiedBackupInfo.downloadUrl}
+                              download={verifiedBackupInfo.filename}
+                              className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] rounded-xl transition-colors flex items-center gap-1 shrink-0 shadow-2xs"
+                          >
+                              <Download size={12} /> Download
+                          </a>
+                      </div>
+                  )}
+
+                  {/* Dry-Run Diagnostic Trigger */}
+                  <div className="mb-4">
+                      <button
+                          type="button"
+                          onClick={executeDryRunTest}
+                          disabled={isTestingDryRun || isClearingAllOrders}
+                          className="w-full py-2 px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                          {isTestingDryRun ? (
+                              <>
+                                  <Loader2 className="animate-spin text-slate-600" size={14} />
+                                  <span>Testing Storage Backup & Database Locks...</span>
+                              </>
+                          ) : (
+                              <>
+                                  <CheckCircle2 className="text-emerald-600" size={14} />
+                                  <span>Run Safe Dry-Run Test (Zero Data Deleted)</span>
+                              </>
+                          )}
+                      </button>
                   </div>
 
                   {/* Confirmation Input Requirement */}
@@ -3977,8 +4064,9 @@ export default function AdminDashboard() {
                           type="text"
                           placeholder="Type DELETE ALL ORDERS"
                           value={clearAllConfirmText}
+                          disabled={isClearingAllOrders || isTestingDryRun}
                           onChange={(e) => setClearAllConfirmText(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono font-bold tracking-wider"
+                          className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono font-bold tracking-wider disabled:bg-slate-100 disabled:opacity-60"
                       />
                   </div>
 
@@ -3988,8 +4076,9 @@ export default function AdminDashboard() {
                           onClick={() => {
                               setShowClearAllOrdersModal(false);
                               setClearAllConfirmText('');
+                              setVerifiedBackupInfo(null);
                           }}
-                          disabled={isClearingAllOrders}
+                          disabled={isClearingAllOrders || isTestingDryRun}
                           className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
                       >
                           Cancel
@@ -3997,10 +4086,17 @@ export default function AdminDashboard() {
                       <button 
                           type="button"
                           onClick={executeClearAllOrders}
-                          disabled={isClearingAllOrders || clearAllConfirmText !== 'DELETE ALL ORDERS'}
+                          disabled={isClearingAllOrders || isTestingDryRun || clearAllConfirmText !== 'DELETE ALL ORDERS'}
                           className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                          {isClearingAllOrders ? 'Backing Up & Clearing...' : 'Confirm Purge All Orders'}
+                          {isClearingAllOrders ? (
+                              <>
+                                  <Loader2 className="animate-spin text-white" size={14} />
+                                  <span>Backing Up & Clearing...</span>
+                              </>
+                          ) : (
+                              'Confirm Purge All Orders'
+                          )}
                       </button>
                   </div>
               </div>
