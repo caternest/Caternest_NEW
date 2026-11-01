@@ -19,9 +19,40 @@ export const getEnvWord = (key: string): string => {
   }
 };
 
+export function resolveSupabaseUrl(rawUrl: string, key?: string): string {
+  let url = (rawUrl || "").replace(/\/rest\/v1\/?$/, '').trim();
+  if (url.includes("ogeqgqwzbzezubknudxo")) {
+    url = url.replace("ogeqgqwzbzezubknudxo", "oqegqqwzbzezubknudxo");
+  }
+  if (key && key.includes(".")) {
+    try {
+      const parts = key.split(".");
+      if (parts.length >= 2) {
+        let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        const decoded = typeof atob === "function"
+          ? atob(base64)
+          : (typeof Buffer !== "undefined" ? Buffer.from(base64, "base64").toString("utf-8") : "");
+        if (decoded) {
+          const parsed = JSON.parse(decoded);
+          if (parsed?.ref && parsed?.iss === "supabase") {
+            const expectedDomain = `${parsed.ref}.supabase.co`;
+            if (!url || url.includes("ogeqgqwzbzezubknudxo") || !url.includes(parsed.ref)) {
+              url = `https://${expectedDomain}`;
+            }
+          }
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return url;
+}
+
 const rawSupabaseUrl = getEnvWord("VITE_SUPABASE_URL") || getEnvWord("SUPABASE_URL");
-const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').trim();
 const supabaseAnonKey = getEnvWord("VITE_SUPABASE_ANON_KEY") || getEnvWord("SUPABASE_ANON_KEY");
+const supabaseUrl = resolveSupabaseUrl(rawSupabaseUrl, supabaseAnonKey);
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
@@ -236,9 +267,9 @@ export function getSupabase() {
                         return onfulfilled ? onfulfilled(result) : result;
                       }, (err: any) => {
                         if (tableName === 'orders') {
-                          console.error("ORDERS UPSERT ERROR", err);
+                          console.warn("Orders database sync notice:", err?.message || err);
                         } else if (tableName === 'notifications') {
-                          console.warn("Notification handling warn", err);
+                          console.warn("Notification handling warn:", err?.message || err);
                         }
                         return onrejected ? onrejected(err) : Promise.reject(err);
                       });

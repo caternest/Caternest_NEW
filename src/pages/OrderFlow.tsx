@@ -1672,7 +1672,9 @@ export default function OrderFlow() {
                   return (
                     <button
                       key={cat}
-                      ref={(el) => (categoryTabRefs.current[cat] = el)}
+                      ref={(el) => {
+                        categoryTabRefs.current[cat] = el;
+                      }}
                       type="button"
                       onClick={() => setActiveCategory(cat)}
                       className={cn(

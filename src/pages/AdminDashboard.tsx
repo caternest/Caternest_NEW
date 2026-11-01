@@ -2240,7 +2240,7 @@ export default function AdminDashboard() {
                       <div className="flex flex-wrap gap-3">
                           <button 
                               onClick={() => {
-                                  setNewMapping({ item_name: '', image_url: '', status: 'Approved', approved_by_admin: true });
+                                  setNewMapping({ item_name: '', image_url: '', status: 'Approved', approved_by_admin: true, category: 'Starter', cuisine: 'Multicuisine' });
                                   setShowAddMappingModal(true);
                               }}
                               className="px-5 py-2.5 bg-brand-green-900 hover:bg-brand-green-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm"

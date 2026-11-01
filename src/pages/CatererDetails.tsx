@@ -751,7 +751,7 @@ export default function CatererDetails() {
   // Dynamic Profile Highlights States
   const [highlightModalOpen, setHighlightModalOpen] = useState(false);
   const [editingHighlightIndex, setEditingHighlightIndex] = useState<number | 'experience' | 'eventsCompleted' | null>(null);
-  const [highlightForm, setHighlightForm] = useState({ title: "", subtitle: "" });
+  const [highlightForm, setHighlightForm] = useState<{ title: string; subtitle: string; iconName?: string }>({ title: "", subtitle: "", iconName: "Users" });
   const [showCustomInput, setShowCustomInput] = useState(false);
 
   // Add Service Modal States

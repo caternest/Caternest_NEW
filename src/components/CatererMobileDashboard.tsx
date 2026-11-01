@@ -60,8 +60,8 @@ interface CatererMobileDashboardProps {
   children?: React.ReactNode;
 
   // New props for Orders Redesign
-  orderListFilter: 'all' | 'pending' | 'approved' | 'completed' | 'revenue';
-  setOrderListFilter: (filter: 'all' | 'pending' | 'approved' | 'completed' | 'revenue') => void;
+  orderListFilter: 'all' | 'pending' | 'approved' | 'completed' | 'rejected' | 'revenue';
+  setOrderListFilter: (filter: 'all' | 'pending' | 'approved' | 'completed' | 'rejected' | 'revenue') => void;
   filteredOrderList: any[];
   setSelectedOrder: (ord: any) => void;
   handleApprove: (id: string) => Promise<void>;
@@ -667,7 +667,7 @@ export default function CatererMobileDashboard({
                     <div className="flex gap-2">
                       <button 
                         type="button"
-                        onClick={() => setSelectedOrder(ord)} 
+                        onClick={() => handleOpenOrderDetails(ord)} 
                         className="flex-1 h-12 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors flex items-center justify-center cursor-pointer"
                       >
                         View Details

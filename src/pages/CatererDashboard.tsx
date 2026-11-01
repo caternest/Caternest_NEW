@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Package, Activity, ChefHat, Bell, TrendingUp, CalendarDays, CheckCircle, CheckCircle2, XCircle, RefreshCw, Clock, Settings, ShoppingBag, CreditCard, User, Image as ImageIcon, MapPin, Search, Menu as MenuIcon, Edit, ChevronRight, X, Save, UploadCloud, ChevronLeft, Star, Trash2 } from 'lucide-react';
+import { Package, Activity, ChefHat, Bell, TrendingUp, CalendarDays, CheckCircle, CheckCircle2, XCircle, RefreshCw, Clock, Settings, ShoppingBag, CreditCard, User, Image as ImageIcon, MapPin, Search, Menu as MenuIcon, Edit, ChevronRight, X, Save, UploadCloud, ChevronLeft, Star, Trash2, Printer, Phone, Mail } from 'lucide-react';
 import { cn, compressImageFile } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../components/Toast';
@@ -170,7 +170,7 @@ export default function CatererDashboard() {
   const [caterer, setCaterer] = useState<any>(null);
 
   // New filters and date-range states
-  const [orderListFilter, setOrderListFilter] = useState<'all' | 'pending' | 'approved' | 'completed' | 'revenue'>('all');
+  const [orderListFilter, setOrderListFilter] = useState<'all' | 'pending' | 'approved' | 'completed' | 'rejected' | 'revenue'>('all');
   const [eventFilter, setEventFilter] = useState<'7' | '15' | '30' | 'custom'>('7');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -424,9 +424,26 @@ export default function CatererDashboard() {
   const handleOpenOrderDetails = (ord: any) => {
     setSelectedOrder(ord);
     setInternalNotesText(ord.internalNotes || ord.internal_notes || '');
+    setShowFullDetailsModal(true);
   };
 
-  const handleSaveInternalNotes = (orderId: string) => {
+  const handleCloseOrderDetails = () => {
+    setSelectedOrder(null);
+    setShowFullDetailsModal(false);
+  };
+
+  const handleSaveInternalNotes = async (orderId: string) => {
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        await supabase.from('orders').update({
+          internalNotes: internalNotesText,
+          internal_notes: internalNotesText
+        }).eq('id', orderId);
+      }
+    } catch (e) {
+      console.warn("Could not save internal notes upstream:", e);
+    }
     const rawOrders = localStorage.getItem('orders');
     if (rawOrders) {
       const allOrders = JSON.parse(rawOrders);
@@ -441,12 +458,12 @@ export default function CatererDashboard() {
         return o;
       });
       localStorage.setItem('orders', JSON.stringify(updated));
-      if (selectedOrder) {
-        setSelectedOrder({ ...selectedOrder, internalNotes: internalNotesText, internal_notes: internalNotesText });
-      }
-      refreshData();
-      toast("Internal notes updated successfully", "success");
     }
+    if (selectedOrder) {
+      setSelectedOrder({ ...selectedOrder, internalNotes: internalNotesText, internal_notes: internalNotesText });
+    }
+    refreshData();
+    toast("Internal notes updated successfully", "success");
   };
 
   const handleRequestChanges = async () => {
@@ -1192,6 +1209,9 @@ export default function CatererDashboard() {
     }
     if (orderListFilter === 'completed') {
       return norm === 'completed' || o.status === 'Completed';
+    }
+    if (orderListFilter === 'rejected') {
+      return norm === 'rejected' || o.status === 'Rejected' || o.status === 'Cancelled';
     }
     if (orderListFilter === 'revenue') {
       return norm === 'approved' || norm === 'completed' || o.status === 'Approved' || o.status === 'Completed';
@@ -2197,315 +2217,10 @@ export default function CatererDashboard() {
          </div>
       </div>
 
-              {/* Order Details Modal */}
+              {/* Order Details & Kitchen Work Order Modal */}
       <AnimatePresence>
-          {selectedOrder && !showRejectModal && !showModifyModal && (() => {
-              const parsed = parseOrderDetails(selectedOrder);
-              const guestsNum = Number(selectedOrder.guests || selectedOrder.guestCount || 0);
-              const pricePerPlate = Number(selectedOrder.pricePerPlate || selectedOrder.packageDetails?.startingPrice || (guestsNum > 0 && selectedOrder.totalEstimate ? Math.round(Number(selectedOrder.totalEstimate) / guestsNum) : 0));
-              const foodCost = pricePerPlate * guestsNum;
-              const platformFee = Number(selectedOrder.platformFee || 0);
-              const customerTotal = getOrderTotalAmount(selectedOrder) || (foodCost + platformFee);
-
-              return (
-              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                  <motion.div 
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-slate-100"
-                  >
-                      {/* Header */}
-                      <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                          <div>
-                              <div className="flex items-center gap-3">
-                                  <h3 className="font-display font-bold text-2xl text-slate-900">Order #{selectedOrder.id}</h3>
-                                  <span className={cn("px-2.5 py-1 inline-block rounded-md text-xs font-bold uppercase tracking-wider", getStatusColor(selectedOrder.status))}>
-                                      {selectedOrder.status}
-                                  </span>
-                              </div>
-                              <p className="text-xs text-slate-500 mt-1">
-                                  Booked on: {new Date(selectedOrder.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                          </div>
-                          <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
-                              <X size={20}/>
-                          </button>
-                      </div>
-
-                      {/* Modal Body */}
-                      <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                           {/* Quick Stats Grid */}
-                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
-                                   <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Status</p>
-                                   <span className={cn("px-2 py-0.5 inline-block rounded text-xs font-bold uppercase tracking-wider", getStatusColor(selectedOrder.status))}>
-                                       {selectedOrder.status}
-                                   </span>
-                               </div>
-                               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
-                                   <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Event Date</p>
-                                   <p className="font-bold text-slate-800 text-sm">{selectedOrder.eventDate || selectedOrder.eventDates?.join(', ') || 'N/A'}</p>
-                               </div>
-                               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
-                                   <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Guest Count</p>
-                                   <p className="font-bold text-slate-800 text-sm">{getOrderGuests(selectedOrder)} Guests</p>
-                               </div>
-                               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
-                                   <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Occasion</p>
-                                   <p className="font-bold text-slate-800 text-sm">{selectedOrder.eventType || selectedOrder.occasion || 'Catering Event'}</p>
-                               </div>
-                           </div>
-
-                           {/* 2-Column Details */}
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                               {/* Customer & Venue */}
-                               <div className="space-y-4">
-                                   <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-                                       <h4 className="font-bold text-slate-800 mb-3 border-b border-slate-200/80 pb-2 text-sm flex items-center gap-1.5">
-                                           <User size={15} className="text-slate-500" /> Customer Information
-                                       </h4>
-                                       <div className="space-y-2 text-xs">
-                                           <p className="flex justify-between">
-                                               <span className="text-slate-500 font-medium">Name:</span> 
-                                               <span className="font-bold text-slate-800">{selectedOrder.customerName || 'N/A'}</span>
-                                           </p>
-                                           <p className="flex justify-between">
-                                               <span className="text-slate-500 font-medium">Phone:</span> 
-                                               <span className="font-bold text-slate-800">{selectedOrder.customerPhone || selectedOrder.phone || 'N/A'}</span>
-                                           </p>
-                                           <p className="flex justify-between">
-                                               <span className="text-slate-500 font-medium">Email:</span> 
-                                               <span className="font-bold text-slate-800 truncate max-w-[180px]">{selectedOrder.customerEmail || 'N/A'}</span>
-                                           </p>
-                                       </div>
-                                   </div>
-
-                                   <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-                                       <h4 className="font-bold text-slate-800 mb-3 border-b border-slate-200/80 pb-2 text-sm flex items-center gap-1.5">
-                                           <MapPin size={15} className="text-slate-500" /> Venue & Location
-                                       </h4>
-                                       <div className="space-y-2 text-xs">
-                                           {parsed.venueName && (
-                                               <p className="font-bold text-slate-800">{parsed.venueName}</p>
-                                           )}
-                                           <p className="text-slate-600 font-medium leading-relaxed">
-                                               {parsed.venueAddress || selectedOrder.venue || selectedOrder.address || 'Address not specified'}
-                                           </p>
-                                           {(parsed.mapUrl || (selectedOrder.latitude && selectedOrder.longitude) || parsed.venueAddress) && (
-                                               <a 
-                                                   href={parsed.mapUrl || ((selectedOrder.latitude && selectedOrder.longitude) ? `https://www.google.com/maps/search/?api=1&query=${selectedOrder.latitude},${selectedOrder.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.venueAddress || selectedOrder.venue || selectedOrder.address)}`)} 
-                                                   target="_blank" 
-                                                   rel="noopener noreferrer" 
-                                                   className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold-50 hover:bg-brand-gold-100 text-brand-gold-800 border border-brand-gold-300 rounded-lg font-bold text-xs transition-colors"
-                                               >
-                                                   📍 View in Google Maps
-                                               </a>
-                                           )}
-                                       </div>
-                                   </div>
-                               </div>
-
-                               {/* Financial Breakdown & Service Specs */}
-                               <div className="space-y-4">
-                                   <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200/80">
-                                       <h4 className="font-bold text-emerald-950 mb-3 border-b border-emerald-200 pb-2 text-sm flex items-center justify-between">
-                                           <span className="flex items-center gap-1.5"><CreditCard size={15} className="text-emerald-700"/> Financial Breakdown</span>
-                                           {pricePerPlate > 0 && (
-                                               <span className="text-[11px] font-bold bg-white text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
-                                                   ₹{pricePerPlate}/plate
-                                               </span>
-                                           )}
-                                       </h4>
-                                       <div className="space-y-2 text-xs">
-                                           <div className="flex justify-between items-center">
-                                               <span className="text-emerald-900 font-medium">Food Cost ({pricePerPlate > 0 ? `₹${pricePerPlate}` : 'Custom'} × {guestsNum || '—'} guests)</span>
-                                               <span className="text-emerald-950 font-bold text-sm">₹{foodCost.toLocaleString('en-IN')}</span>
-                                           </div>
-                                           <div className="flex justify-between items-center">
-                                               <span className="text-emerald-900 font-medium">Platform Fee</span>
-                                               <span className="text-emerald-950 font-bold">{platformFee > 0 ? `₹${platformFee.toLocaleString('en-IN')}` : 'Included / ₹0'}</span>
-                                           </div>
-                                           <div className="flex justify-between items-center pt-2.5 border-t border-emerald-300/60 mt-2">
-                                               <span className="text-emerald-950 font-extrabold text-sm">Customer Total</span>
-                                               <span className="text-brand-green-950 font-display text-2xl font-black">₹{customerTotal.toLocaleString('en-IN')}</span>
-                                           </div>
-                                       </div>
-                                   </div>
-
-                                   <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-                                       <h4 className="font-bold text-slate-800 mb-2 border-b border-slate-200/80 pb-2 text-sm flex items-center gap-1.5">
-                                           <Clock size={15} className="text-slate-500" /> Meal & Timings
-                                       </h4>
-                                       <div className="space-y-1.5 text-xs">
-                                           <p className="flex justify-between">
-                                               <span className="text-slate-500 font-medium">Service / Meal:</span>
-                                               <span className="font-bold text-slate-800">{parsed.meals || selectedOrder.mealSelection || 'Full Meal Catering'}</span>
-                                           </p>
-                                           <p className="flex justify-between">
-                                               <span className="text-slate-500 font-medium">Service Timings:</span>
-                                               <span className="font-bold text-slate-800">{parsed.timings || selectedOrder.mealTimings || 'Standard Meal Timings'}</span>
-                                           </p>
-                                           {parsed.dietary && (
-                                               <div className="pt-1.5 flex items-center gap-2">
-                                                   <span className="text-slate-500 font-medium">Dietary:</span>
-                                                   <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wide">
-                                                       {parsed.dietary}
-                                                   </span>
-                                               </div>
-                                           )}
-                                       </div>
-                                   </div>
-                               </div>
-                           </div>
-
-                           {/* Menu & Package Items - Categorized */}
-                           {(() => {
-                               const categorizedGroups = getCategorizedMenuItems(selectedOrder);
-                               const totalItemsCount = selectedOrder.selectedItems?.length || 0;
-
-                               return (
-                               <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-                                   <div className="flex justify-between items-center border-b border-slate-200/80 pb-2 mb-3">
-                                       <div>
-                                           <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                                               <ChefHat size={15} className="text-slate-600" /> Selected Menu & Package ({totalItemsCount} items)
-                                           </h4>
-                                           <p className="text-xs text-slate-500 mt-0.5">Package: <span className="font-bold text-slate-700">{selectedOrder.packageDetails?.packageName || 'Customized Menu'}</span></p>
-                                       </div>
-                                       <div className="flex items-center gap-2">
-                                           {selectedOrder.matchedSlab && (
-                                               <span className="bg-brand-gold-100 text-brand-gold-900 border border-brand-gold-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                                                   {selectedOrder.matchedSlab.minGuests} - {selectedOrder.matchedSlab.maxGuests || '1000+'} Guests Slab
-                                               </span>
-                                           )}
-                                           <button 
-                                               type="button"
-                                               onClick={() => setShowFullDetailsModal(true)}
-                                               className="text-xs font-bold text-brand-green-900 hover:text-brand-green-700 underline flex items-center gap-1 cursor-pointer ml-1"
-                                           >
-                                               View Full Details Page ↗
-                                           </button>
-                                       </div>
-                                   </div>
-
-                                   {categorizedGroups.length > 0 ? (
-                                       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                                           {categorizedGroups.map((group, gIdx) => (
-                                               <div key={gIdx} className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-                                                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-2 block">
-                                                       {group.categoryName} ({group.items.length})
-                                                   </span>
-                                                   <div className="flex flex-wrap gap-1.5">
-                                                       {group.items.map((item: string, i: number) => (
-                                                           <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700">
-                                                               <span className="w-1.5 h-1.5 rounded-full bg-brand-gold-500"></span>
-                                                               {item}
-                                                           </span>
-                                                       ))}
-                                                   </div>
-                                               </div>
-                                           ))}
-                                       </div>
-                                   ) : (
-                                       <p className="text-xs text-slate-500 italic py-2">Chef's curated package selections.</p>
-                                   )}
-                               </div>
-                               );
-                           })()}
-
-                           {/* Clean Special Instructions (Step 6) */}
-                           {parsed.specialInstructions && (
-                               <div className="bg-amber-50/80 border border-amber-200/90 p-4 rounded-2xl">
-                                   <span className="font-bold text-amber-900 text-xs block mb-1.5 flex items-center gap-1.5">
-                                       📌 Customer Special Instructions:
-                                   </span>
-                                   <p className="text-amber-950 font-medium text-xs whitespace-pre-line leading-relaxed">
-                                       {parsed.specialInstructions}
-                                   </p>
-                               </div>
-                           )}
-
-                           {/* Private Internal Notes (Memo) */}
-                           <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-left">
-                               <div className="flex justify-between items-center mb-1.5">
-                                   <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                                       📝 Caterer Internal Notes (Private to your kitchen)
-                                   </span>
-                                   <span className="text-[10px] text-slate-400">Not visible to customer</span>
-                               </div>
-                               <textarea 
-                                   value={internalNotesText}
-                                   onChange={(e) => setInternalNotesText(e.target.value)}
-                                   placeholder="Add private kitchen notes (e.g. staff setup instructions, head chef reminders, vehicle dispatch time)..."
-                                   className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:border-brand-gold-500 outline-none resize-none h-20 mb-2.5 font-sans"
-                               />
-                               <button 
-                                   onClick={() => handleSaveInternalNotes(selectedOrder.id)}
-                                   className="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition"
-                               >
-                                   Save Memo
-                               </button>
-                           </div>
-                      </div>
-
-                      {/* Modal Footer Actions - Step 7: NO "Edit Quotation" button! */}
-                      <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 flex-wrap items-center">
-                          {['pending', 'Submitted', 'Pending Caterer Review', 'updated_by_customer', 'changes_requested'].includes(normalizeStatus(selectedOrder.status)) ? (
-                              <>
-                                 <button onClick={() => setShowRejectModal(true)} className="px-4 py-2 border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold rounded-xl text-xs transition-colors">
-                                     Reject
-                                 </button>
-                                 <button onClick={() => setShowChangesRequestModal(true)} className="px-4 py-2 border border-blue-300 text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs transition-colors">
-                                     Request Changes
-                                 </button>
-                                 <button onClick={() => handleApprove(selectedOrder.id)} className="px-5 py-2 bg-brand-green-900 text-white hover:bg-brand-green-800 font-bold rounded-xl text-xs transition-colors shadow-lg shadow-brand-green-900/20">
-                                     Approve Order
-                                 </button>
-                              </>
-                          ) : normalizeStatus(selectedOrder.status) === 'approved' ? (
-                              <>
-                                 <button 
-                                     type="button"
-                                     onClick={async () => {
-                                         await performOrderStatusUpdate(
-                                             selectedOrder.id, 
-                                             'completed', 
-                                             { completedAt: new Date().toISOString() }, 
-                                             user?.email || 'partner@caternest.com', 
-                                             'partner'
-                                         );
-                                         storeNotification(
-                                             selectedOrder.id, 
-                                             "Event Completed 🎉", 
-                                             `Your catering booking with ${caterer?.businessName || 'the caterer'} has been marked as Completed!`, 
-                                             "customer", 
-                                             caterer?.id
-                                         );
-                                         await refreshData();
-                                         setSelectedOrder(null);
-                                         toast("Booking marked as Completed!", "success");
-                                     }} 
-                                     className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs transition-colors shadow-sm"
-                                 >
-                                     Mark Event Completed
-                                 </button>
-                                 <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition">
-                                     Close
-                                 </button>
-                              </>
-                          ) : (
-                              <button onClick={() => setSelectedOrder(null)} className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition">
-                                  Close
-                              </button>
-                          )}
-                      </div>
-                  </motion.div>
-              </div>
-              );
-          })}
-
-          {showFullDetailsModal && selectedOrder && (() => {
+          {selectedOrder && (
+            (() => {
               const parsed = parseOrderDetails(selectedOrder);
               const guestsNum = Number(selectedOrder.guests || selectedOrder.guestCount || 0);
               const pricePerPlate = Number(selectedOrder.pricePerPlate || selectedOrder.packageDetails?.startingPrice || (guestsNum > 0 && selectedOrder.totalEstimate ? Math.round(Number(selectedOrder.totalEstimate) / guestsNum) : 0));
@@ -2513,229 +2228,392 @@ export default function CatererDashboard() {
               const platformFee = Number(selectedOrder.platformFee || 0);
               const customerTotal = getOrderTotalAmount(selectedOrder) || (foodCost + platformFee);
               const categorizedGroups = getCategorizedMenuItems(selectedOrder);
+              const totalItemsCount = selectedOrder.selectedItems?.length || selectedOrder.items?.length || 0;
 
               return (
-              <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[70] flex items-center justify-center p-2 sm:p-6 overflow-y-auto">
+                <div 
+                  key={`order-modal-backdrop-${selectedOrder.id}`}
+                  className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[80] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto"
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      handleCloseOrderDetails();
+                    }
+                  }}
+                >
                   <motion.div 
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      className="bg-white rounded-3xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200"
+                    key={`order-modal-sheet-${selectedOrder.id}`}
+                    initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 12 }}
+                    transition={{ duration: 0.2 }}
+                    className="bg-white rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                      {/* Top Action Bar */}
-                      <div className="p-5 sm:p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                          <div>
-                              <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold-600 block mb-1">
-                                  Kitchen Work Order & Event Specification Sheet
-                              </span>
-                              <div className="flex items-center gap-3">
-                                  <h2 className="font-display font-bold text-2xl text-slate-900">Order #{selectedOrder.id}</h2>
-                                  <span className={cn("px-2.5 py-1 inline-block rounded-md text-xs font-bold uppercase tracking-wider", getStatusColor(selectedOrder.status))}>
-                                      {selectedOrder.status}
-                                  </span>
-                              </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                              <button 
-                                  onClick={() => window.print()}
-                                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-                              >
-                                  🖨️ Print Work Order
-                              </button>
-                              <button 
-                                  onClick={() => setShowFullDetailsModal(false)}
-                                  className="p-2 hover:bg-slate-200 rounded-full transition text-slate-500 cursor-pointer"
-                              >
-                                  <X size={20} />
-                              </button>
-                          </div>
+                    {/* Top Action Bar */}
+                    <div className="p-4 sm:p-6 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 bg-slate-50">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold-600 block mb-1">
+                          Kitchen Work Order & Event Specification Sheet
+                        </span>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h2 className="font-display font-bold text-xl sm:text-2xl text-slate-900">Order #{selectedOrder.id}</h2>
+                          <span className={cn("px-2.5 py-1 inline-block rounded-md text-xs font-bold uppercase tracking-wider", getStatusColor(selectedOrder.status))}>
+                            {selectedOrder.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Booked on: {new Date(selectedOrder.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
                       </div>
 
-                      {/* Printable & Structured Content */}
-                      <div className="p-6 overflow-y-auto flex-1 space-y-6 text-left">
-                          {/* 4 Stat Overview */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                              <div>
-                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Target Event Date</p>
-                                  <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedOrder.eventDate || selectedOrder.eventDates?.join(', ') || 'N/A'}</p>
-                              </div>
-                              <div>
-                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Guests (Pax)</p>
-                                  <p className="font-bold text-slate-900 text-sm mt-0.5">{getOrderGuests(selectedOrder)}</p>
-                              </div>
-                              <div>
-                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Occasion / Event</p>
-                                  <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedOrder.eventType || selectedOrder.occasion || 'Catering'}</p>
-                              </div>
-                              <div>
-                                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Booked On</p>
-                                  <p className="font-bold text-slate-900 text-sm mt-0.5">{new Date(selectedOrder.created_at).toLocaleDateString('en-IN')}</p>
-                              </div>
-                          </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          type="button"
+                          onClick={() => window.print()}
+                          className="px-3 sm:px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          title="Print Work Order Sheet"
+                        >
+                          <Printer size={14} /> <span className="hidden sm:inline">Print Work Order</span>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={handleCloseOrderDetails}
+                          className="p-2 hover:bg-slate-200 rounded-full transition text-slate-500 cursor-pointer"
+                          title="Close modal"
+                        >
+                          <X size={20} />
+                        </button>
+                      </div>
+                    </div>
 
-                          {/* Customer & Venue Section */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="border border-slate-200 rounded-2xl p-4 bg-white">
-                                  <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-                                      <User size={16} className="text-slate-500" /> Customer Information
-                                  </h3>
-                                  <div className="space-y-2 text-xs">
-                                      <p className="flex justify-between"><span className="text-slate-500 font-medium">Customer Name:</span> <span className="font-bold text-slate-900">{selectedOrder.customerName || 'N/A'}</span></p>
-                                      <p className="flex justify-between"><span className="text-slate-500 font-medium">Phone Number:</span> <span className="font-bold text-slate-900">{selectedOrder.customerPhone || selectedOrder.phone || 'N/A'}</span></p>
-                                      <p className="flex justify-between"><span className="text-slate-500 font-medium">Email Address:</span> <span className="font-bold text-slate-900">{selectedOrder.customerEmail || 'N/A'}</span></p>
-                                  </div>
-                              </div>
+                    {/* Modal Body with Full Specification */}
+                    <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+                      
+                      {/* Quick Event Specs Grid */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                          <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Status</p>
+                          <span className={cn("px-2 py-0.5 inline-block rounded text-xs font-bold uppercase tracking-wider", getStatusColor(selectedOrder.status))}>
+                            {selectedOrder.status}
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                          <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest flex items-center gap-1">
+                            <CalendarDays size={11} /> Event Date
+                          </p>
+                          <p className="font-bold text-slate-900 text-sm mt-0.5">
+                            {selectedOrder.eventDate || selectedOrder.eventDates?.join(", ") || "N/A"}
+                          </p>
+                        </div>
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                          <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest flex items-center gap-1">
+                            <User size={11} /> Guest Count
+                          </p>
+                          <p className="font-bold text-slate-900 text-sm mt-0.5">
+                            {getOrderGuests(selectedOrder)} Guests
+                          </p>
+                        </div>
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                          <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-widest">Occasion</p>
+                          <p className="font-bold text-slate-900 text-sm mt-0.5">
+                            {selectedOrder.eventType || selectedOrder.occasion || "Catering Event"}
+                          </p>
+                        </div>
+                      </div>
 
-                              <div className="border border-slate-200 rounded-2xl p-4 bg-white">
-                                  <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
-                                      <MapPin size={16} className="text-slate-500" /> Venue & Event Location
-                                  </h3>
-                                  <div className="space-y-1.5 text-xs">
-                                      {parsed.venueName && <p className="font-bold text-slate-900">{parsed.venueName}</p>}
-                                      <p className="text-slate-600 font-medium leading-relaxed">{parsed.venueAddress || selectedOrder.venue || selectedOrder.address || 'Address not specified'}</p>
-                                      {(parsed.mapUrl || (selectedOrder.latitude && selectedOrder.longitude) || parsed.venueAddress) && (
-                                          <a 
-                                              href={parsed.mapUrl || ((selectedOrder.latitude && selectedOrder.longitude) ? `https://www.google.com/maps/search/?api=1&query=${selectedOrder.latitude},${selectedOrder.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.venueAddress || selectedOrder.venue || selectedOrder.address)}`)} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer" 
-                                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold-50 hover:bg-brand-gold-100 text-brand-gold-800 border border-brand-gold-300 rounded-lg font-bold text-xs"
-                                          >
-                                              📍 Open in Google Maps
-                                          </a>
-                                      )}
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Meal & Logistics Specifications */}
-                          <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
-                              <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
-                                  <Clock size={16} className="text-slate-500" /> Meal & Service Schedule
-                              </h3>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                                  <div className="bg-white p-3 rounded-xl border border-slate-200">
-                                      <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">Meal Period</span>
-                                      <span className="font-bold text-slate-900">{parsed.meals || selectedOrder.mealSelection || 'Full Meal Catering'}</span>
-                                  </div>
-                                  <div className="bg-white p-3 rounded-xl border border-slate-200">
-                                      <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">Serving Timings</span>
-                                      <span className="font-bold text-slate-900">{parsed.timings || selectedOrder.mealTimings || 'Standard Meal Timings'}</span>
-                                  </div>
-                                  <div className="bg-white p-3 rounded-xl border border-slate-200">
-                                      <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">Dietary Preferences</span>
-                                      <span className="font-bold text-amber-800">{parsed.dietary || 'Standard Preparation'}</span>
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Complete Categorized Menu Items */}
-                          <div className="border border-slate-200 rounded-2xl p-5 bg-white">
-                              <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-                                  <div>
-                                      <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                                          <ChefHat size={16} className="text-slate-600" /> Full Menu Specification ({selectedOrder.selectedItems?.length || 0} Total Items)
-                                      </h3>
-                                      <p className="text-xs text-slate-500 mt-0.5">Package: <span className="font-bold text-slate-800">{selectedOrder.packageDetails?.packageName || 'Customized Menu'}</span></p>
-                                  </div>
-                                  {selectedOrder.matchedSlab && (
-                                      <span className="bg-brand-gold-100 text-brand-gold-900 border border-brand-gold-200 px-3 py-1 rounded-full text-xs font-bold">
-                                          {selectedOrder.matchedSlab.minGuests} - {selectedOrder.matchedSlab.maxGuests || '1000+'} Guests Slab
-                                      </span>
-                                  )}
-                              </div>
-
-                              {categorizedGroups.length > 0 ? (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {categorizedGroups.map((group, idx) => (
-                                          <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                              <div className="flex justify-between items-center mb-2.5 pb-1 border-b border-slate-200">
-                                                  <span className="font-bold text-xs uppercase text-slate-700 tracking-wider">
-                                                      {group.categoryName}
-                                                  </span>
-                                                  <span className="text-[10px] font-bold bg-white text-slate-500 px-2 py-0.5 rounded-full border border-slate-200">
-                                                      {group.items.length} items
-                                                  </span>
-                                              </div>
-                                              <ul className="space-y-1.5 text-xs">
-                                                  {group.items.map((it, iIdx) => (
-                                                      <li key={iIdx} className="flex items-center gap-2 font-medium text-slate-800">
-                                                          <span className="w-1.5 h-1.5 rounded-full bg-brand-gold-500 shrink-0"></span>
-                                                          <span>{it}</span>
-                                                      </li>
-                                                  ))}
-                                              </ul>
-                                          </div>
-                                      ))}
-                                  </div>
+                      {/* 2-Column: Customer Details & Venue Location */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                        {/* Customer Information */}
+                        <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                          <h4 className="font-bold text-slate-900 text-sm mb-3 pb-2 border-b border-slate-200/80 flex items-center gap-1.5">
+                            <User size={15} className="text-slate-500" /> Customer Contact Information
+                          </h4>
+                          <div className="space-y-2.5 text-xs">
+                            <p className="flex justify-between items-center">
+                              <span className="text-slate-500 font-medium">Customer Name:</span>
+                              <span className="font-bold text-slate-900 text-sm">{selectedOrder.customerName || "N/A"}</span>
+                            </p>
+                            <p className="flex justify-between items-center">
+                              <span className="text-slate-500 font-medium">Phone Number:</span>
+                              {selectedOrder.customerPhone || selectedOrder.phone ? (
+                                <a 
+                                  href={`tel:${selectedOrder.customerPhone || selectedOrder.phone}`}
+                                  className="font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 underline"
+                                >
+                                  <Phone size={11} /> {selectedOrder.customerPhone || selectedOrder.phone}
+                                </a>
                               ) : (
-                                  <p className="text-xs text-slate-400 italic">Chef's package inclusions.</p>
+                                <span className="text-slate-400 font-medium">N/A</span>
                               )}
+                            </p>
+                            <p className="flex justify-between items-center">
+                              <span className="text-slate-500 font-medium">Email Address:</span>
+                              {selectedOrder.customerEmail ? (
+                                <a 
+                                  href={`mailto:${selectedOrder.customerEmail}`}
+                                  className="font-bold text-blue-700 hover:text-blue-900 truncate max-w-[200px] flex items-center gap-1 underline"
+                                >
+                                  <Mail size={11} /> {selectedOrder.customerEmail}
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 font-medium">N/A</span>
+                              )}
+                            </p>
                           </div>
+                        </div>
 
-                          {/* Customer Special Instructions */}
-                          {parsed.specialInstructions && (
-                              <div className="border border-amber-200 bg-amber-50/80 rounded-2xl p-4">
-                                  <h4 className="font-bold text-amber-900 text-xs uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                      📌 Customer Special Instructions & Dietary Notes
-                                  </h4>
-                                  <p className="text-amber-950 font-medium text-xs whitespace-pre-line leading-relaxed">
-                                      {parsed.specialInstructions}
-                                  </p>
-                              </div>
+                        {/* Venue & Location */}
+                        <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
+                          <h4 className="font-bold text-slate-900 text-sm mb-3 pb-2 border-b border-slate-200/80 flex items-center gap-1.5">
+                            <MapPin size={15} className="text-slate-500" /> Venue & Event Location
+                          </h4>
+                          <div className="space-y-2 text-xs">
+                            {parsed.venueName && (
+                              <p className="font-bold text-slate-900 text-sm">{parsed.venueName}</p>
+                            )}
+                            <p className="text-slate-700 font-medium leading-relaxed">
+                              {parsed.venueAddress || selectedOrder.venue || selectedOrder.address || "Address not specified"}
+                            </p>
+                            {(parsed.mapUrl || (selectedOrder.latitude && selectedOrder.longitude) || parsed.venueAddress) && (
+                              <a 
+                                href={parsed.mapUrl || ((selectedOrder.latitude && selectedOrder.longitude) ? `https://www.google.com/maps/search/?api=1&query=${selectedOrder.latitude},${selectedOrder.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsed.venueAddress || selectedOrder.venue || selectedOrder.address)}`)} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold-50 hover:bg-brand-gold-100 text-brand-gold-900 border border-brand-gold-300 rounded-lg font-bold text-xs transition-colors shadow-2xs"
+                              >
+                                📍 View in Google Maps ↗
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Meal Timings & Dietary Service Specifications */}
+                      <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
+                        <h4 className="font-bold text-slate-900 text-sm mb-2.5 pb-2 border-b border-slate-200 flex items-center gap-1.5">
+                          <Clock size={15} className="text-slate-500" /> Meal Service & Timings
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div className="bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="text-slate-500 font-medium block mb-1">Service / Meal</span>
+                            <span className="font-bold text-slate-900 text-sm">{parsed.meals || selectedOrder.mealSelection || "Full Meal Catering"}</span>
+                          </div>
+                          <div className="bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="text-slate-500 font-medium block mb-1">Service Timings</span>
+                            <span className="font-bold text-slate-900 text-sm">{parsed.timings || selectedOrder.mealTimings || "Standard Meal Timings"}</span>
+                          </div>
+                          <div className="bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="text-slate-500 font-medium block mb-1">Dietary Preferences</span>
+                            <span className="font-bold text-slate-900 text-sm">{parsed.dietary || "Standard Menu"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu & Package Items - Full Specification */}
+                      <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white shadow-2xs">
+                        <div className="flex flex-wrap justify-between items-center border-b border-slate-200 pb-3 mb-4 gap-2">
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                              <ChefHat size={18} className="text-brand-green-800" /> Full Menu Specification ({totalItemsCount} Total Items)
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Package: <span className="font-bold text-slate-800">{selectedOrder.packageDetails?.packageName || "Customized Menu"}</span>
+                            </p>
+                          </div>
+                          {selectedOrder.matchedSlab && selectedOrder.matchedSlab.minGuests && (
+                            <span className="bg-brand-gold-100 text-brand-gold-900 border border-brand-gold-200 px-3 py-1 rounded-full text-xs font-bold">
+                              {selectedOrder.matchedSlab.minGuests} - {selectedOrder.matchedSlab.maxGuests || "1000+"} Guests Slab
+                            </span>
                           )}
+                        </div>
 
-                          {/* Financials & Billing Breakdown */}
-                          <div className="border border-emerald-200 bg-emerald-50/70 rounded-2xl p-4">
-                              <h3 className="font-bold text-emerald-950 text-sm mb-3 flex items-center justify-between border-b border-emerald-200/80 pb-2">
-                                  <span className="flex items-center gap-1.5"><CreditCard size={16} className="text-emerald-700" /> Commercial Financials</span>
-                                  {pricePerPlate > 0 && <span className="text-xs font-bold bg-white text-emerald-900 px-2.5 py-0.5 rounded-full border border-emerald-200">₹{pricePerPlate} / plate</span>}
-                              </h3>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                                  <div className="bg-white p-3 rounded-xl border border-emerald-200">
-                                      <span className="text-slate-500 font-medium block mb-1">Food Cost ({pricePerPlate > 0 ? `₹${pricePerPlate}` : 'Custom'} × {guestsNum} guests)</span>
-                                      <span className="text-slate-900 font-bold text-sm">₹{foodCost.toLocaleString('en-IN')}</span>
-                                  </div>
-                                  <div className="bg-white p-3 rounded-xl border border-emerald-200">
-                                      <span className="text-slate-500 font-medium block mb-1">Platform Fee</span>
-                                      <span className="text-slate-900 font-bold text-sm">{platformFee > 0 ? `₹${platformFee.toLocaleString('en-IN')}` : '₹0 / Included'}</span>
-                                  </div>
-                                  <div className="bg-white p-3 rounded-xl border border-emerald-200">
-                                      <span className="text-slate-500 font-medium block mb-1">Customer Total</span>
-                                      <span className="text-brand-green-950 font-extrabold text-base">₹{customerTotal.toLocaleString('en-IN')}</span>
-                                  </div>
+                        {categorizedGroups.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 max-h-80 overflow-y-auto pr-1">
+                            {categorizedGroups.map((group, idx) => (
+                              <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                                <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-200">
+                                  <span className="font-bold text-xs uppercase text-slate-700 tracking-wider">
+                                    {group.categoryName}
+                                  </span>
+                                  <span className="text-[10px] font-bold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                                    {group.items.length} items
+                                  </span>
+                                </div>
+                                <ul className="space-y-1.5 text-xs">
+                                  {group.items.map((it, iIdx) => (
+                                    <li key={iIdx} className="flex items-center gap-2 font-medium text-slate-800">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-brand-gold-500 shrink-0"></span>
+                                      <span>{it}</span>
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
+                            ))}
                           </div>
-
-                          {/* Private Caterer Kitchen Notes */}
-                          <div className="border border-slate-200 bg-slate-50 rounded-2xl p-4">
-                              <div className="flex justify-between items-center mb-1">
-                                  <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                                      🔒 Caterer Private Kitchen Notes (Confidential)
-                                  </h4>
-                                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Staff & Kitchen Eyes Only</span>
-                              </div>
-                              <p className="text-xs text-slate-600 italic">
-                                  {internalNotesText || selectedOrder.internalNotes || selectedOrder.internal_notes || "No private internal notes added yet."}
-                              </p>
-                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 italic py-2">Chef&apos;s curated package selections.</p>
+                        )}
                       </div>
 
-                      {/* Footer */}
-                      <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+                      {/* Customer Special Instructions & Dietary Notes */}
+                      {parsed.specialInstructions && (
+                        <div className="border border-amber-200 bg-amber-50/80 rounded-2xl p-4">
+                          <h4 className="font-bold text-amber-900 text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            📌 Customer Special Instructions & Dietary Notes
+                          </h4>
+                          <p className="text-amber-950 font-medium text-xs whitespace-pre-line leading-relaxed">
+                            {parsed.specialInstructions}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Financial Breakdown & Commercials */}
+                      <div className="border border-emerald-200 bg-emerald-50/70 rounded-2xl p-4 sm:p-5">
+                        <h3 className="font-bold text-emerald-950 text-sm mb-3 flex items-center justify-between border-b border-emerald-200/80 pb-2">
+                          <span className="flex items-center gap-1.5">
+                            <CreditCard size={16} className="text-emerald-700" /> Commercial Financials & Billing
+                          </span>
+                          {pricePerPlate > 0 && (
+                            <span className="text-xs font-bold bg-white text-emerald-900 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              ₹{pricePerPlate} / plate
+                            </span>
+                          )}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                          <div className="bg-white p-3.5 rounded-xl border border-emerald-200">
+                            <span className="text-slate-500 font-medium block mb-1">
+                              Food Cost ({pricePerPlate > 0 ? `₹${pricePerPlate}` : "Custom"} × {guestsNum} guests)
+                            </span>
+                            <span className="text-slate-900 font-bold text-sm">₹{foodCost.toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="bg-white p-3.5 rounded-xl border border-emerald-200">
+                            <span className="text-slate-500 font-medium block mb-1">Platform Fee</span>
+                            <span className="text-slate-900 font-bold text-sm">{platformFee > 0 ? `₹${platformFee.toLocaleString("en-IN")}` : "Included / ₹0"}</span>
+                          </div>
+                          <div className="bg-white p-3.5 rounded-xl border border-emerald-200">
+                            <span className="text-slate-500 font-medium block mb-1">Customer Total</span>
+                            <span className="text-brand-green-950 font-extrabold text-lg">₹{customerTotal.toLocaleString("en-IN")}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Private Caterer Kitchen Notes (Memo) */}
+                      <div className="border border-slate-200 bg-slate-50 rounded-2xl p-4 text-left">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                            🔒 Caterer Private Kitchen Notes (Confidential)
+                          </h4>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold">Staff & Kitchen Eyes Only</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mb-2">
+                          Add private kitchen notes, head chef assignments, delivery dispatch timing, or setup reminders:
+                        </p>
+                        <textarea 
+                          value={internalNotesText}
+                          onChange={(e) => setInternalNotesText(e.target.value)}
+                          placeholder="e.g. Head chef Assigned: Ramesh. Setup vehicles must leave by 10:30 AM. Extra welcome drinks buffer requested..."
+                          className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:border-brand-gold-500 outline-none resize-none h-20 mb-2 font-sans"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => handleSaveInternalNotes(selectedOrder.id)}
+                          className="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <Save size={13} /> Save Memo
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Modal Footer Actions */}
+                    <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center flex-wrap gap-3">
+                      <div>
+                        <span className="text-xs text-slate-500">
+                          Order ID: <strong className="text-slate-800 font-mono">#{selectedOrder.id}</strong>
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        {["pending", "Submitted", "Pending Caterer Review", "updated_by_customer", "changes_requested"].includes(normalizeStatus(selectedOrder.status)) ? (
+                          <>
+                            <button 
+                              type="button"
+                              onClick={() => setShowRejectModal(true)} 
+                              className="px-4 py-2 border border-rose-300 text-rose-700 hover:bg-rose-50 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => setShowChangesRequestModal(true)} 
+                              className="px-4 py-2 border border-blue-300 text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                            >
+                              Request Changes
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => handleApprove(selectedOrder.id)} 
+                              className="px-5 py-2 bg-brand-green-900 text-white hover:bg-brand-green-800 font-bold rounded-xl text-xs transition-colors shadow-lg shadow-brand-green-900/20 cursor-pointer"
+                            >
+                              Approve Order
+                            </button>
+                          </>
+                        ) : normalizeStatus(selectedOrder.status) === "approved" ? (
+                          <>
+                            <button 
+                              type="button"
+                              onClick={async () => {
+                                await performOrderStatusUpdate(
+                                  selectedOrder.id, 
+                                  "completed", 
+                                  { completedAt: new Date().toISOString() }, 
+                                  user?.email || "partner@caternest.com", 
+                                  "partner"
+                                );
+                                storeNotification(
+                                  selectedOrder.id, 
+                                  "Event Completed 🎉", 
+                                  `Your catering booking with ${caterer?.businessName || "the caterer"} has been marked as Completed!`, 
+                                  "customer", 
+                                  caterer?.id
+                                );
+                                await refreshData();
+                                handleCloseOrderDetails();
+                                toast("Booking marked as Completed!", "success");
+                              }} 
+                              className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+                            >
+                              Mark Event Completed
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={handleCloseOrderDetails} 
+                              className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition cursor-pointer"
+                            >
+                              Close
+                            </button>
+                          </>
+                        ) : (
                           <button 
-                              onClick={() => setShowFullDetailsModal(false)}
-                              className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl text-xs hover:bg-slate-700 transition cursor-pointer"
+                            type="button"
+                            onClick={handleCloseOrderDetails} 
+                            className="px-6 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 text-xs transition cursor-pointer"
                           >
-                              Back to Dashboard
+                            Close
                           </button>
+                        )}
                       </div>
+                    </div>
                   </motion.div>
-              </div>
+                </div>
               );
-          })()}
+            })()
+          )}
+      </AnimatePresence>
 
-          {showRejectModal && (
-              <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <AnimatePresence>
+        {showRejectModal && (
+               <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
                      <h3 className="text-xl font-bold text-slate-900 mb-2">Reject Order</h3>
                      <p className="text-sm text-slate-500 mb-4">Please provide a reason for rejecting this order. The customer will be notified.</p>

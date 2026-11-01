@@ -111,16 +111,56 @@ app.post("/api/notifications/send-whatsapp", async (req: any, res: any) => {
   }
 });
 
+export function resolveSupabaseUrl(rawUrl?: string, key?: string): string {
+  let url = (rawUrl || "").replace(/\/rest\/v1\/?$/, "").trim();
+  if (url.includes("ogeqgqwzbzezubknudxo")) {
+    url = url.replace("ogeqgqwzbzezubknudxo", "oqegqqwzbzezubknudxo");
+  }
+  if (key && key.includes(".")) {
+    try {
+      const parts = key.split(".");
+      if (parts.length >= 2) {
+        let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        while (base64.length % 4) base64 += "=";
+        const decoded = Buffer.from(base64, "base64").toString("utf-8");
+        const parsed = JSON.parse(decoded);
+        if (parsed?.ref && parsed?.iss === "supabase") {
+          const expectedDomain = `${parsed.ref}.supabase.co`;
+          if (!url || url.includes("ogeqgqwzbzezubknudxo") || !url.includes(parsed.ref)) {
+            url = `https://${expectedDomain}`;
+          }
+        }
+      }
+    } catch {}
+  }
+  return url;
+}
+
+// Auto-repair environment Supabase URL if mistyped or missing canonical host
+const _candidateKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY;
+if (_candidateKey) {
+  const _corrected = resolveSupabaseUrl(
+    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+    _candidateKey
+  );
+  if (_corrected) {
+    process.env.VITE_SUPABASE_URL = _corrected;
+    process.env.SUPABASE_URL = _corrected;
+  }
+}
+
 // Lazy initializer for Supabase Server Client
 function getSupabaseClient() {
   const rawSupabaseUrl =
     process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  if (!rawSupabaseUrl) return null;
-  const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, "").trim();
   const supabaseServiceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY;
+  const supabaseUrl = resolveSupabaseUrl(rawSupabaseUrl, supabaseServiceKey);
   if (!supabaseUrl || !supabaseServiceKey) {
     console.warn(
       "Supabase credentials not fully configured on server, operating in high-performance local fallback mode.",
@@ -586,11 +626,12 @@ app.get("/api/health", (req, res) => {
 });
 
 app.get("/api/platform-settings", async (req: any, res: any) => {
+  const defaultRow = { id: "default", platformFeePerPlate: 2, homepage_mode: "classic" };
   const supabase = getSupabaseClient();
   if (!supabase) {
     return res.json({
       success: true,
-      data: { id: "default", platformFeePerPlate: 2, homepage_mode: "classic" }
+      data: defaultRow
     });
   }
 
@@ -603,14 +644,14 @@ app.get("/api/platform-settings", async (req: any, res: any) => {
       .maybeSingle();
 
     if (error) {
-      throw error;
+      console.warn("[SERVER] Warning fetching platform_settings from Supabase:", error?.message || error);
+      return res.json({ success: true, data: defaultRow, fallback: true });
     }
 
     if (data) {
       return res.json({ success: true, data });
     } else {
       // Seed default if row doesn't exist yet
-      const defaultRow = { id: "default", platformFeePerPlate: 2, homepage_mode: "classic" };
       const { data: inserted, error: insertError } = await supabase
         .from("platform_settings")
         .insert([defaultRow])
@@ -618,15 +659,15 @@ app.get("/api/platform-settings", async (req: any, res: any) => {
         .maybeSingle();
 
       if (insertError) {
-        console.error("[SERVER] Failed to insert default platform settings row:", insertError);
-        return res.json({ success: true, data: defaultRow });
+        console.warn("[SERVER] Failed to insert default platform settings row:", insertError?.message || insertError);
+        return res.json({ success: true, data: defaultRow, fallback: true });
       }
 
       return res.json({ success: true, data: inserted || defaultRow });
     }
   } catch (err: any) {
-    console.error("[SERVER] Error in GET /api/platform-settings:", err);
-    return res.status(500).json({ error: err.message || err.toString() });
+    console.warn("[SERVER] Error in GET /api/platform-settings, returning default settings fallback:", err?.message || err);
+    return res.json({ success: true, data: defaultRow, fallback: true });
   }
 });
 
