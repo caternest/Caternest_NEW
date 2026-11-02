@@ -4,7 +4,7 @@ import {
   Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, 
   ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, 
   Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut, Award, Plus, Edit2, 
-  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Download, Database, Loader2 
+  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Loader2 
 } from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -81,28 +81,6 @@ export default function AdminDashboard() {
   const [ordersPerPage, setOrdersPerPage] = useState<number>(15);
   const selectAllCheckboxRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Clear all orders modal states
-  const [showClearAllOrdersModal, setShowClearAllOrdersModal] = useState(false);
-  const [clearAllConfirmText, setClearAllConfirmText] = useState('');
-  const [isClearingAllOrders, setIsClearingAllOrders] = useState(false);
-  const [isTestingDryRun, setIsTestingDryRun] = useState(false);
-  const [verifiedBackupInfo, setVerifiedBackupInfo] = useState<{
-    filename: string;
-    downloadUrl: string;
-    sizeBytes: number;
-    previewTargets?: any;
-  } | null>(null);
-  const [orderSummaryStats, setOrderSummaryStats] = useState<{
-    totalOrders: number;
-    orderNotificationsCount: number;
-    breakdown: Record<string, number>;
-    totalRevenue: number;
-  }>({
-    totalOrders: 0,
-    orderNotificationsCount: 0,
-    breakdown: {},
-    totalRevenue: 0
-  });
   const [orderStatusTab, setOrderStatusTab] = useState<'all' | 'pending' | 'approved' | 'completed' | 'rejected' | 'changes_requested'>('all');
 
   // Admin order filter and detail states
@@ -1225,10 +1203,9 @@ export default function AdminDashboard() {
       toast(`Failed to delete selected orders.`, 'error');
     }
 
-    // Refresh database data and live stats
+    // Refresh database data
     try {
       await fetchSupabaseData();
-      await fetchLiveOrderStats();
     } catch (refreshErr) {
       console.warn("Error refreshing after bulk delete:", refreshErr);
     }
@@ -1238,103 +1215,6 @@ export default function AdminDashboard() {
     setShowBulkDeleteModal(false);
   };
 
-  // Live order stats fetching for Clear All modal
-  const fetchLiveOrderStats = async () => {
-    try {
-      const headers = await getAdminHeaders();
-      const res = await fetch('/api/admin/orders-summary', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setOrderSummaryStats({
-            totalOrders: data.totalOrders,
-            orderNotificationsCount: data.orderNotificationsCount,
-            breakdown: data.breakdown || {},
-            totalRevenue: data.totalRevenue || 0
-          });
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch order summary stats:", e);
-    }
-  };
-
-  const handleOpenClearAllModal = async () => {
-    setClearAllConfirmText('');
-    setVerifiedBackupInfo(null);
-    await fetchLiveOrderStats();
-    setShowClearAllOrdersModal(true);
-  };
-
-  // Dry-run test handler (non-destructive validation)
-  const executeDryRunTest = async () => {
-    if (isTestingDryRun || isClearingAllOrders) return;
-    setIsTestingDryRun(true);
-    try {
-      const headers = await getAdminHeaders();
-      const res = await fetch('/api/admin/orders/clear-all', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ dryRun: true })
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok && data.success) {
-        toast(`Dry-run passed! Backup verified (${data.byteSize} bytes in Supabase Storage). All ${data.pendingOrdersCount} orders remain safe.`, 'success');
-        setVerifiedBackupInfo({
-          filename: data.backupFileName,
-          downloadUrl: `/api/admin/orders/backups/${data.backupFileName}`,
-          sizeBytes: data.byteSize || 0,
-          previewTargets: data.previewTargets
-        });
-      } else {
-        toast(data.error || data.details || 'Dry-run verification test failed.', 'error');
-      }
-    } catch (err: any) {
-      toast("Dry-run test error: " + (err.message || err), 'error');
-    } finally {
-      setIsTestingDryRun(false);
-    }
-  };
-
-  // Clear All Orders execution handler (Strict confirmation required)
-  const executeClearAllOrders = async () => {
-    if (isClearingAllOrders || isTestingDryRun) return; // Concurrency protection against duplicate clicks
-
-    if (clearAllConfirmText !== 'DELETE ALL ORDERS') {
-      toast('Please type DELETE ALL ORDERS to confirm.', 'error');
-      return;
-    }
-
-    setIsClearingAllOrders(true);
-    try {
-      const headers = await getAdminHeaders();
-      const res = await fetch('/api/admin/orders/clear-all', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ confirmation: 'DELETE ALL ORDERS' })
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok && data.success) {
-        toast(`Cleared ${data.clearedOrdersCount} orders! Automated backup saved in Supabase Storage: ${data.backupFileName}`, 'success');
-        setOrders([]);
-        localStorage.setItem('orders', JSON.stringify([]));
-        await logAudit('Clear All Orders', `Purged ${data.clearedOrdersCount} orders with backup ${data.backupFileName}`);
-        setShowClearAllOrdersModal(false);
-        setClearAllConfirmText('');
-        fetchSupabaseData();
-      } else {
-        const errorMsg = data.error || data.details || 'Failed to clear order history';
-        toast(errorMsg, 'error');
-        console.error('[CLEAR ALL ERROR RESPONSE]:', data);
-      }
-    } catch (err: any) {
-      toast("Error executing clear all: " + (err.message || err), 'error');
-    } finally {
-      setIsClearingAllOrders(false);
-    }
-  };
 
   const handleApproveProfileUpdate = async (id: string) => {
       const item = registrations.find(r => r.id === id);
@@ -2318,14 +2198,6 @@ export default function AdminDashboard() {
                           >
                               <RefreshCw size={13} /> Refresh
                           </button>
-
-                          <button
-                              onClick={handleOpenClearAllModal}
-                              className="px-4 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                              title="Safely backup and clear order history"
-                          >
-                              <Trash2 size={14} /> Clear All Order History
-                          </button>
                       </div>
                   </div>
 
@@ -3204,7 +3076,6 @@ export default function AdminDashboard() {
         setIsSortOpen={setIsSortOpen}
         expandedOrderIds={expandedOrderIds}
         setExpandedOrderIds={setExpandedOrderIds}
-        onOpenClearAllOrders={handleOpenClearAllModal}
       />
 
       {/* Create New Platform Badge Modal */}
@@ -4352,144 +4223,6 @@ export default function AdminDashboard() {
           </div>
       )}
 
-      {/* Clear All Website-Wide Order History Modal */}
-      {showClearAllOrdersModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-rose-200">
-                  <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-600/30">
-                          <ShieldAlert size={28} />
-                      </div>
-                      <div>
-                          <h3 className="text-xl font-bold font-display text-slate-900">Clear All Order History</h3>
-                          <p className="text-xs text-rose-600 font-bold tracking-wide uppercase">Website-Wide Order Purge</p>
-                      </div>
-                  </div>
-
-                  {/* Impact Summary */}
-                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-4">
-                      <div className="flex items-center justify-between text-xs font-bold text-rose-900 mb-2">
-                          <span>Live Database Impact</span>
-                          <span className="bg-rose-200/80 text-rose-900 px-2 py-0.5 rounded-full text-[10px]">Production</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100">
-                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Orders to Delete</span>
-                              <span className="text-lg font-extrabold text-rose-700">{orderSummaryStats?.totalOrders !== undefined ? orderSummaryStats.totalOrders : orders.length}</span>
-                          </div>
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100">
-                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Order Notifications</span>
-                              <span className="text-lg font-extrabold text-rose-700">{orderSummaryStats?.orderNotificationsCount !== undefined ? orderSummaryStats.orderNotificationsCount : 'All linked'}</span>
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* Safety Guarantees */}
-                  <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 mb-4 space-y-1.5 text-xs text-emerald-900">
-                      <p className="font-bold flex items-center gap-1.5 text-emerald-800">
-                          <Database size={14} /> Preserved & Protected Data (100% Intact):
-                      </p>
-                      <ul className="text-[11.5px] text-emerald-800/90 space-y-1 list-disc pl-4">
-                          <li>Customer and admin user accounts & auth profiles</li>
-                          <li>Caterer listings, menus, packages, pricing & photos</li>
-                          <li>Platform settings, badges, and system configurations</li>
-                          <li><strong>Zero TRUNCATE CASCADE:</strong> Only order rows are targeted</li>
-                      </ul>
-                      <p className="text-[11px] text-brand-green-900 font-bold pt-1 flex items-center gap-1">
-                          <Download size={13} /> Automated JSON backup snapshot is generated & saved to Supabase Storage before deletion.
-                      </p>
-                  </div>
-
-                  {/* Dry Run Test Verification Banner */}
-                  {verifiedBackupInfo && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3.5 mb-4 text-xs text-blue-900 flex items-center justify-between gap-2 shadow-2xs">
-                          <div className="min-w-0">
-                              <span className="font-bold flex items-center gap-1.5 text-blue-950">
-                                  <Check size={14} className="text-emerald-600 stroke-[3]" /> Dry-Run Passed: Backup Verified in Storage
-                              </span>
-                              <span className="text-[10.5px] text-blue-700 font-mono block mt-0.5 truncate max-w-[260px]">
-                                  {verifiedBackupInfo.filename} ({verifiedBackupInfo.sizeBytes} bytes)
-                              </span>
-                          </div>
-                          <a
-                              href={verifiedBackupInfo.downloadUrl}
-                              download={verifiedBackupInfo.filename}
-                              className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] rounded-xl transition-colors flex items-center gap-1 shrink-0 shadow-2xs"
-                          >
-                              <Download size={12} /> Download
-                          </a>
-                      </div>
-                  )}
-
-                  {/* Dry-Run Diagnostic Trigger */}
-                  <div className="mb-4">
-                      <button
-                          type="button"
-                          onClick={executeDryRunTest}
-                          disabled={isTestingDryRun || isClearingAllOrders}
-                          className="w-full py-2 px-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                      >
-                          {isTestingDryRun ? (
-                              <>
-                                  <Loader2 className="animate-spin text-slate-600" size={14} />
-                                  <span>Testing Storage Backup & Database Locks...</span>
-                              </>
-                          ) : (
-                              <>
-                                  <CheckCircle2 className="text-emerald-600" size={14} />
-                                  <span>Run Safe Dry-Run Test (Zero Data Deleted)</span>
-                              </>
-                          )}
-                      </button>
-                  </div>
-
-                  {/* Confirmation Input Requirement */}
-                  <div className="mb-6">
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                          To execute website-wide cleanup, type <span className="font-mono text-rose-700 font-extrabold select-all">DELETE ALL ORDERS</span> below:
-                      </label>
-                      <input
-                          type="text"
-                          placeholder="Type DELETE ALL ORDERS"
-                          value={clearAllConfirmText}
-                          disabled={isClearingAllOrders || isTestingDryRun}
-                          onChange={(e) => setClearAllConfirmText(e.target.value)}
-                          className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono font-bold tracking-wider disabled:bg-slate-100 disabled:opacity-60"
-                      />
-                  </div>
-
-                  <div className="flex gap-3">
-                      <button 
-                          type="button"
-                          onClick={() => {
-                              setShowClearAllOrdersModal(false);
-                              setClearAllConfirmText('');
-                              setVerifiedBackupInfo(null);
-                          }}
-                          disabled={isClearingAllOrders || isTestingDryRun}
-                          className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                          Cancel
-                      </button>
-                      <button 
-                          type="button"
-                          onClick={executeClearAllOrders}
-                          disabled={isClearingAllOrders || isTestingDryRun || clearAllConfirmText !== 'DELETE ALL ORDERS'}
-                          className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                          {isClearingAllOrders ? (
-                              <>
-                                  <Loader2 className="animate-spin text-white" size={14} />
-                                  <span>Backing Up & Clearing...</span>
-                              </>
-                          ) : (
-                              'Confirm Purge All Orders'
-                          )}
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
 
     </div>
   );

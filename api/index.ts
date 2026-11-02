@@ -4844,16 +4844,6 @@ app.post("/api/food-images", (req, res) => {
 // ===================================================
 // EMAIL OTP REGISTRATION FLOW FOR CATERERS
 // ===================================================
-interface RegistrationSession {
-  formData: any;
-  password: string;
-  otp: string;
-  otpExpiry: Date;
-  lastSentAt: Date;
-}
-
-const registrationSessions = new Map<string, RegistrationSession>();
-
 async function sendOtpEmail(email: string, otp: string, businessName: string) {
   console.log(
     `[OTP EMAIL] Initiating OTP send to ${email} for "${businessName}"`,
@@ -4980,9 +4970,6 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
     );
   }
 }
-
-// Removed OTP request-otp endpoint
-// Removed OTP verify-only endpoint
 
 app.post("/api/register/finalize", async (req: any, res: any) => {
   const {
@@ -5228,10 +5215,6 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
     return res.status(500).json({ error: err.message || err.toString() });
   }
 });
-
-// Removed OTP verify-otp endpoint
-
-// Removed OTP resend-otp endpoint
 
 // Seed data immediately on module load if not in serverless environment
 try {
