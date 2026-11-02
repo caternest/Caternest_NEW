@@ -64,7 +64,6 @@ interface AdminMobileDashboardProps {
   setIsSortOpen: (open: boolean) => void;
   expandedOrderIds: Record<string, boolean>;
   setExpandedOrderIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  onOpenClearAllOrders?: () => void;
 }
 
 export default function AdminMobileDashboard({
@@ -119,8 +118,7 @@ export default function AdminMobileDashboard({
   isSortOpen,
   setIsSortOpen,
   expandedOrderIds,
-  setExpandedOrderIds,
-  onOpenClearAllOrders
+  setExpandedOrderIds
 }: AdminMobileDashboardProps) {
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -788,25 +786,13 @@ export default function AdminMobileDashboard({
         {/* Tab: Orders */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
-            <div className="px-1 text-left flex items-start justify-between gap-2">
-              <div>
-                <h2 className="text-2xl font-display font-extrabold text-[#0F2922] leading-tight uppercase tracking-tight">
-                  Orders ({filteredOrders.length})
-                </h2>
-                <p className="text-stone-500 font-sans text-xs font-semibold uppercase tracking-widest mt-1 mb-2">
-                  Oversee & Force Admin Adjustments
-                </p>
-              </div>
-              {onOpenClearAllOrders && (
-                <button
-                  type="button"
-                  onClick={onOpenClearAllOrders}
-                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 shrink-0 shadow-2xs cursor-pointer active:scale-95"
-                >
-                  <Trash2 size={12} />
-                  <span>Clear All</span>
-                </button>
-              )}
+            <div className="px-1 text-left">
+              <h2 className="text-2xl font-display font-extrabold text-[#0F2922] leading-tight uppercase tracking-tight">
+                Orders ({filteredOrders.length})
+              </h2>
+              <p className="text-stone-500 font-sans text-xs font-semibold uppercase tracking-widest mt-1 mb-2">
+                Oversee & Force Admin Adjustments
+              </p>
             </div>
 
             <div className="space-y-4 pb-12">

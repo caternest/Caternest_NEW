@@ -805,33 +805,6 @@ const MEAL_TIME_OPTIONS: Record<string, string[]> = {
   Dinner: ["6 PM onwards", "7 PM onwards", "8 PM onwards", "9 PM onwards", "10 PM onwards"]
 };
 
-export const getPackageMinGuests = (pkg: any): number => {
-  if (!pkg) return 50;
-  if (typeof pkg.minimumGuests === "number" && pkg.minimumGuests > 0) return pkg.minimumGuests;
-  if (typeof pkg.minGuests === "number" && pkg.minGuests > 0) return pkg.minGuests;
-  if (pkg.pricingSlabs && Array.isArray(pkg.pricingSlabs) && pkg.pricingSlabs.length > 0) {
-    const mins = pkg.pricingSlabs
-      .map((s: any) => Number(s.minGuests))
-      .filter((n: number) => !isNaN(n) && n > 0);
-    if (mins.length > 0) return Math.min(...mins);
-  }
-  if (typeof pkg.guests === "number" && pkg.guests > 0) return pkg.guests;
-  return 50;
-};
-
-export const getPackageMaxGuests = (pkg: any): number => {
-  if (!pkg) return 5000;
-  if (typeof pkg.maximumGuests === "number" && pkg.maximumGuests > 0) return pkg.maximumGuests;
-  if (typeof pkg.maxGuests === "number" && pkg.maxGuests > 0) return pkg.maxGuests;
-  if (pkg.pricingSlabs && Array.isArray(pkg.pricingSlabs) && pkg.pricingSlabs.length > 0) {
-    const maxs = pkg.pricingSlabs
-      .map((s: any) => Number(s.maxGuests))
-      .filter((n: number) => !isNaN(n) && n > 0);
-    if (maxs.length > 0) return Math.max(...maxs);
-  }
-  return 5000;
-};
-
 export default function OrderFlow() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -910,14 +883,18 @@ export default function OrderFlow() {
         setSelectedPackage(selectedPkg);
         setViewMode("package_detail");
         
-        const pkgMin = getPackageMinGuests(selectedPkg);
         const targetGuestCount = location.state?.customGuestCount;
-        if (typeof targetGuestCount === "number" && !isNaN(targetGuestCount) && targetGuestCount >= pkgMin) {
+        if (targetGuestCount !== undefined) {
           setGuests(targetGuestCount);
-          setGuestInputVal(String(targetGuestCount));
-        } else {
-          setGuests(pkgMin);
-          setGuestInputVal(String(pkgMin));
+        } else if (selectedPkg.pricingSlabs && selectedPkg.pricingSlabs.length > 0) {
+          const sortedSlabs = [...selectedPkg.pricingSlabs].sort(
+            (a: any, b: any) => a.minGuests - b.minGuests,
+          );
+          setGuests(sortedSlabs[0].minGuests);
+        } else if (selectedPkg.minimumGuests) {
+          setGuests(selectedPkg.minimumGuests);
+        } else if (selectedPkg.guests) {
+          setGuests(selectedPkg.guests);
         }
       }
     }
@@ -976,25 +953,12 @@ export default function OrderFlow() {
   const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
 
-  const minGuests = getPackageMinGuests(selectedPackage);
-  const maxGuests = getPackageMaxGuests(selectedPackage);
-
-  useEffect(() => {
-    if (selectedPackage) {
-      const pkgMin = getPackageMinGuests(selectedPackage);
-      setGuests((prev) => {
-        const num = Number(prev);
-        if (isNaN(num) || num < pkgMin) {
-          return pkgMin;
-        }
-        return num;
-      });
-    }
-  }, [selectedPackage]);
-
   useEffect(() => {
     setGuestInputVal(String(guests));
   }, [guests]);
+
+  const minGuests = selectedPackage?.minimumGuests || 50;
+  const maxGuests = selectedPackage?.maximumGuests || 5000;
 
   const handleGuestSubmit = (valStr: string) => {
     const trimmed = valStr.trim();
@@ -1002,13 +966,7 @@ export default function OrderFlow() {
       setGuestInputVal(String(guests));
       return;
     }
-    const cleanDigits = trimmed.replace(/\D/g, "");
-    if (!cleanDigits) {
-      setGuestInputVal(String(guests));
-      toast("Please enter a valid positive number of guests", "error");
-      return;
-    }
-    const parsed = parseInt(cleanDigits, 10);
+    const parsed = parseInt(trimmed, 10);
     if (isNaN(parsed) || parsed < 1) {
       setGuestInputVal(String(guests));
       toast("Please enter a valid positive number of guests", "error");
@@ -1025,15 +983,13 @@ export default function OrderFlow() {
   };
 
   const decrementGuests = () => {
-    const current = Number(guests) || minGuests;
-    const newCount = Math.max(minGuests, current - 10);
+    const newCount = Math.max(minGuests, guests - 10);
     setGuests(newCount);
     setGuestInputVal(String(newCount));
   };
 
   const incrementGuests = () => {
-    const current = Number(guests) || minGuests;
-    const newCount = Math.min(maxGuests, current + 10);
+    const newCount = Math.min(maxGuests, guests + 10);
     setGuests(newCount);
     setGuestInputVal(String(newCount));
   };
@@ -1052,21 +1008,9 @@ export default function OrderFlow() {
         const parsed = JSON.parse(savedSession);
         if (parsed.catererId === id) {
           if (parsed.viewMode && parsed.viewMode !== "packages") setViewMode(parsed.viewMode);
-          if (parsed.selectedPackage) {
+          if (parsed.guests) setGuests(parsed.guests);
+          if (parsed.selectedPackage)
             setSelectedPackage(parsed.selectedPackage);
-            const pkgMin = getPackageMinGuests(parsed.selectedPackage);
-            const savedGuests = Number(parsed.guests);
-            if (!isNaN(savedGuests) && savedGuests >= pkgMin) {
-              setGuests(savedGuests);
-              setGuestInputVal(String(savedGuests));
-            } else {
-              setGuests(pkgMin);
-              setGuestInputVal(String(pkgMin));
-            }
-          } else if (parsed.guests) {
-            setGuests(parsed.guests);
-            setGuestInputVal(String(parsed.guests));
-          }
           if (parsed.orderForm) setOrderForm(parsed.orderForm);
           if (parsed.selectedItems) setSelectedItems(parsed.selectedItems);
         }
@@ -1872,8 +1816,8 @@ export default function OrderFlow() {
                 <div className="flex items-center gap-4 hidden sm:flex">
                   <div className="bg-slate-100 rounded-lg p-1.5 flex items-center">
                     <button
-                      onClick={decrementGuests}
-                      className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-brand-green-900 border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                      onClick={() => setGuests(Math.max(50, guests - 10))}
+                      className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-brand-green-900 border border-slate-200 hover:bg-slate-50"
                     >
                       <Minus size={16} />
                     </button>
@@ -1881,8 +1825,8 @@ export default function OrderFlow() {
                       {guests} Guests
                     </div>
                     <button
-                      onClick={incrementGuests}
-                      className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-brand-green-900 border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                      onClick={() => setGuests(guests + 10)}
+                      className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-brand-green-900 border border-slate-200 hover:bg-slate-50"
                     >
                       <Plus size={16} />
                     </button>
@@ -1994,11 +1938,8 @@ export default function OrderFlow() {
                     <div
                       key={idx}
                       onClick={() => {
-                        const pkgMin = getPackageMinGuests(pkg);
                         setSelectedPackage(pkg);
                         setSelectedItems({});
-                        setGuests((prev) => Math.max(pkgMin, Number(prev) || pkgMin));
-                        setGuestInputVal(String(Math.max(pkgMin, Number(guests) || pkgMin)));
                         setViewMode("package_detail");
                       }}
                       className={cn(
@@ -2221,7 +2162,7 @@ export default function OrderFlow() {
                     {renderVegNonVegBadge(selectedPackage.packageType || "Veg")}
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-[#D4AF37]/30 text-[8.5px] sm:text-[9px] font-bold text-[#F4E2B6] font-sans">
                       <Users size={11} className="text-[#D4AF37]" />
-                      Min {getPackageMinGuests(selectedPackage)}+
+                      Min {selectedPackage.minimumGuests || 50}+
                     </span>
                   </div>
                 </div>
@@ -2330,10 +2271,7 @@ export default function OrderFlow() {
                                 <button
                                   key={idx}
                                   type="button"
-                                  onClick={() => {
-                                    setGuests(slab.minGuests);
-                                    setGuestInputVal(String(slab.minGuests));
-                                  }}
+                                  onClick={() => setGuests(slab.minGuests)}
                                   className={cn(
                                     "flex flex-col justify-center items-start px-2.5 py-1.5 sm:py-2 rounded-lg border transition-all duration-200 text-left cursor-pointer",
                                     isActive
@@ -2378,13 +2316,20 @@ export default function OrderFlow() {
                           ENTER GUEST COUNT
                         </label>
                         <span className="text-[9.5px] font-medium text-stone-500">
-                          Min: {getPackageMinGuests(selectedPackage)} guests
+                          Min: {selectedPackage.minimumGuests || 50} guests
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={decrementGuests}
+                          onClick={() =>
+                            setGuests(
+                              Math.max(
+                                selectedPackage.minimumGuests || 50,
+                                guests - 10
+                              )
+                            )
+                          }
                           className="w-8.5 h-8.5 sm:w-9 sm:h-9 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-lg border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-2xs text-base font-bold shrink-0"
                           title="Decrease 10 guests"
                         >
@@ -2392,51 +2337,18 @@ export default function OrderFlow() {
                         </button>
 
                         <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={guestInputVal}
+                          type="number"
+                          value={guests}
                           onChange={(e) => {
-                            const raw = e.target.value;
-                            const cleanDigits = raw.replace(/\D/g, "");
-                            if (cleanDigits === "") {
-                              setGuestInputVal("");
-                              return;
-                            }
-                            // Parse integer immediately to strip leading zeros like '0100' -> '100'
-                            const parsed = parseInt(cleanDigits, 10);
-                            setGuestInputVal(String(parsed));
-                            if (!isNaN(parsed) && parsed > 0) {
-                              setGuests(parsed);
-                            }
-                          }}
-                          onBlur={() => {
-                            if (!guestInputVal || isNaN(Number(guestInputVal))) {
-                              setGuests(minGuests);
-                              setGuestInputVal(String(minGuests));
-                              toast(`Minimum requirement for this package is ${minGuests} guests`, "error");
-                              return;
-                            }
-                            const parsed = parseInt(guestInputVal, 10);
-                            if (parsed < minGuests) {
-                              setGuests(minGuests);
-                              setGuestInputVal(String(minGuests));
-                              toast(`Minimum requirement for this package is ${minGuests} guests`, "error");
-                            } else if (parsed > maxGuests) {
-                              setGuests(maxGuests);
-                              setGuestInputVal(String(maxGuests));
-                              toast(`Maximum guest limit is ${maxGuests} guests`, "error");
-                            } else {
-                              setGuests(parsed);
-                              setGuestInputVal(String(parsed));
-                            }
+                            const val = Math.max(0, Number(e.target.value));
+                            setGuests(val);
                           }}
                           className="flex-1 w-full h-8.5 sm:h-9 text-center font-sans font-bold text-base sm:text-lg text-[#123326] bg-[#FAF8F5] focus:bg-white border border-[#DECC9C] hover:border-[#C29D38] focus:border-[#C29D38] rounded-lg outline-none transition-all shadow-inner select-all"
                         />
 
                         <button
                           type="button"
-                          onClick={incrementGuests}
+                          onClick={() => setGuests(guests + 10)}
                           className="w-8.5 h-8.5 sm:w-9 sm:h-9 flex items-center justify-center bg-gradient-to-b from-[#FCFAF5] to-[#EFE7D5] hover:from-white hover:to-[#FCFAF5] active:scale-95 text-[#123326] rounded-lg border border-[#DECC9C] hover:border-[#C29D38] transition-all cursor-pointer shadow-2xs text-base font-bold shrink-0"
                           title="Increase 10 guests"
                         >
@@ -2541,17 +2453,7 @@ export default function OrderFlow() {
                     {/* Call To Action Button (Premium Emerald / Gold outline) */}
                     <button
                       type="button"
-                      onClick={() => {
-                        const pkgMin = getPackageMinGuests(selectedPackage);
-                        const numGuests = Number(guests);
-                        if (!numGuests || isNaN(numGuests) || numGuests < pkgMin) {
-                          setGuests(pkgMin);
-                          setGuestInputVal(String(pkgMin));
-                          toast(`Minimum requirement for this package is ${pkgMin} guests.`, "error");
-                          return;
-                        }
-                        setViewMode("custom");
-                      }}
+                      onClick={() => setViewMode("custom")}
                       className="w-full bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-[#FDE5A9] font-sans font-bold text-xs uppercase tracking-[2px] py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md border border-[#BB9C4A] hover:border-[#F4E2B6] hover:scale-[1.005] active:scale-[0.99] transition-all outline-none flex items-center justify-center gap-1.5 cursor-pointer group"
                     >
                       <span>CONTINUE WITH MENU</span>
@@ -3686,50 +3588,38 @@ export default function OrderFlow() {
                     </svg>
                   </div>
                   <p className="text-[14px] sm:text-[15px] text-stone-600 mt-1 font-medium font-sans">
-                    Confirmed guest headcount for catering preparation and volume pricing.
+                    Adjust your total guests. Prices adapt based on dynamic volume slabs.
                   </p>
                 </div>
               </div>
 
-              {/* Read-Only Confirmed Guests Card with Change action */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-br from-[#FCFAF7] to-[#F7F2E8] border border-[#DECC9C] rounded-2xl p-4 sm:p-5 w-full max-w-lg select-none shadow-xs">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-[#DECC9C] text-[#8C6D1F] flex items-center justify-center shadow-2xs shrink-0">
-                    <Users size={22} className="text-[#8C6D1F]" />
-                  </div>
-                  <div className="text-left">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-serif text-3xl font-black text-[#123326] leading-none">
-                        {guests}
-                      </span>
-                      <span className="text-xs sm:text-sm font-bold text-stone-600 uppercase tracking-wider font-sans">
-                        Guests Confirmed
-                      </span>
-                    </div>
-                    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-emerald-800 mt-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block"></span>
-                      Locked for catering estimate & preparation
-                    </span>
-                  </div>
-                </div>
-
+              <div className="flex items-center gap-4 bg-stone-50/50 border border-stone-200/50 rounded-2xl p-2 w-full max-w-sm select-none shadow-sm">
                 <button
                   type="button"
-                  onClick={() => {
-                    setViewMode("package_detail");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-stone-50 border border-[#DECC9C] hover:border-[#C29D38] text-[#8C6D1F] hover:text-[#5F460D] text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-2xs self-start sm:self-center shrink-0 active:scale-95"
-                  title="Modify guest count in package selection"
+                  onClick={() => setGuests(Math.max(selectedPackage?.minimumGuests || 50, guests - 10))}
+                  className="w-14 h-14 flex items-center justify-center bg-white border border-stone-200 hover:border-stone-400 rounded-xl text-[#0F3D2E] hover:bg-stone-50 transition-all font-black shadow-sm cursor-pointer shrink-0 active:scale-95"
                 >
-                  <span>Change Guests</span>
-                  <ArrowRight size={13} />
+                  <Minus size={18} strokeWidth={2.5} />
+                </button>
+                <div className="flex-1 text-center flex flex-col justify-center">
+                  <span className="font-serif text-2xl font-black text-stone-800 leading-none">
+                    {guests}
+                  </span>
+                  <span className="text-[11px] text-stone-500 uppercase tracking-widest font-sans font-bold mt-1">
+                    Guests
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGuests(guests + 10)}
+                  className="w-14 h-14 flex items-center justify-center bg-white border border-stone-200 hover:border-stone-400 rounded-xl text-[#0F3D2E] hover:bg-stone-50 transition-all font-black shadow-sm cursor-pointer shrink-0 active:scale-95"
+                >
+                  <Plus size={18} strokeWidth={2.5} />
                 </button>
               </div>
-
-              <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium text-[#0F3D2E] mt-3 bg-[#EAF2EE]/60 border border-[#D4E4DC] rounded-xl p-3 sm:p-3.5 max-w-lg">
-                <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-[#0F3D2E] text-white text-[11px] font-serif font-black select-none shrink-0">i</span>
-                <span>Minimum requirement for {selectedPackage?.packageName || selectedPackage?.name || "this package"} is <span className="font-bold text-[#0F3D2E]">{getPackageMinGuests(selectedPackage)} guests</span>.</span>
+              <div className="flex items-center gap-2.5 text-sm font-semibold text-[#0F3D2E] mt-3 bg-[#EAF2EE]/50 border border-[#D4E4DC] rounded-xl p-3.5">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#0F3D2E] text-white text-xs font-serif font-black select-none shrink-0">i</span>
+                <span>Min. guests required for {selectedPackage?.packageName || "this package"} is <span className="font-bold text-[#0F3D2E]">{selectedPackage?.minimumGuests || 50}</span>.</span>
               </div>
             </div>
 

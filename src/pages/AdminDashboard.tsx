@@ -4,7 +4,7 @@ import {
   Users, Building, FileText, CheckCircle2, XCircle, Search, Clock, CreditCard, 
   ChevronRight, Menu as MenuIcon, AlertCircle, Trash2, Package, Image, Trash, 
   Upload, Check, RefreshCw, Sliders, ChefHat, Bell, LogOut, Award, Plus, Edit2, 
-  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Loader2 
+  X, Eye, EyeOff, ShieldAlert, AlertTriangle, Download, Database 
 } from 'lucide-react';
 import { cn, safeSaveRegistrations } from '../lib/utils';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -72,15 +72,21 @@ export default function AdminDashboard() {
   const [orderToDelete, setOrderToDelete] = useState<any | null>(null);
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
-  // Bulk order delete states
-  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
-  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [bulkDeleteProgress, setBulkDeleteProgress] = useState<{ current: number; total: number; failed: number } | null>(null);
-  const [orderPage, setOrderPage] = useState<number>(1);
-  const [ordersPerPage, setOrdersPerPage] = useState<number>(15);
-  const selectAllCheckboxRef = React.useRef<HTMLInputElement | null>(null);
-
+  // Clear all orders modal states
+  const [showClearAllOrdersModal, setShowClearAllOrdersModal] = useState(false);
+  const [clearAllConfirmText, setClearAllConfirmText] = useState('');
+  const [isClearingAllOrders, setIsClearingAllOrders] = useState(false);
+  const [orderSummaryStats, setOrderSummaryStats] = useState<{
+    totalOrders: number;
+    orderNotificationsCount: number;
+    breakdown: Record<string, number>;
+    totalRevenue: number;
+  }>({
+    totalOrders: 0,
+    orderNotificationsCount: 0,
+    breakdown: {},
+    totalRevenue: 0
+  });
   const [orderStatusTab, setOrderStatusTab] = useState<'all' | 'pending' | 'approved' | 'completed' | 'rejected' | 'changes_requested'>('all');
 
   // Admin order filter and detail states
@@ -1116,105 +1122,67 @@ export default function AdminDashboard() {
     }
   };
 
-  // Bulk Order deletion handler
-  const executeBulkDelete = async () => {
-    if (selectedOrderIds.length === 0 || isBulkDeleting) return;
-
-    setIsBulkDeleting(true);
-    const total = selectedOrderIds.length;
-    setBulkDeleteProgress({ current: 0, total, failed: 0 });
-
-    let successCount = 0;
-    let failCount = 0;
-    const deletedIds: string[] = [];
-
-    const headers = await getAdminHeaders();
-    const supabase = getSupabase() as any;
-
-    for (let i = 0; i < selectedOrderIds.length; i++) {
-      const orderId = selectedOrderIds[i];
-      setBulkDeleteProgress({ current: i + 1, total, failed: failCount });
-
-      let orderSuccess = false;
-
-      // 1. Try standard Admin API endpoint
-      try {
-        const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
-          method: 'DELETE',
-          headers
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.success) {
-          orderSuccess = true;
-        }
-      } catch (apiErr) {
-        console.warn(`[BULK DELETE] API delete attempt failed for order #${orderId}:`, apiErr);
-      }
-
-      // 2. Direct Supabase fallback if API failed or network error
-      if (!orderSuccess && supabase) {
-        try {
-          await supabase.from('notifications').delete().eq('orderId', orderId);
-          const { error: ordDelErr } = await supabase.from('orders').delete().eq('id', orderId);
-          if (!ordDelErr) {
-            orderSuccess = true;
-            try {
-              await supabase.from('audit_logs').insert([{
-                action: 'Order Deleted',
-                details: `Admin permanently deleted order #${orderId} (bulk delete)`,
-                role: 'Admin',
-                email: adminEmail,
-                timestamp: new Date().toISOString()
-              }]);
-            } catch (auditErr) {
-              console.warn("Audit log insert failed:", auditErr);
-            }
-          }
-        } catch (sbErr) {
-          console.error(`[BULK DELETE] Direct Supabase delete failed for order #${orderId}:`, sbErr);
-        }
-      }
-
-      if (orderSuccess) {
-        successCount++;
-        deletedIds.push(orderId);
-      } else {
-        failCount++;
-      }
-    }
-
-    // Update local state and storage
-    if (deletedIds.length > 0) {
-      const deletedSet = new Set(deletedIds);
-      setOrders(prev => {
-        const updated = prev.filter(o => !deletedSet.has(o.id));
-        localStorage.setItem('orders', JSON.stringify(updated));
-        return updated;
-      });
-      setSelectedOrderIds(prev => prev.filter(id => !deletedSet.has(id)));
-    }
-
-    // Report outcome
-    if (failCount === 0) {
-      toast(`Successfully deleted ${successCount} order${successCount !== 1 ? 's' : ''}.`, 'success');
-    } else if (successCount > 0) {
-      toast(`Deleted ${successCount} order(s). ${failCount} order(s) failed to delete.`, 'error');
-    } else {
-      toast(`Failed to delete selected orders.`, 'error');
-    }
-
-    // Refresh database data
+  // Live order stats fetching for Clear All modal
+  const fetchLiveOrderStats = async () => {
     try {
-      await fetchSupabaseData();
-    } catch (refreshErr) {
-      console.warn("Error refreshing after bulk delete:", refreshErr);
+      const headers = await getAdminHeaders();
+      const res = await fetch('/api/admin/orders-summary', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setOrderSummaryStats({
+            totalOrders: data.totalOrders,
+            orderNotificationsCount: data.orderNotificationsCount,
+            breakdown: data.breakdown || {},
+            totalRevenue: data.totalRevenue || 0
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch order summary stats:", e);
     }
-
-    setIsBulkDeleting(false);
-    setBulkDeleteProgress(null);
-    setShowBulkDeleteModal(false);
   };
 
+  const handleOpenClearAllModal = async () => {
+    setClearAllConfirmText('');
+    await fetchLiveOrderStats();
+    setShowClearAllOrdersModal(true);
+  };
+
+  // Clear All Orders execution handler
+  const executeClearAllOrders = async () => {
+    if (clearAllConfirmText !== 'DELETE ALL ORDERS') {
+      toast('Please type DELETE ALL ORDERS to confirm.', 'error');
+      return;
+    }
+
+    setIsClearingAllOrders(true);
+    try {
+      const headers = await getAdminHeaders();
+      const res = await fetch('/api/admin/orders/clear-all', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ confirmation: 'DELETE ALL ORDERS' })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        toast(`Cleared ${data.clearedOrdersCount} orders! Automated backup saved: ${data.backupFileName}`, 'success');
+        setOrders([]);
+        localStorage.setItem('orders', JSON.stringify([]));
+        await logAudit('Clear All Orders', `Purged ${data.clearedOrdersCount} orders with backup ${data.backupFileName}`);
+        setShowClearAllOrdersModal(false);
+        setClearAllConfirmText('');
+        fetchSupabaseData();
+      } else {
+        toast(data.error || 'Failed to clear order history', 'error');
+      }
+    } catch (err: any) {
+      toast("Error executing clear all: " + (err.message || err), 'error');
+    } finally {
+      setIsClearingAllOrders(false);
+    }
+  };
 
   const handleApproveProfileUpdate = async (id: string) => {
       const item = registrations.find(r => r.id === id);
@@ -1535,80 +1503,6 @@ export default function AdminDashboard() {
       return 0;
     });
   }, [derivedUsers, mobileSearchQuery, mobileFilterValue, mobileSortValue]);
-
-  // Admin Order History filtering across all pages
-  const adminFilteredOrders = React.useMemo(() => {
-    return orders.filter((o) => {
-      const matchesSearch = 
-        !adminSearch ||
-        (o.id || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
-        (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
-        (o.customerPhone || o.phone || '').includes(adminSearch) ||
-        (o.customerEmail || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
-        (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
-
-      const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
-      const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
-
-      let matchesTab = true;
-      const s = (o.status || '').toLowerCase();
-      if (orderStatusTab === 'pending') {
-        matchesTab = ['pending', 'submitted', 'pending caterer review', 'updated_by_customer'].includes(s);
-      } else if (orderStatusTab === 'approved') {
-        matchesTab = ['approved'].includes(s);
-      } else if (orderStatusTab === 'completed') {
-        matchesTab = ['completed'].includes(s);
-      } else if (orderStatusTab === 'changes_requested') {
-        matchesTab = ['changes_requested', 'changes requested'].includes(s);
-      } else if (orderStatusTab === 'rejected') {
-        matchesTab = ['rejected', 'cancelled'].includes(s);
-      }
-
-      return matchesSearch && matchesCaterer && matchesEventDate && matchesTab;
-    });
-  }, [orders, adminSearch, adminCatererFilter, adminEventDateFilter, orderStatusTab]);
-
-  // Bulk Selection Helpers
-  const isAllFilteredSelected = adminFilteredOrders.length > 0 && adminFilteredOrders.every(o => selectedOrderIds.includes(o.id));
-  const isSomeFilteredSelected = adminFilteredOrders.some(o => selectedOrderIds.includes(o.id));
-
-  // Sync indeterminate state of header checkbox
-  useEffect(() => {
-    if (selectAllCheckboxRef.current) {
-      selectAllCheckboxRef.current.indeterminate = isSomeFilteredSelected && !isAllFilteredSelected;
-    }
-  }, [isSomeFilteredSelected, isAllFilteredSelected]);
-
-  // Reset pagination to page 1 whenever search, caterer, date, or tab changes
-  useEffect(() => {
-    setOrderPage(1);
-  }, [adminSearch, adminCatererFilter, adminEventDateFilter, orderStatusTab, ordersPerPage]);
-
-  const handleToggleSelectAll = () => {
-    if (isAllFilteredSelected) {
-      // Unselect all orders matching the current filter across all pages
-      const filteredIdSet = new Set(adminFilteredOrders.map(o => o.id));
-      setSelectedOrderIds(prev => prev.filter(id => !filteredIdSet.has(id)));
-    } else {
-      // Select all orders matching the current filter across ALL pages
-      const newSelected = new Set(selectedOrderIds);
-      adminFilteredOrders.forEach(o => newSelected.add(o.id));
-      setSelectedOrderIds(Array.from(newSelected));
-    }
-  };
-
-  const handleToggleSelectRow = (orderId: string) => {
-    setSelectedOrderIds(prev => 
-      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
-    );
-  };
-
-  // Pagination calculations
-  const totalOrderPages = Math.max(1, Math.ceil(adminFilteredOrders.length / (ordersPerPage === 0 ? Math.max(1, adminFilteredOrders.length) : ordersPerPage)));
-  const currentPageSafe = Math.min(orderPage, totalOrderPages);
-  const startIndex = ordersPerPage === 0 ? 0 : (currentPageSafe - 1) * ordersPerPage;
-  const endIndex = ordersPerPage === 0 ? adminFilteredOrders.length : Math.min(startIndex + ordersPerPage, adminFilteredOrders.length);
-  const paginatedOrders = ordersPerPage === 0 ? adminFilteredOrders : adminFilteredOrders.slice(startIndex, endIndex);
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] text-slate-900 selection:bg-brand-gold-200">
@@ -2198,6 +2092,14 @@ export default function AdminDashboard() {
                           >
                               <RefreshCw size={13} /> Refresh
                           </button>
+
+                          <button
+                              onClick={handleOpenClearAllModal}
+                              className="px-4 py-2 bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                              title="Safely backup and clear order history"
+                          >
+                              <Trash2 size={14} /> Clear All Order History
+                          </button>
                       </div>
                   </div>
 
@@ -2322,73 +2224,12 @@ export default function AdminDashboard() {
                       </div>
                   </div>
 
-                  {/* Bulk Actions Banner (when orders are selected) */}
-                  {selectedOrderIds.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-                          <div className="flex items-center gap-2.5">
-                              <span className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                  {selectedOrderIds.length}
-                              </span>
-                              <div>
-                                  <span className="text-xs font-bold text-slate-900">
-                                      {selectedOrderIds.length} {selectedOrderIds.length === 1 ? 'order' : 'orders'} selected
-                                  </span>
-                                  <span className="text-[11px] text-slate-500 block sm:inline sm:ml-2">
-                                      {isAllFilteredSelected 
-                                          ? `(All ${adminFilteredOrders.length} orders across all pages selected)`
-                                          : `(${adminFilteredOrders.length} filtered orders available)`}
-                                  </span>
-                              </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-                              {!isAllFilteredSelected && adminFilteredOrders.length > 0 && (
-                                  <button
-                                      type="button"
-                                      onClick={() => {
-                                          const newSelected = new Set(selectedOrderIds);
-                                          adminFilteredOrders.forEach(o => newSelected.add(o.id));
-                                          setSelectedOrderIds(Array.from(newSelected));
-                                      }}
-                                      className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition cursor-pointer"
-                                  >
-                                      Select All ({adminFilteredOrders.length})
-                                  </button>
-                              )}
-                              <button
-                                  type="button"
-                                  onClick={() => setSelectedOrderIds([])}
-                                  className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition cursor-pointer"
-                              >
-                                  Clear Selection
-                              </button>
-                              <button
-                                  type="button"
-                                  onClick={() => setShowBulkDeleteModal(true)}
-                                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                              >
-                                  <Trash2 size={13} /> Delete Selected Orders ({selectedOrderIds.length})
-                              </button>
-                          </div>
-                      </div>
-                  )}
-
                   {/* Orders Table */}
                   <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
                       <div className="overflow-x-auto">
                           <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
                               <thead className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                                   <tr>
-                                      <th className="w-10 px-3 py-3 text-center">
-                                          <input
-                                              ref={selectAllCheckboxRef}
-                                              type="checkbox"
-                                              checked={isAllFilteredSelected}
-                                              onChange={handleToggleSelectAll}
-                                              title={isAllFilteredSelected ? "Deselect all filtered orders" : "Select all filtered orders across all pages"}
-                                              className="w-4 h-4 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500 cursor-pointer accent-brand-gold-500"
-                                          />
-                                      </th>
                                       <th className="px-4 py-3">Order ID</th>
                                       <th className="px-4 py-3">Customer Details</th>
                                       <th className="px-4 py-3">Caterer Partner</th>
@@ -2400,78 +2241,118 @@ export default function AdminDashboard() {
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                  {paginatedOrders.map((ord) => {
-                                      const isRowSelected = selectedOrderIds.includes(ord.id);
-                                      return (
-                                          <tr key={ord.id} className={cn("transition-colors", isRowSelected ? "bg-amber-50/70 hover:bg-amber-100/60" : "hover:bg-slate-50/80")}>
-                                              <td className="w-10 px-3 py-3 text-center">
-                                                  <input
-                                                      type="checkbox"
-                                                      checked={isRowSelected}
-                                                      onChange={() => handleToggleSelectRow(ord.id)}
-                                                      title={`Select order #${ord.id}`}
-                                                      className="w-4 h-4 rounded border-slate-300 text-brand-gold-500 focus:ring-brand-gold-500 cursor-pointer accent-brand-gold-500"
-                                                  />
-                                              </td>
-                                              <td className="px-4 py-3 font-mono font-bold text-slate-700 text-[11px]">
-                                                  #{ord.id}
-                                              </td>
-                                              <td className="px-4 py-3">
-                                                  <p className="font-bold text-slate-900">{ord.customerName || 'Customer'}</p>
-                                                  <p className="text-[10px] text-slate-500 font-medium">{ord.customerPhone || ord.phone || 'No phone'}</p>
-                                              </td>
-                                              <td className="px-4 py-3 text-slate-700 font-medium">
-                                                  {ord.catererName || 'Caterer Partner'}
-                                              </td>
-                                              <td className="px-4 py-3 text-slate-700 font-medium whitespace-nowrap">
-                                                  {ord.eventDate || 'N/A'}
-                                              </td>
-                                              <td className="px-4 py-3 text-[11px] text-slate-600">
-                                                  <span className="font-bold text-slate-800">{ord.packageDetails?.packageName || ord.packageSelected || 'Custom'}</span>
-                                                  <span className="block text-[10px] text-slate-500">{ord.guests || ord.guestCount || 0} guests</span>
-                                              </td>
-                                              <td className="px-4 py-3 font-bold text-slate-950">
-                                                  ₹{(Number(ord.totalEstimate) || Number(ord.totalAmount) || 0).toLocaleString()}
-                                              </td>
-                                              <td className="px-4 py-3">
-                                                  <span className={cn(
-                                                      "px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider", 
-                                                      ['Approved', 'approved'].includes(ord.status) ? "bg-emerald-50 text-emerald-800 border border-emerald-200" :
-                                                      ['Rejected', 'rejected', 'Cancelled', 'cancelled'].includes(ord.status) ? "bg-rose-50 text-rose-800 border border-rose-200" :
-                                                      ['changes_requested', 'Changes Requested'].includes(ord.status) ? "bg-blue-50 text-blue-800 border border-blue-200" :
-                                                      ['Completed', 'completed'].includes(ord.status) ? "bg-slate-100 text-slate-800 border border-slate-200" :
-                                                      "bg-amber-50 text-amber-800 border border-amber-200"
-                                                  )}>
-                                                      {ord.status}
-                                                  </span>
-                                              </td>
-                                              <td className="px-4 py-3 text-center">
-                                                  <div className="flex items-center justify-center gap-1.5">
-                                                      <button 
-                                                          onClick={() => {
-                                                              setSelectedAdminOrder(ord);
-                                                              setAdminMemoText(ord.internal_notes || ord.internalNotes || '');
-                                                          }} 
-                                                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg text-[10.5px] font-bold transition-all text-slate-700 cursor-pointer"
-                                                      >
-                                                          View / Manage
-                                                      </button>
-                                                      <button
-                                                          type="button"
-                                                          onClick={() => setOrderToDelete(ord)}
-                                                          className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg border border-rose-200 hover:border-rose-600 transition-all cursor-pointer"
-                                                          title="Delete this order"
-                                                      >
-                                                          <Trash2 size={13} />
-                                                      </button>
-                                                  </div>
-                                              </td>
-                                          </tr>
-                                      );
-                                  })}
-                                  {adminFilteredOrders.length === 0 && (
+                                  {orders.filter((o) => {
+                                      const matchesSearch = 
+                                          o.id?.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerPhone || o.phone || '').includes(adminSearch) ||
+                                          (o.customerEmail || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
+
+                                      const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
+                                      const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
+
+                                      let matchesTab = true;
+                                      const s = (o.status || '').toLowerCase();
+                                      if (orderStatusTab === 'pending') {
+                                          matchesTab = ['pending', 'submitted', 'pending caterer review', 'updated_by_customer'].includes(s);
+                                      } else if (orderStatusTab === 'approved') {
+                                          matchesTab = ['approved'].includes(s);
+                                      } else if (orderStatusTab === 'completed') {
+                                          matchesTab = ['completed'].includes(s);
+                                      } else if (orderStatusTab === 'changes_requested') {
+                                          matchesTab = ['changes_requested', 'changes requested'].includes(s);
+                                      } else if (orderStatusTab === 'rejected') {
+                                          matchesTab = ['rejected', 'cancelled'].includes(s);
+                                      }
+
+                                      return matchesSearch && matchesCaterer && matchesEventDate && matchesTab;
+                                  }).map((ord) => (
+                                      <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
+                                          <td className="px-4 py-3 font-mono font-bold text-slate-700 text-[11px]">
+                                              #{ord.id}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                              <p className="font-bold text-slate-900">{ord.customerName || 'Customer'}</p>
+                                              <p className="text-[10px] text-slate-500 font-medium">{ord.customerPhone || ord.phone || 'No phone'}</p>
+                                          </td>
+                                          <td className="px-4 py-3 text-slate-700 font-medium">
+                                              {ord.catererName || 'Caterer Partner'}
+                                          </td>
+                                          <td className="px-4 py-3 text-slate-700 font-medium whitespace-nowrap">
+                                              {ord.eventDate || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-[11px] text-slate-600">
+                                              <span className="font-bold text-slate-800">{ord.packageDetails?.packageName || ord.packageSelected || 'Custom'}</span>
+                                              <span className="block text-[10px] text-slate-500">{ord.guests || ord.guestCount || 0} guests</span>
+                                          </td>
+                                          <td className="px-4 py-3 font-bold text-slate-950">
+                                              ₹{(Number(ord.totalEstimate) || Number(ord.totalAmount) || 0).toLocaleString()}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                              <span className={cn(
+                                                  "px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider", 
+                                                  ['Approved', 'approved'].includes(ord.status) ? "bg-emerald-50 text-emerald-800 border border-emerald-200" :
+                                                  ['Rejected', 'rejected', 'Cancelled', 'cancelled'].includes(ord.status) ? "bg-rose-50 text-rose-800 border border-rose-200" :
+                                                  ['changes_requested', 'Changes Requested'].includes(ord.status) ? "bg-blue-50 text-blue-800 border border-blue-200" :
+                                                  ['Completed', 'completed'].includes(ord.status) ? "bg-slate-100 text-slate-800 border border-slate-200" :
+                                                  "bg-amber-50 text-amber-800 border border-amber-200"
+                                              )}>
+                                                  {ord.status}
+                                              </span>
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                              <div className="flex items-center justify-center gap-1.5">
+                                                  <button 
+                                                      onClick={() => {
+                                                          setSelectedAdminOrder(ord);
+                                                          setAdminMemoText(ord.internal_notes || ord.internalNotes || '');
+                                                      }} 
+                                                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-lg text-[10.5px] font-bold transition-all text-slate-700 cursor-pointer"
+                                                  >
+                                                      View / Manage
+                                                  </button>
+                                                  <button
+                                                      type="button"
+                                                      onClick={() => setOrderToDelete(ord)}
+                                                      className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg border border-rose-200 hover:border-rose-600 transition-all cursor-pointer"
+                                                      title="Delete this order"
+                                                  >
+                                                      <Trash2 size={13} />
+                                                  </button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                  ))}
+                                  {orders.filter((o) => {
+                                      const matchesSearch = 
+                                          o.id?.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerName || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.customerPhone || o.phone || '').includes(adminSearch) ||
+                                          (o.customerEmail || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+                                          (o.catererName || '').toLowerCase().includes(adminSearch.toLowerCase());
+
+                                      const matchesCaterer = !adminCatererFilter || o.catererName === adminCatererFilter;
+                                      const matchesEventDate = !adminEventDateFilter || o.eventDate === adminEventDateFilter;
+
+                                      let matchesTab = true;
+                                      const s = (o.status || '').toLowerCase();
+                                      if (orderStatusTab === 'pending') {
+                                          matchesTab = ['pending', 'submitted', 'pending caterer review', 'updated_by_customer'].includes(s);
+                                      } else if (orderStatusTab === 'approved') {
+                                          matchesTab = ['approved'].includes(s);
+                                      } else if (orderStatusTab === 'completed') {
+                                          matchesTab = ['completed'].includes(s);
+                                      } else if (orderStatusTab === 'changes_requested') {
+                                          matchesTab = ['changes_requested', 'changes requested'].includes(s);
+                                      } else if (orderStatusTab === 'rejected') {
+                                          matchesTab = ['rejected', 'cancelled'].includes(s);
+                                      }
+
+                                      return matchesSearch && matchesCaterer && matchesEventDate && matchesTab;
+                                  }).length === 0 && (
                                       <tr>
-                                          <td colSpan={9} className="px-4 py-12 text-center text-slate-500 font-medium">
+                                          <td colSpan={8} className="px-4 py-12 text-center text-slate-500 font-medium">
                                               No orders matched the selected filters.
                                           </td>
                                       </tr>
@@ -2479,83 +2360,6 @@ export default function AdminDashboard() {
                               </tbody>
                           </table>
                       </div>
-
-                      {/* Pagination Bar */}
-                      {adminFilteredOrders.length > 0 && (
-                          <div className="bg-slate-50/80 px-4 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                              <div className="flex items-center gap-3 text-slate-600">
-                                  <span>
-                                      Showing <strong className="text-slate-900 font-bold">{adminFilteredOrders.length === 0 ? 0 : startIndex + 1}</strong> to <strong className="text-slate-900 font-bold">{endIndex}</strong> of <strong className="text-slate-900 font-bold">{adminFilteredOrders.length}</strong> orders
-                                  </span>
-                                  <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-                                      <span className="text-[11px] text-slate-500">Per page:</span>
-                                      <select
-                                          value={ordersPerPage}
-                                          onChange={(e) => {
-                                              setOrdersPerPage(Number(e.target.value));
-                                              setOrderPage(1);
-                                          }}
-                                          className="bg-white border border-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none"
-                                      >
-                                          <option value={10}>10</option>
-                                          <option value={15}>15</option>
-                                          <option value={25}>25</option>
-                                          <option value={50}>50</option>
-                                          <option value={0}>All ({adminFilteredOrders.length})</option>
-                                      </select>
-                                  </div>
-                              </div>
-
-                              {totalOrderPages > 1 && (
-                                  <div className="flex items-center gap-1">
-                                      <button
-                                          type="button"
-                                          disabled={currentPageSafe <= 1}
-                                          onClick={() => setOrderPage(p => Math.max(1, p - 1))}
-                                          className="px-2.5 py-1 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 transition cursor-pointer"
-                                      >
-                                          Previous
-                                      </button>
-
-                                      {Array.from({ length: totalOrderPages }, (_, i) => i + 1)
-                                          .filter(page => {
-                                              if (totalOrderPages <= 7) return true;
-                                              return page === 1 || page === totalOrderPages || Math.abs(page - currentPageSafe) <= 1;
-                                          })
-                                          .map((page, idx, arr) => {
-                                              const prev = arr[idx - 1];
-                                              const hasGap = prev && page - prev > 1;
-                                              return (
-                                                  <React.Fragment key={page}>
-                                                      {hasGap && <span className="px-1 text-slate-400">...</span>}
-                                                      <button
-                                                          type="button"
-                                                          onClick={() => setOrderPage(page)}
-                                                          className={cn(
-                                                              "w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer",
-                                                              currentPageSafe === page
-                                                                  ? "bg-slate-900 text-brand-gold-400"
-                                                                  : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
-                                                          )}
-                                                      >
-                                                          {page}
-                                                      </button>
-                                                  </React.Fragment>
-                                              );
-                                          })}
-
-                                      <button
-                                          type="button"
-                                          disabled={currentPageSafe >= totalOrderPages}
-                                          onClick={() => setOrderPage(p => Math.min(totalOrderPages, p + 1))}
-                                          className="px-2.5 py-1 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 transition cursor-pointer"
-                                      >
-                                          Next
-                                      </button>
-                                  </div>
-                              )}
-                          </div>
-                      )}
                   </div>
               </div>
           )}
@@ -4116,113 +3920,92 @@ export default function AdminDashboard() {
           </div>
       )}
 
-      {/* Bulk Order Deletion Modal */}
-      {showBulkDeleteModal && (
+      {/* Clear All Website-Wide Order History Modal */}
+      {showClearAllOrdersModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-rose-200">
                   <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 shadow-sm">
-                          <Trash2 size={24} />
+                      <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-600/30">
+                          <ShieldAlert size={28} />
                       </div>
                       <div>
-                          <h3 className="text-lg font-bold font-display text-slate-900">
-                              Delete {selectedOrderIds.length} Selected {selectedOrderIds.length === 1 ? 'Order' : 'Orders'}?
-                          </h3>
-                          <p className="text-xs text-slate-500">
-                              Bulk Order Management • PlanMyChoice Admin
-                          </p>
+                          <h3 className="text-xl font-bold font-display text-slate-900">Clear All Order History</h3>
+                          <p className="text-xs text-rose-600 font-bold tracking-wide uppercase">Website-Wide Order Purge</p>
                       </div>
                   </div>
 
-                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-4 text-xs">
-                      <p className="font-bold text-rose-900 mb-1">
-                          Permanently delete {selectedOrderIds.length} selected orders? This action cannot be undone.
-                      </p>
-                      <p className="text-rose-700">
-                          The selected orders and all their associated notifications will be permanently deleted from the database.
-                      </p>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 mb-5 space-y-2 text-xs">
-                      <div className="flex justify-between">
-                          <span className="text-slate-500">Selected Orders Count:</span>
-                          <span className="font-bold text-slate-900">{selectedOrderIds.length} orders</span>
+                  {/* Impact Summary */}
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 mb-4">
+                      <div className="flex items-center justify-between text-xs font-bold text-rose-900 mb-2">
+                          <span>Live Database Impact</span>
+                          <span className="bg-rose-200/80 text-rose-900 px-2 py-0.5 rounded-full text-[10px]">Production</span>
                       </div>
-                      <div className="flex justify-between">
-                          <span className="text-slate-500">Total Value:</span>
-                          <span className="font-bold text-slate-900">
-                              ₹{orders
-                                  .filter(o => selectedOrderIds.includes(o.id))
-                                  .reduce((sum, o) => sum + (Number(o.totalEstimate) || Number(o.totalAmount) || 0), 0)
-                                  .toLocaleString()}
-                          </span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-200/60 pt-2">
-                          <span className="text-slate-500">Customer & Caterer Profiles:</span>
-                          <span className="font-bold text-emerald-700">Preserved (100% Intact)</span>
-                      </div>
-                  </div>
-
-                  {/* Progress display during bulk deletion */}
-                  {isBulkDeleting && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5 text-xs">
-                          <div className="flex items-center justify-between mb-2">
-                              <span className="font-bold text-blue-900 flex items-center gap-2">
-                                  <Loader2 size={14} className="animate-spin text-blue-600" />
-                                  Deleting orders...
-                              </span>
-                              <span className="font-mono font-bold text-blue-800">
-                                  {bulkDeleteProgress?.current || 0} / {bulkDeleteProgress?.total || selectedOrderIds.length}
-                              </span>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100">
+                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Orders to Delete</span>
+                              <span className="text-lg font-extrabold text-rose-700">{orderSummaryStats?.totalOrders !== undefined ? orderSummaryStats.totalOrders : orders.length}</span>
                           </div>
-                          <div className="w-full bg-blue-200/70 rounded-full h-2 overflow-hidden">
-                              <div 
-                                  className="bg-blue-600 h-full transition-all duration-200 rounded-full"
-                                  style={{
-                                      width: `${bulkDeleteProgress && bulkDeleteProgress.total > 0 ? Math.round((bulkDeleteProgress.current / bulkDeleteProgress.total) * 100) : 0}%`
-                                  }}
-                              />
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100">
+                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Order Notifications</span>
+                              <span className="text-lg font-extrabold text-rose-700">{orderSummaryStats?.orderNotificationsCount !== undefined ? orderSummaryStats.orderNotificationsCount : 'All linked'}</span>
                           </div>
-                          <p className="text-[11px] text-blue-700 mt-2">
-                              Please wait while selected orders and their associated notifications are deleted safely.
-                          </p>
                       </div>
-                  )}
+                  </div>
+
+                  {/* Safety Guarantees */}
+                  <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 mb-4 space-y-1.5 text-xs text-emerald-900">
+                      <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                          <Database size={14} /> Preserved & Protected Data (100% Intact):
+                      </p>
+                      <ul className="text-[11.5px] text-emerald-800/90 space-y-1 list-disc pl-4">
+                          <li>Customer and admin user accounts & auth profiles</li>
+                          <li>Caterer listings, menus, packages, pricing & photos</li>
+                          <li>Platform settings, badges, and system configurations</li>
+                          <li><strong>Zero TRUNCATE CASCADE:</strong> Only order rows are targeted</li>
+                      </ul>
+                      <p className="text-[11px] text-brand-green-900 font-bold pt-1 flex items-center gap-1">
+                          <Download size={13} /> Automated JSON backup snapshot is generated before deletion.
+                      </p>
+                  </div>
+
+                  {/* Confirmation Input Requirement */}
+                  <div className="mb-6">
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                          To execute website-wide cleanup, type <span className="font-mono text-rose-700 font-extrabold select-all">DELETE ALL ORDERS</span> below:
+                      </label>
+                      <input
+                          type="text"
+                          placeholder="Type DELETE ALL ORDERS"
+                          value={clearAllConfirmText}
+                          onChange={(e) => setClearAllConfirmText(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-mono font-bold tracking-wider"
+                      />
+                  </div>
 
                   <div className="flex gap-3">
                       <button 
                           type="button"
                           onClick={() => {
-                              if (!isBulkDeleting) setShowBulkDeleteModal(false);
+                              setShowClearAllOrdersModal(false);
+                              setClearAllConfirmText('');
                           }}
-                          disabled={isBulkDeleting}
+                          disabled={isClearingAllOrders}
                           className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
                       >
                           Cancel
                       </button>
                       <button 
                           type="button"
-                          onClick={executeBulkDelete}
-                          disabled={isBulkDeleting || selectedOrderIds.length === 0}
-                          className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                          onClick={executeClearAllOrders}
+                          disabled={isClearingAllOrders || clearAllConfirmText !== 'DELETE ALL ORDERS'}
+                          className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-600/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                          {isBulkDeleting ? (
-                              <>
-                                  <Loader2 size={13} className="animate-spin" />
-                                  <span>Deleting ({bulkDeleteProgress?.current || 0}/{bulkDeleteProgress?.total || selectedOrderIds.length})...</span>
-                              </>
-                          ) : (
-                              <>
-                                  <Trash2 size={13} />
-                                  <span>Delete {selectedOrderIds.length} Orders</span>
-                              </>
-                          )}
+                          {isClearingAllOrders ? 'Backing Up & Clearing...' : 'Confirm Purge All Orders'}
                       </button>
                   </div>
               </div>
           </div>
       )}
-
 
     </div>
   );

@@ -5,6 +5,7 @@ import {
   Clock,
   Award,
   Building,
+  Check,
   ChevronUp,
   ChevronDown,
   Trash2,
@@ -14,6 +15,7 @@ import {
   ArrowRight,
   Star,
   PlayCircle,
+  ShieldCheck,
   ChefHat,
   ChevronRight,
   CalendarDays,
@@ -815,6 +817,8 @@ export const MenuPackagesCard: React.FC<SectionProps & {
   };
 
   const location = useLocation();
+  const [detailModalOpen, setDetailModalOpen] = React.useState(false);
+  const [detailPkg, setDetailPkg] = React.useState<any | null>(null);
 
   const [isEditingPackage, setIsEditingPackage] = React.useState(false);
   const [selectedPkg, setSelectedPkg] = React.useState<any | null>(null);
@@ -1390,22 +1394,167 @@ export const MenuPackagesCard: React.FC<SectionProps & {
                 </div>
               </div>
 
-              <div className="mt-auto pt-1">
+              <div className="flex flex-col gap-1 mt-auto">
                 <Link
                   to={`/order/${caterer.id}`}
                   state={{ packageIdx: pkg.id, customGuestCount: guestCount }}
                   className={cn(
-                    "flex items-center justify-center gap-1 w-full h-[32px] rounded-md font-sans font-bold text-[10px] uppercase tracking-[0.5px] transition-all duration-300 active:scale-95 cursor-pointer shadow-2xs hover:brightness-105",
+                    "flex items-center justify-center gap-1 w-full h-[30px] rounded-md font-sans font-bold text-[10px] uppercase tracking-[0.5px] transition-all duration-300 active:scale-95 cursor-pointer shadow-2xs hover:brightness-105",
                     tStyle.buttonClass,
                   )}
                 >
                   Book Now <ChevronRight size={10} className="stroke-[3]" />
                 </Link>
+
+                <button
+                  onClick={() => {
+                    setDetailPkg(pkg);
+                    setDetailModalOpen(true);
+                  }}
+                  className="w-full text-center font-sans font-bold text-[9.5px] uppercase tracking-[0.5px] text-[#A27008] hover:text-[#71520D] transition cursor-pointer"
+                >
+                  View Details
+                </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Premium View Details Modal */}
+      {detailModalOpen && detailPkg && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-fade-in select-none">
+          <div className="bg-[#FFFDF9] rounded-2xl md:rounded-[32px] border-2 border-[#BB9C4A] shadow-[0_30px_70px_rgba(0,0,0,0.3)] max-w-lg w-full overflow-hidden relative transform transition-all scale-100 flex flex-col max-h-[90vh]">
+            
+            {/* Elegant Header */}
+            <div className="bg-gradient-to-br from-[#021B1A] via-[#032D29] to-[#0A3A34] text-white p-6 relative select-none border-b border-[#BB9C4A]/45 shrink-0 flex items-center justify-between">
+              <div className="flex flex-col text-left">
+                <h3 className="font-display font-bold text-2xl uppercase tracking-wider text-[#FDE5A9] leading-tight">
+                  {detailPkg.name}
+                </h3>
+                <span className="text-[10px] font-sans font-semibold text-[#DEAA38]/90 uppercase tracking-[0.2em] mt-1.5">
+                  Package Details • {caterer.name}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setDetailModalOpen(false);
+                  setDetailPkg(null);
+                }}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer shrink-0 border border-white/10"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content Body Scrollable */}
+            <div className="p-6 overflow-y-auto space-y-6 text-left flex-1 font-sans">
+              
+              {/* Type, Price and Guest requirements */}
+              <div className="grid grid-cols-3 gap-3 bg-[#FCFAF5] p-4 rounded-xl border border-amber-200/40 text-center">
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Cuisine</span>
+                  <span className={`inline-block font-extrabold text-xs px-2 py-0.5 rounded-md ${detailPkg.type === "veg" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-rose-50 text-rose-700 border border-rose-100"}`}>
+                    {detailPkg.type === "veg" ? "Veg" : "Non-Veg"}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Per Plate</span>
+                  <span className="font-black text-slate-800 text-lg">₹{detailPkg.price}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Min Guests</span>
+                  <span className="font-black text-slate-800 text-lg">{detailPkg.guests}+</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              {detailPkg.desc && (
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-[#A27008] mb-1.5 font-sans">Description</h4>
+                  <p className="text-stone-650 text-[14px] leading-relaxed italic">
+                    "{detailPkg.desc}"
+                  </p>
+                </div>
+              )}
+
+              {/* Included Categories */}
+              {detailPkg.categories && detailPkg.categories.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-[#A27008] mb-2 font-sans">Included Categories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {detailPkg.categories.map((cat: string, i: number) => (
+                      <span key={i} className="px-3 py-1 bg-white border border-[#EFE7DA] rounded-lg text-xs font-medium text-slate-700 shadow-sm flex items-center gap-1.5">
+                        <Check size={11} className="text-[#DEAA38] stroke-[3]" /> {cat}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Menu Preview / Custom Dishes */}
+              {detailPkg.items && detailPkg.items.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-[#A27008] mb-2 font-sans">Menu Preview</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {detailPkg.items.map((item: string, i: number) => (
+                      <div key={i} className="p-2.5 bg-[#FAF8F5]/85 border border-[#DECC9C]/30 rounded-lg text-xs font-semibold text-slate-700 flex items-start gap-2">
+                        <span className="text-[#DEAA38] mt-0.5 shrink-0">✦</span>
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Core Benefits */}
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-widest text-[#A27008] mb-2 font-sans">PlanMyChoice Benefits</h4>
+                <ul className="space-y-2 text-xs font-bold text-slate-700">
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-600 shrink-0">✓</span> Elegant Buffet Setup & Premium Chafing Dishes included
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-600 shrink-0">✓</span> Professional Uniformed Service Staff & Kitchen Assistants
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-600 shrink-0">✓</span> Premium Eco-friendly Biodegradable Cutlery & Plates
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-emerald-600 shrink-0">✓</span> Live Counter support & On-time Setup guarantee
+                  </li>
+                </ul>
+              </div>
+
+            </div>
+
+            {/* Footer Book Now Action */}
+            <div className="p-6 bg-[#FCFAF5] border-t border-[#EFE7DA] shrink-0 flex gap-3">
+              <button
+                onClick={() => {
+                  setDetailModalOpen(false);
+                  setDetailPkg(null);
+                }}
+                className="w-1/3 py-3 border border-[#DECC9C] text-[#8C6D1F] bg-white rounded-xl font-sans font-bold text-xs uppercase tracking-wider hover:bg-stone-50 transition cursor-pointer text-center"
+              >
+                Close
+              </button>
+              <Link
+                to={`/order/${caterer.id}`}
+                state={{ packageIdx: detailPkg.id, customGuestCount: guestCount }}
+                onClick={() => {
+                  setDetailModalOpen(false);
+                  setDetailPkg(null);
+                }}
+                className="w-2/3 py-3 bg-[#173D32] hover:bg-[#0f2922] text-[#FDE5A9] rounded-xl font-sans font-bold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(23,61,50,0.2)]"
+              >
+                Book This Package <ChevronRight size={14} className="stroke-[3]" />
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      )}
     </section>
   );
 };
@@ -2008,7 +2157,40 @@ export const ServiceAreasCard: React.FC<SectionProps> = ({
 
 
 
-// 6. QUICK INFO CARD
+// 6. CONTACT SIDEBAR CARD
+export const ContactSidebarCard: React.FC<{
+  caterer: any;
+  user: any;
+}> = ({ caterer, user }) => {
+  return (
+    <div className="border-2 border-[#DFC27A]/50 bg-stone-50 rounded-[24px] p-5.5 flex flex-col gap-4 shadow-sm text-center font-sans">
+      <div className="flex items-center gap-2 mb-1 justify-center lg:justify-start">
+        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+          <ShieldCheck size={18} />
+        </div>
+        <h4 className="font-bold text-amber-900 text-[16px]">
+          Privacy Protected Contact
+        </h4>
+      </div>
+      <p className="text-amber-800 text-[13px] leading-relaxed select-text font-medium text-left">
+        To protect caterer confidentiality, direct contact details (Phone & WhatsApp) will be securely shared only after your order is confirmed.
+      </p>
+
+      {user?.role === "admin" && (
+        <div className="border-t border-amber-200/65 pt-3.5 mt-1.5 flex flex-col items-start gap-1 select-text">
+          <span className="text-[10px] uppercase tracking-widest text-amber-700 font-extrabold font-mono">
+            Admin View
+          </span>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-950">
+            <Phone size={13} className="text-amber-700" /> {caterer.phone}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 7. QUICK INFO CARD
 export const QuickInfoCard: React.FC<SectionProps> = ({
   targetCatererObj,
   isOwnerOrAdmin,
