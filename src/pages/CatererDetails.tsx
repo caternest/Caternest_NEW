@@ -25,7 +25,6 @@ import {
   Building,
   Clock,
   Briefcase,
-  PlayCircle,
   BookOpen,
   Map,
   Heart,
@@ -85,7 +84,6 @@ import {
   MenuPackagesCard,
   BranchDetailsCard,
   ServiceAreasCard,
-  ContactSidebarCard,
   QuickInfoCard,
   AchievementsCard
 } from "../components/PremiumCatererSections";
@@ -1348,7 +1346,7 @@ export default function CatererDetails() {
       if (location.state.guests !== undefined) {
         setGuestCount(location.state.guests);
       }
-      setActiveTab("Packages");
+      setActiveTab("Menu & Packages");
       setTimeout(() => {
         const element = document.getElementById("menu-packages");
         if (element) {
@@ -1365,7 +1363,6 @@ export default function CatererDetails() {
   const [isAreasOpen, setIsAreasOpen] = useState(false);
   const [mobileGalleryIndex, setMobileGalleryIndex] = useState(0);
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
-  const [selectedDetailPkg, setSelectedDetailPkg] = useState<any | null>(null);
 
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
@@ -1373,7 +1370,7 @@ export default function CatererDetails() {
       document
         .getElementById("overview-section")
         ?.scrollIntoView({ behavior: "smooth" });
-    } else if (tab === "Packages" || tab === "Menu") {
+    } else if (tab === "Menu & Packages" || tab === "Packages" || tab === "Menu") {
       document
         .getElementById("menu-packages")
         ?.scrollIntoView({ behavior: "smooth" });
@@ -4674,8 +4671,7 @@ export default function CatererDetails() {
           <div className="bg-[#0b0b0b]/95 p-1 rounded-xl border border-[#D4AF37]/35 flex flex-wrap md:flex-nowrap gap-1 shadow-md overflow-x-auto no-scrollbar justify-start md:justify-center w-full backdrop-blur-md">
             {[
               "Overview",
-              "Packages",
-              "Menu",
+              "Menu & Packages",
               "Gallery",
               "Reviews",
               "About Us",
@@ -4695,11 +4691,8 @@ export default function CatererDetails() {
                   {tab === "Overview" && (
                     <LayoutGrid size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
-                  {tab === "Packages" && (
+                  {tab === "Menu & Packages" && (
                     <Package size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
-                  )}
-                  {tab === "Menu" && (
-                    <MenuSquare size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
                   )}
                   {tab === "Gallery" && (
                     <ImageIcon size={12} className={isActive ? "text-[#0b0b0b]" : "text-slate-400"} />
@@ -4902,9 +4895,8 @@ export default function CatererDetails() {
           </div> {/* Closes bento grid wrapper */}
         </div> {/* Closes overview-section */}
 
-        {/* Full-width Menu Packages, Video Showcase, and Support Notice */}
-        <div className="mt-10 flex flex-col gap-8 w-full text-left">
-          
+        {/* Full-width Menu Packages */}
+        <div className="mt-10 w-full text-left">
           <MenuPackagesCard
             caterer={caterer}
             editedCaterer={editedCaterer}
@@ -4926,100 +4918,6 @@ export default function CatererDetails() {
             CrownOrnament={CrownOrnament}
             openEditModal={openEditModal}
           />
-
-          {/* SECTION 6: VIDEO SHOWCASE SYSTEM */}
-          <section id="video-showcase" className="w-full text-left">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Video */}
-              <div className="lg:col-span-1 bg-white rounded-[24px] border border-[#D4AF37]/25 p-6 flex flex-col shadow-md">
-                <h2 className="text-xl font-serif font-black text-[#173D32] mb-1">Video Showcase</h2>
-                <p className="text-xs text-slate-500 mb-4">To protect cuisine and service in action</p>
-                
-                <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 group cursor-pointer flex-1 min-h-[180px]">
-                  <img 
-                    src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop" 
-                    alt="Video Thumbnail" 
-                    className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition duration-500"
-                  />
-                  <div className="absolute inset-0 bg-black/30 flex flex-col justify-between p-4">
-                    <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 w-fit text-white text-[10px] font-bold">
-                      {targetCatererObj.brandName || targetCatererObj.name}
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-[#D4AF37] text-[#06281E] flex items-center justify-center shadow-lg group-hover:scale-110 transition duration-300">
-                        <PlayCircle size={28} fill="currentColor" className="text-white" />
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-white/80 font-medium self-start">By PlanMyChoice</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Video (Featured Film) */}
-              <div className="lg:col-span-2 bg-white rounded-[24px] border border-[#D4AF37]/25 p-6 flex flex-col shadow-md">
-                <h2 className="text-xl font-serif font-black text-[#173D32] mb-1">Gala Showcase Film</h2>
-                <p className="text-xs text-slate-500 mb-4">Explore events in real life</p>
-                
-                <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 group cursor-pointer flex-1 min-h-[180px]">
-                  <img 
-                    src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=1200&auto=format&fit=crop" 
-                    alt="Featured Film Thumbnail" 
-                    className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                      <div className="flex-1 text-left max-w-xl">
-                        <span className="inline-block bg-[#D4AF37] text-[#06281E] text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest mb-2.5">
-                          FEATURED FILM • 2:36
-                        </span>
-                        <h3 className="text-white font-serif font-bold text-lg sm:text-xl md:text-2xl leading-snug mb-2">
-                          Grand Banquet orchestration & royal wedding experience (Official Film)
-                        </h3>
-                        <p className="text-white/80 text-xs leading-relaxed hidden sm:block">
-                          Take a look at spectacular setups, signature menus and the care we bring to every event — turning moments into unforgettable experiences.
-                        </p>
-                      </div>
-                      <div className="shrink-0 self-center md:self-end">
-                        <div className="w-14 h-14 rounded-full bg-white text-[#06281E] flex items-center justify-center shadow-lg group-hover:scale-110 transition duration-300">
-                          <PlayCircle size={32} fill="currentColor" className="text-[#06281E]" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* SECTION 5: CONTACT PROTECTION NOTICE */}
-          <div className="bg-[#FAF6EC] border border-[#D4AF37]/25 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6 shadow-md w-full text-left">
-            <div className="w-16 h-16 bg-[#06281E] text-[#D4AF37] rounded-full flex flex-shrink-0 items-center justify-center border border-[#D4AF37]/40 shadow-inner">
-              <ShieldCheck size={32} />
-            </div>
-            <div className="flex-1 text-center md:text-left">
-              <h4 className="font-serif font-bold text-[#173D32] mb-1.5 text-xl">
-                Privacy Protected Contact
-              </h4>
-              <p className="text-slate-600 font-sans text-sm leading-relaxed">
-                To protect caterer confidentiality, direct contact details
-                (Phone & WhatsApp) will be securely shared only after your
-                order is confirmed.
-              </p>
-            </div>
-            {user?.role === "admin" && (
-              <div className="flex gap-4 items-center border-t md:border-t-0 md:border-l border-[#D4AF37]/20 pt-4 md:pt-0 md:pl-6 w-full md:w-auto shrink-0">
-                <div className="text-[#173D32] font-bold flex flex-col font-sans">
-                  <span className="text-[9px] uppercase tracking-widest text-[#D4AF37] font-extrabold font-mono">
-                    Admin View
-                  </span>
-                  <span className="flex items-center gap-2 text-sm text-[#06281E] mt-1">
-                    <Phone size={14} /> {caterer.phone}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
         </div>
       </div>
 
@@ -5287,10 +5185,9 @@ export default function CatererDetails() {
           <div className="sticky top-[56px] z-40 bg-[#FCFAF6]/95 backdrop-blur-md border-y border-[#D4AF37]/15 py-3 px-4 overflow-x-auto no-scrollbar scroll-smooth flex gap-2 shadow-xs">
             {[
               { id: "about-mobile", label: "About" },
-              { id: "packages-mobile", label: "Packages" },
+              { id: "packages-mobile", label: "Menu & Packages" },
               { id: "services-mobile", label: "Services" },
               { id: "gallery-mobile", label: "Gallery" },
-              { id: "videos-mobile", label: "Videos" },
               { id: "reviews-mobile", label: "Reviews" }
             ].map((tab) => {
               const isActive = activeTab === tab.label;
@@ -5619,59 +5516,7 @@ export default function CatererDetails() {
             </div>
           </div>
 
-          {/* 10. VIDEOS SECTION */}
-          <div id="videos-mobile" className="px-4 scroll-mt-[130px] space-y-4">
-            <div className="bg-white rounded-[24px] p-5 border border-[#D4AF37]/25 shadow-sm text-left">
-              <h2 className="text-lg font-serif font-black text-[#173D32] mb-1">
-                Video Showcase
-              </h2>
-              <div className="h-[1px] bg-gradient-to-r from-[#D4AF37]/10 via-[#D4AF37]/45 to-[#D4AF37]/10 mb-4"></div>
-
-              {/* Video Card 1 */}
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-950 group cursor-pointer mb-4">
-                <img 
-                  src="https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop" 
-                  alt="Video Thumbnail" 
-                  className="w-full h-full object-cover opacity-75"
-                />
-                <div className="absolute inset-0 bg-black/35 flex flex-col justify-between p-3.5">
-                  <span className="bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/10 text-white text-[9px] font-bold w-fit">
-                    {targetCatererObj.brandName || targetCatererObj.name}
-                  </span>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-[#D4AF37] text-white flex items-center justify-center shadow-md">
-                      <PlayCircle size={24} fill="currentColor" className="text-white" />
-                    </div>
-                  </div>
-                  <span className="text-[9px] text-white/80 font-semibold self-start">Cuisine & Service in Action</span>
-                </div>
-              </div>
-
-              {/* Video Card 2 */}
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-950 group cursor-pointer">
-                <img 
-                  src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?q=80&w=1200&auto=format&fit=crop" 
-                  alt="Featured Film Thumbnail" 
-                  className="w-full h-full object-cover opacity-75"
-                />
-                <div className="absolute inset-0 bg-black/35 flex flex-col justify-between p-3.5">
-                  <span className="bg-[#D4AF37] text-[#06281E] text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest w-fit">
-                    GALA FILM • 2:36
-                  </span>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-white text-[#06281E] flex items-center justify-center shadow-md">
-                      <PlayCircle size={24} fill="currentColor" className="text-[#06281E]" />
-                    </div>
-                  </div>
-                  <h3 className="text-white font-serif font-bold text-xs leading-snug self-start truncate max-w-[200px]">
-                    Royal banquet & wedding catering official showcase
-                  </h3>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 11. REVIEWS SECTION */}
+          {/* 10. REVIEWS SECTION */}
           <div id="reviews-mobile" className="px-4 scroll-mt-[130px]">
             <div className="bg-white rounded-[24px] p-5 border border-[#D4AF37]/25 shadow-sm text-left">
               <div className="flex items-center justify-between mb-1">
@@ -5736,57 +5581,6 @@ export default function CatererDetails() {
                     </p>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 12. PRIVACY PROTECTED CONTACT / FORM */}
-          <div className="px-4">
-            <div className="bg-[#FAF6EC] border border-[#D4AF37]/25 rounded-[24px] p-5 flex flex-col gap-4 text-left shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#173D32] text-[#D4AF37] flex items-center justify-center shrink-0">
-                  <ShieldCheck size={16} />
-                </div>
-                <div>
-                  <h4 className="font-serif font-bold text-[#173D32] text-sm leading-tight">
-                    Privacy Protected Contact
-                  </h4>
-                  <p className="text-[10px] text-[#A27008] font-semibold mt-0.5">Secure verification via PlanMyChoice</p>
-                </div>
-              </div>
-
-              <p className="text-slate-600 text-[11px] leading-relaxed">
-                To protect caterer confidentiality, direct contact details (Phone & WhatsApp) will be securely shared only after your order is confirmed.
-              </p>
-
-              {/* Quick form mock fields */}
-              <div className="space-y-3 font-sans pt-2">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] text-slate-500 font-extrabold uppercase tracking-wider">Your Full Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Rahul Sharma" 
-                    className="w-full bg-white border border-stone-200 focus:border-[#D4AF37] rounded-xl px-3.5 h-10 text-xs outline-none transition font-medium"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] text-slate-500 font-extrabold uppercase tracking-wider">Estimated Guest Count</label>
-                  <input 
-                    type="number" 
-                    value={guestCount} 
-                    onChange={(e) => setGuestCount(parseInt(e.target.value) || 100)}
-                    className="w-full bg-white border border-stone-200 focus:border-[#D4AF37] rounded-xl px-3.5 h-10 text-xs outline-none transition font-medium"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setQuoteModalOpen(true)}
-                  className="w-full h-11 rounded-xl bg-[#01A378] hover:bg-[#028b67] text-white font-extrabold text-xs uppercase tracking-widest transition-all duration-300 shadow-sm active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer mt-1"
-                >
-                  Request Custom Quote
-                </button>
               </div>
             </div>
           </div>

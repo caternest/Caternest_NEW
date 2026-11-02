@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import fs from "fs";
+import os from "os";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
@@ -1343,7 +1344,8 @@ app.get("/api/admin/orders-summary", async (req: any, res: any) => {
     const { count: notifCount } = await supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
-      .not("orderId", "is", null);
+      .not("orderId", "is", null)
+      .neq("title", "New Partner Registration 🏢");
 
     const { data: statusBreakdown } = await supabase
       .from("orders")
@@ -1450,7 +1452,499 @@ app.delete("/api/admin/orders/:id", async (req: any, res: any) => {
   }
 });
 
-// 3. POST /api/admin/orders/clear-all (Admin Only) - pre-deletion backup and purge of all orders
+// Concurrency locks for admin order cleanup operations
+let isOrderCleanupInProgress = false;
+let orderCleanupLockStartedAt = 0;
+const ORDER_CLEANUP_LOCK_ID = "order_cleanup_lock";
+const DB_LOCK_TIMEOUT_MS = 60000; // 60 seconds auto-expire
+
+async function acquireDbOrderCleanupLock(supabase: any, adminEmail: string): Promise<{ acquired: boolean; reason?: string }> {
+  try {
+    const { data: existingLock, error: readErr } = await supabase
+      .from("platform_settings")
+      .select("id, updated_at, homepage_mode")
+      .eq("id", ORDER_CLEANUP_LOCK_ID)
+      .maybeSingle();
+
+    if (readErr) {
+      console.error("[CLEANUP LOCK] Fail-closed: Error reading lock state:", readErr.message);
+      return {
+        acquired: false,
+        reason: `Could not verify database lock state: ${readErr.message}. Aborting operation for safety.`
+      };
+    }
+
+    if (existingLock) {
+      const lockAge = Date.now() - new Date(existingLock.updated_at).getTime();
+      if (lockAge < DB_LOCK_TIMEOUT_MS) {
+        return {
+          acquired: false,
+          reason: `A cleanup operation is currently in progress (initiated by ${existingLock.homepage_mode || 'another admin'} ${Math.round(lockAge / 1000)}s ago). Duplicate request blocked.`
+        };
+      }
+    }
+
+    const { error: upsertErr } = await supabase
+      .from("platform_settings")
+      .upsert({
+        id: ORDER_CLEANUP_LOCK_ID,
+        homepage_mode: `locked_by_${adminEmail}`,
+        updated_at: new Date().toISOString()
+      });
+
+    if (upsertErr) {
+      console.error("[CLEANUP LOCK] Fail-closed: Could not write lock state:", upsertErr.message);
+      return {
+        acquired: false,
+        reason: `Database lock acquisition failed: ${upsertErr.message}. Aborting operation for safety.`
+      };
+    }
+
+    return { acquired: true };
+  } catch (err: any) {
+    console.error("[CLEANUP LOCK] Fail-closed: Exception acquiring DB lock:", err?.message || err);
+    return {
+      acquired: false,
+      reason: `Failed to establish database concurrency lock: ${err?.message || err}. Aborting operation for safety.`
+    };
+  }
+}
+
+async function releaseDbOrderCleanupLock(supabase: any) {
+  try {
+    await supabase
+      .from("platform_settings")
+      .delete()
+      .eq("id", ORDER_CLEANUP_LOCK_ID);
+  } catch (err: any) {
+    console.warn("[CLEANUP LOCK] Failed to release DB mutex:", err?.message || err);
+  }
+}
+
+/**
+ * Safely fetches all rows from a Supabase table using an exhaustive pagination loop.
+ * Retrieves pages of pageSize (default 1000) until the entire table is exhausted.
+ * Fails closed immediately if any page query produces an error or returns null.
+ */
+async function fetchAllRowsPaginated(
+  supabase: any,
+  table: string,
+  columns: string = "*",
+  pageSize: number = 1000
+): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  let allRows: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .order("id", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      return {
+        success: false,
+        error: `Pagination query failed on table '${table}' [range ${from}-${to}]: ${error.message}`
+      };
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: `Pagination query on table '${table}' [range ${from}-${to}] returned null data.`
+      };
+    }
+
+    allRows = allRows.concat(data);
+
+    if (data.length < pageSize) {
+      hasMore = false;
+    } else {
+      from += pageSize;
+    }
+  }
+
+  return { success: true, data: allRows };
+}
+
+/**
+ * Creates a durable, verifiable backup snapshot of all orders, linked notifications, and order audit logs.
+ * Performs a mandatory roundtrip verification: uploads to Supabase Storage, immediately re-downloads the
+ * uploaded blob, parses it, and validates that the order count and checksum match live database records.
+ * Fails closed if any verification step cannot be completed.
+ */
+async function createAndVerifyOrderBackup(
+  supabase: any,
+  existingOrders: any[],
+  adminEmail: string
+): Promise<{
+  success: boolean;
+  backupFileName: string;
+  storagePath: string;
+  byteSize: number;
+  verified: boolean;
+  orderCount: number;
+  notifCount: number;
+  auditCount: number;
+  error?: string;
+}> {
+  const orderCount = existingOrders.length;
+  const backupTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupFileName = `orders_backup_${backupTimestamp}.json`;
+
+  // 1. Fetch all order-specific notifications with exhaustive pagination (strictly preserving partner registrations)
+  const notifResult = await fetchAllRowsPaginated(supabase, "notifications", "*");
+  if (!notifResult.success || !notifResult.data) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize: 0,
+      verified: false,
+      orderCount,
+      notifCount: 0,
+      auditCount: 0,
+      error: "Failed to read notifications for backup snapshot: " + notifResult.error
+    };
+  }
+  const allNotifs = notifResult.data;
+
+  const ORDER_EVENT_TITLES = new Set([
+    'New Order Received 🧑‍🍳',
+    'Event Completed 🎉',
+    'Order Approved',
+    'Order Status Adjusted by Admin',
+    'Order Approved! 🎉',
+    'New Booking Submitted 📨',
+    'New Order Created 🔔',
+    'Order Force Updated',
+    'Details Requested'
+  ]);
+
+  const orderNotifications = (allNotifs || []).filter((n: any) => {
+    const trimmedOrderId = typeof n.orderId === 'string' ? n.orderId.trim() : '';
+    if (!trimmedOrderId) return false;
+    if (n.title === 'New Partner Registration 🏢') return false;
+    return ORDER_EVENT_TITLES.has(n.title);
+  });
+
+  // 2. Fetch exact verified order-specific audit logs with exhaustive pagination
+  const auditResult = await fetchAllRowsPaginated(supabase, "audit_logs", "*");
+  if (!auditResult.success || !auditResult.data) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize: 0,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: 0,
+      error: "Failed to read audit logs for backup snapshot: " + auditResult.error
+    };
+  }
+  const allAuditRows = auditResult.data;
+
+  const PRESERVED_ADMIN_ACTIONS = new Set([
+    "Update Platform Settings",
+    "Moved to Trash",
+    "Permanently Deleted",
+    "badge removed",
+    "badge edited",
+    "badge activated",
+    "badge assigned",
+    "badge deactivated",
+    "Badge Created",
+    "Approve Profile Update",
+    "Reject Profile Update",
+    "test_action"
+  ]);
+
+  // Strictly target the 4 verified production order audit actions (47 records total)
+  const targetedAuditLogs = (allAuditRows || []).filter((r: any) => {
+    if (PRESERVED_ADMIN_ACTIONS.has(r.action)) return false;
+    const d = (typeof r.details === 'string' ? r.details : '').toLowerCase();
+    if (r.action === 'Force status: Approved' && d.startsWith('user action on entity: order #')) return true;
+    if (r.action === 'Order approved' && d.startsWith('order ') && d.includes(': order approved by ')) return true;
+    if (r.action === 'Order changes requested' && d.startsWith('order ') && d.includes(': order changes requested by ')) return true;
+    if (r.action === 'Order Deleted' && (d.startsWith('admin permanently deleted order #') || d.startsWith('user action on entity: order #'))) return true;
+    return false;
+  });
+
+  const ordersChecksum = crypto.createHash("sha256").update(JSON.stringify(existingOrders)).digest("hex");
+  const notificationsChecksum = crypto.createHash("sha256").update(JSON.stringify(orderNotifications)).digest("hex");
+  const auditLogsChecksum = crypto.createHash("sha256").update(JSON.stringify(targetedAuditLogs)).digest("hex");
+
+  const backupPayload = {
+    version: "2.2-comprehensive-recovery",
+    createdAt: new Date().toISOString(),
+    initiatedBy: adminEmail || "admin",
+    summary: {
+      orderCount,
+      notificationCount: orderNotifications.length,
+      auditLogCount: targetedAuditLogs.length
+    },
+    checksums: {
+      orders: ordersChecksum,
+      notifications: notificationsChecksum,
+      auditLogs: auditLogsChecksum
+    },
+    orders: existingOrders,
+    notifications: orderNotifications,
+    auditLogs: targetedAuditLogs,
+    metadata: {
+      platform: "PlanMyChoice",
+      environment: process.env.NODE_ENV || "development"
+    }
+  };
+
+  const backupJson = JSON.stringify(backupPayload, null, 2);
+  const backupBuffer = Buffer.from(backupJson, "utf-8");
+  const byteSize = backupBuffer.byteLength;
+
+  // 3. Local parse verification of generated payload
+  try {
+    const verifiedParsed = JSON.parse(backupJson);
+    if (!Array.isArray(verifiedParsed.orders) || verifiedParsed.orders.length !== orderCount) {
+      return {
+        success: false,
+        backupFileName,
+        storagePath: "",
+        byteSize,
+        verified: false,
+        orderCount,
+        notifCount: orderNotifications.length,
+        auditCount: targetedAuditLogs.length,
+        error: `Payload orders serialization mismatch: expected ${orderCount}, got ${verifiedParsed.orders?.length}`
+      };
+    }
+    if (!Array.isArray(verifiedParsed.notifications) || verifiedParsed.notifications.length !== orderNotifications.length) {
+      return {
+        success: false,
+        backupFileName,
+        storagePath: "",
+        byteSize,
+        verified: false,
+        orderCount,
+        notifCount: orderNotifications.length,
+        auditCount: targetedAuditLogs.length,
+        error: `Payload notifications serialization mismatch: expected ${orderNotifications.length}, got ${verifiedParsed.notifications?.length}`
+      };
+    }
+    if (!Array.isArray(verifiedParsed.auditLogs) || verifiedParsed.auditLogs.length !== targetedAuditLogs.length) {
+      return {
+        success: false,
+        backupFileName,
+        storagePath: "",
+        byteSize,
+        verified: false,
+        orderCount,
+        notifCount: orderNotifications.length,
+        auditCount: targetedAuditLogs.length,
+        error: `Payload audit logs serialization mismatch: expected ${targetedAuditLogs.length}, got ${verifiedParsed.auditLogs?.length}`
+      };
+    }
+  } catch (parseErr: any) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: "Local JSON serialization validation failed: " + parseErr.message
+    };
+  }
+
+  // 4. Upload to Supabase Storage (durable persistent documents bucket)
+  const storagePath = `order_backups/${backupFileName}`;
+  const { error: uploadErr } = await supabase.storage
+    .from("documents")
+    .upload(storagePath, backupBuffer, {
+      contentType: "application/json",
+      upsert: true
+    });
+
+  if (uploadErr) {
+    console.error("[BACKUP STORAGE] Fatal: Could not upload to Supabase documents bucket:", uploadErr.message);
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: `Supabase Storage upload failed: ${uploadErr.message}. Aborting cleanup.`
+    };
+  }
+
+  // 5. MANDATORY ROUNDTRIP RE-DOWNLOAD VERIFICATION FOR ALL THREE DATASETS
+  // Immediately download the file back from Supabase Storage and verify its integrity
+  const { data: downloadedBlob, error: downloadErr } = await supabase.storage
+    .from("documents")
+    .download(storagePath);
+
+  if (downloadErr || !downloadedBlob) {
+    console.error("[BACKUP STORAGE] Fatal: Could not re-download uploaded backup from storage:", downloadErr?.message);
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: `Durable backup verification failed: Could not re-download backup file from Supabase Storage: ${downloadErr?.message || 'Empty file'}. Aborting cleanup.`
+    };
+  }
+
+  const downloadedText = await downloadedBlob.text();
+  let downloadedParsed: any;
+  try {
+    downloadedParsed = JSON.parse(downloadedText);
+  } catch (err: any) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: `Durable backup verification failed: Re-downloaded storage file is corrupt or invalid JSON: ${err.message}`
+    };
+  }
+
+  // A. Verify Orders Dataset
+  if (!Array.isArray(downloadedParsed.orders) || downloadedParsed.orders.length !== orderCount) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: `Durable backup order count mismatch: storage contains ${downloadedParsed.orders?.length} orders, but live database contains ${orderCount}. Aborting cleanup.`
+    };
+  }
+  const dlOrdersChecksum = crypto.createHash("sha256").update(JSON.stringify(downloadedParsed.orders)).digest("hex");
+  if (dlOrdersChecksum !== ordersChecksum) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: "Durable backup orders SHA-256 checksum mismatch on storage re-download verification. Aborting cleanup."
+    };
+  }
+
+  // B. Verify Notifications Dataset
+  if (!Array.isArray(downloadedParsed.notifications) || downloadedParsed.notifications.length !== orderNotifications.length) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: `Durable backup notification count mismatch: storage contains ${downloadedParsed.notifications?.length} notifications, expected ${orderNotifications.length}. Aborting cleanup.`
+    };
+  }
+  const dlNotifsChecksum = crypto.createHash("sha256").update(JSON.stringify(downloadedParsed.notifications)).digest("hex");
+  if (dlNotifsChecksum !== notificationsChecksum) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: "Durable backup notifications SHA-256 checksum mismatch on storage re-download verification. Aborting cleanup."
+    };
+  }
+
+  // C. Verify Audit Logs Dataset
+  if (!Array.isArray(downloadedParsed.auditLogs) || downloadedParsed.auditLogs.length !== targetedAuditLogs.length) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: `Durable backup audit logs count mismatch: storage contains ${downloadedParsed.auditLogs?.length} audit logs, expected ${targetedAuditLogs.length}. Aborting cleanup.`
+    };
+  }
+  const dlAuditsChecksum = crypto.createHash("sha256").update(JSON.stringify(downloadedParsed.auditLogs)).digest("hex");
+  if (dlAuditsChecksum !== auditLogsChecksum) {
+    return {
+      success: false,
+      backupFileName,
+      storagePath: "",
+      byteSize,
+      verified: false,
+      orderCount,
+      notifCount: orderNotifications.length,
+      auditCount: targetedAuditLogs.length,
+      error: "Durable backup audit logs SHA-256 checksum mismatch on storage re-download verification. Aborting cleanup."
+    };
+  }
+
+  console.log(`[BACKUP VERIFIED] Roundtrip verification successful: ${storagePath} (${byteSize} bytes, ${orderCount} orders, ${orderNotifications.length} notifications, ${targetedAuditLogs.length} audits verified)`);
+
+  // 6. Save secondary copy to local filesystem if writable
+  const localCandidates = [
+    path.join(process.cwd(), "backups"),
+    path.join(os.tmpdir(), "planmychoice_backups")
+  ];
+
+  for (const candidateDir of localCandidates) {
+    try {
+      if (!fs.existsSync(candidateDir)) {
+        fs.mkdirSync(candidateDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(candidateDir, backupFileName), backupJson, "utf-8");
+      console.log(`[BACKUP LOCAL] Saved snapshot copy to: ${path.join(candidateDir, backupFileName)}`);
+      break;
+    } catch (diskErr: any) {
+      console.warn(`[BACKUP LOCAL] Read-only or inaccessible path ${candidateDir}:`, diskErr.message);
+    }
+  }
+
+  return {
+    success: true,
+    backupFileName,
+    storagePath,
+    byteSize,
+    verified: true,
+    orderCount,
+    notifCount: orderNotifications.length,
+    auditCount: targetedAuditLogs.length
+  };
+}
+
+// 3. POST /api/admin/orders/clear-all (Admin Only) - Pre-deletion backup, double-lock concurrency, and verified cleanup
 app.post("/api/admin/orders/clear-all", async (req: any, res: any) => {
   const supabase = getSupabaseClient();
   const auth = await verifyAdminAuth(req, supabase);
@@ -1458,17 +1952,39 @@ app.post("/api/admin/orders/clear-all", async (req: any, res: any) => {
     return res.status(auth.status || 401).json({ success: false, error: auth.error || "Unauthorized." });
   }
 
-  const { confirmation } = req.body || {};
-  if (confirmation !== "DELETE ALL ORDERS") {
+  if (!supabase) {
+    return res.status(503).json({ success: false, error: "Database connection unavailable." });
+  }
+
+  const { confirmation, dryRun } = req.body || {};
+
+  // For real deletion, enforce strict confirmation
+  if (!dryRun && confirmation !== "DELETE ALL ORDERS") {
     return res.status(400).json({
       success: false,
       error: 'Confirmation mismatch. You must pass { "confirmation": "DELETE ALL ORDERS" } to execute this operation.'
     });
   }
 
-  if (!supabase) {
-    return res.status(503).json({ success: false, error: "Database connection unavailable." });
+  // Concurrency Check 1: In-memory lock (Fail Closed)
+  if (isOrderCleanupInProgress && (Date.now() - orderCleanupLockStartedAt < DB_LOCK_TIMEOUT_MS)) {
+    return res.status(409).json({
+      success: false,
+      error: "An order cleanup operation is already in progress. Duplicate request blocked."
+    });
   }
+
+  // Concurrency Check 2: Database-level lock (Fail Closed)
+  const lockResult = await acquireDbOrderCleanupLock(supabase, auth.email || "admin");
+  if (!lockResult.acquired) {
+    return res.status(409).json({
+      success: false,
+      error: lockResult.reason || "Database lock is currently held by another administrative task. Operation aborted."
+    });
+  }
+
+  isOrderCleanupInProgress = true;
+  orderCleanupLockStartedAt = Date.now();
 
   try {
     // 1. Fetch all existing orders for backup snapshot
@@ -1479,106 +1995,368 @@ app.post("/api/admin/orders/clear-all", async (req: any, res: any) => {
 
     if (fetchErr) {
       console.error("[CLEAR ALL ORDERS] Failed to fetch orders for backup:", fetchErr);
-      return res.status(500).json({ success: false, error: "Failed to read orders for backup snapshot: " + fetchErr.message });
+      return res.status(500).json({
+        success: false,
+        error: "Failed to read orders for backup snapshot: " + fetchErr.message
+      });
     }
 
     const orderCount = existingOrders ? existingOrders.length : 0;
 
-    // 2. Create automated JSON backup snapshot
-    const backupTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const backupFileName = `orders_backup_${backupTimestamp}.json`;
-    const backupsDir = path.join(process.cwd(), "backups");
+    // 2. Generate durable, verified backup snapshot (Supabase Storage + roundtrip verification)
+    const backupResult = await createAndVerifyOrderBackup(supabase, existingOrders || [], auth.email || "admin");
 
-    if (!fs.existsSync(backupsDir)) {
-      fs.mkdirSync(backupsDir, { recursive: true });
+    // Fail Closed: If backup creation or roundtrip verification fails, abort immediately
+    if (!backupResult.success || !backupResult.verified) {
+      console.error("[CLEAR ALL ORDERS] Fail Closed: Backup verification failed:", backupResult.error);
+      return res.status(500).json({
+        success: false,
+        error: "Pre-deletion durable backup creation failed verification. Zero database records were modified.",
+        details: backupResult.error
+      });
     }
 
-    const backupFilePath = path.join(backupsDir, backupFileName);
-    const backupPayload = {
-      createdAt: new Date().toISOString(),
-      initiatedBy: auth.email || "admin",
-      totalOrders: orderCount,
-      orders: existingOrders || []
+    // DRY-RUN MODE: Verify everything and return full validation report WITHOUT touching live records
+    if (dryRun === true) {
+      console.log(`[CLEAR ALL ORDERS] Dry-run executed successfully for ${orderCount} orders. Zero records deleted.`);
+      return res.json({
+        success: true,
+        dryRun: true,
+        clearedOrdersCount: 0,
+        pendingOrdersCount: orderCount,
+        backupFileName: backupResult.backupFileName,
+        storagePath: backupResult.storagePath,
+        byteSize: backupResult.byteSize,
+        verified: true,
+        previewTargets: {
+          ordersTargeted: orderCount,
+          notificationsTargeted: backupResult.notifCount,
+          auditLogsTargeted: backupResult.auditCount
+        },
+        message: `Dry-run verification completed successfully! Automated backup created, re-downloaded, and verified in Supabase Storage (${backupResult.byteSize} bytes). All ${orderCount} orders remain completely intact.`
+      });
+    }
+
+    // 3. Pre-cleanup Administrative Audit Count Snapshot & Baseline Guard
+    const APPROVED_BASELINE = {
+      ORDERS: 46,
+      NOTIFICATIONS: 287,
+      AUDITS: 47
     };
 
-    fs.writeFileSync(backupFilePath, JSON.stringify(backupPayload, null, 2), "utf-8");
-    console.log(`[CLEAR ALL ORDERS] Backup successfully created at: ${backupFilePath}`);
+    const PRESERVED_ADMIN_ACTIONS = [
+      "Update Platform Settings",
+      "Moved to Trash",
+      "Permanently Deleted",
+      "badge removed",
+      "badge edited",
+      "badge activated",
+      "badge assigned",
+      "badge deactivated",
+      "Badge Created",
+      "Approve Profile Update",
+      "Reject Profile Update",
+      "test_action"
+    ];
 
-    // 3. Delete all order-related notifications (preserving system/profile notifications)
-    const { error: notifDelErr } = await supabase
-      .from("notifications")
-      .delete()
-      .not("orderId", "is", null);
+    const { count: prePreservedAdminCount } = await supabase
+      .from("audit_logs")
+      .select("*", { count: "exact", head: true })
+      .in("action", PRESERVED_ADMIN_ACTIONS);
 
-    if (notifDelErr) {
-      console.warn("[CLEAR ALL ORDERS] Warning deleting order notifications:", notifDelErr);
+    // Baseline Guard: Abort before RPC invocation if live inspected counts differ from approved baseline
+    if (
+      orderCount !== APPROVED_BASELINE.ORDERS ||
+      backupResult.notifCount !== APPROVED_BASELINE.NOTIFICATIONS ||
+      backupResult.auditCount !== APPROVED_BASELINE.AUDITS
+    ) {
+      console.error("[CLEAR ALL ORDERS] Pre-RPC baseline mismatch detected:", {
+        orders: { approved: APPROVED_BASELINE.ORDERS, live: orderCount },
+        notifications: { approved: APPROVED_BASELINE.NOTIFICATIONS, live: backupResult.notifCount },
+        audits: { approved: APPROVED_BASELINE.AUDITS, live: backupResult.auditCount }
+      });
+      return res.status(409).json({
+        success: false,
+        error: "Live database counts do not match the approved baseline. Operation aborted before calling RPC.",
+        baselineComparison: {
+          orders: { approved: APPROVED_BASELINE.ORDERS, live: orderCount },
+          notifications: { approved: APPROVED_BASELINE.NOTIFICATIONS, live: backupResult.notifCount },
+          audits: { approved: APPROVED_BASELINE.AUDITS, live: backupResult.auditCount }
+        },
+        backupFileName: backupResult.backupFileName
+      });
     }
 
-    // 4. Delete all orders safely without using TRUNCATE CASCADE
-    const { error: ordersDelErr } = await supabase
+    // 4. Execution Path: Exclusive Atomic Execution via PostgreSQL RPC
+    // Security & Integrity Mandate:
+    // - Direct REST batch deletes are strictly prohibited as a fallback.
+    // - The only permitted deletion path is the installed atomic RPC 'clear_all_orders_atomic'.
+    // - Verified baseline counts are explicitly passed into the RPC parameters.
+    // - If the RPC function is missing or fails, immediately return HTTP 500 without altering database records.
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("clear_all_orders_atomic", {
+      p_admin_email: auth.email || "admin",
+      p_backup_file_name: backupResult.backupFileName,
+      p_expected_orders: orderCount,
+      p_expected_notifications: backupResult.notifCount,
+      p_expected_audits: backupResult.auditCount
+    });
+
+    if (rpcErr) {
+      console.error("[CLEAR ALL ORDERS] Atomic RPC execution failed:", rpcErr);
+      const isMissing =
+        rpcErr.code === "42883" ||
+        rpcErr.message?.includes("Could not find the function") ||
+        rpcErr.message?.includes("function public.clear_all_orders_atomic");
+
+      return res.status(500).json({
+        success: false,
+        error: isMissing
+          ? "The atomic cleanup RPC function 'public.clear_all_orders_atomic' is not installed in the Supabase database. Please install supabase/clear_all_orders_atomic.sql in the Supabase SQL Editor before proceeding."
+          : `Atomic cleanup RPC execution failed: ${rpcErr.message}`,
+        details: rpcErr,
+        backupFileName: backupResult.backupFileName
+      });
+    }
+
+    if (!rpcData || !rpcData.success) {
+      console.error("[CLEAR ALL ORDERS] Atomic RPC did not return success:", rpcData);
+      return res.status(500).json({
+        success: false,
+        error: "Atomic cleanup RPC executed but did not return a successful response.",
+        details: rpcData,
+        backupFileName: backupResult.backupFileName
+      });
+    }
+
+    console.log("[CLEAR ALL ORDERS] Successfully executed atomic PostgreSQL RPC:", rpcData);
+
+    // 5. Post-RPC Multi-Table Verification
+    const ORDER_EVENT_TITLES = [
+      'New Order Received 🧑‍🍳',
+      'Event Completed 🎉',
+      'Order Approved',
+      'Order Status Adjusted by Admin',
+      'Order Approved! 🎉',
+      'New Booking Submitted 📨',
+      'New Order Created 🔔',
+      'Order Force Updated',
+      'Details Requested'
+    ];
+
+    // A. Verify orders = 0 (Fail Closed on query error or null result)
+    const { count: remainingOrders, error: ordersErr } = await supabase
       .from("orders")
-      .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000");
+      .select("*", { count: "exact", head: true });
 
-    if (ordersDelErr) {
-      console.error("[CLEAR ALL ORDERS] Failed to delete orders table rows:", ordersDelErr);
-      return res.status(500).json({ success: false, error: "Failed to delete orders: " + ordersDelErr.message });
+    if (ordersErr || remainingOrders === null || remainingOrders === undefined) {
+      console.error("[CLEAR ALL ORDERS] Post-RPC verification query failure on orders:", ordersErr);
+      return res.status(500).json({
+        success: false,
+        error: `Post-RPC verification query failure on orders: ${ordersErr?.message || "Null order count returned"}. Verification could not be completed.`,
+        notice: "The PostgreSQL transaction committed. The durable backup is preserved in Supabase Storage for recovery.",
+        backupFileName: backupResult.backupFileName,
+        storagePath: backupResult.storagePath
+      });
     }
 
-    // 5. Write audit log
-    await recordAdminAuditLog(
-      supabase,
-      "Clear All Orders",
-      `Admin cleared all ${orderCount} platform orders. Pre-deletion backup created: ${backupFileName}`,
-      auth.email || "admin"
+    // B. Verify targeted order notifications = 0 using paginated fetch (Fail Closed on query error or null result)
+    const postNotifResult = await fetchAllRowsPaginated(supabase, "notifications", "id, title, orderId");
+    if (!postNotifResult.success || !postNotifResult.data) {
+      console.error("[CLEAR ALL ORDERS] Post-RPC verification query failure on notifications:", postNotifResult.error);
+      return res.status(500).json({
+        success: false,
+        error: `Post-RPC verification query failure on notifications: ${postNotifResult.error}. Verification could not be completed.`,
+        notice: "The PostgreSQL transaction committed. The durable backup is preserved in Supabase Storage for recovery.",
+        backupFileName: backupResult.backupFileName,
+        storagePath: backupResult.storagePath
+      });
+    }
+    const postNotifRows = postNotifResult.data;
+
+    const remainingOrderNotifs = postNotifRows.filter((n: any) => {
+      const trimmedOrderId = typeof n.orderId === "string" ? n.orderId.trim() : "";
+      if (!trimmedOrderId) return false;
+      if (n.title === "New Partner Registration 🏢") return false;
+      return ORDER_EVENT_TITLES.includes(n.title);
+    }).length;
+
+    // C. Verify partner registration notification = 1
+    const preservedPartnerNotifs = postNotifRows.filter(
+      (n: any) => n.title === "New Partner Registration 🏢"
+    ).length;
+
+    // D. Verify remaining order-specific audit records = 0 using paginated fetch (Fail Closed on query error or null result)
+    const postAuditResult = await fetchAllRowsPaginated(supabase, "audit_logs", "id, action, details");
+    if (!postAuditResult.success || !postAuditResult.data) {
+      console.error("[CLEAR ALL ORDERS] Post-RPC verification query failure on audit_logs:", postAuditResult.error);
+      return res.status(500).json({
+        success: false,
+        error: `Post-RPC verification query failure on audit_logs: ${postAuditResult.error}. Verification could not be completed.`,
+        notice: "The PostgreSQL transaction committed. The durable backup is preserved in Supabase Storage for recovery.",
+        backupFileName: backupResult.backupFileName,
+        storagePath: backupResult.storagePath
+      });
+    }
+    const postAuditRows = postAuditResult.data;
+
+    const remainingOrderAudits = postAuditRows.filter((a: any) => {
+      if (PRESERVED_ADMIN_ACTIONS.includes(a.action)) return false;
+      const d = (typeof a.details === "string" ? a.details : "").toLowerCase();
+      if (a.action === "Force status: Approved" && d.startsWith("user action on entity: order #")) return true;
+      if (a.action === "Order approved" && d.startsWith("order ") && d.includes(": order approved by ")) return true;
+      if (a.action === "Order changes requested" && d.startsWith("order ") && d.includes(": order changes requested by ")) return true;
+      if (a.action === "Order Deleted" && (d.startsWith("admin permanently deleted order #") || d.startsWith("user action on entity: order #"))) return true;
+      return false;
+    }).length;
+
+    // E. Verify preserved administrative audit count is unchanged
+    const postPreservedAdminCount = postAuditRows.filter((a: any) =>
+      PRESERVED_ADMIN_ACTIONS.includes(a.action)
+    ).length;
+
+    // F. Verify newly created Clear All Orders audit record exists
+    const newClearAllAudit = postAuditRows.find((a: any) =>
+      a.action === "Clear All Orders" &&
+      typeof a.details === "string" &&
+      a.details.includes(backupResult.backupFileName)
     );
+
+    if (
+      remainingOrders !== 0 ||
+      remainingOrderNotifs !== 0 ||
+      preservedPartnerNotifs !== 1 ||
+      remainingOrderAudits !== 0 ||
+      postPreservedAdminCount !== prePreservedAdminCount ||
+      !newClearAllAudit
+    ) {
+      console.error("[CLEAR ALL ORDERS] Post-RPC verification anomaly detected!", {
+        remainingOrders,
+        remainingOrderNotifs,
+        preservedPartnerNotifs,
+        remainingOrderAudits,
+        prePreservedAdminCount,
+        postPreservedAdminCount,
+        newClearAllAuditFound: !!newClearAllAudit
+      });
+      return res.status(500).json({
+        success: false,
+        error: "Post-RPC verification anomaly detected: Database state does not match expected integrity criteria.",
+        verificationDetails: {
+          remainingOrders,
+          remainingOrderNotifs,
+          preservedPartnerNotifs,
+          remainingOrderAudits,
+          prePreservedAdminCount,
+          postPreservedAdminCount,
+          newClearAllAuditFound: !!newClearAllAudit
+        },
+        notice: "The PostgreSQL transaction has committed and cannot be rolled back. The verified durable backup snapshot is preserved in Supabase Storage for recovery.",
+        backupFileName: backupResult.backupFileName,
+        storagePath: backupResult.storagePath
+      });
+    }
 
     return res.json({
       success: true,
-      clearedOrdersCount: orderCount,
-      backupFileName,
-      backupPath: `/backups/${backupFileName}`,
-      message: `Successfully created backup snapshot and cleared ${orderCount} orders from the database.`
+      clearedOrdersCount: rpcData.deleted_orders ?? orderCount,
+      deletedNotificationsCount: rpcData.deleted_notifications,
+      deletedAuditLogsCount: rpcData.deleted_audit_logs,
+      backupFileName: backupResult.backupFileName,
+      storagePath: backupResult.storagePath,
+      downloadUrl: `/api/admin/orders/backups/${backupResult.backupFileName}`,
+      verification: {
+        remainingOrders: 0,
+        remainingOrderNotifications: 0,
+        preservedPartnerNotifications: preservedPartnerNotifs,
+        remainingOrderAudits: 0,
+        preservedAdminAudits: postPreservedAdminCount,
+        newClearAllAuditId: newClearAllAudit?.id
+      },
+      message: `Successfully verified backup snapshot, executed atomic PostgreSQL RPC, and validated post-cleanup integrity: all ${orderCount} orders cleared, ${rpcData.deleted_notifications} order notifications cleared, ${rpcData.deleted_audit_logs} order audits cleared, and all administrative records preserved.`
     });
   } catch (err: any) {
     console.error("[CLEAR ALL ORDERS] Exception:", err);
-    return res.status(500).json({ success: false, error: err.message || "Failed to clear order history." });
+    return res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to clear order history.",
+      details: err?.stack || String(err)
+    });
+  } finally {
+    isOrderCleanupInProgress = false;
+    await releaseDbOrderCleanupLock(supabase);
   }
 });
 
-// 4. GET /api/admin/backups (Admin Only) - list all backup snapshots
-app.get("/api/admin/backups", async (req: any, res: any) => {
+// 4. GET /api/admin/backups & /api/admin/orders/backups (Admin Only) - list all backup snapshots
+app.get(["/api/admin/backups", "/api/admin/orders/backups"], async (req: any, res: any) => {
   const supabase = getSupabaseClient();
   const auth = await verifyAdminAuth(req, supabase);
   if (!auth.authorized) {
     return res.status(auth.status || 401).json({ success: false, error: auth.error || "Unauthorized." });
   }
 
-  const backupsDir = path.join(process.cwd(), "backups");
-  if (!fs.existsSync(backupsDir)) {
-    return res.json({ success: true, backups: [] });
+  const backupListMap = new Map<string, { filename: string; sizeBytes: number; createdAt: string; source: string }>();
+
+  // 1. Check Supabase Storage documents bucket
+  if (supabase) {
+    try {
+      const { data: storageFiles } = await supabase.storage
+        .from("documents")
+        .list("order_backups", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+
+      if (Array.isArray(storageFiles)) {
+        storageFiles.forEach((file: any) => {
+          if (file.name && file.name.endsWith(".json")) {
+            backupListMap.set(file.name, {
+              filename: file.name,
+              sizeBytes: file.metadata?.size || 0,
+              createdAt: file.created_at || new Date().toISOString(),
+              source: "supabase-storage"
+            });
+          }
+        });
+      }
+    } catch (e: any) {
+      console.warn("[BACKUPS LIST] Storage list warning:", e?.message);
+    }
   }
 
-  try {
-    const files = fs.readdirSync(backupsDir).filter(f => f.endsWith(".json"));
-    const backupList = files.map(filename => {
-      const filePath = path.join(backupsDir, filename);
-      const stat = fs.statSync(filePath);
-      return {
-        filename,
-        sizeBytes: stat.size,
-        createdAt: stat.birthtime || stat.mtime
-      };
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // 2. Check local disk candidate paths
+  const localCandidates = [
+    path.join(process.cwd(), "backups"),
+    path.join(os.tmpdir(), "planmychoice_backups")
+  ];
 
-    return res.json({ success: true, backups: backupList });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || "Failed to list backups" });
+  for (const dir of localCandidates) {
+    try {
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir).filter(f => f.endsWith(".json"));
+        for (const filename of files) {
+          if (!backupListMap.has(filename)) {
+            const stat = fs.statSync(path.join(dir, filename));
+            backupListMap.set(filename, {
+              filename,
+              sizeBytes: stat.size,
+              createdAt: (stat.birthtime || stat.mtime).toISOString(),
+              source: "local-cache"
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Continue to next directory
+    }
   }
+
+  const backups = Array.from(backupListMap.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  return res.json({ success: true, backups });
 });
 
-// 5. GET /api/admin/backups/:filename (Admin Only) - download specific backup snapshot
-app.get("/api/admin/backups/:filename", async (req: any, res: any) => {
+// 5. GET /api/admin/backups/:filename & /api/admin/orders/backups/:filename (Admin Only) - download specific backup snapshot
+app.get(["/api/admin/backups/:filename", "/api/admin/orders/backups/:filename"], async (req: any, res: any) => {
   const supabase = getSupabaseClient();
   const auth = await verifyAdminAuth(req, supabase);
   if (!auth.authorized) {
@@ -1586,13 +2364,39 @@ app.get("/api/admin/backups/:filename", async (req: any, res: any) => {
   }
 
   const safeFilename = path.basename(req.params.filename);
-  const filePath = path.join(process.cwd(), "backups", safeFilename);
 
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ success: false, error: "Backup file not found." });
+  // 1. Try local disk candidate paths first
+  const localCandidates = [
+    path.join(process.cwd(), "backups", safeFilename),
+    path.join(os.tmpdir(), "planmychoice_backups", safeFilename)
+  ];
+
+  for (const filePath of localCandidates) {
+    if (fs.existsSync(filePath)) {
+      return res.download(filePath, safeFilename);
+    }
   }
 
-  return res.download(filePath, safeFilename);
+  // 2. Fetch directly from Supabase Storage documents bucket
+  if (supabase) {
+    try {
+      const storagePath = `order_backups/${safeFilename}`;
+      const { data: fileBlob, error: downloadErr } = await supabase.storage
+        .from("documents")
+        .download(storagePath);
+
+      if (!downloadErr && fileBlob) {
+        const buffer = Buffer.from(await fileBlob.arrayBuffer());
+        res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
+        res.setHeader("Content-Type", "application/json");
+        return res.send(buffer);
+      }
+    } catch (e: any) {
+      console.error("[BACKUP DOWNLOAD] Storage download exception:", e?.message);
+    }
+  }
+
+  return res.status(404).json({ success: false, error: "Backup file not found in storage or cache." });
 });
 
 // 6. POST /api/admin/caterers/:id/hide (Admin Only) - hide caterer from public marketplace
@@ -4040,16 +4844,6 @@ app.post("/api/food-images", (req, res) => {
 // ===================================================
 // EMAIL OTP REGISTRATION FLOW FOR CATERERS
 // ===================================================
-interface RegistrationSession {
-  formData: any;
-  password: string;
-  otp: string;
-  otpExpiry: Date;
-  lastSentAt: Date;
-}
-
-const registrationSessions = new Map<string, RegistrationSession>();
-
 async function sendOtpEmail(email: string, otp: string, businessName: string) {
   console.log(
     `[OTP EMAIL] Initiating OTP send to ${email} for "${businessName}"`,
@@ -4176,9 +4970,6 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
     );
   }
 }
-
-// Removed OTP request-otp endpoint
-// Removed OTP verify-only endpoint
 
 app.post("/api/register/finalize", async (req: any, res: any) => {
   const {
@@ -4424,10 +5215,6 @@ app.post("/api/register/finalize", async (req: any, res: any) => {
     return res.status(500).json({ error: err.message || err.toString() });
   }
 });
-
-// Removed OTP verify-otp endpoint
-
-// Removed OTP resend-otp endpoint
 
 // Seed data immediately on module load if not in serverless environment
 try {
