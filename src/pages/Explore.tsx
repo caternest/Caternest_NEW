@@ -26,6 +26,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HYDERABAD_AREAS, DEMO_CATERERS, DEMO_REVIEWS } from '../data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useCatererFilters } from '../contexts/CatererFilterContext';
 import { getSupabase } from '../lib/supabase';
 import { MapPickerModal } from '../components/MapPickerModal';
 import { calculateDistanceKm, estimateDrivingTimeMinutes, searchLocations } from '../lib/locationIntelligence';
@@ -313,7 +314,6 @@ export default function Explore() {
   const [searchOccasion, setSearchOccasion] = useState('');
   const [searchGuests, setSearchGuests] = useState('');
   const [searchBudget, setSearchBudget] = useState('');
-  const [searchKeyword, setSearchKeyword] = useState('');
 
   // Customer Precise Location States for intelligence/filtering
   const [customerLat, setCustomerLat] = useState<number | null>(null);
@@ -325,54 +325,59 @@ export default function Explore() {
   const [filteredCaterers, setFilteredCaterers] = useState<any[]>([]);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   
-  // Active Filter States (Clean Defaults: No pre-selected filters)
-  const [cuisineFilter, setCuisineFilter] = useState<string>('Both'); // Veg, Non-Veg, Both, Pure Veg
-  const [occasionFilter, setOccasionFilter] = useState<string[]>([]);
-  const [budgetFilter, setBudgetFilter] = useState<number>(1000); // 1000 = All Budgets
-  const [guestsFilter, setGuestsFilter] = useState<string[]>([]);
-  const [sortOption, setSortOption] = useState<string>('Popularity');
-  const [isLiveCounters, setIsLiveCounters] = useState<boolean>(false);
-  const [isVerifiedOnly, setIsVerifiedOnly] = useState<boolean>(false);
+  // Active Filter States provided by session-scoped CatererFilterContext
+  const {
+    cuisineFilter,
+    occasionFilter,
+    budgetFilter,
+    guestsFilter,
+    sortOption,
+    isLiveCounters,
+    isVerifiedOnly,
+    ratingFilter,
+    searchKeyword,
+    setCuisineFilter,
+    setOccasionFilter,
+    toggleOccasionFilter,
+    setBudgetFilter,
+    setGuestsFilter,
+    setSortOption,
+    setIsLiveCounters,
+    setIsVerifiedOnly,
+    setRatingFilter,
+    setSearchKeyword,
+    clearAllFilters,
+  } = useCatererFilters();
 
   useEffect(() => {
-    const qSearch = searchParams.get('search') || '';
+    const qSearch = searchParams.get('search');
     const qLocation = searchParams.get('location') || 'Hyderabad';
-    const qBudget = searchParams.get('budget') || '';
-    const qGuests = searchParams.get('guests') || '';
+    const qBudget = searchParams.get('budget');
+    const qGuests = searchParams.get('guests');
 
-    const qDiet = searchParams.get('diet') || searchParams.get('cuisine') || '';
-    const qOccasion = searchParams.get('occasion') || '';
+    const qDiet = searchParams.get('diet') || searchParams.get('cuisine');
+    const qOccasion = searchParams.get('occasion');
 
-    if (qDiet) {
+    if (qDiet !== null && qDiet !== undefined) {
       if (qDiet.toLowerCase().includes('non')) {
         setCuisineFilter('Non-Veg');
-      } else if (qDiet.toLowerCase().includes('pure')) {
-        setCuisineFilter('Pure Veg');
       } else if (qDiet.toLowerCase().includes('veg')) {
         setCuisineFilter('Veg');
       }
-    } else {
-      setCuisineFilter('Both');
     }
 
-    if (qOccasion) {
-      setOccasionFilter([qOccasion]);
-    } else if (!qSearch) {
-      setOccasionFilter([]);
+    if (qOccasion !== null && qOccasion !== undefined) {
+      setOccasionFilter(qOccasion ? [qOccasion] : []);
     }
 
-    if (qSearch) {
+    if (qSearch !== null && qSearch !== undefined) {
       setSearchKeyword(qSearch);
       const matchedOcc = ['Wedding', 'Reception', 'Birthday', 'Corporate', 'Housewarming', 'Engagement', 'Baby Shower', 'Festival'].find(
         o => o.toLowerCase() === qSearch.toLowerCase() || qSearch.toLowerCase().includes(o.toLowerCase())
       );
       if (matchedOcc && !qOccasion) {
         setOccasionFilter([matchedOcc]);
-      } else if (!qOccasion) {
-        setOccasionFilter([]);
       }
-    } else {
-      setSearchKeyword('');
     }
 
     if (qLocation) {
@@ -393,16 +398,14 @@ export default function Explore() {
         if (savedAddr) setSearchLocation(savedAddr);
       }
     }
-    if (qBudget) {
+    if (qBudget !== null && qBudget !== undefined) {
       setSearchBudget(qBudget);
       if (qBudget === '300-400') setBudgetFilter(400);
       else if (qBudget === '400-600') setBudgetFilter(600);
       else if (qBudget === '600-800') setBudgetFilter(800);
       else if (qBudget === '800+') setBudgetFilter(1000);
-    } else {
-      setBudgetFilter(1000);
     }
-    if (qGuests) {
+    if (qGuests !== null && qGuests !== undefined) {
       setSearchGuests(qGuests);
       if (qGuests === 'Upto 50') setGuestsFilter(['Upto 50']);
       else if (qGuests === '50-100') setGuestsFilter(['50 - 105']);
@@ -410,8 +413,6 @@ export default function Explore() {
       else if (qGuests === '200-500') setGuestsFilter(['200 - 500']);
       else if (qGuests === '500-1000') setGuestsFilter(['500 - 1000']);
       else if (qGuests === '1000+') setGuestsFilter(['1000+']);
-    } else {
-      setGuestsFilter([]);
     }
   }, [searchParams]);
 
@@ -442,7 +443,6 @@ export default function Explore() {
   const [openGuests, setOpenGuests] = useState(true);
   const [openMoreFilters, setOpenMoreFilters] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-  const [ratingFilter, setRatingFilter] = useState<number>(0);
 
   const moreFiltersRef = React.useRef<HTMLDivElement>(null);
 
@@ -741,13 +741,11 @@ export default function Explore() {
       result = result.filter(c => c.distanceKm === null || c.distanceKm <= (c.serviceRadiusKm || 15));
     }
 
-    // Cuisine Preference
+    // Food Type Preference (Veg / Non-Veg only)
     if (cuisineFilter === 'Veg') {
       result = result.filter(c => c.type?.toLowerCase() === 'veg' || c.type?.toLowerCase().includes('pure veg'));
     } else if (cuisineFilter === 'Non-Veg') {
       result = result.filter(c => c.type?.toLowerCase().includes('non-veg') || c.type?.toLowerCase().includes('both') || c.type?.toLowerCase().includes('+'));
-    } else if (cuisineFilter === 'Pure Veg') {
-      result = result.filter(c => c.type?.toLowerCase().includes('pure veg') || c.type?.toLowerCase() === 'veg');
     }
 
     // Occasion Filters
@@ -816,23 +814,6 @@ export default function Explore() {
 
     setFilteredCaterers(result);
   }, [caterers, cuisineFilter, occasionFilter, budgetFilter, isLiveCounters, isVerifiedOnly, ratingFilter, sortOption, searchKeyword, customerLat, customerLng]);
-
-  const toggleOccasionFilter = (occName: string) => {
-    setOccasionFilter((prev) => 
-      prev.includes(occName) ? prev.filter(o => o !== occName) : [...prev, occName]
-    );
-  };
-
-  const clearAllFilters = () => {
-    setCuisineFilter('Both');
-    setOccasionFilter([]);
-    setBudgetFilter(1000);
-    setGuestsFilter([]);
-    setIsLiveCounters(false);
-    setIsVerifiedOnly(false);
-    setRatingFilter(0);
-    setSearchKeyword('');
-  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1072,9 +1053,9 @@ export default function Explore() {
             >
               <Filter size={14} className="text-[#DEAA38]" />
               <span>FILTERS</span>
-              {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && (
+              {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0 || cuisineFilter !== '') && (
                 <span className="w-4.5 h-4.5 bg-[#DEAA38] text-[#051410] rounded-full text-[9px] font-black flex items-center justify-center">
-                  {Number(occasionFilter.length > 0) + Number(budgetFilter < 1000) + Number(isVerifiedOnly) + Number(isLiveCounters) + Number(ratingFilter > 0)}
+                  {Number(occasionFilter.length > 0) + Number(budgetFilter < 1000) + Number(isVerifiedOnly) + Number(isLiveCounters) + Number(ratingFilter > 0) + Number(cuisineFilter !== '')}
                 </span>
               )}
             </button>
@@ -1097,8 +1078,13 @@ export default function Explore() {
           </div>
 
           {/* Active Filter Badges */}
-          {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && (
+          {(occasionFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0 || cuisineFilter !== '') && (
             <div className="flex flex-wrap gap-1.5 mb-4">
+              {cuisineFilter && (
+                <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
+                  Food: {cuisineFilter} <button type="button" onClick={() => setCuisineFilter('')} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
+                </span>
+              )}
               {occasionFilter.map((occ) => (
                 <span key={occ} className="px-2.5 py-1 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-full flex items-center gap-1">
                   {occ} <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-600"><X size={10} /></button>
@@ -1328,13 +1314,13 @@ export default function Explore() {
                   <div>
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">Cuisine Preference</h4>
                     <div className="flex flex-wrap gap-2">
-                      {['Veg', 'Non-Veg', 'Both', 'Pure Veg'].map((option) => {
+                      {['Veg', 'Non-Veg'].map((option) => {
                         const isSelected = cuisineFilter === option;
                         return (
                           <button
                             key={option}
                             type="button"
-                            onClick={() => setCuisineFilter(option)}
+                            onClick={() => setCuisineFilter(prev => prev === option ? '' : option)}
                             className={cn(
                               "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer",
                               isSelected 
@@ -1664,11 +1650,11 @@ export default function Explore() {
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button 
                   type="button"
-                  onClick={() => setCuisineFilter('Veg')}
+                  onClick={() => setCuisineFilter(prev => prev === 'Veg' ? '' : 'Veg')}
                   className={cn(
                     "px-3.5 py-1.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all cursor-pointer select-none",
                     cuisineFilter === 'Veg'
-                      ? "bg-emerald-50 border-emerald-400 text-emerald-900 shadow-2xs"
+                      ? "bg-emerald-50 border-emerald-400 text-emerald-900 shadow-2xs font-bold"
                       : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                   )}
                 >
@@ -1678,30 +1664,16 @@ export default function Explore() {
                 
                 <button 
                   type="button"
-                  onClick={() => setCuisineFilter('Non-Veg')}
+                  onClick={() => setCuisineFilter(prev => prev === 'Non-Veg' ? '' : 'Non-Veg')}
                   className={cn(
                     "px-3.5 py-1.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all cursor-pointer select-none",
                     cuisineFilter === 'Non-Veg'
-                      ? "bg-rose-50 border-rose-400 text-rose-900 shadow-2xs"
+                      ? "bg-rose-50 border-rose-400 text-rose-900 shadow-2xs font-bold"
                       : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                   )}
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                   <span>Non-Veg</span>
-                </button>
-
-                <button 
-                  type="button"
-                  onClick={() => setCuisineFilter('Both')}
-                  className={cn(
-                    "px-3.5 py-1.5 text-xs font-bold rounded-full border flex items-center gap-1.5 transition-all cursor-pointer select-none",
-                    cuisineFilter === 'Both'
-                      ? "bg-[#FCF8EE] border-[#DEAA38] text-slate-900 shadow-2xs font-bold"
-                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                  )}
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span>Both</span>
                 </button>
               </div>
 
@@ -1848,7 +1820,7 @@ export default function Explore() {
 
             {/* Action Buttons (Right Group) */}
             <div className="flex items-center gap-3 shrink-0 ml-auto">
-              {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0 || cuisineFilter !== 'Both' || (searchKeyword && searchKeyword.trim() !== '')) && (
+              {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0 || cuisineFilter !== '' || (searchKeyword && searchKeyword.trim() !== '')) && (
                 <button 
                   type="button"
                   onClick={clearAllFilters}
@@ -1873,9 +1845,14 @@ export default function Explore() {
           </div>
 
           {/* Active filter badge tags */}
-          {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0) && (
+          {(occasionFilter.length > 0 || guestsFilter.length > 0 || budgetFilter < 1000 || isVerifiedOnly || isLiveCounters || ratingFilter > 0 || cuisineFilter !== '') && (
             <div className="flex flex-wrap items-center gap-2 mb-6 text-xs text-slate-600 font-bold">
               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mr-1">Active:</span>
+              {cuisineFilter && (
+                <span key="cuisine" className="px-3 py-1 bg-amber-500/10 border border-[#DEAA38]/40 text-slate-800 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  Food: {cuisineFilter} <button type="button" onClick={() => setCuisineFilter('')} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>
+                </span>
+              )}
               {occasionFilter.map((occ) => (
                 <span key={occ} className="px-3 py-1 bg-amber-500/10 border border-[#DEAA38]/40 text-slate-800 rounded-full flex items-center gap-1.5 shadow-2xs">
                   Occasion: {occ} <button type="button" onClick={() => toggleOccasionFilter(occ)} className="text-slate-400 hover:text-slate-700 cursor-pointer"><X size={12} /></button>

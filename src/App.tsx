@@ -16,6 +16,7 @@ import RegistrationSuccess from './pages/RegistrationSuccess';
 import PartnerDashboard from './pages/PartnerDashboard';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PlatformSettingsProvider, usePlatformSettings } from './contexts/PlatformSettingsContext';
+import { CatererFilterProvider } from './contexts/CatererFilterContext';
 import { initializeSupabaseSync } from './lib/supabaseSync';
 import { ChefHat } from 'lucide-react';
 
@@ -171,8 +172,10 @@ export default function App() {
   return (
     <AuthProvider>
       <PlatformSettingsProvider>
-        <ToastProvider />
-        <AppInitializer />
+        <CatererFilterProvider>
+          <ToastProvider />
+          <AppInitializer />
+        </CatererFilterProvider>
       </PlatformSettingsProvider>
     </AuthProvider>
   );
