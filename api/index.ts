@@ -1344,7 +1344,8 @@ app.get("/api/admin/orders-summary", async (req: any, res: any) => {
     const { count: notifCount } = await supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
-      .not("orderId", "is", null);
+      .not("orderId", "is", null)
+      .neq("title", "New Partner Registration 🏢");
 
     const { data: statusBreakdown } = await supabase
       .from("orders")
