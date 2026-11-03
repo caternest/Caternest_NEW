@@ -256,8 +256,30 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       setUploadProgress(100);
       setScanStatus('Analyzing menu layout & text...');
 
+      let reqBody: any = { urls };
+
       if (urls.length === 0) {
-        throw new Error('Could not upload menu documents to secure storage. Please check your storage settings and try again.');
+        // Fallback: Read files directly as base64 data URLs
+        try {
+          setScanStatus('Preparing files for direct scanning...');
+          const base64Files = await Promise.all(
+            Array.from(files).map((file: File) => {
+              return new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+              });
+            })
+          );
+          if (base64Files.length > 0) {
+            reqBody = { images: base64Files };
+          } else {
+            throw new Error('No valid menu documents found.');
+          }
+        } catch (readErr) {
+          throw new Error('Could not read menu documents. Please check file format and try again.');
+        }
       }
 
       // Simulate scan progress
@@ -277,14 +299,15 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ urls }),
+        body: JSON.stringify(reqBody),
       });
 
       clearInterval(scanInterval);
       clearInterval(timerInterval);
 
       if (!res.ok) {
-        throw new Error('Failed to parse menu. Please try again.');
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.error || 'Failed to parse menu. Please try again.');
       }
 
       const data = await res.json();

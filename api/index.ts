@@ -3840,13 +3840,35 @@ Strict Rules:
 }
 `;
 
-    // Process actual uploaded files and run Gemini multimodal model
-    const response = await aiClient.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [...parts, { text: prompt }],
-    });
+    // Process actual uploaded files and run Gemini multimodal model with resilient failover
+    let response: any = null;
+    const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest"];
+    let lastAiError: any = null;
 
-    const text = response.text || "";
+    for (const modelName of candidateModels) {
+      try {
+        console.log(`[MENU PARSER] Attempting extraction with model: ${modelName}`);
+        response = await aiClient.models.generateContent({
+          model: modelName,
+          contents: { parts: [...parts, { text: prompt }] },
+          config: {
+            responseMimeType: "application/json",
+          },
+        });
+        if (response && response.text) {
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`[MENU PARSER] Extraction attempt failed with ${modelName}:`, err.message || err);
+        lastAiError = err;
+      }
+    }
+
+    if (!response || !response.text) {
+      throw new Error(`AI extraction failed: ${lastAiError?.message || "No response received from model"}`);
+    }
+
+    const text = (response.text || "").trim();
     // Clean JSON parsing
     let jsonStr = text;
     if (jsonStr.startsWith("```json")) {
@@ -3861,7 +3883,17 @@ Strict Rules:
       }
     }
 
-    const data = JSON.parse(jsonStr.trim());
+    let data: any;
+    try {
+      data = JSON.parse(jsonStr.trim());
+    } catch (parseErr) {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        data = JSON.parse(match[0]);
+      } else {
+        throw parseErr;
+      }
+    }
 
     // Auto logo logic from menu upload
     if (data.catererDetails) {

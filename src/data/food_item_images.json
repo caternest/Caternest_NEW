@@ -1,0 +1,1193 @@
+[
+  {
+    "item_name": "Idli",
+    "image_url": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=450&auto=format&fit=crop&q=80",
+    "category": "Breakfast",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Dosa",
+    "image_url": "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=450&auto=format&fit=crop&q=80",
+    "category": "Breakfast",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Puri",
+    "image_url": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=450&auto=format&fit=crop&q=80",
+    "category": "Breakfast",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Vada",
+    "image_url": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=450&auto=format&fit=crop&q=80",
+    "category": "Breakfast",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Sambar",
+    "image_url": "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=450&auto=format&fit=crop&q=80",
+    "category": "Gravy / Curry",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Rasam",
+    "image_url": "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=450&auto=format&fit=crop&q=80",
+    "category": "Soup / Gravy",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Veg Biryani",
+    "image_url": "https://images.unsplash.com/photo-1642821373181-696a54913e93?w=450&auto=format&fit=crop&q=80",
+    "category": "Rice",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Chicken Biryani",
+    "image_url": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=450&auto=format&fit=crop&q=80",
+    "category": "Main Course",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Mutton Biryani",
+    "image_url": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=450&auto=format&fit=crop&q=80",
+    "category": "Main Course",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Paneer Curry",
+    "image_url": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=450&auto=format&fit=crop&q=80",
+    "category": "Gravy / Curry",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Veg Fried Rice",
+    "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=450&auto=format&fit=crop&q=80",
+    "category": "Rice",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Gobi Manchurian",
+    "image_url": "https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Paneer Butter Masala",
+    "image_url": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=450&auto=format&fit=crop&q=80",
+    "category": "Gravy / Curry",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Palak Paneer",
+    "image_url": "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=450&auto=format&fit=crop&q=80",
+    "category": "Gravy / Curry",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Dal Makhani",
+    "image_url": "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=450&auto=format&fit=crop&q=80",
+    "category": "Dal & Lentils",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Butter Naan",
+    "image_url": "https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=450&auto=format&fit=crop&q=80",
+    "category": "Breads",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Rumali Roti",
+    "image_url": "https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=450&auto=format&fit=crop&q=80",
+    "category": "Breads",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Jeera Rice",
+    "image_url": "https://images.unsplash.com/photo-1591814468924-caf77022753c?w=450&auto=format&fit=crop&q=80",
+    "category": "Rice",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Kaju Curry",
+    "image_url": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=450&auto=format&fit=crop&q=80",
+    "category": "Gravy / Curry",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Chole Bhature",
+    "image_url": "https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=450&auto=format&fit=crop&q=80",
+    "category": "Main Course",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Veg Noodles",
+    "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=450&auto=format&fit=crop&q=80",
+    "category": "Noodles",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Hakka Noodles",
+    "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=450&auto=format&fit=crop&q=80",
+    "category": "Noodles",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Veg Manchurian",
+    "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Chicken Manchurian",
+    "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Spring Rolls",
+    "image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Fried Rice",
+    "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=450&auto=format&fit=crop&q=80",
+    "category": "Rice",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Gulab Jamun",
+    "image_url": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Rasgulla",
+    "image_url": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Double Ka Meetha",
+    "image_url": "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Ice Cream",
+    "image_url": "https://images.unsplash.com/photo-1501443712940-3decff3f6d90?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Fruit Salad",
+    "image_url": "https://images.unsplash.com/photo-1564093490129-74f1f56b9052?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Fruit Punch",
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=450&auto=format&fit=crop&q=80",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Mojito",
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=450&auto=format&fit=crop&q=80",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Soft Drinks",
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=450&auto=format&fit=crop&q=80",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Welcome Drink",
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=450&auto=format&fit=crop&q=80",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Badam Milk",
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=450&auto=format&fit=crop&q=80",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Paneer Tikka",
+    "image_url": "https://images.unsplash.com/photo-1567184109411-47a7a3746aed?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Gobi 65",
+    "image_url": "https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "South Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Aloo Tikki",
+    "image_url": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "French Fries",
+    "image_url": "https://images.unsplash.com/photo-1576107232684-1279f390859f?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "Western",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Crispy Corn",
+    "image_url": "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?w=450&auto=format&fit=crop&q=80",
+    "category": "Starter",
+    "cuisine": "Chinese",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Garlic Naan",
+    "image_url": "https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=450&auto=format&fit=crop&q=80",
+    "category": "Breads",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Tandoori Roti",
+    "image_url": "https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=450&auto=format&fit=crop&q=80",
+    "category": "Breads",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Vanilla Ice Cream",
+    "image_url": "https://images.unsplash.com/photo-1501443712940-3decff3f6d90?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Butterscotch Ice Cream",
+    "image_url": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=450&auto=format&fit=crop&q=80",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "status": "Approved"
+  },
+  {
+    "item_name": "Sweet Lassi",
+    "image_url": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=450&auto=format&fit=crop&q=80",
+    "category": "Beverages",
+    "cuisine": "North Indian",
+    "status": "Approved"
+  },
+  {
+    "id": "9javo3k7x",
+    "item_name": "Chana Chaat",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.606Z",
+    "updated_at": "2026-11-03T14:03:06.606Z"
+  },
+  {
+    "id": "akedhzpdc",
+    "item_name": "Baby Corn Soup",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Soup",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.607Z",
+    "updated_at": "2026-11-03T14:03:06.607Z"
+  },
+  {
+    "id": "nsnqj2hao",
+    "item_name": "Tomato Soup",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Soup",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.607Z",
+    "updated_at": "2026-11-03T14:03:06.607Z"
+  },
+  {
+    "id": "xlpthkhu9",
+    "item_name": "Veg H/S Soup",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Soup",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.607Z",
+    "updated_at": "2026-11-03T14:03:06.607Z"
+  },
+  {
+    "id": "6m58zicav",
+    "item_name": "Veg Corn Soup",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Soup",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.608Z",
+    "updated_at": "2026-11-03T14:03:06.608Z"
+  },
+  {
+    "id": "m7qdnwj0t",
+    "item_name": "Reshmi Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.609Z",
+    "updated_at": "2026-11-03T14:03:06.609Z"
+  },
+  {
+    "id": "c2ojkf7i8",
+    "item_name": "Malai Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.610Z",
+    "updated_at": "2026-11-03T14:03:06.610Z"
+  },
+  {
+    "id": "g8xqrkw09",
+    "item_name": "Zafrani Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.610Z",
+    "updated_at": "2026-11-03T14:03:06.610Z"
+  },
+  {
+    "id": "jk384fkjt",
+    "item_name": "Panjabi Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.611Z",
+    "updated_at": "2026-11-03T14:03:06.611Z"
+  },
+  {
+    "id": "ykenzuv71",
+    "item_name": "Haryali Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.611Z",
+    "updated_at": "2026-11-03T14:03:06.611Z"
+  },
+  {
+    "id": "1v31jsdsg",
+    "item_name": "Afghani Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.611Z",
+    "updated_at": "2026-11-03T14:03:06.611Z"
+  },
+  {
+    "id": "ytq47uhta",
+    "item_name": "Stick Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.612Z",
+    "updated_at": "2026-11-03T14:03:06.612Z"
+  },
+  {
+    "id": "qy9yqgy3t",
+    "item_name": "Lollipop",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.612Z",
+    "updated_at": "2026-11-03T14:03:06.612Z"
+  },
+  {
+    "id": "m2kjt9uwj",
+    "item_name": "Veg Spring Roll",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Chinese",
+    "created_at": "2026-11-03T14:03:06.615Z",
+    "updated_at": "2026-11-03T14:03:06.615Z"
+  },
+  {
+    "id": "4vvzwihm1",
+    "item_name": "Veg Shanghai Roll",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.616Z",
+    "updated_at": "2026-11-03T14:03:06.616Z"
+  },
+  {
+    "id": "xaboou577",
+    "item_name": "Baby Corn Majestic",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.616Z",
+    "updated_at": "2026-11-03T14:03:06.616Z"
+  },
+  {
+    "id": "di58y60ro",
+    "item_name": "Baby Corn Manchuria",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.617Z",
+    "updated_at": "2026-11-03T14:03:06.617Z"
+  },
+  {
+    "id": "u97v7ob0s",
+    "item_name": "Crispi Vegetable",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.618Z",
+    "updated_at": "2026-11-03T14:03:06.618Z"
+  },
+  {
+    "id": "9vnzocggg",
+    "item_name": "Dum Ka Chicken",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.619Z",
+    "updated_at": "2026-11-03T14:03:06.619Z"
+  },
+  {
+    "id": "1x8eitr9l",
+    "item_name": "Pepper Chicken Masala",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Gravy / Curry",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.619Z",
+    "updated_at": "2026-11-03T14:03:06.619Z"
+  },
+  {
+    "id": "dlqv3yb4v",
+    "item_name": "Chicken Malai Masala",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Gravy / Curry",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.622Z",
+    "updated_at": "2026-11-03T14:03:06.622Z"
+  },
+  {
+    "id": "pbov7p3pz",
+    "item_name": "Mix Vegetable",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.623Z",
+    "updated_at": "2026-11-03T14:03:06.623Z"
+  },
+  {
+    "id": "lsx1zza32",
+    "item_name": "Kadhai Vegetable",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.624Z",
+    "updated_at": "2026-11-03T14:03:06.624Z"
+  },
+  {
+    "id": "sxm8jf2m8",
+    "item_name": "Methi Chaman",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.625Z",
+    "updated_at": "2026-11-03T14:03:06.625Z"
+  },
+  {
+    "id": "9d0sumrxf",
+    "item_name": "Paneer Methi Malai",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Gravy / Curry",
+    "cuisine": "North Indian",
+    "created_at": "2026-11-03T14:03:06.626Z",
+    "updated_at": "2026-11-03T14:03:06.626Z"
+  },
+  {
+    "id": "o17x59eow",
+    "item_name": "Lachcha Paratha",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Breads",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.628Z",
+    "updated_at": "2026-11-03T14:03:06.628Z"
+  },
+  {
+    "id": "k1bj1xz42",
+    "item_name": "Step Paratha",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Breads",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.628Z",
+    "updated_at": "2026-11-03T14:03:06.628Z"
+  },
+  {
+    "id": "t245bhs2n",
+    "item_name": "Warkhi Paratha",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Breads",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.629Z",
+    "updated_at": "2026-11-03T14:03:06.629Z"
+  },
+  {
+    "id": "9c2n90e6o",
+    "item_name": "Masala Kulcha",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Gravy / Curry",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.629Z",
+    "updated_at": "2026-11-03T14:03:06.629Z"
+  },
+  {
+    "id": "r63akc8pd",
+    "item_name": "Mirchi Ka Salan & Raita",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.631Z",
+    "updated_at": "2026-11-03T14:03:06.631Z"
+  },
+  {
+    "id": "0bniqgf1h",
+    "item_name": "Gajar Ka Halwa",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.633Z",
+    "updated_at": "2026-11-03T14:03:06.633Z"
+  },
+  {
+    "id": "e6ah1cxjv",
+    "item_name": "Kesar Firni",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.633Z",
+    "updated_at": "2026-11-03T14:03:06.633Z"
+  },
+  {
+    "id": "oz7pdhnk4",
+    "item_name": "Qubani Trifle",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.634Z",
+    "updated_at": "2026-11-03T14:03:06.634Z"
+  },
+  {
+    "id": "9u5q73v2f",
+    "item_name": "Kaddu Ki Kheer",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.635Z",
+    "updated_at": "2026-11-03T14:03:06.635Z"
+  },
+  {
+    "id": "flouk4xmn",
+    "item_name": "Sabit Qubani",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.636Z",
+    "updated_at": "2026-11-03T14:03:06.636Z"
+  },
+  {
+    "id": "x90whbtww",
+    "item_name": "Qubani Halwa",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.636Z",
+    "updated_at": "2026-11-03T14:03:06.636Z"
+  },
+  {
+    "id": "2841m2c5y",
+    "item_name": "Apricot Pudding",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.637Z",
+    "updated_at": "2026-11-03T14:03:06.637Z"
+  },
+  {
+    "id": "1rcn6t3bu",
+    "item_name": "Plain Kheer with Milk",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.638Z",
+    "updated_at": "2026-11-03T14:03:06.638Z"
+  },
+  {
+    "id": "z4ohm4pqx",
+    "item_name": "Anjeer Kheer",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.638Z",
+    "updated_at": "2026-11-03T14:03:06.638Z"
+  },
+  {
+    "id": "omx9b8uwy",
+    "item_name": "Mango Kheer",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.639Z",
+    "updated_at": "2026-11-03T14:03:06.639Z"
+  },
+  {
+    "id": "a2ekr1j3u",
+    "item_name": "Malai Kheer",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.640Z",
+    "updated_at": "2026-11-03T14:03:06.640Z"
+  },
+  {
+    "id": "z022oaexh",
+    "item_name": "Dry Fruit Kheer",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Desserts",
+    "cuisine": "Desserts",
+    "created_at": "2026-11-03T14:03:06.640Z",
+    "updated_at": "2026-11-03T14:03:06.640Z"
+  },
+  {
+    "id": "2f8bn79rj",
+    "item_name": "Shimla Rabdi",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.641Z",
+    "updated_at": "2026-11-03T14:03:06.641Z"
+  },
+  {
+    "id": "hcmp5kn1l",
+    "item_name": "Kashmiri Rabdi",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.642Z",
+    "updated_at": "2026-11-03T14:03:06.642Z"
+  },
+  {
+    "id": "lgy3tucsj",
+    "item_name": "Rajasthani Rabdi",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.643Z",
+    "updated_at": "2026-11-03T14:03:06.643Z"
+  },
+  {
+    "id": "9c9e8y2o8",
+    "item_name": "Gil E Firdous",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.644Z",
+    "updated_at": "2026-11-03T14:03:06.644Z"
+  },
+  {
+    "id": "l7nc3t25o",
+    "item_name": "Badam Ki Firni",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.645Z",
+    "updated_at": "2026-11-03T14:03:06.645Z"
+  },
+  {
+    "id": "go4jjqjea",
+    "item_name": "Badam Ka Kund",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.646Z",
+    "updated_at": "2026-11-03T14:03:06.646Z"
+  },
+  {
+    "id": "8msk9ntw7",
+    "item_name": "Kaju Ka Kund",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "North Indian",
+    "created_at": "2026-11-03T14:03:06.646Z",
+    "updated_at": "2026-11-03T14:03:06.646Z"
+  },
+  {
+    "id": "y2k1mytac",
+    "item_name": "Shahi Tukde",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.647Z",
+    "updated_at": "2026-11-03T14:03:06.647Z"
+  },
+  {
+    "id": "flknlepmr",
+    "item_name": "Azam Shahi Tukde",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.647Z",
+    "updated_at": "2026-11-03T14:03:06.647Z"
+  },
+  {
+    "id": "1lowg4tb9",
+    "item_name": "Cham Cham Rabdi",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.648Z",
+    "updated_at": "2026-11-03T14:03:06.648Z"
+  },
+  {
+    "id": "avga116dw",
+    "item_name": "Spring Roll",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Chinese",
+    "created_at": "2026-11-03T14:03:06.658Z",
+    "updated_at": "2026-11-03T14:03:06.658Z"
+  },
+  {
+    "id": "uwnrbvtzp",
+    "item_name": "Chicken Malai",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.666Z",
+    "updated_at": "2026-11-03T14:03:06.666Z"
+  },
+  {
+    "id": "ebj15i9c2",
+    "item_name": "Watermelon Juice",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "created_at": "2026-11-03T14:03:06.687Z",
+    "updated_at": "2026-11-03T14:03:06.687Z"
+  },
+  {
+    "id": "vweicy0hi",
+    "item_name": "Orange Juice",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "created_at": "2026-11-03T14:03:06.688Z",
+    "updated_at": "2026-11-03T14:03:06.688Z"
+  },
+  {
+    "id": "amkjyyod7",
+    "item_name": "Pineapple Juice",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "created_at": "2026-11-03T14:03:06.688Z",
+    "updated_at": "2026-11-03T14:03:06.688Z"
+  },
+  {
+    "id": "cbkmkyohc",
+    "item_name": "Fresh Lime Juice",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Beverages",
+    "cuisine": "Beverages",
+    "created_at": "2026-11-03T14:03:06.689Z",
+    "updated_at": "2026-11-03T14:03:06.689Z"
+  },
+  {
+    "id": "n8euyb3de",
+    "item_name": "Chicken H/S Soup",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Soup",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.728Z",
+    "updated_at": "2026-11-03T14:03:06.728Z"
+  },
+  {
+    "id": "3a4en4r3y",
+    "item_name": "Chicken Corn Soup",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Soup",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.729Z",
+    "updated_at": "2026-11-03T14:03:06.729Z"
+  },
+  {
+    "id": "gi6da42n5",
+    "item_name": "Apollo Fish",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.730Z",
+    "updated_at": "2026-11-03T14:03:06.730Z"
+  },
+  {
+    "id": "127divp29",
+    "item_name": "Broast Fish",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.731Z",
+    "updated_at": "2026-11-03T14:03:06.731Z"
+  },
+  {
+    "id": "eogavii34",
+    "item_name": "Ginger Fish",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.732Z",
+    "updated_at": "2026-11-03T14:03:06.732Z"
+  },
+  {
+    "id": "8ksmn11ge",
+    "item_name": "Carom Fish",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.733Z",
+    "updated_at": "2026-11-03T14:03:06.733Z"
+  },
+  {
+    "id": "p2k9a5bxf",
+    "item_name": "Crispy Fish",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.733Z",
+    "updated_at": "2026-11-03T14:03:06.733Z"
+  },
+  {
+    "id": "grhdq0v8n",
+    "item_name": "Chilly Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.780Z",
+    "updated_at": "2026-11-03T14:03:06.780Z"
+  },
+  {
+    "id": "vi6ri52aw",
+    "item_name": "Golden Fried Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.781Z",
+    "updated_at": "2026-11-03T14:03:06.781Z"
+  },
+  {
+    "id": "xbmxu9ai2",
+    "item_name": "Jumbo Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.781Z",
+    "updated_at": "2026-11-03T14:03:06.781Z"
+  },
+  {
+    "id": "dvh0dnnkq",
+    "item_name": "Pepper Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.782Z",
+    "updated_at": "2026-11-03T14:03:06.782Z"
+  },
+  {
+    "id": "lv5tfl4wa",
+    "item_name": "Manchuria Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.783Z",
+    "updated_at": "2026-11-03T14:03:06.783Z"
+  },
+  {
+    "id": "x3mkulier",
+    "item_name": "Crispy Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.784Z",
+    "updated_at": "2026-11-03T14:03:06.784Z"
+  },
+  {
+    "id": "u7e5lqm6b",
+    "item_name": "Cashew Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.784Z",
+    "updated_at": "2026-11-03T14:03:06.784Z"
+  },
+  {
+    "id": "e52b6lgjz",
+    "item_name": "Loose Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.785Z",
+    "updated_at": "2026-11-03T14:03:06.785Z"
+  },
+  {
+    "id": "lc4gm9937",
+    "item_name": "Fried Prawns",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.828Z",
+    "updated_at": "2026-11-03T14:03:06.828Z"
+  },
+  {
+    "id": "vlq6golnm",
+    "item_name": "Sheek Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.831Z",
+    "updated_at": "2026-11-03T14:03:06.831Z"
+  },
+  {
+    "id": "78nwh1ijl",
+    "item_name": "Boti Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.831Z",
+    "updated_at": "2026-11-03T14:03:06.831Z"
+  },
+  {
+    "id": "or71ypuwl",
+    "item_name": "Irani Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.832Z",
+    "updated_at": "2026-11-03T14:03:06.832Z"
+  },
+  {
+    "id": "o4kw26bk7",
+    "item_name": "Shami Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.833Z",
+    "updated_at": "2026-11-03T14:03:06.833Z"
+  },
+  {
+    "id": "1wxakea3t",
+    "item_name": "Lukhmi & Kabab",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-03T14:03:06.834Z",
+    "updated_at": "2026-11-03T14:03:06.834Z"
+  }
+]

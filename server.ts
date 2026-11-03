@@ -20,9 +20,10 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+  server.setTimeout(600000); // 10 minutes timeout for heavy AI document extractions
 }
 
 startServer();
