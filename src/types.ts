@@ -54,6 +54,8 @@ export interface Caterer {
   badges?: PlatformBadge[];
   isVerified?: boolean;
   isPremium?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LocationOption {

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HYDERABAD_AREAS, DEMO_CATERERS, DEMO_REVIEWS } from '../data';
-import { cn } from '../lib/utils';
+import { cn, safeSaveRegistrations } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useCatererFilters } from '../contexts/CatererFilterContext';
 import { getSupabase } from '../lib/supabase';
@@ -527,194 +527,112 @@ export default function Explore() {
         console.warn("[EXPLORE] Failed to fetch caterer badges map:", e);
       }
       
+      const formatCatererRecord = (r: any) => {
+        const assignedBadges = (badgesMap && badgesMap[r.id]) ? badgesMap[r.id].filter(b => b.is_active) : [];
+        const isVerifiedBadge = assignedBadges.some(b => b.slug === 'verified' && b.is_active);
+        const isPremiumBadge = assignedBadges.some(b => b.slug === 'premium-partner' && b.is_active);
+
+        return {
+          id: r.id,
+          name: r.businessName || 'Premium Caterer',
+          location: r.address || r.location || 'Hyderabad', 
+          type: r.type || 'Veg + Non-Veg',
+          startingPrice: Number(r.startingPrice) || 350,
+          rating: typeof r.rating === 'number' ? r.rating : 5.0,
+          reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
+          description: r.description || 'Welcome to our premium catering service.',
+          images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.gallery || r.images || []),
+          logo: r.logo || null,
+          coverBanner: r.coverBanner || null,
+          address: r.address || 'Hyderabad, Telangana',
+          phone: r.phone || '+91 00000 00000',
+          isVerified: isVerifiedBadge || r.isVerified || false,
+          isPremium: isPremiumBadge || r.isPremium || false,
+          badges: assignedBadges,
+          latitude: r.latitude ? Number(r.latitude) : null,
+          longitude: r.longitude ? Number(r.longitude) : null,
+          serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
+          createdAt: r.created_at || r.createdAt || new Date(0).toISOString(),
+          updatedAt: r.updated_at || r.updatedAt || new Date(0).toISOString(),
+        };
+      };
+
+      let isSupabaseAuthoritative = false;
+
       if (supabase) {
         try {
+          // Query only explicitly approved records from Supabase
           const { data, error } = await supabase
             .from('caterer_registrations')
             .select('*')
-            .or('status.eq.Approved,status.eq.approved');
+            .or('status.eq.Approved,status.eq.approved')
+            .order('created_at', { ascending: false });
           
-          if (!error && data && Array.isArray(data)) {
-            const formatted = data.map((r: any) => {
-              const assignedBadges = (badgesMap && badgesMap[r.id]) ? badgesMap[r.id].filter(b => b.is_active) : [];
-              const isVerifiedBadge = assignedBadges.some(b => b.slug === 'verified' && b.is_active);
-              const isPremiumBadge = assignedBadges.some(b => b.slug === 'premium-partner' && b.is_active);
+          if (!error && Array.isArray(data)) {
+            isSupabaseAuthoritative = true;
+            allCaterers = data.map((r: any) => formatCatererRecord(r));
 
-              return {
-                id: r.id,
-                name: r.businessName || 'Premium Caterer',
-                location: r.address || r.location || 'Hyderabad', 
-                type: r.type || 'Veg + Non-Veg',
-                startingPrice: Number(r.startingPrice) || 350,
-                rating: typeof r.rating === 'number' ? r.rating : 5.0,
-                reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
-                description: r.description || 'Welcome to our premium catering service.',
-                images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.gallery || r.images || []),
-                logo: r.logo || null,
-                coverBanner: r.coverBanner || null,
-                address: r.address || 'Hyderabad, Telangana',
-                phone: r.phone || '+91 00000 00000',
-                isVerified: isVerifiedBadge || r.isVerified || false,
-                isPremium: isPremiumBadge || r.isPremium || false,
-                badges: assignedBadges,
-                latitude: r.latitude ? Number(r.latitude) : null,
-                longitude: r.longitude ? Number(r.longitude) : null,
-                serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
-              };
-            });
-            allCaterers = [...formatted];
-          }
-        } catch (e) {
-          console.error("Failed to fetch from Supabase:", e);
-        }
-      }
-
-      // Check local storage for registrations
-      const raw = localStorage.getItem('registrations');
-      if (raw) {
-        try {
-          const allRegs = JSON.parse(raw);
-            const approved = allRegs.filter((r: any) => r && (r.status === 'Approved' || r.status === 'approved') && r.status !== 'Hidden' && r.status !== 'Suspended' && r.status !== 'Trashed');
-            const formatted = approved.map((r: any) => {
-              const assignedBadges = (badgesMap && badgesMap[r.id]) ? badgesMap[r.id].filter(b => b.is_active) : [];
-              const isVerifiedBadge = assignedBadges.some(b => b.slug === 'verified' && b.is_active);
-              const isPremiumBadge = assignedBadges.some(b => b.slug === 'premium-partner' && b.is_active);
-
-              return {
-                id: r.id,
-                name: r.businessName || 'Premium Caterer',
-                location: r.location || 'Hyderabad', 
-                type: r.type || 'Veg + Non-Veg',
-                startingPrice: Number(r.startingPrice) || 350,
-                rating: typeof r.rating === 'number' ? r.rating : 5.0,
-                reviewCount: typeof r.reviewCount === 'number' ? r.reviewCount : 0,
-                description: r.description || 'Welcome to our premium catering service.',
-                images: getCatererImagesFallback(r.businessName || 'Premium Caterer', r.galleryPhotos || r.images || []),
-                logo: r.logo || null,
-                coverBanner: r.coverBanner || null,
-                address: r.address || 'Hyderabad, Telangana',
-                phone: r.phone || '+91 00000 00000',
-                isVerified: isVerifiedBadge || r.isVerified || false,
-                isPremium: isPremiumBadge || r.isPremium || false,
-                badges: assignedBadges,
-                latitude: r.latitude ? Number(r.latitude) : null,
-                longitude: r.longitude ? Number(r.longitude) : null,
-                serviceRadiusKm: r.serviceRadiusKm ? Number(r.serviceRadiusKm) : 15,
-              };
-            });
-
-            const existingIds = new Set(allCaterers.map(c => c.id));
-            formatted.forEach(c => {
-              if (!existingIds.has(c.id)) {
-                allCaterers.push(c);
+            // Synchronize localStorage cache with Supabase: purge any deleted/trashed/stale approved records
+            try {
+              const rawLocal = localStorage.getItem('registrations');
+              if (rawLocal) {
+                const localList = JSON.parse(rawLocal);
+                if (Array.isArray(localList)) {
+                  const remoteApprovedIds = new Set(data.map((r: any) => r.id));
+                  const sanitizedLocal = localList.filter((r: any) => {
+                    if (!r || !r.id) return false;
+                    const st = (r.status || '').toLowerCase().trim();
+                    // Permanently drop trashed, rejected, hidden, suspended, or deleted records
+                    if (st === 'trashed' || st === 'suspended' || st === 'hidden' || st === 'rejected' || r.deleted === true || r.is_deleted === true) {
+                      return false;
+                    }
+                    // For records claiming to be approved, verify they exist in remote approved records
+                    if (st === 'approved') {
+                      return remoteApprovedIds.has(r.id);
+                    }
+                    return true;
+                  });
+                  safeSaveRegistrations(sanitizedLocal);
+                }
               }
-            });
+            } catch (cacheErr) {
+              console.warn("[EXPLORE] Failed to sanitize local storage cache:", cacheErr);
+            }
+          }
         } catch (e) {
-          console.error(e);
+          console.error("[EXPLORE] Failed to fetch from Supabase:", e);
         }
       }
 
-      // Populate default high-quality catering businesses
-      if (allCaterers.length === 0) {
-        allCaterers = [
-          {
-            id: 'c1',
-            name: 'Elite Catering',
-            location: 'Banjara Hills, Hyderabad',
-            type: 'Veg + Non-Veg',
-            startingPrice: 350,
-            rating: 4.9,
-            reviewCount: 1230,
-            description: 'Award winning wedding & premium event caterers specializing in rich Hyderabadi biryani and continental cuisines.',
-            images: [
-              'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800',
-              'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&q=80&w=800'
-            ],
-            logo: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=150',
-            coverBanner: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=1200',
-            address: 'Banjara Hills, Hyderabad',
-            badges: (badgesMap && badgesMap['c1']) ? badgesMap['c1'].filter(b => b.is_active) : [],
-            isVerified: true,
-            isPremium: true,
-            years: '5+ Years',
-            latitude: 17.4156,
-            longitude: 78.4414,
-            serviceRadiusKm: 15
-          },
-          {
-            id: 'c2',
-            name: 'The Grand Feast',
-            location: 'Jubilee Hills, Hyderabad',
-            type: 'Veg + Non-Veg',
-            startingPrice: 320,
-            rating: 4.8,
-            reviewCount: 680,
-            description: 'Delicious traditional and modern fusion menus curated for massive receptions, corporate galas, and fine gatherings.',
-            images: [
-              'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&q=80&w=800',
-              'https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&q=80&w=800'
-            ],
-            logo: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=150',
-            coverBanner: 'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&q=80&w=1200',
-            address: 'Jubilee Hills, Hyderabad',
-            badges: (badgesMap && badgesMap['c2']) ? badgesMap['c2'].filter(b => b.is_active) : [],
-            isVerified: true,
-            isPremium: false,
-            years: '4+ Years',
-            latitude: 17.4300,
-            longitude: 78.4000,
-            serviceRadiusKm: 12
-          },
-          {
-            id: 'c3',
-            name: 'Royal Flavours',
-            location: 'Somajiguda, Hyderabad',
-            type: 'Veg + Non-Veg',
-            startingPrice: 400,
-            rating: 4.9,
-            reviewCount: 2360,
-            description: 'Royal Mughlai delicacies, traditional Telangana delights and premium live counters for luxury events.',
-            images: [
-              'https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&q=80&w=800',
-              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=800'
-            ],
-            logo: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&q=80&w=150',
-            coverBanner: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&q=80&w=1200',
-            address: 'Somajiguda, Hyderabad',
-            badges: (badgesMap && badgesMap['c3']) ? badgesMap['c3'].filter(b => b.is_active) : [],
-            isVerified: true,
-            isPremium: true,
-            years: '7+ Years',
-            latitude: 17.4265,
-            longitude: 78.4530,
-            serviceRadiusKm: 20
-          },
-          {
-            id: 'c4',
-            name: 'Spice Affair',
-            location: 'Madhapur, Hyderabad',
-            type: 'Veg + Non-Veg',
-            startingPrice: 300,
-            rating: 4.7,
-            reviewCount: 700,
-            description: 'Gourmet wedding spreads and luxury multi-cuisine buffet tables with specialized global desserts.',
-            images: [
-              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=800',
-              'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&q=80&w=800'
-            ],
-            logo: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&q=80&w=150',
-            coverBanner: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=1200',
-            address: 'Madhapur, Hyderabad',
-            badges: (badgesMap && badgesMap['c4']) ? badgesMap['c4'].filter(b => b.is_active) : [],
-            isVerified: true,
-            isPremium: false,
-            years: '3+ Years',
-            latitude: 17.4485,
-            longitude: 78.3741,
-            serviceRadiusKm: 10
+      // Offline fallback ONLY: If Supabase connection is unavailable or returned an error,
+      // load strictly approved records from localStorage without resurrecting trashed/deleted items.
+      if (!isSupabaseAuthoritative) {
+        const raw = localStorage.getItem('registrations');
+        if (raw) {
+          try {
+            const allRegs = JSON.parse(raw);
+            if (Array.isArray(allRegs)) {
+              const approved = allRegs.filter((r: any) => {
+                if (!r || !r.id) return false;
+                const st = (r.status || '').toLowerCase().trim();
+                // Must be explicitly approved
+                if (st !== 'approved') return false;
+                // Exclude any deleted, trashed, hidden, suspended, or rejected
+                if (st === 'trashed' || st === 'hidden' || st === 'suspended' || st === 'rejected' || r.deleted === true || r.is_deleted === true) {
+                  return false;
+                }
+                return true;
+              });
+              allCaterers = approved.map((r: any) => formatCatererRecord(r));
+            }
+          } catch (e) {
+            console.error("[EXPLORE] Failed parsing local registrations:", e);
           }
-        ];
+        }
       }
+
+      // Sort newest approved/registered caterers first using actual timestamp field
+      allCaterers.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
       setCaterers(allCaterers);
     };
@@ -786,8 +704,20 @@ export default function Explore() {
       result.sort((a, b) => a.startingPrice - b.startingPrice);
     } else if (sortOption === 'Price: High to Low') {
       result.sort((a, b) => b.startingPrice - a.startingPrice);
-    } else if (sortOption === 'Highest Rated' || sortOption === 'Popularity') {
-      result.sort((a, b) => b.rating - a.rating);
+    } else if (sortOption === 'Newest First') {
+      result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    } else if (sortOption === 'Highest Rated') {
+      result.sort((a, b) => {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+    } else if (sortOption === 'Popularity') {
+      // Sort newest approved/registered caterers first using actual timestamp field, breaking ties by rating
+      result.sort((a, b) => {
+        const timeDiff = new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return (b.rating || 0) - (a.rating || 0);
+      });
     } else if (sortOption === 'Nearest First' || sortOption === 'Lowest Delivery Distance') {
       result.sort((a, b) => {
         if (a.distanceKm === null && b.distanceKm === null) return 0;
@@ -1069,6 +999,7 @@ export default function Explore() {
                 className="text-xs font-bold text-slate-700 focus:outline-none bg-transparent cursor-pointer flex-1 appearance-none pr-5 py-3"
               >
                 <option value="Popularity">Popularity</option>
+                <option value="Newest First">Newest First</option>
                 <option value="Price: Low to High">Price: Low to High</option>
                 <option value="Price: High to Low">Price: High to Low</option>
                 <option value="Highest Rated">Highest Rated</option>
@@ -1488,6 +1419,7 @@ export default function Explore() {
                         className="w-full bg-slate-50 border border-slate-150 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer appearance-none"
                       >
                         <option value="Popularity">Popularity</option>
+                        <option value="Newest First">Newest First</option>
                         <option value="Price: Low to High">Price: Low to High</option>
                         <option value="Price: High to Low">Price: High to Low</option>
                         <option value="Highest Rated">Highest Rated</option>
@@ -1621,6 +1553,7 @@ export default function Explore() {
                   className="appearance-none bg-slate-50 border border-slate-200 rounded-full px-3 py-1 pr-7 text-[11px] font-bold text-slate-700 focus:outline-none cursor-pointer hover:border-brand-gold-500/50 transition-colors"
                 >
                   <option value="Popularity">Popularity</option>
+                  <option value="Newest First">Newest First</option>
                   <option value="Price: Low to High">Price: Low to High</option>
                   <option value="Price: High to Low">Price: High to Low</option>
                   <option value="Highest Rated">Highest Rated</option>
