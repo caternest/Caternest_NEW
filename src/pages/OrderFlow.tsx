@@ -779,9 +779,60 @@ const renderVegNonVegBadge = (packageType: string = "") => {
   );
 };
 
+export const isCategoryChooseAllOrIncluded = (categoryName?: string, selectionRule?: string): boolean => {
+  const normRule = (selectionRule || "").toLowerCase().trim();
+  if (
+    normRule === "choose all" ||
+    normRule === "all" ||
+    normRule === "choose_all" ||
+    normRule === "select all" ||
+    normRule === "select_all" ||
+    normRule === "all items"
+  ) {
+    return true;
+  }
+  if (normRule === "included" || normRule === "fixed" || normRule === "all included") {
+    return true;
+  }
+  const normCat = (categoryName || "").toLowerCase().trim();
+  if (normCat.includes("common item") && (!normRule || normRule === "included" || normRule === "choose all" || normRule === "needs review")) {
+    return true;
+  }
+  return false;
+};
+
+export const getAutoSelectedItemsForPackage = (pkg: any): Record<string, boolean> => {
+  const autoItems: Record<string, boolean> = {};
+  if (!pkg?.categories || !Array.isArray(pkg.categories)) return autoItems;
+  for (const cat of pkg.categories) {
+    if (isCategoryChooseAllOrIncluded(cat.categoryName, cat.selectionRule)) {
+      for (const item of (cat.items || [])) {
+        if (typeof item === "string" && item.trim()) {
+          autoItems[item.trim()] = true;
+        }
+      }
+    }
+  }
+  return autoItems;
+};
+
 const getSelectionRuleLabel = (rule: string | undefined): string => {
   if (!rule) return "Select Items From This Category";
   const clean = rule.trim();
+  const lower = clean.toLowerCase();
+  if (
+    lower === "choose all" ||
+    lower === "all" ||
+    lower === "choose_all" ||
+    lower === "select all" ||
+    lower === "select_all" ||
+    lower === "all items"
+  ) {
+    return "All Items Included (Choose All)";
+  }
+  if (lower === "included" || lower === "fixed" || lower === "all included") {
+    return "All Items Included";
+  }
   const match = clean.match(/(Select|Choose)\s+Any\s+(\d+)\s*(Items?)?/i);
   if (match) {
     const num = match[2];
@@ -906,6 +957,25 @@ export default function OrderFlow() {
       }
 
       if (selectedPkg) {
+        // Ensure Common Items category exists if includedItems was present
+        const cats = Array.isArray(selectedPkg.categories) ? [...selectedPkg.categories] : [];
+        const hasCommon = cats.some((c: any) => String(c.categoryName || "").toLowerCase().includes("common item"));
+        if (!hasCommon) {
+          const fallback = (Array.isArray(selectedPkg.includedItems) && selectedPkg.includedItems.length > 0)
+            ? selectedPkg.includedItems
+            : (Array.isArray(caterer.includedItems) && caterer.includedItems.length > 0)
+              ? caterer.includedItems
+              : [];
+          if (fallback.length > 0) {
+            cats.push({
+              categoryName: "Common Items",
+              selectionRule: "Choose All",
+              items: fallback,
+            });
+            selectedPkg = { ...selectedPkg, categories: cats };
+          }
+        }
+
         setSelectedPackage(selectedPkg);
         setViewMode("package_detail");
         
@@ -928,17 +998,39 @@ export default function OrderFlow() {
     if (raw) {
       try {
         const allRegs = JSON.parse(raw);
-        const regMapped = allRegs.map((r: any) => ({
-          id: r.id,
-          name: r.businessName,
-          location: r.location || "Hyderabad",
-          type: r.type || "Veg + Non-Veg",
-          startingPrice: 350,
-          description:
-            r.description || "Welcome to our premium catering service.",
-          menuPackages: r.menuPackages || r.packages || [],
-          packages: r.packages || r.menuPackages || [],
-        }));
+        const regMapped = allRegs.map((r: any) => {
+          const rawPkgs = r.menuPackages || r.packages || [];
+          const normalizedPkgs = rawPkgs.map((pkg: any) => {
+            const cats = Array.isArray(pkg.categories) ? [...pkg.categories] : [];
+            const hasCommon = cats.some((c: any) => String(c.categoryName || "").toLowerCase().includes("common item"));
+            if (!hasCommon) {
+              const fallback = (Array.isArray(pkg.includedItems) && pkg.includedItems.length > 0)
+                ? pkg.includedItems
+                : (Array.isArray(r.includedItems) && r.includedItems.length > 0)
+                  ? r.includedItems
+                  : [];
+              if (fallback.length > 0) {
+                cats.push({
+                  categoryName: "Common Items",
+                  selectionRule: "Choose All",
+                  items: fallback,
+                });
+              }
+            }
+            return { ...pkg, categories: cats };
+          });
+          return {
+            id: r.id,
+            name: r.businessName,
+            location: r.location || "Hyderabad",
+            type: r.type || "Veg + Non-Veg",
+            startingPrice: 350,
+            description:
+              r.description || "Welcome to our premium catering service.",
+            menuPackages: normalizedPkgs,
+            packages: normalizedPkgs,
+          };
+        });
         allCaterers = [...allCaterers, ...regMapped];
       } catch (e) {}
     }
@@ -1364,9 +1456,18 @@ export default function OrderFlow() {
       notes: orderForm.notes ? orderForm.notes.trim() : "",
       packageDetails: selectedPackage,
       matchedSlab: matchingSlab,
-      selectedItems: Object.keys(selectedItems).filter(
-        (k: string) => selectedItems[k],
-      ),
+      selectedItems: (() => {
+        const merged: Record<string, boolean> = { ...selectedItems };
+        const auto = getAutoSelectedItemsForPackage(selectedPackage);
+        Object.assign(merged, auto);
+        return Object.keys(merged).filter((k: string) => merged[k]);
+      })(),
+      items: (() => {
+        const merged: Record<string, boolean> = { ...selectedItems };
+        const auto = getAutoSelectedItemsForPackage(selectedPackage);
+        Object.assign(merged, auto);
+        return Object.keys(merged).filter((k: string) => merged[k]);
+      })(),
       totalEstimate: calculatedTotal,
       totalAmount: calculatedTotal,
       amount: calculatedTotal,
@@ -1487,13 +1588,33 @@ export default function OrderFlow() {
     // Reset active category when package changes
     if (selectedPackage?.categories && selectedPackage.categories.length > 0) {
       setActiveCategory(selectedPackage.categories[0].categoryName);
+      // Auto-include items for "Choose All" or "Included" categories
+      const autoItems = getAutoSelectedItemsForPackage(selectedPackage);
+      if (Object.keys(autoItems).length > 0) {
+        setSelectedItems((prev) => ({
+          ...prev,
+          ...autoItems,
+        }));
+      }
     }
   }, [selectedPackage]);
 
   const parseCategoryLimit = (rule?: string): number => {
     if (!rule) return 0;
     const clean = rule.trim().toLowerCase();
-    if (clean === 'included' || clean === 'optional' || clean === 'needs review' || clean === 'needs_review') return 0;
+    if (
+      clean === 'included' ||
+      clean === 'choose all' ||
+      clean === 'choose_all' ||
+      clean === 'all' ||
+      clean === 'select all' ||
+      clean === 'select_all' ||
+      clean === 'all items' ||
+      clean === 'optional' ||
+      clean === 'needs review' ||
+      clean === 'needs_review'
+    )
+      return 0;
     const match = clean.match(/\d+/);
     if (match) return parseInt(match[0], 10);
     if (clean.includes('one')) return 1;
@@ -1514,11 +1635,17 @@ export default function OrderFlow() {
   })();
 
   const toggleItem = (itemName: string, catName: string) => {
+    const cat = selectedPackage?.categories?.find(
+      (c: any) => c.categoryName === catName,
+    );
+    // If category is Choose All / Included, items cannot be deselected by the customer
+    if (isCategoryChooseAllOrIncluded(cat?.categoryName, cat?.selectionRule)) {
+      setSelectedItems((prev) => ({ ...prev, [itemName]: true }));
+      return;
+    }
+
     setSelectedItems((prev) => {
       const isSelected = !!prev[itemName];
-      const cat = selectedPackage.categories?.find(
-        (c: any) => c.categoryName === catName,
-      );
       const limit = parseCategoryLimit(cat?.selectionRule);
 
       if (!isSelected && limit > 0) {
@@ -1562,6 +1689,7 @@ export default function OrderFlow() {
       (c: any) => c.categoryName === catName,
     );
     if (!cat) return true;
+    if (isCategoryChooseAllOrIncluded(cat.categoryName, cat.selectionRule)) return true;
     const limit = parseCategoryLimit(cat.selectionRule);
     if (limit === 0) return true;
 
@@ -2001,8 +2129,9 @@ export default function OrderFlow() {
                       key={idx}
                       onClick={() => {
                         const pkgMin = getPackageMinGuests(pkg);
+                        const autoItems = getAutoSelectedItemsForPackage(pkg);
                         setSelectedPackage(pkg);
-                        setSelectedItems({});
+                        setSelectedItems(autoItems);
                         setGuests((prev) => Math.max(pkgMin, Number(prev) || pkgMin));
                         setGuestInputVal(String(Math.max(pkgMin, Number(guests) || pkgMin)));
                         setViewMode("package_detail");
@@ -2599,31 +2728,46 @@ export default function OrderFlow() {
                             )?.selectionRule,
                           )}
                         </span>
-                        {limitPerCategory > 0 && (
-                          <>
-                            <span className="text-[#D6B15E]/60">•</span>
-                            {(() => {
-                              const catData = selectedPackage.categories?.find(
-                                (c: any) => c.categoryName === activeCategory,
-                              );
-                              const itemsInCat = catData?.items || [];
-                              const selectedCount = itemsInCat.filter(
-                                (i: string) => selectedItems[i],
-                              ).length;
-                              const isFull = selectedCount >= limitPerCategory;
-                              return isFull ? (
+                        {(() => {
+                          const currentCat = selectedPackage.categories?.find(
+                            (c: any) => c.categoryName === activeCategory,
+                          );
+                          const isChooseAll = isCategoryChooseAllOrIncluded(currentCat?.categoryName, currentCat?.selectionRule);
+                          if (isChooseAll) {
+                            return (
+                              <>
+                                <span className="text-[#D6B15E]/60">•</span>
                                 <span className="inline-flex items-center gap-1.5 bg-[#E8F5EE] text-[#0B2D23] font-bold px-2.5 py-0.5 rounded-full text-xs border border-[#A3D9BA]/70">
                                   <Check size={12} strokeWidth={3} />
-                                  Completed ({selectedCount}/{limitPerCategory})
+                                  All Items Automatically Included in Package
                                 </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 bg-[#FFFDF7] text-[#8B6E32] font-bold px-2.5 py-0.5 rounded-full text-xs border border-[#D6B15E]/50">
-                                  Requires {limitPerCategory} ({selectedCount} selected)
-                                </span>
-                              );
-                            })()}
-                          </>
-                        )}
+                              </>
+                            );
+                          }
+                          if (limitPerCategory > 0) {
+                            const itemsInCat = currentCat?.items || [];
+                            const selectedCount = itemsInCat.filter(
+                              (i: string) => selectedItems[i],
+                            ).length;
+                            const isFull = selectedCount >= limitPerCategory;
+                            return (
+                              <>
+                                <span className="text-[#D6B15E]/60">•</span>
+                                {isFull ? (
+                                  <span className="inline-flex items-center gap-1.5 bg-[#E8F5EE] text-[#0B2D23] font-bold px-2.5 py-0.5 rounded-full text-xs border border-[#A3D9BA]/70">
+                                    <Check size={12} strokeWidth={3} />
+                                    Completed ({selectedCount}/{limitPerCategory})
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 bg-[#FFFDF7] text-[#8B6E32] font-bold px-2.5 py-0.5 rounded-full text-xs border border-[#D6B15E]/50">
+                                    Requires {limitPerCategory} ({selectedCount} selected)
+                                  </span>
+                                )}
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
 
@@ -2665,10 +2809,14 @@ export default function OrderFlow() {
                   {/* Menu Items Grid: Cards with thin gold borders and warm cream bg */}
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3">
                     {(() => {
-                      const allCatItems =
-                        selectedPackage.categories?.find(
-                          (c: any) => c.categoryName === activeCategory,
-                        )?.items || [];
+                      const currentCatObj = selectedPackage.categories?.find(
+                        (c: any) => c.categoryName === activeCategory,
+                      );
+                      const isCatChooseAll = isCategoryChooseAllOrIncluded(
+                        currentCatObj?.categoryName,
+                        currentCatObj?.selectionRule,
+                      );
+                      const allCatItems = currentCatObj?.items || [];
 
                       const filteredItems = allCatItems.filter((item: string) =>
                         categorySearchQuery.trim() === ""
@@ -2696,15 +2844,16 @@ export default function OrderFlow() {
                       }
 
                       return filteredItems.map((itemName: string, idx: number) => {
-                        const isSelected = !!selectedItems[itemName];
+                        const isSelected = isCatChooseAll || !!selectedItems[itemName];
                         const itemsInCat = allCatItems;
                         const selectedCount = itemsInCat.filter(
                           (i: string) => selectedItems[i],
                         ).length;
                         const isAtLimit =
+                          !isCatChooseAll &&
                           limitPerCategory > 0 &&
                           selectedCount >= limitPerCategory;
-                        const isDisabled = !isSelected && isAtLimit;
+                        const isDisabled = !isCatChooseAll && !isSelected && isAtLimit;
                         const isPremium = isItemPremium(itemName);
                         const isNonVeg = isItemNonVeg(
                           itemName,
@@ -2716,17 +2865,19 @@ export default function OrderFlow() {
                             key={idx}
                             data-name={itemName}
                             onClick={() => {
-                              if (!isDisabled) {
+                              if (!isCatChooseAll && !isDisabled) {
                                 toggleItem(itemName, activeCategory);
                               }
                             }}
                             className={cn(
                               "relative bg-[#FFFEFA] rounded-lg p-2.5 sm:p-3 border transition-all duration-200 flex flex-col justify-between min-h-[80px] sm:min-h-[88px] select-none",
-                              isSelected
-                                ? "border-[#D6B15E] ring-1 ring-[#D6B15E]/40 bg-[#FFFDF7] shadow-[0_2px_12px_rgba(214,177,94,0.15)]"
-                                : isDisabled
-                                  ? "border-[#D6B15E]/20 bg-[#FAF9F5] opacity-55 cursor-not-allowed shadow-none"
-                                  : "border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_8px_rgba(214,177,94,0.06)] hover:shadow-[0_3px_12px_rgba(214,177,94,0.12)] cursor-pointer",
+                              isCatChooseAll
+                                ? "border-emerald-500/60 ring-1 ring-emerald-500/30 bg-[#F6FAF8] shadow-[0_2px_10px_rgba(16,185,129,0.08)] cursor-default"
+                                : isSelected
+                                  ? "border-[#D6B15E] ring-1 ring-[#D6B15E]/40 bg-[#FFFDF7] shadow-[0_2px_12px_rgba(214,177,94,0.15)] cursor-pointer"
+                                  : isDisabled
+                                    ? "border-[#D6B15E]/20 bg-[#FAF9F5] opacity-55 cursor-not-allowed shadow-none"
+                                    : "border-[#D6B15E]/50 hover:border-[#D6B15E] shadow-[0_2px_8px_rgba(214,177,94,0.06)] hover:shadow-[0_3px_12px_rgba(214,177,94,0.12)] cursor-pointer",
                             )}
                           >
                             {/* Top Row: Dietary Indicator (Veg / Non-Veg) & Status Badge */}
@@ -2746,7 +2897,11 @@ export default function OrderFlow() {
                               </div>
 
                               <div>
-                                {isPremium ? (
+                                {isCatChooseAll ? (
+                                  <span className="text-[8.5px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded">
+                                    All Included
+                                  </span>
+                                ) : isPremium ? (
                                   <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#8B6E32] bg-[#FFFDF7] border border-[#D6B15E]/50 px-1 py-0.2 rounded">
                                     Premium
                                   </span>
@@ -2773,7 +2928,12 @@ export default function OrderFlow() {
                             {/* Bottom Row: Control button */}
                             <div className="mt-1 pt-1 border-t border-[#D6B15E]/20 flex items-center justify-between">
                               <span className="text-[10px] font-medium text-stone-500">
-                                {isSelected ? (
+                                {isCatChooseAll ? (
+                                  <span className="text-emerald-800 font-bold flex items-center gap-1">
+                                    <Check size={11} strokeWidth={3} className="text-emerald-700" />
+                                    Included with package
+                                  </span>
+                                ) : isSelected ? (
                                   <span className="text-[#0B2D23] font-bold">
                                     In your menu
                                   </span>
@@ -2786,7 +2946,12 @@ export default function OrderFlow() {
                                 )}
                               </span>
 
-                              {isSelected ? (
+                              {isCatChooseAll ? (
+                                <span className="px-2 py-0.5 bg-emerald-100/90 text-emerald-900 border border-emerald-300 rounded text-[10px] font-bold flex items-center gap-1 select-none">
+                                  <Check size={10} strokeWidth={3} />
+                                  <span>Included</span>
+                                </span>
+                              ) : isSelected ? (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -2924,11 +3089,16 @@ export default function OrderFlow() {
                       </div>
                     ) : (
                       menuCategories.map((cat: string) => {
-                        const itemsInCat = (
-                          selectedPackage.categories?.find(
-                            (c: any) => c.categoryName === cat,
-                          )?.items || []
-                        ).filter((i: string) => selectedItems[i]);
+                        const catObj = selectedPackage.categories?.find(
+                          (c: any) => c.categoryName === cat,
+                        );
+                        const isCatChooseAll = isCategoryChooseAllOrIncluded(
+                          catObj?.categoryName,
+                          catObj?.selectionRule,
+                        );
+                        const itemsInCat = (catObj?.items || []).filter(
+                          (i: string) => selectedItems[i] || isCatChooseAll,
+                        );
 
                         if (itemsInCat.length === 0) return null;
 
@@ -2939,7 +3109,7 @@ export default function OrderFlow() {
                                 {cat}
                               </span>
                               <span className="text-[9px] text-[#8B6E32]">
-                                {itemsInCat.length} selected
+                                {isCatChooseAll ? "All Included" : `${itemsInCat.length} selected`}
                               </span>
                             </div>
                             <ul className="space-y-0.5">
@@ -2949,14 +3119,20 @@ export default function OrderFlow() {
                                   className="flex items-center justify-between py-0.5 px-2 rounded bg-[#FAF7F2] hover:bg-[#FAF4E8] transition-colors text-[10.5px] font-semibold text-[#0B2D23] border border-[#D6B15E]/20 group"
                                 >
                                   <span className="truncate pr-1">{item}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleItem(item, cat)}
-                                    className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
-                                    title={`Remove ${item}`}
-                                  >
-                                    <X size={11} />
-                                  </button>
+                                  {isCatChooseAll ? (
+                                    <span className="text-[8px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                      All Included
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleItem(item, cat)}
+                                      className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+                                      title={`Remove ${item}`}
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  )}
                                 </li>
                               ))}
                             </ul>
@@ -3150,11 +3326,16 @@ export default function OrderFlow() {
                       </div>
                     ) : (
                       menuCategories.map((cat: string) => {
-                        const itemsInCat = (
-                          selectedPackage.categories?.find(
-                            (c: any) => c.categoryName === cat,
-                          )?.items || []
-                        ).filter((i: string) => selectedItems[i]);
+                        const catObj = selectedPackage.categories?.find(
+                          (c: any) => c.categoryName === cat,
+                        );
+                        const isCatChooseAll = isCategoryChooseAllOrIncluded(
+                          catObj?.categoryName,
+                          catObj?.selectionRule,
+                        );
+                        const itemsInCat = (catObj?.items || []).filter(
+                          (i: string) => selectedItems[i] || isCatChooseAll,
+                        );
 
                         if (itemsInCat.length === 0) return null;
 
@@ -3165,7 +3346,7 @@ export default function OrderFlow() {
                                 {cat}
                               </span>
                               <span className="text-[10px] text-[#8B6E32]">
-                                {itemsInCat.length} selected
+                                {isCatChooseAll ? "All Included" : `${itemsInCat.length} selected`}
                               </span>
                             </div>
                             <ul className="space-y-1">
@@ -3175,13 +3356,19 @@ export default function OrderFlow() {
                                   className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-[#FAF7F2] text-xs font-semibold text-[#0B2D23] border border-[#D6B15E]/20"
                                 >
                                   <span className="truncate pr-2">{item}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleItem(item, cat)}
-                                    className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
-                                  >
-                                    <X size={13} />
-                                  </button>
+                                  {isCatChooseAll ? (
+                                    <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                      All Included
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleItem(item, cat)}
+                                      className="text-stone-400 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+                                    >
+                                      <X size={13} />
+                                    </button>
+                                  )}
                                 </li>
                               ))}
                             </ul>
