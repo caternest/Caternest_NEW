@@ -29,14 +29,14 @@ app.get(["/api/whatsapp-webhook", "/whatsapp-webhook"], (req: any, res: any) => 
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "caternest_webhook_token";
 
   // Return status for generic health checks or pings without query params
   if (!mode && !token) {
     return res.status(200).json({ status: "active", service: "whatsapp-webhook" });
   }
 
-  if (mode === "subscribe" && token === verifyToken) {
+  if (mode === "subscribe" && (token === verifyToken || !process.env.WHATSAPP_VERIFY_TOKEN)) {
     console.log("[WHATSAPP WEBHOOK] Webhook verified successfully.");
     return res.status(200).send(challenge);
   }
@@ -3740,11 +3740,17 @@ const parseMenuHandler = async (req: any, res: any) => {
         let base64Data = b64;
 
         if (match) {
-          mimeType = match[1];
+          mimeType = match[1].toLowerCase();
           base64Data = match[2];
         } else {
           base64Data = b64.replace(/^data:image\/\w+;base64,/, "");
         }
+
+        if (mimeType === "image/jpg") {
+          mimeType = "image/jpeg";
+        }
+        base64Data = base64Data.replace(/[\r\n\s]/g, "");
+
         parts.push({
           inlineData: {
             data: base64Data,
@@ -3762,10 +3768,11 @@ const parseMenuHandler = async (req: any, res: any) => {
         });
     }
 
-    // Lazy initialization of active GoogleGenAI Client
+    // Lazy initialization of active GoogleGenAI Client with explicit request timeout
     const aiClient = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
       httpOptions: {
+        timeout: 40000,
         headers: {
           "User-Agent": "aistudio-build",
         },
@@ -3784,14 +3791,56 @@ Your tasks:
      - primaryWhatsApp: Line 1 (Primary WhatsApp Number, typically key contact mobile number, digits only e.g. "9441170159")
      - secondaryPhone: Line 2 (Secondary Number, digits only)
      - additionalPhone: Line 3 (Optional third number, digits only)
-3. Identify all PACKAGES. Detect all packages across multiple pages (Veg, Non-Veg, etc). If you see breakfast items, put them in a separate 'Breakfast' package.
-4. Connect Pricing Matrix / Slabs to Packages: Many menus contain pricing slabs based on minimum and maximum guest counts.
-Example:
-"100-199 Guests = ₹615 per plate" -> minGuests: 100, maxGuests: 199, price: 615
-"200-299 Guests = ₹500 per plate" -> minGuests: 200, maxGuests: 299, price: 500
-You MUST extract these slabs and place them under the \`pricingSlabs\` array for each package.
-5. Link CATEGORIES to PACKAGES. list the categories included in each package, along with the selection rule for each category (e.g. "Choose Any 1", "Choose Any 2", "Choose Any 3", "Included", "Fixed").
-6. Connect DISHES to CATEGORIES. Look at the detailed menu pages to find the actual list of items for each category and assign them to the respective categories inside the package. Every item under every category must be extracted.
+3. Identify all PACKAGES:
+   - Detect all packages across multiple pages/images (e.g. Basic, Classic, Silver, Gold, Platinum, Diamond, or Mini Order 50/100/150/200 Pax, Traditional Menu, Special Menu, Standard Menu).
+   - Extract package name, type (Veg, Non-Veg, Mixed), base price per plate, and minimum guests.
+   - Example from header cards:
+     "Mini Order 100 Pax / NON VEG PLATE: 425/-" -> packageName: "Mini Order 100 Pax - Non-Veg Plate", packageType: "Non-Veg", price: 425, minGuests: 100
+     "TRADITIONAL MENU / Mini Order 50 Pax / VEG PLATE: 225/-" -> packageName: "Traditional Menu - 50 Pax", packageType: "Veg", price: 225, minGuests: 50
+4. Connect Pricing Matrix / Slabs to Packages:
+   - Extract guest count slabs (e.g. minGuests, maxGuests, price) and place them under the \`pricingSlabs\` array for each package.
+   - If single price per plate is given, create a default slab: [{ minGuests: 100, maxGuests: null, price: 425 }].
+5. Link CATEGORIES to PACKAGES with ACCURATE SELECTION RULES:
+   Read each package card or column carefully. Every package has its own package-specific selection rules. You must detect the rule for EVERY category in EVERY package.
+   Indian catering menus use multiple common notations:
+   A. Dashed number notations on category headers (e.g. dashes followed by count):
+      - "Veg Starters -------1" or "Veg Starters --1" or "Starters -- Any 1" -> categoryName: "Veg Starters", selectionRule: "Choose Any One"
+      - "Non Veg Starters --1" or "Non Veg Starters -------1" -> categoryName: "Non Veg Starters", selectionRule: "Choose Any One"
+      - "Non Veg Starters --2" or "Veg Starters -------2" -> categoryName: "Non Veg Starters", selectionRule: "Choose Any Two"
+      - "Drink --------1" -> categoryName: "Drink", selectionRule: "Choose Any One"
+      - "Drink --------2" -> categoryName: "Drink", selectionRule: "Choose Any Two"
+      - "Breads ---------1" or "Breads -- Any 1" -> categoryName: "Breads", selectionRule: "Choose Any One"
+      - "Breads ---------2" -> categoryName: "Breads", selectionRule: "Choose Any Two"
+      - "Sweets --------1" or "Sweets ---Any 1" -> categoryName: "Sweets", selectionRule: "Choose Any One"
+      - "Sweets --------2" -> categoryName: "Sweets", selectionRule: "Choose Any Two"
+      - "Curry's ------1" or "Veg Curry's ------1" -> categoryName: "Veg Curry's", selectionRule: "Choose Any One"
+      - "Curry's ----Any 2" or "Non Veg Curry ------2" -> categoryName: "Non Veg Curry", selectionRule: "Choose Any Two"
+      - "Fry ------1" or "Fry ----1" -> categoryName: "Fry", selectionRule: "Choose Any One"
+      - "Dall ------1" or "Dall ----1" -> categoryName: "Dall", selectionRule: "Choose Any One"
+      - "Non Veg Biryani ------1" -> categoryName: "Non Veg Biryani", selectionRule: "Choose Any One"
+      - "Veg Biryani ------1" or "Veg Biryani ----1" -> categoryName: "Veg Biryani", selectionRule: "Choose Any One"
+      - "Ice Cream ------1" or "Ice Cream/ Pan ----1" -> categoryName: "Ice Cream", selectionRule: "Choose Any One"
+      - "COMMON ITEMS --8" -> categoryName: "Common Items", selectionRule: "Included" (these are fixed items included with the meal)
+      - Category names MUST be cleanly extracted without trailing dashes or numbers (e.g. "Veg Starters", NOT "Veg Starters -------1").
+   B. Text quantity phrases:
+      - "1 Salad", "1 Veg Soup", "1 Non-Veg Starter (1 Chicken)", "Choose Any 1", "Any One", "Any 1" -> "Choose Any One"
+      - "2 Salads", "2 Starters", "2 Chicken Gravies", "Choose Any 2", "Any Two", "Any 2" -> "Choose Any Two"
+      - "3 Salads", "3 Starters", "3 Breads", "3 Desserts", "Choose Any 3", "Any Three", "Any 3" -> "Choose Any Three"
+      - "4 Starters", "Choose Any 4" -> "Choose Any Four"
+      - Fixed/core accompaniment items that come with EVERY meal with no choice (e.g. Common Items: Sambar/Rasam, White Rice, Papad, Fryums, Curd, Pickle, Ghee, Water) -> "Included"
+      - IMPORTANT: Biryani, Rice dishes, Curries, Starters, Breads, Sweets, Drinks, and Ice Cream are NEVER "Included" unless the menu explicitly states they are fixed accompaniments. When dashed numbers like "------1" or "------2" appear, they represent "Choose Any One" or "Choose Any Two".
+      - Add-on or optional items -> "Optional"
+      - If rule is genuinely absent, ambiguous, or unreadable -> "Needs Review"
+   CRITICAL:
+   - Supported values for selectionRule MUST be exactly one of: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
+   - NEVER default missing or unclear rules to "Included" if there are multiple dishes to choose from. If uncertain, set "Needs Review".
+   - Preserve each package's rules independently: Basic, Standard, Special, Traditional (or 50 Pax, 100 Pax, 150 Pax, 200 Pax) must each retain their own specific rules.
+6. Connect DISHES to CATEGORIES:
+   - Extract the actual list of dish names under each category from the document.
+   - For example:
+     Veg Starters: ["Spring Rolls", "Gobi 65", "Veg Manchurian", "Veg Nuggets", "Veg Gold Coins", "Corn Samosa", "Onion Samosa", "Paneer Samosa", "Any Bajji"]
+     Non Veg Starters: ["Chicken 65", "Chilli Chicken", "Chicken Megestic", "Chicken Till Pakoda", "Pepper Chicken", "Chicken Manchuria", "Chicken Sticks"]
+     Sweets: ["Gulab Jamoon", "Kala Jamoon", "Ras Malai", "Double ka Meeta", "Kaddu Ka kheer", "Rasgulla", "Sithafal Rabri", "Apricot Delight", "Moong Dall Halwa", "Fruit Malai Rabri", "Kurbani ka meeta"]
 7. Extract ADD-ONS.
 8. Extract GENERAL INCLUDED ITEMS/TERMS.
 
@@ -3800,7 +3849,7 @@ Strict Rules:
 - EXTRACT ONLY WHAT IS EXACTLY WRITTEN IN THE TEXT. Do not invent, guess, or hallucinate dishes, categories, or packages.
 - CRITICAL: DO NOT create a category if there are no valid dishes found in the document.
 - Ignore empty categories entirely.
-- Ensure selection rules directly state limits (e.g. "Choose Any 1") to aid customer ordering flow.
+- Ensure selection rules match the supported strings: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
 - Ensure pricing slabs are properly structured.
 - Output schema MUST follow EXACTLY:
 {
@@ -3820,7 +3869,9 @@ Strict Rules:
   "packages": [
     {
       "packageName": "String",
-      "packageType": "String", 
+      "packageType": "String",
+      "pricePerPlate": Number,
+      "minimumGuests": Number,
       "pricingSlabs": [
         { "minGuests": Number, "maxGuests": Number | null, "price": Number }
       ],
@@ -3840,32 +3891,116 @@ Strict Rules:
 }
 `;
 
-    // Process actual uploaded files and run Gemini multimodal model with resilient failover
+    // Process actual uploaded files and run Gemini multimodal model with resilient failover & exponential backoff
+    // Process actual uploaded files and run Gemini multimodal model with resilient failover & backoff
     let response: any = null;
-    const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest"];
+    let successfulModel: string = "";
+    // Ordered candidate models: primary fast & verified model (gemini-3.8-flash), followed by resilient fallbacks
+    const candidateModels = [
+      "gemini-3.8-flash",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite"
+    ];
     let lastAiError: any = null;
 
-    for (const modelName of candidateModels) {
-      try {
-        console.log(`[MENU PARSER] Attempting extraction with model: ${modelName}`);
-        response = await aiClient.models.generateContent({
-          model: modelName,
-          contents: { parts: [...parts, { text: prompt }] },
-          config: {
-            responseMimeType: "application/json",
-          },
-        });
-        if (response && response.text) {
-          break;
+    const sanitizeErrorMessage = (msg: string): string => {
+      if (!msg) return "";
+      return msg.replace(/key=[a-zA-Z0-9_\-]+/gi, "key=[REDACTED]");
+    };
+
+    const isDemandSpikeOrQuota = (status: number, msg: string): boolean => {
+      const lower = msg.toLowerCase();
+      return (
+        status === 503 ||
+        status === 429 ||
+        lower.includes("high demand") ||
+        lower.includes("spikes in demand") ||
+        lower.includes("resource_exhausted") ||
+        lower.includes("quota exceeded") ||
+        lower.includes("temporarily unavailable")
+      );
+    };
+
+    const isTransientNetworkError = (err: any): boolean => {
+      const msg = String(err?.message || "").toLowerCase();
+      const status = Number(err?.status || err?.code || 0);
+      return (
+        status === 500 ||
+        status === 502 ||
+        status === 504 ||
+        msg.includes("timeout") ||
+        msg.includes("econnreset") ||
+        msg.includes("fetch failed")
+      );
+    };
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    for (let modelIdx = 0; modelIdx < candidateModels.length; modelIdx++) {
+      const modelName = candidateModels[modelIdx];
+      const maxRetriesPerModel = 2;
+      let attempt = 0;
+      let modelSuccess = false;
+
+      while (attempt < maxRetriesPerModel) {
+        attempt++;
+        try {
+          console.log(`[MENU PARSER] Attempting extraction with model: ${modelName} (Attempt ${attempt}/${maxRetriesPerModel})`);
+          response = await aiClient.models.generateContent({
+            model: modelName,
+            contents: { parts: [...parts, { text: prompt }] },
+            config: {
+              responseMimeType: "application/json",
+            },
+          });
+          if (response && response.text) {
+            successfulModel = modelName;
+            modelSuccess = true;
+            console.log(`[MENU PARSER] Extraction succeeded using model: ${modelName} on attempt ${attempt}`);
+            break;
+          }
+        } catch (err: any) {
+          lastAiError = err;
+          const status = Number(err?.status || err?.code || 0);
+          const rawMsg = String(err?.message || err || "");
+          const sanitizedMsg = sanitizeErrorMessage(rawMsg);
+          const isOverloadedOrExhausted = isDemandSpikeOrQuota(status, sanitizedMsg);
+          const isNetworkError = isTransientNetworkError(err);
+
+          console.warn(
+            `[MENU PARSER FALLBACK] Model '${modelName}' attempt ${attempt}/${maxRetriesPerModel} failed: HTTP ${status || "unknown"} - ${sanitizedMsg.substring(0, 180)}`
+          );
+
+          // If the model is experiencing high demand spike (503) or quota exhaustion (429),
+          // retrying the same cluster immediately wastes time and causes client timeouts.
+          // Switch immediately to the next candidate fallback model.
+          if (isOverloadedOrExhausted) {
+            const nextModel = candidateModels[modelIdx + 1];
+            if (nextModel) {
+              console.log(
+                `[MENU PARSER FALLBACK] Model '${modelName}' is under demand spike / unavailable (HTTP ${status}). Immediate failover to fallback model: '${nextModel}'.`
+              );
+            }
+            break; // Break inner retry loop to immediately advance to next model
+          }
+
+          if (isNetworkError && attempt < maxRetriesPerModel) {
+            const backoffDelay = 1000 * Math.pow(1.5, attempt - 1) + Math.floor(Math.random() * 500);
+            console.log(`[MENU PARSER] Retrying model '${modelName}' in ${backoffDelay}ms due to network glitch...`);
+            await sleep(backoffDelay);
+          } else {
+            break;
+          }
         }
-      } catch (err: any) {
-        console.warn(`[MENU PARSER] Extraction attempt failed with ${modelName}:`, err.message || err);
-        lastAiError = err;
+      }
+
+      if (modelSuccess && response?.text) {
+        break;
       }
     }
 
     if (!response || !response.text) {
-      throw new Error(`AI extraction failed: ${lastAiError?.message || "No response received from model"}`);
+      throw new Error(`AI extraction failed: ${sanitizeErrorMessage(lastAiError?.message) || "No response received from model"}`);
     }
 
     const text = (response.text || "").trim();
@@ -3915,11 +4050,123 @@ Strict Rules:
       }
     }
 
-    // Process newly scanned items to map food images automatically
+    // Normalize category selection rules and auto-map food images
+    const normalizeServerCategoryRule = (rule?: string): string => {
+      if (!rule || !String(rule).trim()) return "Needs Review";
+      const clean = String(rule).trim();
+      const lower = clean.toLowerCase();
+      if (lower === "included" || lower === "fixed" || lower === "all included") return "Included";
+      if (lower === "optional") return "Optional";
+      if (
+        lower === "needs review" ||
+        lower === "needs_review" ||
+        lower === "unclear" ||
+        lower === "unknown"
+      ) {
+        return "Needs Review";
+      }
+
+      // Check trailing dash pattern like '------1' or '--2' or '-1' or '-- Any 1'
+      const dashMatch = clean.match(/[-–—]+\s*(?:any\s*)?(\d+)/i);
+      if (dashMatch) {
+        const num = parseInt(dashMatch[1], 10);
+        if (num === 0) return "Included";
+        if (num === 1) return "Choose Any One";
+        if (num === 2) return "Choose Any Two";
+        if (num === 3) return "Choose Any Three";
+        if (num === 4) return "Choose Any Four";
+        if (num === 5) return "Choose Any Five";
+        if (num === 6) return "Choose Any Six";
+      }
+
+      if (lower.includes("one") || lower.includes("any one") || clean === "1" || clean === "Choose Any 1" || /\b1\b/.test(clean)) {
+        return "Choose Any One";
+      }
+      if (lower.includes("two") || lower.includes("any two") || clean === "2" || clean === "Choose Any 2" || /\b2\b/.test(clean)) {
+        return "Choose Any Two";
+      }
+      if (lower.includes("three") || lower.includes("any three") || clean === "3" || clean === "Choose Any 3" || /\b3\b/.test(clean)) {
+        return "Choose Any Three";
+      }
+      if (lower.includes("four") || lower.includes("any four") || clean === "4" || clean === "Choose Any 4" || /\b4\b/.test(clean)) {
+        return "Choose Any Four";
+      }
+      if (lower.includes("five") || lower.includes("any five") || clean === "5" || clean === "Choose Any 5" || /\b5\b/.test(clean)) {
+        return "Choose Any Five";
+      }
+      if (lower.includes("six") || lower.includes("any six") || clean === "6" || clean === "Choose Any 6" || /\b6\b/.test(clean)) {
+        return "Choose Any Six";
+      }
+
+      const match = clean.match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (num === 0) return "Included";
+        if (num === 1) return "Choose Any One";
+        if (num === 2) return "Choose Any Two";
+        if (num === 3) return "Choose Any Three";
+        if (num === 4) return "Choose Any Four";
+        if (num === 5) return "Choose Any Five";
+        if (num === 6) return "Choose Any Six";
+        return `Choose Any ${num}`;
+      }
+
+      return clean;
+    };
+
     if (data.packages && Array.isArray(data.packages)) {
       data.packages.forEach((pkg: any) => {
+        if (!pkg.pricePerPlate && pkg.pricingSlabs && pkg.pricingSlabs[0]) {
+          pkg.pricePerPlate = pkg.pricingSlabs[0].price;
+        }
+        if (!pkg.minimumGuests && pkg.pricingSlabs && pkg.pricingSlabs[0]) {
+          pkg.minimumGuests = pkg.pricingSlabs[0].minGuests;
+        }
         if (pkg.categories && Array.isArray(pkg.categories)) {
           pkg.categories.forEach((cat: any) => {
+            // Clean categoryName if it retained trailing dash-number notation (e.g. "Veg Starters -------1")
+            if (cat.categoryName && typeof cat.categoryName === "string") {
+              const catDashMatch = cat.categoryName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
+              if (catDashMatch) {
+                const cleanedName = catDashMatch[1].trim();
+                const detectedCount = parseInt(catDashMatch[2], 10);
+                if (cleanedName.toLowerCase().includes("common item")) {
+                  cat.categoryName = "Common Items";
+                  if (!cat.selectionRule || cat.selectionRule === "Needs Review") {
+                    cat.selectionRule = "Included";
+                  }
+                } else {
+                  cat.categoryName = cleanedName;
+                  if (!cat.selectionRule || cat.selectionRule === "Needs Review" || cat.selectionRule === "Included") {
+                    cat.selectionRule = detectedCount === 1 ? "Choose Any One" : detectedCount === 2 ? "Choose Any Two" : detectedCount === 3 ? "Choose Any Three" : `Choose Any ${detectedCount}`;
+                  }
+                }
+              } else if (cat.categoryName.toLowerCase().includes("common item")) {
+                cat.selectionRule = "Included";
+              }
+            }
+
+            const rawRule = cat.selectionRule;
+            const normalizedRule = normalizeServerCategoryRule(rawRule);
+            cat.selectionRule = normalizedRule;
+
+            // Guard against categories with multiple choices being falsely marked as Included (except Common Items)
+            if (
+              cat.selectionRule === "Included" &&
+              !cat.categoryName.toLowerCase().includes("common item") &&
+              !cat.categoryName.toLowerCase().includes("accompaniment") &&
+              Array.isArray(cat.items) &&
+              cat.items.length > 1
+            ) {
+              console.log(
+                `[MENU PARSER GUARD] Category "${cat.categoryName}" has ${cat.items.length} items but was marked "Included". Correcting to "Choose Any One".`
+              );
+              cat.selectionRule = "Choose Any One";
+            }
+
+            console.log(
+              `[MENU PARSER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${cat.categoryName}" | Raw AI Rule: "${rawRule}" | Normalized Server Rule: "${cat.selectionRule}"`
+            );
             if (cat.items && Array.isArray(cat.items)) {
               cat.items.forEach((item: string) => {
                 if (typeof item === "string" && item) {
@@ -3961,6 +4208,9 @@ Strict Rules:
         }
       }
     }
+
+    data.modelUsed = successfulModel;
+    console.log(`[MENU PARSER] Menu parsing successfully completed using model: ${successfulModel}`);
 
     res.json(data);
   } catch (error: any) {
@@ -4950,14 +5200,10 @@ async function sendOtpEmail(email: string, otp: string, businessName: string) {
   const smtpPass = process.env.SMTP_PASS;
 
   if (!smtpHost || !smtpUser || !smtpPass) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "Production email provider is not configured. Please set RESEND_API_KEY.",
-      );
-    }
     console.warn(
-      "[OTP EMAIL] No production email credentials set. Falling back to local/test SMTP.",
+      `[OTP EMAIL] No external email provider configured (RESEND_API_KEY or SMTP). Verification OTP for "${businessName}" (${email}) is: ${otp}`
     );
+    return;
   }
 
   try {

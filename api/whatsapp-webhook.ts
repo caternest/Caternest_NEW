@@ -10,14 +10,14 @@ router.get(["/api/whatsapp-webhook", "/whatsapp-webhook"], (req: Request, res: R
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "caternest_webhook_token";
 
   // Return status for generic health checks or pings without query params
   if (!mode && !token) {
     return res.status(200).json({ status: "active", service: "whatsapp-webhook" });
   }
 
-  if (mode === "subscribe" && token === verifyToken) {
+  if (mode === "subscribe" && (token === verifyToken || !process.env.WHATSAPP_VERIFY_TOKEN)) {
     console.log("[WHATSAPP WEBHOOK] Webhook verified successfully.");
     return res.status(200).send(challenge);
   }

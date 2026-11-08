@@ -24,6 +24,88 @@ interface MenuPackage {
   categories: MenuCategory[];
 }
 
+export const STANDARD_SELECTION_RULES = [
+  'Included',
+  'Choose Any One',
+  'Choose Any Two',
+  'Choose Any Three',
+  'Choose Any Four',
+  'Choose Any Five',
+  'Choose Any Six',
+  'Optional',
+  'Needs Review',
+];
+
+export function normalizeCategoryRule(rule?: string): string {
+  if (!rule || !rule.trim()) return 'Needs Review';
+  const clean = rule.trim();
+  const lower = clean.toLowerCase();
+
+  if (lower === 'included' || lower === 'fixed' || lower === 'all included') {
+    return 'Included';
+  }
+  if (lower === 'optional') {
+    return 'Optional';
+  }
+  if (
+    lower === 'needs review' ||
+    lower === 'needs_review' ||
+    lower === 'unclear' ||
+    lower === 'unknown'
+  ) {
+    return 'Needs Review';
+  }
+
+  // Check trailing dash pattern like '------1' or '--2' or '-1' or '-- Any 1'
+  const dashMatch = clean.match(/[-–—]+\s*(?:any\s*)?(\d+)/i);
+  if (dashMatch) {
+    const num = parseInt(dashMatch[1], 10);
+    if (num === 0) return 'Included';
+    if (num === 1) return 'Choose Any One';
+    if (num === 2) return 'Choose Any Two';
+    if (num === 3) return 'Choose Any Three';
+    if (num === 4) return 'Choose Any Four';
+    if (num === 5) return 'Choose Any Five';
+    if (num === 6) return 'Choose Any Six';
+  }
+
+  // Exact word matches or containment
+  if (lower.includes('one') || lower.includes('any one') || clean === '1' || clean === 'Choose Any 1' || /\b1\b/.test(clean)) {
+    return 'Choose Any One';
+  }
+  if (lower.includes('two') || lower.includes('any two') || clean === '2' || clean === 'Choose Any 2' || /\b2\b/.test(clean)) {
+    return 'Choose Any Two';
+  }
+  if (lower.includes('three') || lower.includes('any three') || clean === '3' || clean === 'Choose Any 3' || /\b3\b/.test(clean)) {
+    return 'Choose Any Three';
+  }
+  if (lower.includes('four') || lower.includes('any four') || clean === '4' || clean === 'Choose Any 4' || /\b4\b/.test(clean)) {
+    return 'Choose Any Four';
+  }
+  if (lower.includes('five') || lower.includes('any five') || clean === '5' || clean === 'Choose Any 5' || /\b5\b/.test(clean)) {
+    return 'Choose Any Five';
+  }
+  if (lower.includes('six') || lower.includes('any six') || clean === '6' || clean === 'Choose Any 6' || /\b6\b/.test(clean)) {
+    return 'Choose Any Six';
+  }
+
+  // Any other numeric quantity
+  const match = clean.match(/\d+/);
+  if (match) {
+    const num = parseInt(match[0], 10);
+    if (num === 0) return 'Included';
+    if (num === 1) return 'Choose Any One';
+    if (num === 2) return 'Choose Any Two';
+    if (num === 3) return 'Choose Any Three';
+    if (num === 4) return 'Choose Any Four';
+    if (num === 5) return 'Choose Any Five';
+    if (num === 6) return 'Choose Any Six';
+    return `Choose Any ${num}`;
+  }
+
+  return clean;
+}
+
 interface CatererMenuBuilderProps {
   packages: MenuPackage[];
   onChange: (pkgs: MenuPackage[]) => void;
@@ -175,7 +257,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [activePackageIndex, setActivePackageIndex] = useState<number | null>(null);
   const [newCatName, setNewCatName] = useState('');
-  const [newCatRule, setNewCatRule] = useState('Included');
+  const [newCatRule, setNewCatRule] = useState('Choose Any One');
 
   const [showAddPackageModal, setShowAddPackageModal] = useState(false);
   const [newPkgData, setNewPkgData] = useState({ name: '', type: 'Mixed', price: '', minGuests: '' });
@@ -202,6 +284,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
   const [scanError, setScanError] = useState('');
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [lastFiles, setLastFiles] = useState<FileList | null>(null);
+  const currentScanIdRef = useRef<number>(0);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -211,6 +294,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
   };
 
   const processFiles = async (files: FileList) => {
+    const scanId = ++currentScanIdRef.current;
     setIsParsing(true);
     setUploadProgress(0);
     setScanProgress(0);
@@ -218,128 +302,284 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
     setScanStatus('Uploading documents...');
     setTimeRemaining(45);
 
+    // CRITICAL: Immediately clear previous packages so stale results never appear during scanning or after a failed scan
+    onChange([]);
+
+    let uploadInterval: any = null;
+    let scanInterval: any = null;
+    let timerInterval: any = null;
+
+    const cleanupTimers = () => {
+      if (uploadInterval) { clearInterval(uploadInterval); uploadInterval = null; }
+      if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    };
+
     // Simulate upload progress
-    const uploadInterval = setInterval(() => {
-        setUploadProgress(prev => {
-            if (prev >= 100) {
-                clearInterval(uploadInterval);
-                return 100;
-            }
-            return prev + 15;
-        });
+    uploadInterval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 100) {
+          if (uploadInterval) clearInterval(uploadInterval);
+          return 100;
+        }
+        return prev + 15;
+      });
     }, 200);
 
     // Time remaining countdown
-    const timerInterval = setInterval(() => {
-        setTimeRemaining(prev => Math.max(0, prev - 1));
+    timerInterval = setInterval(() => {
+      setTimeRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
 
-    try {
-      const urls: string[] = [];
-      const uploadPromises = Array.from(files).map(async (file: File) => {
-          try {
-              const fileExt = file.name.split('.').pop() || 'pdf';
-              const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
-              const publicUrl = await uploadToSupabaseBucket('menu-cards', fileName, file, file.type);
-              if (publicUrl) {
-                  urls.push(publicUrl);
-              } else {
-                  console.warn(`Upload failed for ${file.name}, returned empty URL`);
-              }
-          } catch (uploadErr) {
-            console.error("Storage item upload failed:", uploadErr);
-          }
-      });
+    const startTime = Date.now();
 
-      await Promise.all(uploadPromises);
-      clearInterval(uploadInterval);
-      setUploadProgress(100);
-      setScanStatus('Analyzing menu layout & text...');
+    const readFileAsOptimizedBase64 = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        // Safety timeout so reader or image loading never hangs indefinitely
+        const timeout = setTimeout(() => {
+          console.warn(`[MENU BUILDER] Reading timeout reached for file: ${file.name}`);
+          resolve('');
+        }, 15000);
 
-      let reqBody: any = { urls };
-
-      if (urls.length === 0) {
-        // Fallback: Read files directly as base64 data URLs
-        try {
-          setScanStatus('Preparing files for direct scanning...');
-          const base64Files = await Promise.all(
-            Array.from(files).map((file: File) => {
-              return new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-              });
-            })
-          );
-          if (base64Files.length > 0) {
-            reqBody = { images: base64Files };
-          } else {
-            throw new Error('No valid menu documents found.');
-          }
-        } catch (readErr) {
-          throw new Error('Could not read menu documents. Please check file format and try again.');
+        // For PDF documents, read full dataURL directly
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            clearTimeout(timeout);
+            resolve(reader.result as string);
+          };
+          reader.onerror = (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          };
+          reader.readAsDataURL(file);
+          return;
         }
+
+        // For all images (JPG, PNG, WebP), draw to canvas and compress to JPEG (max 2048px, quality 0.85)
+        // This prevents payload explosions (e.g. 10MB PNGs -> 300KB JPEGs) while preserving sharp text legibility
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            clearTimeout(timeout);
+            try {
+              const maxDimension = 2048;
+              let { width, height } = img;
+              if (width > maxDimension || height > maxDimension) {
+                if (width > height) {
+                  height = Math.round((height * maxDimension) / width);
+                  width = maxDimension;
+                } else {
+                  width = Math.round((width * maxDimension) / height);
+                  height = maxDimension;
+                }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                resolve(optimizedDataUrl);
+                return;
+              }
+              resolve(reader.result as string);
+            } catch (canvasErr) {
+              console.warn('[MENU BUILDER] Canvas compression fallback:', canvasErr);
+              resolve(reader.result as string);
+            }
+          };
+          img.onerror = () => {
+            clearTimeout(timeout);
+            resolve(reader.result as string);
+          };
+          img.src = reader.result as string;
+        };
+        reader.onerror = (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+
+    try {
+      console.log(`[MENU BUILDER] Starting processFiles for ${files.length} document(s)...`);
+      setScanStatus('Reading document files...');
+
+      // Read files directly as base64 for instant multimodal AI processing without storage delays
+      const rawBase64Files = await Promise.all(
+        Array.from(files).map((file: File) => readFileAsOptimizedBase64(file))
+      );
+      const base64Files = rawBase64Files.filter((b): b is string => Boolean(b && b.length > 20));
+
+      if (base64Files.length === 0) {
+        throw new Error('No valid menu documents found.');
       }
 
-      // Simulate scan progress
-      const scanInterval = setInterval(() => {
-          setScanProgress(prev => {
-              if (prev === 30) setScanStatus('Extracting pricing slabs...');
-              if (prev === 60) setScanStatus('Categorizing menu items...');
-              if (prev === 80) setScanStatus('Finalizing packages...');
-              
-              if (prev >= 95) return 95;
-              return prev + 2;
-          });
-      }, 400);
+      if (uploadInterval) clearInterval(uploadInterval);
+      setUploadProgress(100);
+      setScanStatus('Analyzing menu layout & document pages...');
 
-      const res = await fetch('/api/parse-menu', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(reqBody),
-      });
+      const reqBody: any = { images: base64Files };
 
-      clearInterval(scanInterval);
-      clearInterval(timerInterval);
+      console.log(
+        `[MENU BUILDER] Payload ready (${base64Files.length} file(s)). Sending request to /api/parse-menu...`
+      );
+
+      // Smooth progress pacing that informs user of each stage
+      setScanProgress(15);
+      scanInterval = setInterval(() => {
+        setScanProgress((prev) => {
+          if (prev === 25) setScanStatus('Extracting caterer info & package tiers...');
+          if (prev === 45) setScanStatus('Extracting pricing slabs & guest minimums...');
+          if (prev === 65) setScanStatus('Categorizing dishes & items...');
+          if (prev === 80) setScanStatus('Detecting package selection rules...');
+          if (prev === 90) setScanStatus('Validating rules (Choose Any One/Two, Included)...');
+          
+          if (prev >= 92) return 92;
+          return prev + 2;
+        });
+      }, 600);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes client timeout
+
+      let res: Response;
+      try {
+        res = await fetch('/api/parse-menu', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(reqBody),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      cleanupTimers();
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.error || 'Failed to parse menu. Please try again.');
+        throw new Error(errJson?.error || `Failed to parse menu (HTTP ${res.status}). Please try again.`);
       }
 
       const data = await res.json();
-      
+      const duration = Date.now() - startTime;
+      console.log(`[MENU BUILDER] /api/parse-menu succeeded in ${duration}ms using model: ${data.modelUsed || 'default'}`);
+
+      // If a newer scan was initiated in the meantime, discard stale response
+      if (scanId !== currentScanIdRef.current) {
+        console.log(`[MENU BUILDER] Discarding stale scan response (${scanId} vs ${currentScanIdRef.current})`);
+        return;
+      }
+
+      // Set to 100% on verified successful extraction
       setScanProgress(100);
       setScanStatus('Scan successful!');
 
-      let newPackages = [...packages];
-      if (data.packages && Array.isArray(data.packages)) {
-          newPackages = [...newPackages, ...data.packages];
+      const normalizePkg = (pkg: any) => ({
+        ...pkg,
+        packageName: pkg.packageName || pkg.name || 'Unnamed Package',
+        packageType: pkg.packageType || 'Mixed',
+        pricingSlabs: Array.isArray(pkg.pricingSlabs) && pkg.pricingSlabs.length > 0
+          ? pkg.pricingSlabs
+          : [{ minGuests: pkg.minimumGuests || 100, maxGuests: null, price: pkg.pricePerPlate || 0 }],
+        pricePerPlate: pkg.pricePerPlate || pkg.pricingSlabs?.[0]?.price || 0,
+        minimumGuests: pkg.minimumGuests || pkg.pricingSlabs?.[0]?.minGuests || 100,
+        categories: (pkg.categories || []).map((cat: any) => {
+          let categoryName = cat.categoryName || 'Category';
+          let detectedRule = '';
+          const catDashMatch = categoryName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
+          if (catDashMatch) {
+            categoryName = catDashMatch[1].trim();
+            const count = parseInt(catDashMatch[2], 10);
+            if (categoryName.toLowerCase().includes('common item')) {
+              categoryName = 'Common Items';
+              detectedRule = 'Included';
+            } else {
+              detectedRule = count === 1 ? 'Choose Any One' : count === 2 ? 'Choose Any Two' : count === 3 ? 'Choose Any Three' : `Choose Any ${count}`;
+            }
+          } else if (categoryName.toLowerCase().includes('common item')) {
+            categoryName = 'Common Items';
+            detectedRule = 'Included';
+          }
+          const rawRule = detectedRule || cat.selectionRule;
+          let finalRule = normalizeCategoryRule(rawRule);
+
+          // Guard: If category has multiple choices and is not Common Items/Accompaniments, never allow it to remain 'Included'
+          if (
+            finalRule === 'Included' &&
+            !categoryName.toLowerCase().includes('common item') &&
+            !categoryName.toLowerCase().includes('accompaniment') &&
+            Array.isArray(cat.items) &&
+            cat.items.length > 1
+          ) {
+            console.log(
+              `[MENU BUILDER GUARD] Category "${categoryName}" has ${cat.items.length} items but was "Included". Correcting to "Choose Any One".`
+            );
+            finalRule = 'Choose Any One';
+          }
+
+          console.log(
+            `[MENU BUILDER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${categoryName}" | Raw AI/JSON Rule: "${cat.selectionRule}" | Final UI Rule: "${finalRule}"`
+          );
+          return {
+            ...cat,
+            categoryName,
+            selectionRule: finalRule,
+            items: Array.isArray(cat.items) ? cat.items.map((it: any) => (typeof it === 'string' ? it : (it?.name || String(it)))) : [],
+          };
+        }),
+      });
+
+      let extractedPackagesList: any[] = [];
+      if (data.packages && Array.isArray(data.packages) && data.packages.length > 0) {
+        extractedPackagesList = data.packages.map(normalizePkg);
       } else if (data.packageName) {
-          newPackages.push(data);
+        extractedPackagesList = [normalizePkg(data)];
+      } else {
+        throw new Error('AI parser returned an empty package list. Please verify the document format and try again.');
       }
-      
-      onChange(newPackages);
+
+      console.log(
+        `[MENU BUILDER] Replacing previous packages completely with ${extractedPackagesList.length} fresh packages from new scan`
+      );
+
+      // Completely REPLACE previous scanned packages with the newly extracted results
+      onChange(extractedPackagesList);
+
       if (data.catererDetails && onCatererDetailsExtracted) {
         onCatererDetailsExtracted(data.catererDetails);
       }
       refreshBuilderImages();
-      
+
+      // Show 100% success state briefly, then dismiss loader
       setTimeout(() => {
         setIsParsing(false);
         setUploadProgress(0);
         setScanProgress(0);
         setScanStatus('');
-      }, 1500);
+      }, 1000);
 
     } catch (err: any) {
-      console.error(err);
-      clearInterval(timerInterval);
-      setScanError(err.message || 'Error parsing menu card. Please try again.');
+      if (scanId !== currentScanIdRef.current) return;
+      console.error('[MENU BUILDER ERROR]', err);
+      cleanupTimers();
+      setScanProgress(0);
+      setUploadProgress(0);
       setIsParsing(false);
+      const isAbort = err.name === 'AbortError';
+      const userMessage = isAbort
+        ? 'Scanning timed out after 2 minutes. Please check your internet connection or try a smaller PDF / fewer images.'
+        : (err.message || 'Error parsing menu card. Please try again.');
+      setScanError(userMessage);
     }
   };
 
@@ -399,7 +639,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
   const openAddCategory = (pkgIdx: number) => {
     setActivePackageIndex(pkgIdx);
     setNewCatName('');
-    setNewCatRule('Included');
+    setNewCatRule('Choose Any One');
     setShowAddCategoryModal(true);
   };
 
@@ -625,8 +865,8 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         </button>
       </div>
 
-      {/* Your Packages list (Extracted items) render styled exactly like Screen 1 */}
-      {packages.length > 0 && (
+      {/* Your Packages list (Extracted items) - hidden during scanning or when scan error occurs */}
+      {!isParsing && !scanError && packages.length > 0 && (
         <div className="mb-8">
           <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase font-poppins mb-4">Your Packages (AI Extracted)</h3>
           
@@ -717,9 +957,10 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         </div>
       )}
 
-      {/* Package Editors Section */}
-      <div className="space-y-8 mt-10">
-        {packages.map((pkg, pIdx) => {
+      {/* Package Editors Section - hidden during scanning or when scan error occurs */}
+      {!isParsing && !scanError && packages.length > 0 && (
+        <div className="space-y-8 mt-10">
+          {packages.map((pkg, pIdx) => {
           const totalItems = pkg.categories.reduce((acc, cat) => acc + (cat.items?.length || 0), 0);
           const totalCats = pkg.categories?.length || 0;
           
@@ -888,15 +1129,18 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
                       
                       <div className="flex items-center gap-2">
                         <select
-                          value={cat.selectionRule || 'Included'} 
+                          value={normalizeCategoryRule(cat.selectionRule)} 
                           onChange={(e) => updateRule(pIdx, cIdx, e.target.value)}
                           className="text-xs bg-white border border-slate-200 rounded px-2 py-1 focus:border-brand-gold-500 focus:outline-none font-semibold text-brand-gold-700 cursor-pointer hover:bg-slate-50 w-full max-w-[140px]" 
                         >
-                           <option value="Included">Included</option>
-                           <option value="Choose Any One">Choose Any One</option>
-                           <option value="Choose Any Two">Choose Any Two</option>
-                           <option value="Choose Any Three">Choose Any Three</option>
-                           <option value="Optional">Optional</option>
+                          {STANDARD_SELECTION_RULES.map((ruleOption) => (
+                            <option key={ruleOption} value={ruleOption}>{ruleOption}</option>
+                          ))}
+                          {!STANDARD_SELECTION_RULES.includes(normalizeCategoryRule(cat.selectionRule)) && (
+                            <option value={normalizeCategoryRule(cat.selectionRule)}>
+                              {normalizeCategoryRule(cat.selectionRule)}
+                            </option>
+                          )}
                         </select>
                         <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-1 rounded">
                           {cat.items?.length || 0} Items
@@ -988,7 +1232,8 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
             </div>
           </div>
         )})}
-      </div>
+        </div>
+      )}
 
       {/* Add Category Modal */}
       <AnimatePresence>
@@ -1019,15 +1264,13 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1.5">Selection Rule</label>
                             <select 
-                               value={newCatRule}
+                               value={normalizeCategoryRule(newCatRule)}
                                onChange={(e) => setNewCatRule(e.target.value)}
                                className="w-full border border-slate-200 bg-slate-50 px-4 py-3 rounded-xl focus:border-brand-gold-500 focus:ring-1 focus:ring-brand-gold-500 outline-none cursor-pointer"
                             >
-                               <option value="Included">Included</option>
-                               <option value="Choose Any One">Choose Any One</option>
-                               <option value="Choose Any Two">Choose Any Two</option>
-                               <option value="Choose Any Three">Choose Any Three</option>
-                               <option value="Custom">Custom</option>
+                               {STANDARD_SELECTION_RULES.map((ruleOption) => (
+                                 <option key={ruleOption} value={ruleOption}>{ruleOption}</option>
+                               ))}
                             </select>
                         </div>
                     </div>

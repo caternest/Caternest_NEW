@@ -175,7 +175,7 @@ export default function AdminEditCaterer() {
         // Ensure default values are populated
         if (!found.galleryPhotos) found.galleryPhotos = [];
         setCaterer(found);
-        setMenuPackages(found.menuPackages || []);
+        setMenuPackages(found.packages || found.draftMenuPackages || found.menuPackages || []);
       }
     }
   }, [id]);
@@ -190,7 +190,12 @@ export default function AdminEditCaterer() {
     const raw = localStorage.getItem('registrations');
     if (raw) {
       const all = JSON.parse(raw);
-      const updated = all.map((c: any) => c.id === id ? { ...caterer, menuPackages } : c);
+      const updated = all.map((c: any) => c.id === id ? {
+        ...caterer,
+        packages: menuPackages,
+        draftMenuPackages: menuPackages,
+        menuPackages
+      } : c);
       try {
         safeSaveRegistrations(updated);
 
@@ -203,7 +208,8 @@ export default function AdminEditCaterer() {
             .update({
               ...caterer,
               packages: menuPackages,
-              draftMenuPackages: menuPackages
+              draftMenuPackages: menuPackages,
+              menuPackages: menuPackages
             })
             .eq('id', id);
 

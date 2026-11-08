@@ -24,6 +24,9 @@ async function startServer() {
     console.log(`Server running on http://localhost:${PORT}`);
   });
   server.setTimeout(600000); // 10 minutes timeout for heavy AI document extractions
+  server.requestTimeout = 600000;
+  server.headersTimeout = 660000;
+  server.keepAliveTimeout = 650000;
 }
 
 startServer();

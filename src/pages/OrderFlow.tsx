@@ -1490,14 +1490,27 @@ export default function OrderFlow() {
     }
   }, [selectedPackage]);
 
+  const parseCategoryLimit = (rule?: string): number => {
+    if (!rule) return 0;
+    const clean = rule.trim().toLowerCase();
+    if (clean === 'included' || clean === 'optional' || clean === 'needs review' || clean === 'needs_review') return 0;
+    const match = clean.match(/\d+/);
+    if (match) return parseInt(match[0], 10);
+    if (clean.includes('one')) return 1;
+    if (clean.includes('two')) return 2;
+    if (clean.includes('three')) return 3;
+    if (clean.includes('four')) return 4;
+    if (clean.includes('five')) return 5;
+    if (clean.includes('six')) return 6;
+    return 0;
+  };
+
   const limitPerCategory = (() => {
     if (!selectedPackage || !activeCategory) return 0;
     const cat = selectedPackage.categories?.find(
       (c: any) => c.categoryName === activeCategory,
     );
-    if (!cat || !cat.selectionRule) return 0;
-    const match = cat.selectionRule.match(/\d+/);
-    return match ? parseInt(match[0], 10) : 0;
+    return parseCategoryLimit(cat?.selectionRule);
   })();
 
   const toggleItem = (itemName: string, catName: string) => {
@@ -1506,11 +1519,7 @@ export default function OrderFlow() {
       const cat = selectedPackage.categories?.find(
         (c: any) => c.categoryName === catName,
       );
-      let limit = 0;
-      if (cat && cat.selectionRule) {
-        const match = cat.selectionRule.match(/\d+/);
-        limit = match ? parseInt(match[0], 10) : 0;
-      }
+      const limit = parseCategoryLimit(cat?.selectionRule);
 
       if (!isSelected && limit > 0) {
         const itemsInCat = cat?.items || [];
@@ -1553,8 +1562,7 @@ export default function OrderFlow() {
       (c: any) => c.categoryName === catName,
     );
     if (!cat) return true;
-    const match = cat.selectionRule?.match(/\d+/);
-    const limit = match ? parseInt(match[0], 10) : 0;
+    const limit = parseCategoryLimit(cat.selectionRule);
     if (limit === 0) return true;
 
     const itemsInCat = cat.items || [];
@@ -1570,8 +1578,7 @@ export default function OrderFlow() {
       (c: any) => c.categoryName === catName,
     );
     if (!cat) return 0;
-    const match = cat.selectionRule?.match(/\d+/);
-    const limit = match ? parseInt(match[0], 10) : 0;
+    const limit = parseCategoryLimit(cat.selectionRule);
     if (limit === 0) return 0;
 
     const itemsInCat = cat.items || [];

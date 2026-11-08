@@ -405,10 +405,11 @@ export async function sendOrderApprovedWhatsApp(
   const contentSid = process.env.TWILIO_ORDER_APPROVED_CONTENT_SID?.trim();
   if (!contentSid) {
     console.warn(
-      `[WHATSAPP NOTIFICATION] Order #${order.orderId} approved, but TWILIO_ORDER_APPROVED_CONTENT_SID is not configured. Safe error returned without fallback.`
+      `[WHATSAPP NOTIFICATION] Order #${order.orderId} approved, but TWILIO_ORDER_APPROVED_CONTENT_SID is not configured. Notification skipped gracefully.`
     );
     return {
       success: false,
+      skipped: true,
       provider: "twilio",
       error: "Twilio ContentSid (TWILIO_ORDER_APPROVED_CONTENT_SID) is not configured in environment variables.",
     };
@@ -587,10 +588,11 @@ export async function sendOrderApprovedSMS(
   const rawSmsFrom = process.env.TWILIO_SMS_FROM?.trim();
   if (!rawSmsFrom) {
     console.warn(
-      `[SMS NOTIFICATION] Order #${order.orderId} approved, but TWILIO_SMS_FROM is not configured. Safe configuration error returned.`
+      `[SMS NOTIFICATION] Order #${order.orderId} approved, but TWILIO_SMS_FROM is not configured. Notification skipped gracefully.`
     );
     return {
       success: false,
+      skipped: true,
       provider: "twilio-sms",
       error: "Twilio SMS sender (TWILIO_SMS_FROM) is not configured in environment variables.",
     };

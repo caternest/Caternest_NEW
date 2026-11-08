@@ -19,7 +19,7 @@ export default function EditCaterer() {
       const found = all.find((c: any) => c.id === id);
       if (found) {
         setCaterer(found);
-        setMenuPackages(found.menuPackages || []);
+        setMenuPackages(found.packages || found.draftMenuPackages || found.menuPackages || []);
       }
     }
   }, [id]);
@@ -35,7 +35,13 @@ export default function EditCaterer() {
     if (raw) {
       const all = JSON.parse(raw);
       // Change status to Pending Re-Approval upon edit
-      const updated = all.map((c: any) => c.id === id ? { ...caterer, menuPackages, status: 'Pending Re-Approval' } : c);
+      const updated = all.map((c: any) => c.id === id ? {
+        ...caterer,
+        packages: menuPackages,
+        draftMenuPackages: menuPackages,
+        menuPackages,
+        status: 'Pending Re-Approval'
+      } : c);
       try {
         safeSaveRegistrations(updated);
         toast('Profile updated! Sent to Admin for Re-Approval.', 'success');
