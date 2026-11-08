@@ -473,14 +473,22 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
 
     console.log(`[STORAGE CLIENT LOGGER] Signed upload URL acquired. Uploading raw binary directly to Supabase storage...`);
 
-    // 2. Transmit the raw binary file directly to S3/Supabase storage endpoint with PUT
-    const uploadRes = await fetch(signedUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": fileType
-      },
-      body: fileBody
-    });
+    // 2. Transmit the raw binary file directly to S3/Supabase storage endpoint with PUT with 40s safety timeout
+    const putController = new AbortController();
+    const putTimeout = setTimeout(() => putController.abort(), 40000);
+    let uploadRes: Response;
+    try {
+      uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": fileType
+        },
+        body: fileBody,
+        signal: putController.signal
+      });
+    } finally {
+      clearTimeout(putTimeout);
+    }
 
     if (!uploadRes.ok) {
       const errText = await uploadRes.text();

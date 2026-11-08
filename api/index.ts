@@ -3698,22 +3698,23 @@ const parseMenuHandler = async (req: any, res: any) => {
           const arrayBuf = await fetchRes.arrayBuffer();
           const base64Data = Buffer.from(arrayBuf).toString("base64");
 
+          const cleanUrl = url.split("?")[0].toLowerCase();
           let mimeType =
             fetchRes.headers.get("content-type") || "application/pdf";
-          if (url.toLowerCase().endsWith(".pdf")) {
+          if (cleanUrl.endsWith(".pdf")) {
             mimeType = "application/pdf";
-          } else if (url.toLowerCase().endsWith(".png")) {
+          } else if (cleanUrl.endsWith(".png")) {
             mimeType = "image/png";
           } else if (
-            url.toLowerCase().endsWith(".jpg") ||
-            url.toLowerCase().endsWith(".jpeg")
+            cleanUrl.endsWith(".jpg") ||
+            cleanUrl.endsWith(".jpeg")
           ) {
             mimeType = "image/jpeg";
           }
 
           parts.push({
             inlineData: {
-              data: base64Data,
+              data: base64Data.replace(/[\r\n\s]/g, ""),
               mimeType: mimeType,
             },
           });
@@ -3724,16 +3725,10 @@ const parseMenuHandler = async (req: any, res: any) => {
           );
         }
       }
-    } else {
-      const imageArray = images || (imageBase64 ? [imageBase64] : []);
-      if (imageArray.length === 0) {
-        return res
-          .status(400)
-          .json({
-            error: "Image data (images/imageBase64) or urls is required",
-          });
-      }
+    }
 
+    const imageArray = images || (imageBase64 ? [imageBase64] : []);
+    if (imageArray.length > 0) {
       imageArray.forEach((b64: string) => {
         const match = b64.match(/^data:(.+?);base64,(.+)$/);
         let mimeType = "image/jpeg";
@@ -3767,17 +3762,6 @@ const parseMenuHandler = async (req: any, res: any) => {
           error: "No valid menu document content could be fetched or extracted",
         });
     }
-
-    // Lazy initialization of active GoogleGenAI Client with explicit request timeout
-    const aiClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-      httpOptions: {
-        timeout: 40000,
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
 
     const prompt = `
 You are an expert catering menu document parser. You must analyze the provided menu document(s) (which can be multiple pages or images) and comprehensively extract the data into structured JSON.
@@ -3820,37 +3804,36 @@ Your tasks:
       - "Non Veg Biryani ------1" -> categoryName: "Non Veg Biryani", selectionRule: "Choose Any One"
       - "Veg Biryani ------1" or "Veg Biryani ----1" -> categoryName: "Veg Biryani", selectionRule: "Choose Any One"
       - "Ice Cream ------1" or "Ice Cream/ Pan ----1" -> categoryName: "Ice Cream", selectionRule: "Choose Any One"
-      - "COMMON ITEMS --8" -> categoryName: "Common Items", selectionRule: "Choose All" (all listed common items are included in the package)
-      - Category names MUST be cleanly extracted without trailing dashes or numbers (e.g. "Veg Starters", NOT "Veg Starters -------1", "Common Items", NOT "Common Items ALL included").
+      - "COMMON ITEMS --8" -> categoryName: "Common Items", selectionRule: "Included" (these are fixed items included with the meal)
+      - Category names MUST be cleanly extracted without trailing dashes or numbers (e.g. "Veg Starters", NOT "Veg Starters -------1").
    B. Text quantity phrases:
       - "1 Salad", "1 Veg Soup", "1 Non-Veg Starter (1 Chicken)", "Choose Any 1", "Any One", "Any 1" -> "Choose Any One"
       - "2 Salads", "2 Starters", "2 Chicken Gravies", "Choose Any 2", "Any Two", "Any 2" -> "Choose Any Two"
       - "3 Salads", "3 Starters", "3 Breads", "3 Desserts", "Choose Any 3", "Any Three", "Any 3" -> "Choose Any Three"
       - "4 Starters", "Choose Any 4" -> "Choose Any Four"
-      - Fixed/core accompaniment items that come with EVERY meal with no choice (e.g. Common Items: Sambar/Rasam, White Rice, Papad, Fryums, Curd, Pickle, Ghee, Water) -> "Choose All" or "Included"
+      - Fixed/core accompaniment items that come with EVERY meal with no choice (e.g. Common Items: Sambar/Rasam, White Rice, Papad, Fryums, Curd, Pickle, Ghee, Water) -> "Included"
       - IMPORTANT: Biryani, Rice dishes, Curries, Starters, Breads, Sweets, Drinks, and Ice Cream are NEVER "Included" unless the menu explicitly states they are fixed accompaniments. When dashed numbers like "------1" or "------2" appear, they represent "Choose Any One" or "Choose Any Two".
       - Add-on or optional items -> "Optional"
       - If rule is genuinely absent, ambiguous, or unreadable -> "Needs Review"
    CRITICAL:
-   - Supported values for selectionRule MUST be exactly one of: "Choose All", "Included", "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Optional", "Needs Review".
+   - Supported values for selectionRule MUST be exactly one of: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
    - NEVER default missing or unclear rules to "Included" if there are multiple dishes to choose from. If uncertain, set "Needs Review".
    - Preserve each package's rules independently: Basic, Standard, Special, Traditional (or 50 Pax, 100 Pax, 150 Pax, 200 Pax) must each retain their own specific rules.
 6. Connect DISHES to CATEGORIES:
    - Extract the actual list of dish names under each category from the document.
-   - CRITICAL FOR COMMON ITEMS: Common Items (e.g. Sambar/Rasam, White Rice, Papad, Fryums, Curd, Pickle, Ghee, Salad, Regular Mineral Water) MUST ALWAYS BE EXTRACTED AS A CATEGORY in the categories array: { "categoryName": "Common Items", "selectionRule": "Choose All", "items": ["Sambar/Rasam", "White Rice", "Papad", "Fryums", "Curd", "Pickle", "Ghee", "Salad", "Regular Mineral Water"] }. Each item MUST be an individual string element, NOT a single comma-separated block. NEVER omit Common Items from categories.
    - For example:
      Veg Starters: ["Spring Rolls", "Gobi 65", "Veg Manchurian", "Veg Nuggets", "Veg Gold Coins", "Corn Samosa", "Onion Samosa", "Paneer Samosa", "Any Bajji"]
      Non Veg Starters: ["Chicken 65", "Chilli Chicken", "Chicken Megestic", "Chicken Till Pakoda", "Pepper Chicken", "Chicken Manchuria", "Chicken Sticks"]
      Sweets: ["Gulab Jamoon", "Kala Jamoon", "Ras Malai", "Double ka Meeta", "Kaddu Ka kheer", "Rasgulla", "Sithafal Rabri", "Apricot Delight", "Moong Dall Halwa", "Fruit Malai Rabri", "Kurbani ka meeta"]
 7. Extract ADD-ONS.
-8. Extract GENERAL INCLUDED ITEMS/TERMS (e.g. general terms/conditions). All food dishes (including Common Items) MUST be in categories, NOT in includedItems.
+8. Extract GENERAL INCLUDED ITEMS/TERMS.
 
 Strict Rules:
 - Return ONLY valid JSON. No markdown wrappers (\`\`\`json etc.).
 - EXTRACT ONLY WHAT IS EXACTLY WRITTEN IN THE TEXT. Do not invent, guess, or hallucinate dishes, categories, or packages.
 - CRITICAL: DO NOT create a category if there are no valid dishes found in the document.
 - Ignore empty categories entirely.
-- Ensure selection rules match the supported strings: "Choose All", "Included", "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Optional", "Needs Review".
+- Ensure selection rules match the supported strings: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
 - Ensure pricing slabs are properly structured.
 - Output schema MUST follow EXACTLY:
 {
@@ -3893,14 +3876,13 @@ Strict Rules:
 `;
 
     // Process actual uploaded files and run Gemini multimodal model with resilient failover & exponential backoff
-    // Process actual uploaded files and run Gemini multimodal model with resilient failover & backoff
     let response: any = null;
     let successfulModel: string = "";
-    // Ordered candidate models: primary fast & verified model (gemini-3.8-flash), followed by resilient fallbacks
+    // Ordered candidate models: primary fast & verified model (gemini-3.1-flash-lite), followed by resilient fallbacks
     const candidateModels = [
+      "gemini-3.1-flash-lite",
       "gemini-3.8-flash",
-      "gemini-flash-latest",
-      "gemini-3.1-flash-lite"
+      "gemini-flash-latest"
     ];
     let lastAiError: any = null;
 
@@ -3947,7 +3929,19 @@ Strict Rules:
         attempt++;
         try {
           console.log(`[MENU PARSER] Attempting extraction with model: ${modelName} (Attempt ${attempt}/${maxRetriesPerModel})`);
-          response = await aiClient.models.generateContent({
+          
+          // Instantiate a fresh GoogleGenAI Client for each attempt so an aborted signal on one model never poisons subsequent models
+          const freshAiClient = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+            httpOptions: {
+              timeout: 80000,
+              headers: {
+                "User-Agent": "aistudio-build",
+              },
+            },
+          });
+
+          response = await freshAiClient.models.generateContent({
             model: modelName,
             contents: { parts: [...parts, { text: prompt }] },
             config: {
@@ -3967,26 +3961,41 @@ Strict Rules:
           const sanitizedMsg = sanitizeErrorMessage(rawMsg);
           const isOverloadedOrExhausted = isDemandSpikeOrQuota(status, sanitizedMsg);
           const isNetworkError = isTransientNetworkError(err);
+          const isAbortedError =
+            err?.name === "AbortError" ||
+            status === 20 ||
+            rawMsg.toLowerCase().includes("aborted") ||
+            rawMsg.toLowerCase().includes("abort");
 
           console.warn(
             `[MENU PARSER FALLBACK] Model '${modelName}' attempt ${attempt}/${maxRetriesPerModel} failed: HTTP ${status || "unknown"} - ${sanitizedMsg.substring(0, 180)}`
           );
 
-          // If the model is experiencing high demand spike (503) or quota exhaustion (429),
-          // retrying the same cluster immediately wastes time and causes client timeouts.
-          // Switch immediately to the next candidate fallback model.
+          // If the model is experiencing high demand spike (503), do a rapid backoff retry on attempt 1 before failing over
           if (isOverloadedOrExhausted) {
-            const nextModel = candidateModels[modelIdx + 1];
-            if (nextModel) {
-              console.log(
-                `[MENU PARSER FALLBACK] Model '${modelName}' is under demand spike / unavailable (HTTP ${status}). Immediate failover to fallback model: '${nextModel}'.`
-              );
+            if (attempt < maxRetriesPerModel) {
+              const backoff = 2500 + Math.floor(Math.random() * 1000);
+              console.log(`[MENU PARSER] Model '${modelName}' is under demand spike (HTTP ${status}). Retrying with backoff in ${backoff}ms...`);
+              await sleep(backoff);
+              continue;
+            } else {
+              const nextModel = candidateModels[modelIdx + 1];
+              if (nextModel) {
+                console.log(
+                  `[MENU PARSER FALLBACK] Model '${modelName}' demand spike persisted. Failing over to next candidate model: '${nextModel}'.`
+                );
+              }
+              break; // Break inner retry loop to advance to next model
             }
-            break; // Break inner retry loop to immediately advance to next model
+          }
+
+          if (isAbortedError) {
+            console.warn(`[MENU PARSER FALLBACK] Model '${modelName}' attempt timed out/aborted. Failing over to next candidate model...`);
+            break; // Break inner loop so next model attempt starts fresh
           }
 
           if (isNetworkError && attempt < maxRetriesPerModel) {
-            const backoffDelay = 1000 * Math.pow(1.5, attempt - 1) + Math.floor(Math.random() * 500);
+            const backoffDelay = 1200 * Math.pow(1.5, attempt - 1) + Math.floor(Math.random() * 500);
             console.log(`[MENU PARSER] Retrying model '${modelName}' in ${backoffDelay}ms due to network glitch...`);
             await sleep(backoffDelay);
           } else {
@@ -4056,16 +4065,6 @@ Strict Rules:
       if (!rule || !String(rule).trim()) return "Needs Review";
       const clean = String(rule).trim();
       const lower = clean.toLowerCase();
-      if (
-        lower === "choose all" ||
-        lower === "choose_all" ||
-        lower === "all" ||
-        lower === "select all" ||
-        lower === "select_all" ||
-        lower === "all items"
-      ) {
-        return "Choose All";
-      }
       if (lower === "included" || lower === "fixed" || lower === "all included") return "Included";
       if (lower === "optional") return "Optional";
       if (
@@ -4134,28 +4133,26 @@ Strict Rules:
           pkg.minimumGuests = pkg.pricingSlabs[0].minGuests;
         }
         if (pkg.categories && Array.isArray(pkg.categories)) {
-          // Process and normalize individual categories
           pkg.categories.forEach((cat: any) => {
-            // Clean categoryName if it retained trailing dash-number notation or 'ALL included' tag
+            // Clean categoryName if it retained trailing dash-number notation (e.g. "Veg Starters -------1")
             if (cat.categoryName && typeof cat.categoryName === "string") {
-              let cleanedName = cat.categoryName.trim();
-              const catDashMatch = cleanedName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
-              let detectedCount: number | null = null;
+              const catDashMatch = cat.categoryName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
               if (catDashMatch) {
-                cleanedName = catDashMatch[1].trim();
-                detectedCount = parseInt(catDashMatch[2], 10);
-              }
-              if (cleanedName.toLowerCase().includes("common item")) {
-                cat.categoryName = "Common Items";
-                // If rule is not set or Needs Review, default to Choose All; do NOT force or overwrite existing rules
-                if (!cat.selectionRule || cat.selectionRule === "Needs Review") {
-                  cat.selectionRule = "Choose All";
+                const cleanedName = catDashMatch[1].trim();
+                const detectedCount = parseInt(catDashMatch[2], 10);
+                if (cleanedName.toLowerCase().includes("common item")) {
+                  cat.categoryName = "Common Items";
+                  if (!cat.selectionRule || cat.selectionRule === "Needs Review") {
+                    cat.selectionRule = "Included";
+                  }
+                } else {
+                  cat.categoryName = cleanedName;
+                  if (!cat.selectionRule || cat.selectionRule === "Needs Review" || cat.selectionRule === "Included") {
+                    cat.selectionRule = detectedCount === 1 ? "Choose Any One" : detectedCount === 2 ? "Choose Any Two" : detectedCount === 3 ? "Choose Any Three" : `Choose Any ${detectedCount}`;
+                  }
                 }
-              } else {
-                cat.categoryName = cleanedName;
-                if (detectedCount !== null && (!cat.selectionRule || cat.selectionRule === "Needs Review" || cat.selectionRule === "Included")) {
-                  cat.selectionRule = detectedCount === 1 ? "Choose Any One" : detectedCount === 2 ? "Choose Any Two" : detectedCount === 3 ? "Choose Any Three" : `Choose Any ${detectedCount}`;
-                }
+              } else if (cat.categoryName.toLowerCase().includes("common item")) {
+                cat.selectionRule = "Included";
               }
             }
 
@@ -4177,22 +4174,6 @@ Strict Rules:
               cat.selectionRule = "Choose Any One";
             }
 
-            // Clean & expand items if a single string contains multiple comma-separated dishes
-            if (cat.items && Array.isArray(cat.items)) {
-              const expandedItems: string[] = [];
-              cat.items.forEach((item: any) => {
-                const itStr = typeof item === "string" ? item.trim() : (item?.name || String(item || "")).trim();
-                if (!itStr) return;
-                if (itStr.includes(",") && (cat.categoryName.toLowerCase().includes("common item") || itStr.split(",").length >= 3)) {
-                  const parts = itStr.split(/,\s*/).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
-                  expandedItems.push(...parts);
-                } else {
-                  expandedItems.push(itStr);
-                }
-              });
-              cat.items = Array.from(new Set(expandedItems));
-            }
-
             console.log(
               `[MENU PARSER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${cat.categoryName}" | Raw AI Rule: "${rawRule}" | Normalized Server Rule: "${cat.selectionRule}"`
             );
@@ -4204,60 +4185,6 @@ Strict Rules:
               });
             }
           });
-
-          // Merge duplicate categories (e.g. if AI produced both "Common Items" and "Common Items ALL included")
-          const mergedCategories: any[] = [];
-          const catMap = new Map<string, any>();
-          for (const cat of pkg.categories) {
-            const key = cat.categoryName.trim().toLowerCase();
-            if (catMap.has(key)) {
-              const existing = catMap.get(key);
-              existing.items = Array.from(new Set([...(existing.items || []), ...(cat.items || [])]));
-              if (existing.selectionRule === "Needs Review" || !existing.selectionRule) {
-                existing.selectionRule = cat.selectionRule || "Choose All";
-              }
-            } else {
-              catMap.set(key, cat);
-              mergedCategories.push(cat);
-            }
-          }
-          pkg.categories = mergedCategories;
-
-          // GUARANTEE: If Common Items category is not in pkg.categories, but was extracted in data.includedItems / pkg.includedItems / data.commonItems
-          const hasCommonItems = pkg.categories.some((c: any) =>
-            c.categoryName.toLowerCase().includes("common item")
-          );
-          if (!hasCommonItems) {
-            const fallbackList: any[] = (Array.isArray(pkg.includedItems) && pkg.includedItems.length > 0)
-              ? pkg.includedItems
-              : (Array.isArray(data.includedItems) && data.includedItems.length > 0)
-                ? data.includedItems
-                : (Array.isArray(data.commonItems) && data.commonItems.length > 0)
-                  ? data.commonItems
-                  : [];
-
-            if (fallbackList.length > 0) {
-              const expandedFallback: string[] = [];
-              fallbackList.forEach((it: any) => {
-                const itStr = typeof it === "string" ? it.trim() : (it?.name || String(it || "")).trim();
-                if (!itStr) return;
-                if (itStr.includes(",")) {
-                  expandedFallback.push(...itStr.split(/,\s*/).map((p: string) => p.trim()).filter((p: string) => p.length > 0));
-                } else {
-                  expandedFallback.push(itStr);
-                }
-              });
-              const uniqueFallback = Array.from(new Set(expandedFallback));
-              if (uniqueFallback.length > 0) {
-                console.log(`[MENU PARSER] Restoring Common Items category with ${uniqueFallback.length} items from includedItems`);
-                pkg.categories.push({
-                  categoryName: "Common Items",
-                  selectionRule: "Choose All",
-                  items: uniqueFallback,
-                });
-              }
-            }
-          }
         }
       });
     }

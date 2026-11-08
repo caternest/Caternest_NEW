@@ -1150,17 +1150,13 @@ export default function CatererDashboard() {
     const categories = order?.packageDetails?.categories || [];
 
     if (categories.length > 0 && selectedList.length > 0) {
-      const grouped: { categoryName: string; selectionRule?: string; items: string[] }[] = [];
+      const grouped: { categoryName: string; items: string[] }[] = [];
       const claimed = new Set<string>();
 
       for (const cat of categories) {
         const catItems = (cat.items || []).filter((it: string) => selectedList.includes(it));
         if (catItems.length > 0) {
-          grouped.push({
-            categoryName: cat.categoryName,
-            selectionRule: cat.selectionRule,
-            items: catItems,
-          });
+          grouped.push({ categoryName: cat.categoryName, items: catItems });
           catItems.forEach((it: string) => claimed.add(it));
         }
       }
@@ -2436,16 +2432,9 @@ export default function CatererDashboard() {
                             {categorizedGroups.map((group, idx) => (
                               <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                                 <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-200">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-xs uppercase text-slate-700 tracking-wider">
-                                      {group.categoryName}
-                                    </span>
-                                    {group.selectionRule && (
-                                      <span className="text-[9.5px] font-semibold bg-brand-gold-50 text-brand-gold-800 px-1.5 py-0.5 rounded border border-brand-gold-200">
-                                        {group.selectionRule}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <span className="font-bold text-xs uppercase text-slate-700 tracking-wider">
+                                    {group.categoryName}
+                                  </span>
                                   <span className="text-[10px] font-bold bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
                                     {group.items.length} items
                                   </span>

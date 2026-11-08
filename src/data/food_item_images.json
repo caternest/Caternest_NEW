@@ -2707,5 +2707,137 @@
     "cuisine": "Multicuisine",
     "created_at": "2026-11-08T03:49:59.109Z",
     "updated_at": "2026-11-08T03:49:59.109Z"
+  },
+  {
+    "id": "pt2di0jm1",
+    "item_name": "Vankaya ulli Karar",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:00:03.407Z",
+    "updated_at": "2026-11-08T15:00:03.407Z"
+  },
+  {
+    "id": "aicq1ionl",
+    "item_name": "Not mentioned",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:07:29.757Z",
+    "updated_at": "2026-11-08T15:07:29.757Z"
+  },
+  {
+    "id": "f5djic74h",
+    "item_name": "Included",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:07:29.761Z",
+    "updated_at": "2026-11-08T15:07:29.761Z"
+  },
+  {
+    "id": "y0t815gty",
+    "item_name": "1 Chicken",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:42.984Z",
+    "updated_at": "2026-11-08T15:44:42.984Z"
+  },
+  {
+    "id": "ymkyqa8wi",
+    "item_name": "Veg Starter",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:42.987Z",
+    "updated_at": "2026-11-08T15:44:42.987Z"
+  },
+  {
+    "id": "8uaaai90n",
+    "item_name": "Chicken Gravy",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Gravy / Curry",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:42.989Z",
+    "updated_at": "2026-11-08T15:44:42.989Z"
+  },
+  {
+    "id": "ec4tdrvcg",
+    "item_name": "Veg Gravy",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Gravy / Curry",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:42.992Z",
+    "updated_at": "2026-11-08T15:44:42.992Z"
+  },
+  {
+    "id": "6r7t78bs9",
+    "item_name": "Veg Starters",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:43.032Z",
+    "updated_at": "2026-11-08T15:44:43.032Z"
+  },
+  {
+    "id": "q9uld1nnm",
+    "item_name": "Chicken Gravies",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:43.034Z",
+    "updated_at": "2026-11-08T15:44:43.034Z"
+  },
+  {
+    "id": "vghs2chsi",
+    "item_name": "Veg Gravies",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:43.036Z",
+    "updated_at": "2026-11-08T15:44:43.036Z"
+  },
+  {
+    "id": "vbhe7ybqa",
+    "item_name": "Breads",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Breads",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:43.039Z",
+    "updated_at": "2026-11-08T15:44:43.039Z"
+  },
+  {
+    "id": "td00t80rs",
+    "item_name": "2 Chicken",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Starter",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-08T15:44:43.075Z",
+    "updated_at": "2026-11-08T15:44:43.075Z"
   }
 ]

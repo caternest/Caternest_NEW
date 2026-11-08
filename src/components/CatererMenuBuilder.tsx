@@ -25,7 +25,6 @@ interface MenuPackage {
 }
 
 export const STANDARD_SELECTION_RULES = [
-  'Choose All',
   'Included',
   'Choose Any One',
   'Choose Any Two',
@@ -42,16 +41,6 @@ export function normalizeCategoryRule(rule?: string): string {
   const clean = rule.trim();
   const lower = clean.toLowerCase();
 
-  if (
-    lower === 'choose all' ||
-    lower === 'choose_all' ||
-    lower === 'all' ||
-    lower === 'select all' ||
-    lower === 'select_all' ||
-    lower === 'all items'
-  ) {
-    return 'Choose All';
-  }
   if (lower === 'included' || lower === 'fixed' || lower === 'all included') {
     return 'Included';
   }
@@ -344,31 +333,13 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
 
     const startTime = Date.now();
 
-    const readFileAsOptimizedBase64 = (file: File): Promise<string> => {
+    const readImageAsOptimizedBase64 = (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
-        // Safety timeout so reader or image loading never hangs indefinitely
         const timeout = setTimeout(() => {
           console.warn(`[MENU BUILDER] Reading timeout reached for file: ${file.name}`);
           resolve('');
         }, 15000);
 
-        // For PDF documents, read full dataURL directly
-        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            clearTimeout(timeout);
-            resolve(reader.result as string);
-          };
-          reader.onerror = (err) => {
-            clearTimeout(timeout);
-            reject(err);
-          };
-          reader.readAsDataURL(file);
-          return;
-        }
-
-        // For all images (JPG, PNG, WebP), draw to canvas and compress to JPEG (max 2048px, quality 0.85)
-        // This prevents payload explosions (e.g. 10MB PNGs -> 300KB JPEGs) while preserving sharp text legibility
         const reader = new FileReader();
         reader.onload = () => {
           const img = new Image();
@@ -406,13 +377,45 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
           };
           img.onerror = () => {
             clearTimeout(timeout);
-            resolve(reader.result as string);
+            resolve(reader.result as string || '');
           };
           img.src = reader.result as string;
         };
+        reader.onabort = () => {
+          clearTimeout(timeout);
+          console.warn(`[MENU BUILDER] File read aborted for image: ${file.name}`);
+          resolve('');
+        };
         reader.onerror = (err) => {
           clearTimeout(timeout);
-          reject(err);
+          console.warn(`[MENU BUILDER] File read error for image: ${file.name}`, err);
+          resolve('');
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+
+    const readPdfAsBase64 = (file: File): Promise<string> => {
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          console.warn(`[MENU BUILDER] Reading timeout reached for PDF: ${file.name}`);
+          resolve('');
+        }, 20000);
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          clearTimeout(timeout);
+          resolve(reader.result as string);
+        };
+        reader.onabort = () => {
+          clearTimeout(timeout);
+          console.warn(`[MENU BUILDER] File read aborted for PDF: ${file.name}`);
+          resolve('');
+        };
+        reader.onerror = (err) => {
+          clearTimeout(timeout);
+          console.warn(`[MENU BUILDER] File read error for PDF: ${file.name}`, err);
+          resolve('');
         };
         reader.readAsDataURL(file);
       });
@@ -422,13 +425,43 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       console.log(`[MENU BUILDER] Starting processFiles for ${files.length} document(s)...`);
       setScanStatus('Reading document files...');
 
-      // Read files directly as base64 for instant multimodal AI processing without storage delays
-      const rawBase64Files = await Promise.all(
-        Array.from(files).map((file: File) => readFileAsOptimizedBase64(file))
-      );
-      const base64Files = rawBase64Files.filter((b): b is string => Boolean(b && b.length > 20));
+      const uploadedUrls: string[] = [];
+      const base64Images: string[] = [];
 
-      if (base64Files.length === 0) {
+      for (const file of Array.from(files)) {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
+          // If PDF is larger than 2MB, upload directly to Supabase storage to bypass Vercel 4.5MB request limit
+          if (file.size > 2 * 1024 * 1024) {
+            setScanStatus(`Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) securely...`);
+            const fileExt = file.name.split('.').pop() || 'pdf';
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
+            const publicUrl = await uploadToSupabaseBucket('menu-cards', fileName, file, 'application/pdf');
+            if (publicUrl) {
+              console.log(`[MENU BUILDER] Large PDF uploaded directly to Supabase Storage: ${publicUrl}`);
+              uploadedUrls.push(publicUrl);
+            } else {
+              console.warn(`[MENU BUILDER] Direct storage upload returned null for ${file.name}`);
+              if (file.size < 4 * 1024 * 1024) {
+                const b64 = await readPdfAsBase64(file);
+                if (b64) base64Images.push(b64);
+              } else {
+                throw new Error(`Large PDF (${(file.size / 1024 / 1024).toFixed(1)}MB) could not be uploaded to storage. Please check your connection and try again.`);
+              }
+            }
+          } else {
+            // Small PDF (<= 2MB): read as dataURL directly
+            const b64 = await readPdfAsBase64(file);
+            if (b64) base64Images.push(b64);
+          }
+        } else {
+          // All images (JPG, PNG, WebP): compress to JPEG max 2048px (200-350KB each)
+          const b64 = await readImageAsOptimizedBase64(file);
+          if (b64) base64Images.push(b64);
+        }
+      }
+
+      if (uploadedUrls.length === 0 && base64Images.length === 0) {
         throw new Error('No valid menu documents found.');
       }
 
@@ -436,10 +469,12 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       setUploadProgress(100);
       setScanStatus('Analyzing menu layout & document pages...');
 
-      const reqBody: any = { images: base64Files };
+      const reqBody: any = {};
+      if (uploadedUrls.length > 0) reqBody.urls = uploadedUrls;
+      if (base64Images.length > 0) reqBody.images = base64Images;
 
       console.log(
-        `[MENU BUILDER] Payload ready (${base64Files.length} file(s)). Sending request to /api/parse-menu...`
+        `[MENU BUILDER] Payload ready (${uploadedUrls.length} URL(s), ${base64Images.length} Base64 image(s)). Sending request to /api/parse-menu...`
       );
 
       // Smooth progress pacing that informs user of each stage
@@ -458,7 +493,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       }, 600);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes client timeout
+      const timeoutId = setTimeout(() => controller.abort(new Error('Menu parsing request reached 3-minute client timeout.')), 180000); // 3 minutes client timeout
 
       let res: Response;
       try {
@@ -495,51 +530,16 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       setScanProgress(100);
       setScanStatus('Scan successful!');
 
-      const normalizePkg = (pkg: any) => {
-        let rawCategories = Array.isArray(pkg.categories) ? [...pkg.categories] : [];
-
-        // Check if Common Items exists in categories
-        const hasCommonItem = rawCategories.some((c: any) =>
-          String(c.categoryName || '').toLowerCase().includes('common item')
-        );
-
-        // Fallback: If Common Items is missing from categories, restore it from data.includedItems / pkg.includedItems / data.commonItems
-        if (!hasCommonItem) {
-          const fallbackList: any[] = (Array.isArray(pkg.includedItems) && pkg.includedItems.length > 0)
-            ? pkg.includedItems
-            : (Array.isArray(data.includedItems) && data.includedItems.length > 0)
-              ? data.includedItems
-              : (Array.isArray(data.commonItems) && data.commonItems.length > 0)
-                ? data.commonItems
-                : [];
-
-          if (fallbackList.length > 0) {
-            const expandedFallback: string[] = [];
-            fallbackList.forEach((it: any) => {
-              const itStr = typeof it === 'string' ? it.trim() : (it?.name || String(it || '')).trim();
-              if (!itStr) return;
-              if (itStr.includes(',')) {
-                expandedFallback.push(...itStr.split(/,\s*/).map((p: string) => p.trim()).filter((p: string) => p.length > 0));
-              } else {
-                expandedFallback.push(itStr);
-              }
-            });
-            const uniqueFallback = Array.from(new Set(expandedFallback));
-            if (uniqueFallback.length > 0) {
-              console.log(`[MENU BUILDER] Restoring Common Items category with ${uniqueFallback.length} items`);
-              rawCategories.push({
-                categoryName: 'Common Items',
-                selectionRule: 'Choose All',
-                items: uniqueFallback,
-              });
-            }
-          }
-        }
-
-        const processedCategories: any[] = [];
-        const catMap = new Map<string, any>();
-
-        for (const cat of rawCategories) {
+      const normalizePkg = (pkg: any) => ({
+        ...pkg,
+        packageName: pkg.packageName || pkg.name || 'Unnamed Package',
+        packageType: pkg.packageType || 'Mixed',
+        pricingSlabs: Array.isArray(pkg.pricingSlabs) && pkg.pricingSlabs.length > 0
+          ? pkg.pricingSlabs
+          : [{ minGuests: pkg.minimumGuests || 100, maxGuests: null, price: pkg.pricePerPlate || 0 }],
+        pricePerPlate: pkg.pricePerPlate || pkg.pricingSlabs?.[0]?.price || 0,
+        minimumGuests: pkg.minimumGuests || pkg.pricingSlabs?.[0]?.minGuests || 100,
+        categories: (pkg.categories || []).map((cat: any) => {
           let categoryName = cat.categoryName || 'Category';
           let detectedRule = '';
           const catDashMatch = categoryName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
@@ -548,13 +548,13 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
             const count = parseInt(catDashMatch[2], 10);
             if (categoryName.toLowerCase().includes('common item')) {
               categoryName = 'Common Items';
-              detectedRule = (cat.selectionRule && cat.selectionRule !== 'Needs Review') ? cat.selectionRule : 'Choose All';
+              detectedRule = 'Included';
             } else {
               detectedRule = count === 1 ? 'Choose Any One' : count === 2 ? 'Choose Any Two' : count === 3 ? 'Choose Any Three' : `Choose Any ${count}`;
             }
           } else if (categoryName.toLowerCase().includes('common item')) {
             categoryName = 'Common Items';
-            detectedRule = (cat.selectionRule && cat.selectionRule !== 'Needs Review') ? cat.selectionRule : 'Choose All';
+            detectedRule = 'Included';
           }
           const rawRule = detectedRule || cat.selectionRule;
           let finalRule = normalizeCategoryRule(rawRule);
@@ -573,52 +573,17 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
             finalRule = 'Choose Any One';
           }
 
-          // Clean & expand items if comma-separated
-          const rawItems = Array.isArray(cat.items) ? cat.items : [];
-          const cleanItems: string[] = [];
-          rawItems.forEach((it: any) => {
-            const itStr = typeof it === 'string' ? it.trim() : (it?.name || String(it || '')).trim();
-            if (!itStr) return;
-            if (itStr.includes(',') && (categoryName.toLowerCase().includes('common item') || itStr.split(',').length >= 3)) {
-              cleanItems.push(...itStr.split(/,\s*/).map((p: string) => p.trim()).filter((p: string) => p.length > 0));
-            } else {
-              cleanItems.push(itStr);
-            }
-          });
-          const deduplicatedItems = Array.from(new Set(cleanItems));
-
-          const normKey = categoryName.trim().toLowerCase();
-          if (catMap.has(normKey)) {
-            // Merge duplicate category (e.g. "Common Items" and "Common Items ALL included")
-            const existing = catMap.get(normKey);
-            existing.items = Array.from(new Set([...existing.items, ...deduplicatedItems]));
-            if (existing.selectionRule === 'Needs Review' || !existing.selectionRule) {
-              existing.selectionRule = finalRule;
-            }
-          } else {
-            const catObj = {
-              ...cat,
-              categoryName,
-              selectionRule: finalRule,
-              items: deduplicatedItems,
-            };
-            catMap.set(normKey, catObj);
-            processedCategories.push(catObj);
-          }
-        }
-
-        return {
-          ...pkg,
-          packageName: pkg.packageName || pkg.name || 'Unnamed Package',
-          packageType: pkg.packageType || 'Mixed',
-          pricingSlabs: Array.isArray(pkg.pricingSlabs) && pkg.pricingSlabs.length > 0
-            ? pkg.pricingSlabs
-            : [{ minGuests: pkg.minimumGuests || 100, maxGuests: null, price: pkg.pricePerPlate || 0 }],
-          pricePerPlate: pkg.pricePerPlate || pkg.pricingSlabs?.[0]?.price || 0,
-          minimumGuests: pkg.minimumGuests || pkg.pricingSlabs?.[0]?.minGuests || 100,
-          categories: processedCategories,
-        };
-      };
+          console.log(
+            `[MENU BUILDER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${categoryName}" | Raw AI/JSON Rule: "${cat.selectionRule}" | Final UI Rule: "${finalRule}"`
+          );
+          return {
+            ...cat,
+            categoryName,
+            selectionRule: finalRule,
+            items: Array.isArray(cat.items) ? cat.items.map((it: any) => (typeof it === 'string' ? it : (it?.name || String(it)))) : [],
+          };
+        }),
+      });
 
       let extractedPackagesList: any[] = [];
       if (data.packages && Array.isArray(data.packages) && data.packages.length > 0) {
@@ -1011,7 +976,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-600">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                        <span>{totalCats} Categories</span>
+                        <span>{totalCats || 8} Categories</span>
                       </div>
                     </div>
                   </div>
