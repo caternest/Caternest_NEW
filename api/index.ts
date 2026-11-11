@@ -144,9 +144,20 @@ export function resolveSupabaseUrl(rawUrl?: string, key?: string): string {
   return url;
 }
 
+export function getServiceRoleKey(): string {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_ADMIN_KEY ||
+    ""
+  );
+}
+
 // Auto-repair environment Supabase URL if mistyped or missing canonical host
 const _candidateKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  getServiceRoleKey() ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY;
 if (_candidateKey) {
@@ -164,8 +175,9 @@ if (_candidateKey) {
 function getSupabaseClient() {
   const rawSupabaseUrl =
     process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceRole = getServiceRoleKey();
   const supabaseServiceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    serviceRole ||
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY;
   const supabaseUrl = resolveSupabaseUrl(rawSupabaseUrl, supabaseServiceKey);
@@ -654,6 +666,207 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
       filePath,
       error: err?.message || err?.toString(),
     });
+  }
+});
+
+// Safe Diagnostic Endpoint to check Supabase Storage health and permissions without leaking secrets
+app.get("/api/storage/diagnostic", async (req: any, res: any) => {
+  try {
+    const hasViteUrl = !!process.env.VITE_SUPABASE_URL;
+    const hasSupabaseUrl = !!process.env.SUPABASE_URL;
+    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const hasViteAnon = !!process.env.VITE_SUPABASE_ANON_KEY;
+    const hasAnon = !!process.env.SUPABASE_ANON_KEY;
+    const hasGemini = !!process.env.GEMINI_API_KEY;
+
+    const supabase = getSupabaseClient();
+    let bucketsResult: any = null;
+    let documentsBucketFound = false;
+    let signedUrlTest: any = null;
+    let anonClientTest: any = null;
+
+    if (supabase) {
+      try {
+        const { data: buckets, error: bErr } = await supabase.storage.listBuckets();
+        if (bErr) {
+          bucketsResult = { error: bErr.message, code: (bErr as any).statusCode || bErr.name };
+        } else {
+          bucketsResult = (buckets || []).map((b: any) => ({
+            id: b.id,
+            name: b.name,
+            public: b.public,
+            fileSizeLimit: b.file_size_limit,
+            allowedMimeTypes: b.allowed_mime_types,
+          }));
+          documentsBucketFound = (buckets || []).some((b: any) => b.name === "documents");
+        }
+      } catch (e: any) {
+        bucketsResult = { exception: e.message };
+      }
+
+      // Test createSignedUploadUrl on documents
+      try {
+        const testPath = `diag-test-${Date.now()}.pdf`;
+        const { data: sData, error: sErr } = await supabase.storage
+          .from("documents")
+          .createSignedUploadUrl(testPath, { upsert: true });
+        signedUrlTest = sErr
+          ? { success: false, error: sErr.message, code: (sErr as any).statusCode || sErr.name }
+          : { success: true, path: sData?.path };
+      } catch (se: any) {
+        signedUrlTest = { success: false, exception: se.message };
+      }
+    }
+
+    // Test anon client upload across all buckets if anon key exists
+    const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    const rawUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const resolvedUrl = resolveSupabaseUrl(rawUrl, anonKey || process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const anonBucketResults: Record<string, any> = {};
+    if (anonKey && resolvedUrl) {
+      try {
+        const anonClient = createClient(resolvedUrl, anonKey);
+        const testBuckets = ["menu-cards", "branding-images", "food-images", "gallery-images", "documents"];
+        for (const tb of testBuckets) {
+          try {
+            const testPath = `diag-anon-${tb}-${Date.now()}.txt`;
+            const { data: aData, error: aErr } = await anonClient.storage
+              .from(tb)
+              .upload(testPath, Buffer.from("test anon upload"), { contentType: "text/plain", upsert: true });
+            anonBucketResults[tb] = aErr
+              ? { success: false, error: aErr.message, code: (aErr as any).statusCode || aErr.name }
+              : { success: true, path: aData?.path };
+            if (!aErr && aData) {
+              await supabase?.storage.from(tb).remove([testPath]).catch(() => {});
+            }
+          } catch (te: any) {
+            anonBucketResults[tb] = { success: false, exception: te.message };
+          }
+        }
+      } catch (ae: any) {
+        anonBucketResults["exception"] = ae.message;
+      }
+    }
+
+    return res.json({
+      status: "ok",
+      environment: {
+        hasViteUrl,
+        hasSupabaseUrl,
+        resolvedDomain: resolvedUrl ? (resolvedUrl.split("://")[1]?.split("/")[0] || resolvedUrl) : null,
+        hasServiceRole,
+        hasViteAnon,
+        hasAnon,
+        hasGemini,
+        activeServerKeyRole: hasServiceRole ? "service_role" : (hasViteAnon || hasAnon ? "anon" : "none"),
+      },
+      storage: {
+        clientInitialized: !!supabase,
+        buckets: bucketsResult,
+        documentsBucketFound,
+        signedUploadUrlWorking: signedUrlTest,
+        anonClientDirectUploadWorking: anonBucketResults,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint for receiving client-side upload diagnostic telemetry
+app.post("/api/storage/diagnostic-log", async (req: any, res: any) => {
+  const { event, details, error, bucket, fileName, fileSize, mimeType, timestamp } = req.body || {};
+  console.warn(`[CLIENT STORAGE DIAGNOSTIC] Event: "${event}"`, {
+    bucket,
+    fileName,
+    fileSize: fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)} MB` : undefined,
+    mimeType,
+    error,
+    details,
+    timestamp: timestamp || new Date().toISOString(),
+  });
+  return res.json({ success: true, logged: true });
+});
+
+// Chunked direct upload endpoint for large files (PDFs > 4MB) to prevent Vercel 4.5MB payload limit
+app.post("/api/storage/chunk-upload", upload.single("chunk") as any, async (req: any, res: any) => {
+  try {
+    const { sessionId, chunkIndex, totalChunks, fileName, mimeType } = req.body;
+    const file = req.file;
+
+    if (!file || !sessionId || chunkIndex === undefined || totalChunks === undefined) {
+      return res.status(400).json({ error: "Missing required chunk upload parameters." });
+    }
+
+    const idx = parseInt(chunkIndex, 10);
+    const total = parseInt(totalChunks, 10);
+    const chunkDir = path.join(os.tmpdir(), "planmychoice_chunks", sessionId);
+
+    if (!fs.existsSync(chunkDir)) {
+      fs.mkdirSync(chunkDir, { recursive: true });
+    }
+
+    const chunkPath = path.join(chunkDir, `part-${idx}`);
+    fs.writeFileSync(chunkPath, file.buffer);
+    console.log(`[CHUNK UPLOAD] Received chunk ${idx + 1}/${total} (${(file.size / 1024).toFixed(1)} KB) for session ${sessionId}`);
+
+    const isLast = idx === total - 1;
+    if (isLast) {
+      // Verify all parts exist before reassembly
+      for (let i = 0; i < total; i++) {
+        const p = path.join(chunkDir, `part-${i}`);
+        if (!fs.existsSync(p)) {
+          return res.status(400).json({ error: `Missing chunk ${i + 1} during reassembly.` });
+        }
+      }
+
+      const fileExt = (fileName || "menu.pdf").split(".").pop()?.toLowerCase() || "pdf";
+      const cleanExt = fileExt.replace(/[^a-z0-9]/g, "");
+      const assembledFileName = `temp-menu-${sessionId}.${cleanExt}`;
+      const assembledPath = path.join(os.tmpdir(), assembledFileName);
+
+      const writeStream = fs.createWriteStream(assembledPath);
+      for (let i = 0; i < total; i++) {
+        const p = path.join(chunkDir, `part-${i}`);
+        const buf = fs.readFileSync(p);
+        writeStream.write(buf);
+      }
+      writeStream.end();
+
+      await new Promise((resolve, reject) => {
+        writeStream.on("finish", () => resolve(true));
+        writeStream.on("error", (err) => reject(err));
+      });
+
+      // Clean up chunk fragments
+      try {
+        fs.rmSync(chunkDir, { recursive: true, force: true });
+      } catch (rmErr) {
+        console.warn(`[CHUNK UPLOAD] Could not remove chunkDir ${chunkDir}:`, rmErr);
+      }
+
+      const stat = fs.statSync(assembledPath);
+      console.log(`[CHUNK UPLOAD] Successfully reassembled ${fileName} (${(stat.size / 1024 / 1024).toFixed(2)} MB) at ${assembledPath}`);
+
+      return res.json({
+        success: true,
+        complete: true,
+        localTempPath: assembledPath,
+        sessionId,
+        fileName: fileName || assembledFileName,
+        size: stat.size,
+      });
+    }
+
+    return res.json({
+      success: true,
+      complete: false,
+      chunkIndex: idx,
+      totalChunks: total,
+    });
+  } catch (err: any) {
+    console.error("[CHUNK UPLOAD ERROR]", err);
+    return res.status(500).json({ error: err.message || "Chunk upload failed." });
   }
 });
 
@@ -3833,9 +4046,10 @@ const extractPdfAssetsAndText = async (
 
 const parseMenuHandler = async (req: any, res: any) => {
   const tempFilesToClean: { bucket: string; path: string }[] = [];
+  const localTempFilesToClean: string[] = [];
   const supabase = getSupabaseClient();
   try {
-    const { imageBase64, images, urls, storageFiles, catererId } = req.body;
+    const { imageBase64, images, urls, storageFiles, localTempFiles, catererId } = req.body;
 
     if (!process.env.GEMINI_API_KEY) {
       return res
@@ -3955,6 +4169,64 @@ const parseMenuHandler = async (req: any, res: any) => {
               },
             });
           }
+        }
+      }
+    }
+
+    // 1b. Process files from chunked local temporary upload (bypasses Vercel payload limits & Supabase RLS)
+    if (localTempFiles && Array.isArray(localTempFiles) && localTempFiles.length > 0) {
+      console.log(`[MENU PARSER] Processing ${localTempFiles.length} file(s) from chunked temp upload...`);
+      for (const ltf of localTempFiles) {
+        const filePath = ltf.path || ltf.localTempPath;
+        if (!filePath) continue;
+        if (!fs.existsSync(filePath)) {
+          console.warn(`[MENU PARSER] Local temp file does not exist: ${filePath}`);
+          continue;
+        }
+
+        localTempFilesToClean.push(filePath);
+        const fileBuffer = fs.readFileSync(filePath);
+        console.log(`[MENU PARSER] Read ${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB from chunked file ${filePath}`);
+
+        const isPdf = filePath.toLowerCase().endsWith(".pdf") || (ltf.mimeType && ltf.mimeType.includes("pdf"));
+        if (isPdf) {
+          console.log(`[MENU PARSER] Extracting text and assets from chunked PDF (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
+          try {
+            const { text: pdfText, cardImages } = await extractPdfAssetsAndText(fileBuffer);
+            if (pdfText) {
+              combinedPdfText += (combinedPdfText ? "\n\n" : "") + pdfText;
+              console.log(`[MENU PARSER] Extracted ${pdfText.length} text characters from chunked PDF.`);
+            }
+            if (cardImages && cardImages.length > 0) {
+              console.log(`[MENU PARSER] Extracted ${cardImages.length} high-resolution package cards from chunked PDF.`);
+              cardImages.forEach((img) => {
+                parts.push({
+                  inlineData: {
+                    data: img.b64,
+                    mimeType: img.mimeType,
+                  },
+                });
+              });
+            }
+          } catch (pErr) {
+            console.warn(`[MENU PARSER] Error in text/card extraction from chunked PDF:`, pErr);
+          }
+
+          const b64 = fileBuffer.toString("base64").replace(/[\r\n\s]/g, "");
+          parts.push({
+            inlineData: {
+              data: b64,
+              mimeType: "application/pdf",
+            },
+          });
+        } else {
+          const b64 = fileBuffer.toString("base64").replace(/[\r\n\s]/g, "");
+          parts.push({
+            inlineData: {
+              data: b64,
+              mimeType: ltf.mimeType || "image/jpeg",
+            },
+          });
         }
       }
     }
@@ -4743,6 +5015,21 @@ Strict Rules:
           console.log(`[MENU PARSER] Cleaned up temporary upload: ${item.bucket}/${item.path}`);
         } catch (cleanErr: any) {
           console.warn(`[MENU PARSER] Failed to remove temporary file ${item.path}:`, cleanErr?.message);
+        }
+      }
+    }
+
+    // Clean up local temporary files from chunked uploads
+    if (localTempFilesToClean.length > 0) {
+      console.log(`[MENU PARSER] Cleaning up ${localTempFilesToClean.length} local temporary file(s)...`);
+      for (const p of localTempFilesToClean) {
+        try {
+          if (fs.existsSync(p)) {
+            fs.unlinkSync(p);
+            console.log(`[MENU PARSER] Cleaned up local temporary file: ${p}`);
+          }
+        } catch (unErr: any) {
+          console.warn(`[MENU PARSER] Failed to remove local temporary file ${p}:`, unErr?.message);
         }
       }
     }

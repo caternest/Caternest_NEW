@@ -398,12 +398,19 @@ export interface UploadMenuResult {
   url?: string;
   offline?: boolean;
   error?: string;
+  errorDetails?: any;
+  localTempFile?: {
+    path: string;
+    sessionId: string;
+    fileName: string;
+  };
 }
 
 /**
- * Dedicated, progress-aware direct upload for menu files (PDFs, images up to 25MB).
- * Primary Path: Direct upload to Supabase Storage via signed upload URL (bypassing Vercel's 4.5MB limit).
- * Secondary Path: Direct client upload via Supabase JS SDK (runs in browser, requires no service role key).
+ * Dedicated, progress-aware multi-path upload for menu files (PDFs, images up to 25MB).
+ * Path 1: Direct upload to Supabase Storage via signed upload URL (bypasses Vercel 4.5MB limit).
+ * Path 2: Direct browser client upload via Supabase JS SDK.
+ * Path 3: Chunked 3MB slice upload to /api/storage/chunk-upload (safe from Vercel limit and Supabase RLS).
  */
 export async function uploadMenuDocumentToStorage(
   file: File,
@@ -413,6 +420,7 @@ export async function uploadMenuDocumentToStorage(
   const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
   const fileName = `temp-menu-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${cleanExt}`;
   const targetBucket = 'documents';
+  const lastErrors: { path: string; error: string; details?: any }[] = [];
 
   try {
     console.log(`[MENU STORAGE] Initiating upload for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
@@ -435,9 +443,12 @@ export async function uploadMenuDocumentToStorage(
       if (signRes.ok) {
         signJson = await signRes.json().catch(() => null);
       } else {
-        console.warn(`[MENU STORAGE] Storage sign returned HTTP ${signRes.status}. Will attempt direct client upload.`);
+        const signErrText = await signRes.text().catch(() => '');
+        lastErrors.push({ path: 'presign', error: `HTTP ${signRes.status}: ${signErrText}` });
+        console.warn(`[MENU STORAGE] Storage sign returned HTTP ${signRes.status}.`);
       }
-    } catch (signErr) {
+    } catch (signErr: any) {
+      lastErrors.push({ path: 'presign', error: signErr?.message || 'Network error' });
       console.warn(`[MENU STORAGE] Network error requesting signed URL:`, signErr);
     }
 
@@ -449,7 +460,7 @@ export async function uploadMenuDocumentToStorage(
       };
     }
 
-    // 2. Primary Path: If backend provided a signed upload URL, upload directly via XHR
+    // PATH 1: If backend provided a signed upload URL, upload directly via XHR
     if (signJson?.success && signJson.signedUrl) {
       const { signedUrl, token, bucket, filePath, signedDownloadUrl, publicUrl } = signJson;
       console.log(`[MENU STORAGE] Signed upload URL acquired. Uploading raw file directly to storage...`);
@@ -474,17 +485,20 @@ export async function uploadMenuDocumentToStorage(
             resolve(true);
           } else {
             console.warn(`[MENU STORAGE] Direct XHR upload failed with HTTP ${xhr.status}:`, xhr.responseText);
+            lastErrors.push({ path: 'signed-xhr', error: `HTTP ${xhr.status}: ${xhr.responseText}` });
             resolve(false);
           }
         };
 
         xhr.onerror = () => {
           console.warn(`[MENU STORAGE] Direct XHR network error.`);
+          lastErrors.push({ path: 'signed-xhr', error: 'Network error during PUT' });
           resolve(false);
         };
 
         xhr.ontimeout = () => {
           console.warn(`[MENU STORAGE] Direct XHR upload timed out after 180s.`);
+          lastErrors.push({ path: 'signed-xhr', error: 'PUT timed out after 180s' });
           resolve(false);
         };
 
@@ -523,21 +537,25 @@ export async function uploadMenuDocumentToStorage(
               url: signedDownloadUrl || publicUrl,
             };
           }
-          console.warn(`[MENU STORAGE] SDK uploadToSignedUrl failed:`, error?.message);
+          if (error) {
+            lastErrors.push({ path: 'uploadToSignedUrl', error: error.message });
+            console.warn(`[MENU STORAGE] SDK uploadToSignedUrl failed:`, error.message);
+          }
         }
-      } catch (sdkErr) {
+      } catch (sdkErr: any) {
+        lastErrors.push({ path: 'uploadToSignedUrl', error: sdkErr?.message });
         console.warn(`[MENU STORAGE] Exception in SDK uploadToSignedUrl:`, sdkErr);
       }
     }
 
-    // 3. Secondary Path: Direct Browser-to-Supabase Storage Upload via Supabase JS SDK
-    // This runs completely client-side in the browser using the public anon key, bypassing Vercel and requiring no service-role key
+    // PATH 2: Direct Browser-to-Supabase Storage Upload via Supabase JS SDK
     const client = getSupabase();
     if (client) {
-      console.log(`[MENU STORAGE] Performing direct browser upload to Supabase Storage via client SDK...`);
+      console.log(`[MENU STORAGE] Attempting direct browser upload to Supabase Storage via client SDK...`);
       onProgress?.(20);
 
       const candidateBuckets = [
+        'menu-cards',
         signJson?.bucket || targetBucket,
         'documents',
         'branding-images',
@@ -549,7 +567,7 @@ export async function uploadMenuDocumentToStorage(
       for (const b of uniqueBuckets) {
         try {
           console.log(`[MENU STORAGE] Attempting client direct upload to bucket "${b}"...`);
-          onProgress?.(40);
+          onProgress?.(25);
           const { data, error } = await client.storage
             .from(b)
             .upload(fileName, file, {
@@ -575,26 +593,108 @@ export async function uploadMenuDocumentToStorage(
               url: clientSignedUrl || pubData?.publicUrl || undefined,
             };
           } else if (error) {
+            lastErrors.push({ path: `client-direct-${b}`, error: error.message });
             console.warn(`[MENU STORAGE] Client direct upload to bucket "${b}" failed:`, error.message);
           }
-        } catch (bErr) {
+        } catch (bErr: any) {
+          lastErrors.push({ path: `client-direct-${b}`, error: bErr?.message || 'Exception' });
           console.warn(`[MENU STORAGE] Exception in client upload to bucket "${b}":`, bErr);
         }
       }
     }
 
-    // 4. If all storage uploads failed:
+    // PATH 3: Direct Chunked 3MB Transfer (Prevents Vercel 4.5MB Payload Limits & Supabase Storage RLS)
+    console.log(`[MENU STORAGE] Supabase storage direct upload unavailable. Initiating chunked transfer (3MB slices)...`);
+    onProgress?.(30);
+
+    try {
+      const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB chunks (strictly below Vercel's 4.5MB limit)
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      let reassemblyResult: any = null;
+
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(file.size, start + CHUNK_SIZE);
+        const chunkBlob = file.slice(start, end);
+
+        const formData = new FormData();
+        formData.append('chunk', chunkBlob, file.name);
+        formData.append('sessionId', sessionId);
+        formData.append('chunkIndex', String(i));
+        formData.append('totalChunks', String(totalChunks));
+        formData.append('fileName', file.name);
+        formData.append('mimeType', file.type || 'application/pdf');
+
+        const chunkPct = Math.min(95, Math.round(30 + ((i + 1) / totalChunks) * 65));
+        onProgress?.(chunkPct);
+
+        const chunkRes = await fetch('/api/storage/chunk-upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!chunkRes.ok) {
+          const errText = await chunkRes.text().catch(() => '');
+          throw new Error(`Chunk ${i + 1}/${totalChunks} upload failed (HTTP ${chunkRes.status}): ${errText}`);
+        }
+
+        const chunkJson = await chunkRes.json();
+        if (chunkJson.complete) {
+          reassemblyResult = chunkJson;
+        }
+      }
+
+      if (reassemblyResult && reassemblyResult.localTempPath) {
+        console.log(`[MENU STORAGE] Chunked upload successfully completed at: ${reassemblyResult.localTempPath}`);
+        onProgress?.(100);
+        return {
+          success: true,
+          localTempFile: {
+            path: reassemblyResult.localTempPath,
+            sessionId: reassemblyResult.sessionId,
+            fileName: file.name,
+          },
+        };
+      }
+    } catch (chunkErr: any) {
+      lastErrors.push({ path: 'chunk-upload', error: chunkErr?.message });
+      console.warn(`[MENU STORAGE] Chunked upload failed:`, chunkErr);
+    }
+
+    // 4. Send telemetry report to /api/storage/diagnostic-log
+    try {
+      fetch('/api/storage/diagnostic-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'menu_upload_failed',
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          error: lastErrors.map((e) => `[${e.path}]: ${e.error}`).join(' | '),
+          details: lastErrors,
+        }),
+      }).catch(() => {});
+    } catch {}
+
+    // 5. If file is small, allow base64 fallback
     if (file.size <= 4 * 1024 * 1024) {
-      // Small files can fall back to local base64 processing
       return {
         success: false,
         offline: true,
       };
     }
 
+    const detailedErrorMsg = lastErrors.length > 0
+      ? `Upload failed: ${lastErrors.map((e) => `[${e.path}]: ${e.error}`).join('; ')}`
+      : `Upload failed for ${(file.size / 1024 / 1024).toFixed(1)}MB document.`;
+
     return {
       success: false,
-      error: `Direct storage upload failed for ${(file.size / 1024 / 1024).toFixed(1)}MB menu document. Please check your storage settings or upload menu images.`,
+      error: detailedErrorMsg,
+      errorDetails: lastErrors,
     };
   } catch (err: any) {
     console.warn(`[MENU STORAGE] Unexpected error in uploadMenuDocumentToStorage:`, err);

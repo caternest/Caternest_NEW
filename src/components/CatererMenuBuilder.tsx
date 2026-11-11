@@ -427,6 +427,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
 
       const uploadedUrls: string[] = [];
       const storageFiles: { bucket: string; path: string; url?: string }[] = [];
+      const localTempFiles: { path: string; sessionId: string; mimeType: string }[] = [];
       const base64Images: string[] = [];
 
       for (const file of Array.from(files)) {
@@ -436,13 +437,20 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
             throw new Error(`File "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds the 25MB limit. Please upload a PDF under 25MB.`);
           }
 
-          setScanStatus(`Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) securely...`);
+          setScanStatus(`Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)...`);
           const uploadRes = await uploadMenuDocumentToStorage(file, (pct) => {
             setScanStatus(`Uploading ${file.name} (${pct}%)...`);
             setUploadProgress(pct);
           });
 
-          if (uploadRes.success && uploadRes.bucket && uploadRes.path) {
+          if (uploadRes.success && uploadRes.localTempFile) {
+            console.log(`[MENU BUILDER] PDF uploaded via resilient chunked transfer:`, uploadRes.localTempFile.path);
+            localTempFiles.push({
+              path: uploadRes.localTempFile.path,
+              sessionId: uploadRes.localTempFile.sessionId,
+              mimeType: file.type || 'application/pdf',
+            });
+          } else if (uploadRes.success && uploadRes.bucket && uploadRes.path) {
             console.log(`[MENU BUILDER] PDF uploaded to storage: ${uploadRes.bucket}/${uploadRes.path}`);
             storageFiles.push({
               bucket: uploadRes.bucket,
@@ -474,7 +482,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         }
       }
 
-      if (uploadedUrls.length === 0 && storageFiles.length === 0 && base64Images.length === 0) {
+      if (uploadedUrls.length === 0 && storageFiles.length === 0 && localTempFiles.length === 0 && base64Images.length === 0) {
         throw new Error('No valid menu documents found.');
       }
 
@@ -484,11 +492,12 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
 
       const reqBody: any = {};
       if (storageFiles.length > 0) reqBody.storageFiles = storageFiles;
+      if (localTempFiles.length > 0) reqBody.localTempFiles = localTempFiles;
       if (uploadedUrls.length > 0) reqBody.urls = uploadedUrls;
       if (base64Images.length > 0) reqBody.images = base64Images;
 
       console.log(
-        `[MENU BUILDER] Payload ready (${storageFiles.length} Storage file(s), ${uploadedUrls.length} URL(s), ${base64Images.length} Base64 image(s)). Sending request to /api/parse-menu...`
+        `[MENU BUILDER] Payload ready (${storageFiles.length} Storage file(s), ${localTempFiles.length} Chunked file(s), ${uploadedUrls.length} URL(s), ${base64Images.length} Base64 image(s)). Sending request to /api/parse-menu...`
       );
 
       // Smooth progress pacing that informs user of each stage
