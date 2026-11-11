@@ -27,7 +27,7 @@ import {
   normalizePhoneNumberE164,
   sendOrderApprovedWhatsApp,
   sendOrderApprovedSMS,
-} from "./whatsapp-service.ts";
+} from "../src/server/whatsapp-service.ts";
 
 dotenv.config();
 
