@@ -416,14 +416,24 @@ export async function uploadMenuDocumentToStorage(
   file: File,
   onProgress?: (percent: number) => void
 ): Promise<UploadMenuResult> {
+  const client = getSupabase();
+  let authUserId: string | null = null;
+  try {
+    const sessionRes = await client?.auth.getSession();
+    authUserId = sessionRes?.data?.session?.user?.id || null;
+  } catch {}
+
   const fileExt = file.name.split('.').pop() || 'pdf';
   const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const fileName = `temp-menu-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${cleanExt}`;
-  const targetBucket = 'documents';
+  const fileTimestamp = Date.now();
+  const fileRand = Math.random().toString(36).substring(2, 7);
+  const fileBaseName = `menu-${fileTimestamp}-${fileRand}.${cleanExt}`;
+  const fileName = authUserId ? `${authUserId}/${fileBaseName}` : `temp-scans/${fileBaseName}`;
+  const targetBucket = 'menu-cards';
   const lastErrors: { path: string; error: string; details?: any }[] = [];
 
   try {
-    console.log(`[MENU STORAGE] Initiating upload for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
+    console.log(`[MENU STORAGE] Initiating upload for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) to path "${fileName}"...`);
     onProgress?.(5);
 
     // 1. Attempt to obtain signed upload URL and tokens from backend
@@ -502,9 +512,8 @@ export async function uploadMenuDocumentToStorage(
           resolve(false);
         };
 
-        const formData = new FormData();
-        formData.append('', file);
-        xhr.send(formData);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
+        xhr.send(file);
       });
 
       if (uploadSuccess) {
@@ -549,24 +558,17 @@ export async function uploadMenuDocumentToStorage(
     }
 
     // PATH 2: Direct Browser-to-Supabase Storage Upload via Supabase JS SDK
-    const client = getSupabase();
     if (client) {
       console.log(`[MENU STORAGE] Attempting direct browser upload to Supabase Storage via client SDK...`);
       onProgress?.(20);
 
-      const candidateBuckets = [
-        'menu-cards',
-        signJson?.bucket || targetBucket,
-        'documents',
-        'branding-images',
-        'food-images',
-        'gallery-images',
-      ];
-      const uniqueBuckets = Array.from(new Set(candidateBuckets));
+      // Only attempt actual target buckets for menus: targetBucket (menu-cards) and documents.
+      // Do NOT retry unrelated buckets (branding-images, food-images, gallery-images).
+      const menuBuckets = Array.from(new Set([targetBucket, 'documents']));
 
-      for (const b of uniqueBuckets) {
+      for (const b of menuBuckets) {
         try {
-          console.log(`[MENU STORAGE] Attempting client direct upload to bucket "${b}"...`);
+          console.log(`[MENU STORAGE] Attempting client direct upload to bucket "${b}" with path "${fileName}"...`);
           onProgress?.(25);
           const { data, error } = await client.storage
             .from(b)
@@ -593,7 +595,8 @@ export async function uploadMenuDocumentToStorage(
               url: clientSignedUrl || pubData?.publicUrl || undefined,
             };
           } else if (error) {
-            lastErrors.push({ path: `client-direct-${b}`, error: error.message });
+            const statusCode = (error as any)?.statusCode || (error as any)?.status || 'RLS';
+            lastErrors.push({ path: `client-direct-${b}`, error: `${error.message} (${statusCode})` });
             console.warn(`[MENU STORAGE] Client direct upload to bucket "${b}" failed:`, error.message);
           }
         } catch (bErr: any) {

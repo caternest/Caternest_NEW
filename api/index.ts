@@ -12,8 +12,14 @@ import { createRequire } from "module";
 import zlib from "zlib";
 import { execSync } from "child_process";
 
-const require = createRequire(import.meta.url);
-const { PDFParse } = require("pdf-parse");
+const requireModule = createRequire(import.meta.url);
+let PDFParse: any = null;
+try {
+  const _pdfPkg = requireModule("pdf-parse");
+  PDFParse = _pdfPkg?.PDFParse || _pdfPkg?.default || _pdfPkg;
+} catch (pdfLoadErr) {
+  console.warn("[SERVER] Notice: pdf-parse optional module load:", pdfLoadErr);
+}
 
 import {
   sendWhatsAppMessage,
@@ -21,7 +27,7 @@ import {
   normalizePhoneNumberE164,
   sendOrderApprovedWhatsApp,
   sendOrderApprovedSMS,
-} from "./whatsapp-service.js";
+} from "./whatsapp-service.ts";
 
 dotenv.config();
 
@@ -558,113 +564,122 @@ async function ensureBucketExists(supabase: any, bucketName: string, isPublic: b
 }
 
 app.post("/api/storage/sign", async (req: any, res: any) => {
-  const bucket = req.body.bucket || "documents";
-  const filePath = req.body.filePath;
-  const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  console.log(
-    `[STORAGE SIGN] Initiating pre-signed URL generation. Bucket: ${bucket}, File Path: ${filePath}, HasServiceRole: ${hasServiceRole}`,
-  );
-
-  if (!filePath) {
-    const errorMsg = "Presign failed: No filePath provided in JSON body";
-    console.warn(`[STORAGE SIGN] ${errorMsg}`);
-    return res.status(400).json({ error: errorMsg });
-  }
-
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    console.warn("[STORAGE SIGN] Supabase credentials not configured on server (local offline mode)");
-    return res.json({
-      success: false,
-      offline: true,
-      error: "Supabase credentials not configured in this environment.",
-    });
-  }
-
   try {
-    let targetBucket = bucket;
-    await ensureBucketExists(supabase, targetBucket, false);
+    const rawBucket = String(req.body?.bucket || "documents").trim();
+    const rawFilePath = String(req.body?.filePath || "").trim();
 
-    let { data, error } = await supabase.storage
-      .from(targetBucket)
-      .createSignedUploadUrl(filePath, { upsert: true });
+    // Whitelist allowed storage buckets to prevent arbitrary bucket operations
+    const ALLOWED_BUCKETS = ["documents", "menu-cards", "branding-images", "food-images", "gallery-images"];
+    const targetBucket = ALLOWED_BUCKETS.includes(rawBucket) ? rawBucket : "documents";
 
-    // Fallback if target bucket failed and is not "documents"
-    if (error && targetBucket !== "documents") {
-      console.warn(`[STORAGE SIGN] Failed for bucket "${targetBucket}": ${error.message}. Falling back to "documents"...`);
-      targetBucket = "documents";
-      await ensureBucketExists(supabase, targetBucket, false);
-      const retry = await supabase.storage
-        .from(targetBucket)
-        .createSignedUploadUrl(filePath, { upsert: true });
-      if (!retry.error && retry.data) {
-        data = retry.data;
-        error = null;
-      } else {
-        error = retry.error || error;
-      }
-    }
-
-    if (error || !data) {
-      console.warn(
-        `[STORAGE SIGN] Storage Error generating signed URL for bucket ${targetBucket}:`,
-        error?.message || error,
-      );
-      // Gracefully signal to frontend to perform direct client upload directly to Supabase storage
-      return res.status(200).json({
+    if (!rawFilePath) {
+      console.warn("[STORAGE SIGN] Presign rejected: Missing filePath in request body.");
+      return res.status(400).json({
         success: false,
-        useClientDirectUpload: true,
-        bucket: targetBucket,
-        filePath,
-        message: "Signed upload URL unavailable; falling back to direct browser Supabase storage upload.",
-        details: error?.message || error,
+        error: "Missing required 'filePath' in request body.",
+        code: "MISSING_FILEPATH",
       });
     }
 
-    // Generate signed download URL for secure private bucket read access
+    // Sanitize filePath to prevent path traversal
+    const cleanFilePath = rawFilePath.replace(/\\/g, "/").replace(/\.\.\//g, "").replace(/^\/+/, "");
+    if (!cleanFilePath) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid 'filePath' provided.",
+        code: "INVALID_FILEPATH",
+      });
+    }
+
+    const serviceRoleKey = getServiceRoleKey();
+    const hasServiceRole = !!serviceRoleKey;
+
+    console.log(
+      `[STORAGE SIGN] Processing presign request. Bucket: "${targetBucket}", Path: "${cleanFilePath}", HasServiceRole: ${hasServiceRole}`,
+    );
+
+    if (!hasServiceRole) {
+      const missingErrMsg =
+        "SUPABASE_SERVICE_ROLE_KEY is required in Vercel environment variables to generate signed upload URLs for storage.";
+      console.error(`[STORAGE SIGN] Error: ${missingErrMsg}`);
+      return res.status(500).json({
+        success: false,
+        error: missingErrMsg,
+        code: "MISSING_SERVICE_ROLE_KEY",
+        missingEnv: "SUPABASE_SERVICE_ROLE_KEY",
+        bucket: targetBucket,
+        filePath: cleanFilePath,
+      });
+    }
+
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      console.error("[STORAGE SIGN] Supabase server client failed to initialize.");
+      return res.status(500).json({
+        success: false,
+        error: "Supabase client initialization failed on server.",
+        code: "CLIENT_INIT_FAILED",
+      });
+    }
+
+    // Ensure bucket exists safely without throwing unhandled errors
+    await ensureBucketExists(supabase, targetBucket, targetBucket !== "documents");
+
+    const { data, error } = await supabase.storage
+      .from(targetBucket)
+      .createSignedUploadUrl(cleanFilePath, { upsert: true });
+
+    if (error || !data?.signedUrl) {
+      const errMsg = error?.message || "Supabase Storage returned empty signed URL.";
+      console.error(
+        `[STORAGE SIGN] createSignedUploadUrl failed for bucket "${targetBucket}" path "${cleanFilePath}": ${errMsg}`
+      );
+      return res.status(500).json({
+        success: false,
+        error: errMsg,
+        code: (error as any)?.statusCode || (error as any)?.code || "STORAGE_SIGN_FAILED",
+        bucket: targetBucket,
+        filePath: cleanFilePath,
+      });
+    }
+
+    // Generate signed download URL for private read access (valid for 1 hour)
     let signedDownloadUrl: string | null = null;
     try {
       const { data: dlData, error: dlErr } = await supabase.storage
         .from(targetBucket)
-        .createSignedUrl(filePath, 3600); // 1 hour validity
-      if (!dlErr && dlData) {
+        .createSignedUrl(cleanFilePath, 3600);
+      if (!dlErr && dlData?.signedUrl) {
         signedDownloadUrl = dlData.signedUrl;
       }
-    } catch (dlEx) {
-      console.warn("[STORAGE SIGN] Failed to generate signed download URL:", dlEx);
+    } catch (dlEx: any) {
+      console.warn("[STORAGE SIGN] Notice: signed download URL generation skipped:", dlEx?.message);
     }
 
     const { data: publicData } = supabase.storage
       .from(targetBucket)
-      .getPublicUrl(filePath);
+      .getPublicUrl(cleanFilePath);
 
     const publicUrl = publicData?.publicUrl || null;
 
-    console.log(
-      `[STORAGE SIGN] Presigned upload URL generated successfully for ${targetBucket}/${filePath}.`,
-    );
-    return res.json({
+    console.log(`[STORAGE SIGN] Presigned URL successfully issued for ${targetBucket}/${cleanFilePath}`);
+
+    return res.status(200).json({
       success: true,
       signedUrl: data.signedUrl,
       token: data.token,
-      path: data.path,
+      path: data.path || cleanFilePath,
       bucket: targetBucket,
-      filePath,
+      filePath: cleanFilePath,
       signedDownloadUrl,
       publicUrl: signedDownloadUrl || publicUrl,
     });
   } catch (err: any) {
-    console.warn(
-      `[STORAGE SIGN] Unexpected Error in pre-sign handler for bucket ${bucket}:`,
-      err,
-    );
-    return res.status(200).json({
+    console.error("[STORAGE SIGN] Unhandled exception in /api/storage/sign:", err?.message || err);
+    return res.status(500).json({
       success: false,
-      useClientDirectUpload: true,
-      bucket: bucket,
-      filePath,
-      error: err?.message || err?.toString(),
+      error: err?.message || "Internal server error during storage pre-sign operation.",
+      code: "INTERNAL_SIGN_ERROR",
     });
   }
 });
@@ -800,7 +815,11 @@ app.post("/api/storage/chunk-upload", upload.single("chunk") as any, async (req:
 
     const idx = parseInt(chunkIndex, 10);
     const total = parseInt(totalChunks, 10);
-    const chunkDir = path.join(os.tmpdir(), "planmychoice_chunks", sessionId);
+    const cleanSessionId = String(sessionId || '').replace(/[^a-zA-Z0-9_\-]/g, '');
+    if (!cleanSessionId) {
+      return res.status(400).json({ error: "Invalid sessionId parameter." });
+    }
+    const chunkDir = path.join(os.tmpdir(), "planmychoice_chunks", cleanSessionId);
 
     if (!fs.existsSync(chunkDir)) {
       fs.mkdirSync(chunkDir, { recursive: true });
