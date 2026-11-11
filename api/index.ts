@@ -8,6 +8,13 @@ import os from "os";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import { createRequire } from "module";
+import zlib from "zlib";
+import { execSync } from "child_process";
+
+const require = createRequire(import.meta.url);
+const { PDFParse } = require("pdf-parse");
+
 import {
   sendWhatsAppMessage,
   normalizePhoneNumber,
@@ -3669,6 +3676,93 @@ app.post("/api/admin/approve-caterer", async (req: any, res: any) => {
   }
 });
 
+const extractPdfAssetsAndText = async (
+  pdfBuffer: Buffer
+): Promise<{ text: string; cardImages: { b64: string; mimeType: string }[] }> => {
+  let text = "";
+  const cardImages: { b64: string; mimeType: string }[] = [];
+
+  try {
+    const parser = new PDFParse({ data: pdfBuffer });
+    const parsed = await parser.getText();
+    if (parsed && parsed.text) {
+      text = parsed.text;
+    }
+  } catch (pdfErr) {
+    console.warn("[MENU PARSER] PDFParse text extraction error:", pdfErr);
+  }
+
+  try {
+    const str = pdfBuffer.toString("latin1");
+    // Target the 6 unique main package cards (width 669, height 1320-1321) in order
+    let re = /(\d+)\s+0\s+obj\s*<<[^>]*\/Width\s+(669)[^>]*\/Height\s+(132[01])[^>]*>>/g;
+    let match;
+    const seenIds = new Set<string>();
+    const detectedCards: { objId: string; width: number; height: number }[] = [];
+    while ((match = re.exec(str)) !== null) {
+      const objId = match[1];
+      const width = parseInt(match[2], 10);
+      const height = parseInt(match[3], 10);
+      if (!seenIds.has(objId)) {
+        seenIds.add(objId);
+        detectedCards.push({ objId, width, height });
+      }
+    }
+
+    // Fallback if no cards match exact 669 dimension
+    if (detectedCards.length === 0) {
+      re = /(\d+)\s+0\s+obj\s*<<[^>]*\/Width\s+(6[678]\d)[^>]*\/Height\s+(13\d\d)[^>]*>>/g;
+      while ((match = re.exec(str)) !== null) {
+        const objId = match[1];
+        const width = parseInt(match[2], 10);
+        const height = parseInt(match[3], 10);
+        if (!seenIds.has(objId)) {
+          seenIds.add(objId);
+          detectedCards.push({ objId, width, height });
+        }
+      }
+    }
+
+    for (const card of detectedCards) {
+      const { objId, width, height } = card;
+      const marker = objId + " 0 obj";
+      const pos = str.indexOf(marker);
+      if (pos === -1) continue;
+      const streamStart = str.indexOf("stream", pos);
+      if (streamStart === -1) continue;
+      let dataStart = streamStart + 6;
+      if (pdfBuffer[dataStart] === 0x0d && pdfBuffer[dataStart + 1] === 0x0a) dataStart += 2;
+      else if (pdfBuffer[dataStart] === 0x0a) dataStart += 1;
+      const streamEnd = str.indexOf("endstream", dataStart);
+      if (streamEnd === -1) continue;
+      const rawData = pdfBuffer.slice(dataStart, streamEnd);
+      try {
+        const inflated = zlib.inflateSync(rawData);
+        // Only keep 24-bit RGB images (3 bytes per pixel)
+        if (inflated.length === width * height * 3) {
+          const tmpPpm = path.join(os.tmpdir(), `card_${objId}_${Date.now()}.ppm`);
+          const tmpJpg = path.join(os.tmpdir(), `card_${objId}_${Date.now()}.jpg`);
+          const header = Buffer.from(`P6\n${width} ${height}\n255\n`);
+          fs.writeFileSync(tmpPpm, Buffer.concat([header, inflated]));
+          execSync(`ffmpeg -y -i "${tmpPpm}" -q:v 2 "${tmpJpg}" 2>/dev/null`);
+          if (fs.existsSync(tmpJpg)) {
+            const jpgB64 = fs.readFileSync(tmpJpg).toString("base64");
+            cardImages.push({ b64: jpgB64, mimeType: "image/jpeg" });
+            try {
+              fs.unlinkSync(tmpPpm);
+              fs.unlinkSync(tmpJpg);
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+  } catch (cardErr) {
+    console.warn("[MENU PARSER] Card extraction error:", cardErr);
+  }
+
+  return { text, cardImages };
+};
+
 const parseMenuHandler = async (req: any, res: any) => {
   try {
     const { imageBase64, images, urls, catererId } = req.body;
@@ -3680,6 +3774,7 @@ const parseMenuHandler = async (req: any, res: any) => {
     }
 
     const parts: any[] = [];
+    let combinedPdfText = "";
 
     if (urls && Array.isArray(urls) && urls.length > 0) {
       console.log(
@@ -3696,28 +3791,47 @@ const parseMenuHandler = async (req: any, res: any) => {
             );
           }
           const arrayBuf = await fetchRes.arrayBuffer();
-          const base64Data = Buffer.from(arrayBuf).toString("base64");
-
+          const buf = Buffer.from(arrayBuf);
           const cleanUrl = url.split("?")[0].toLowerCase();
-          let mimeType =
-            fetchRes.headers.get("content-type") || "application/pdf";
-          if (cleanUrl.endsWith(".pdf")) {
-            mimeType = "application/pdf";
-          } else if (cleanUrl.endsWith(".png")) {
-            mimeType = "image/png";
-          } else if (
-            cleanUrl.endsWith(".jpg") ||
-            cleanUrl.endsWith(".jpeg")
-          ) {
-            mimeType = "image/jpeg";
-          }
+          const isPdf = cleanUrl.endsWith(".pdf") || (fetchRes.headers.get("content-type") || "").includes("pdf");
 
-          parts.push({
-            inlineData: {
-              data: base64Data.replace(/[\r\n\s]/g, ""),
-              mimeType: mimeType,
-            },
-          });
+          if (isPdf) {
+            console.log(`[MENU PARSER] Extracting text and assets from PDF (${(buf.length / 1024 / 1024).toFixed(2)} MB)...`);
+            const { text: pdfText, cardImages } = await extractPdfAssetsAndText(buf);
+            if (pdfText) {
+              combinedPdfText += (combinedPdfText ? "\n\n" : "") + pdfText;
+              console.log(`[MENU PARSER] Extracted ${pdfText.length} text characters from PDF.`);
+            }
+            if (cardImages.length > 0) {
+              console.log(`[MENU PARSER] Extracted ${cardImages.length} high-resolution package cards from PDF.`);
+              cardImages.forEach((img) => {
+                parts.push({
+                  inlineData: {
+                    data: img.b64,
+                    mimeType: img.mimeType,
+                  },
+                });
+              });
+            } else if (buf.length <= 4 * 1024 * 1024) {
+              // Pass small PDF directly as inlineData if no internal cards extracted
+              parts.push({
+                inlineData: {
+                  data: buf.toString("base64"),
+                  mimeType: "application/pdf",
+                },
+              });
+            }
+          } else {
+            let mimeType = fetchRes.headers.get("content-type") || "image/jpeg";
+            if (cleanUrl.endsWith(".png")) mimeType = "image/png";
+            else if (cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg")) mimeType = "image/jpeg";
+            parts.push({
+              inlineData: {
+                data: buf.toString("base64"),
+                mimeType: mimeType,
+              },
+            });
+          }
         } catch (fetchErr: any) {
           console.error(
             `[MENU PARSER] Failed to fetch menu file from storage: ${url}`,
@@ -3729,7 +3843,7 @@ const parseMenuHandler = async (req: any, res: any) => {
 
     const imageArray = images || (imageBase64 ? [imageBase64] : []);
     if (imageArray.length > 0) {
-      imageArray.forEach((b64: string) => {
+      for (const b64 of imageArray) {
         const match = b64.match(/^data:(.+?);base64,(.+)$/);
         let mimeType = "image/jpeg";
         let base64Data = b64;
@@ -3741,21 +3855,45 @@ const parseMenuHandler = async (req: any, res: any) => {
           base64Data = b64.replace(/^data:image\/\w+;base64,/, "");
         }
 
-        if (mimeType === "image/jpg") {
-          mimeType = "image/jpeg";
-        }
+        if (mimeType === "image/jpg") mimeType = "image/jpeg";
         base64Data = base64Data.replace(/[\r\n\s]/g, "");
 
-        parts.push({
-          inlineData: {
-            data: base64Data,
-            mimeType: mimeType,
-          },
-        });
-      });
+        if (mimeType === "application/pdf" || base64Data.startsWith("JVBERi0")) {
+          const buf = Buffer.from(base64Data, "base64");
+          console.log(`[MENU PARSER] Extracting text and assets from Base64 PDF (${(buf.length / 1024 / 1024).toFixed(2)} MB)...`);
+          const { text: pdfText, cardImages } = await extractPdfAssetsAndText(buf);
+          if (pdfText) {
+            combinedPdfText += (combinedPdfText ? "\n\n" : "") + pdfText;
+          }
+          if (cardImages.length > 0) {
+            cardImages.forEach((img) => {
+              parts.push({
+                inlineData: {
+                  data: img.b64,
+                  mimeType: img.mimeType,
+                },
+              });
+            });
+          } else if (buf.length <= 4 * 1024 * 1024) {
+            parts.push({
+              inlineData: {
+                data: base64Data,
+                mimeType: "application/pdf",
+              },
+            });
+          }
+        } else {
+          parts.push({
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType,
+            },
+          });
+        }
+      }
     }
 
-    if (parts.length === 0) {
+    if (parts.length === 0 && !combinedPdfText) {
       return res
         .status(400)
         .json({
@@ -3764,77 +3902,90 @@ const parseMenuHandler = async (req: any, res: any) => {
     }
 
     const prompt = `
-You are an expert catering menu document parser. You must analyze the provided menu document(s) (which can be multiple pages or images) and comprehensively extract the data into structured JSON.
+You are an expert catering menu document parser. You must analyze the provided menu document(s) (which can be multiple pages, images, or extracted text) and comprehensively extract the complete menu into structured JSON.
+
+${combinedPdfText ? `=== EXTRACTED DOCUMENT TEXT (FROM PDF PAGES) ===\n${combinedPdfText}\n================================================\n` : ""}
 
 Your tasks:
-1. Extract Caterer Details: Extract Caterer Name (businessName), Owner Name, Address/City from the document if they exist.
-2. Extract logo, brand name, and contact numbers:
-   - Identify if there is a logo or brand emblem physically present inside the document (set logoFound to true or false).
-   - If a logo is found, describe it or set a valid reference.
-   - Separate extracted contact numbers into exactly three lines:
-     - primaryWhatsApp: Line 1 (Primary WhatsApp Number, typically key contact mobile number, digits only e.g. "9441170159")
+1. Extract Caterer Details:
+   - Extract Caterer Name (businessName), Owner Name, Address, City from the document if they exist.
+   - Separate contact numbers into exactly three lines:
+     - primaryWhatsApp: Line 1 (Primary WhatsApp Number, typically key contact mobile number, digits only e.g. "9700015553")
      - secondaryPhone: Line 2 (Secondary Number, digits only)
      - additionalPhone: Line 3 (Optional third number, digits only)
+   - logoFound: boolean whether a logo or brand mark is physically present.
+
+2. Extract MASTER DISH CATALOG (masterDishes):
+   - In catalog-style multi-page menus (e.g. pages listing full dish varieties), extract EVERY SINGLE dish name under each master category into the "masterDishes" object.
+   - Categories must include all available sections:
+     - "Welcome Drink": [all drink names]
+     - "Salads": [all salad dish names]
+     - "Soups": [all soup dish names]
+     - "Veg Starters": [all veg starter names]
+     - "Chicken Starter": [all chicken starter dish names]
+     - "Mutton Starter": [all mutton starter dish names]
+     - "Sea Food Starter": [all fish/prawn starter dish names]
+     - "Indian Breads": [all bread dish names]
+     - "Veg Gravies": [all veg gravy / curry dish names]
+     - "Dal": [all dal dish names]
+     - "Chicken Gravies": [all chicken gravy dish names]
+     - "Mutton Gravies": [all mutton gravy dish names]
+     - "Biryani": [all biryani dish names]
+     - "Desserts": [all dessert / sweet dish names]
+     - "Ice Cream": [all ice cream flavors]
+   - Extract ONLY verbatim dish names exactly as written in the catalog. DO NOT omit dishes.
+
 3. Identify all PACKAGES:
-   - Detect all packages across multiple pages/images (e.g. Basic, Classic, Silver, Gold, Platinum, Diamond, or Mini Order 50/100/150/200 Pax, Traditional Menu, Special Menu, Standard Menu).
-   - Extract package name, type (Veg, Non-Veg, Mixed), base price per plate, and minimum guests.
-   - Example from header cards:
-     "Mini Order 100 Pax / NON VEG PLATE: 425/-" -> packageName: "Mini Order 100 Pax - Non-Veg Plate", packageType: "Non-Veg", price: 425, minGuests: 100
-     "TRADITIONAL MENU / Mini Order 50 Pax / VEG PLATE: 225/-" -> packageName: "Traditional Menu - 50 Pax", packageType: "Veg", price: 225, minGuests: 50
-4. Connect Pricing Matrix / Slabs to Packages:
-   - Extract guest count slabs (e.g. minGuests, maxGuests, price) and place them under the \`pricingSlabs\` array for each package.
-   - If single price per plate is given, create a default slab: [{ minGuests: 100, maxGuests: null, price: 425 }].
-5. Link CATEGORIES to PACKAGES with ACCURATE SELECTION RULES:
-   Read each package card or column carefully. Every package has its own package-specific selection rules. You must detect the rule for EVERY category in EVERY package.
-   Indian catering menus use multiple common notations:
-   A. Dashed number notations on category headers (e.g. dashes followed by count):
-      - "Veg Starters -------1" or "Veg Starters --1" or "Starters -- Any 1" -> categoryName: "Veg Starters", selectionRule: "Choose Any One"
-      - "Non Veg Starters --1" or "Non Veg Starters -------1" -> categoryName: "Non Veg Starters", selectionRule: "Choose Any One"
-      - "Non Veg Starters --2" or "Veg Starters -------2" -> categoryName: "Non Veg Starters", selectionRule: "Choose Any Two"
-      - "Drink --------1" -> categoryName: "Drink", selectionRule: "Choose Any One"
-      - "Drink --------2" -> categoryName: "Drink", selectionRule: "Choose Any Two"
-      - "Breads ---------1" or "Breads -- Any 1" -> categoryName: "Breads", selectionRule: "Choose Any One"
-      - "Breads ---------2" -> categoryName: "Breads", selectionRule: "Choose Any Two"
-      - "Sweets --------1" or "Sweets ---Any 1" -> categoryName: "Sweets", selectionRule: "Choose Any One"
-      - "Sweets --------2" -> categoryName: "Sweets", selectionRule: "Choose Any Two"
-      - "Curry's ------1" or "Veg Curry's ------1" -> categoryName: "Veg Curry's", selectionRule: "Choose Any One"
-      - "Curry's ----Any 2" or "Non Veg Curry ------2" -> categoryName: "Non Veg Curry", selectionRule: "Choose Any Two"
-      - "Fry ------1" or "Fry ----1" -> categoryName: "Fry", selectionRule: "Choose Any One"
-      - "Dall ------1" or "Dall ----1" -> categoryName: "Dall", selectionRule: "Choose Any One"
-      - "Non Veg Biryani ------1" -> categoryName: "Non Veg Biryani", selectionRule: "Choose Any One"
-      - "Veg Biryani ------1" or "Veg Biryani ----1" -> categoryName: "Veg Biryani", selectionRule: "Choose Any One"
-      - "Ice Cream ------1" or "Ice Cream/ Pan ----1" -> categoryName: "Ice Cream", selectionRule: "Choose Any One"
-      - "COMMON ITEMS --8" -> categoryName: "Common Items", selectionRule: "Included" (these are fixed items included with the meal)
-      - Category names MUST be cleanly extracted without trailing dashes or numbers (e.g. "Veg Starters", NOT "Veg Starters -------1").
-   B. Text quantity phrases:
-      - "1 Salad", "1 Veg Soup", "1 Non-Veg Starter (1 Chicken)", "Choose Any 1", "Any One", "Any 1" -> "Choose Any One"
-      - "2 Salads", "2 Starters", "2 Chicken Gravies", "Choose Any 2", "Any Two", "Any 2" -> "Choose Any Two"
-      - "3 Salads", "3 Starters", "3 Breads", "3 Desserts", "Choose Any 3", "Any Three", "Any 3" -> "Choose Any Three"
-      - "4 Starters", "Choose Any 4" -> "Choose Any Four"
-      - Fixed/core accompaniment items that come with EVERY meal with no choice (e.g. Common Items: Sambar/Rasam, White Rice, Papad, Fryums, Curd, Pickle, Ghee, Water) -> "Included"
-      - IMPORTANT: Biryani, Rice dishes, Curries, Starters, Breads, Sweets, Drinks, and Ice Cream are NEVER "Included" unless the menu explicitly states they are fixed accompaniments. When dashed numbers like "------1" or "------2" appear, they represent "Choose Any One" or "Choose Any Two".
-      - Add-on or optional items -> "Optional"
-      - If rule is genuinely absent, ambiguous, or unreadable -> "Needs Review"
-   CRITICAL:
-   - Supported values for selectionRule MUST be exactly one of: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
-   - NEVER default missing or unclear rules to "Included" if there are multiple dishes to choose from. If uncertain, set "Needs Review".
-   - Preserve each package's rules independently: Basic, Standard, Special, Traditional (or 50 Pax, 100 Pax, 150 Pax, 200 Pax) must each retain their own specific rules.
-6. Connect DISHES to CATEGORIES:
-   - Extract the actual list of dish names under each category from the document.
-   - For example:
-     Veg Starters: ["Spring Rolls", "Gobi 65", "Veg Manchurian", "Veg Nuggets", "Veg Gold Coins", "Corn Samosa", "Onion Samosa", "Paneer Samosa", "Any Bajji"]
-     Non Veg Starters: ["Chicken 65", "Chilli Chicken", "Chicken Megestic", "Chicken Till Pakoda", "Pepper Chicken", "Chicken Manchuria", "Chicken Sticks"]
-     Sweets: ["Gulab Jamoon", "Kala Jamoon", "Ras Malai", "Double ka Meeta", "Kaddu Ka kheer", "Rasgulla", "Sithafal Rabri", "Apricot Delight", "Moong Dall Halwa", "Fruit Malai Rabri", "Kurbani ka meeta"]
-7. Extract ADD-ONS.
-8. Extract GENERAL INCLUDED ITEMS/TERMS.
+   - Detect ALL packages present in the document.
+   - For multi-tier catalog menus like Elite Caterers, you MUST extract ALL 6 packages: 'Basic', 'Classic', 'Silver', 'Gold', 'Platinum', 'Diamond'. Do NOT stop at 2 packages!
+   - For each package:
+     - packageName: string (e.g. "Basic", "Classic", "Silver", "Gold", "Platinum", "Diamond")
+     - packageType: "Veg" | "Non-Veg" | "Mixed"
+     - pricePerPlate: base price per plate (price for 100-199 guests from pricing table)
+     - minimumGuests: minimum guests (100)
+     - pricingSlabs: Extract all guest count slabs with minGuests, maxGuests, and price:
+       [
+         { "minGuests": 100, "maxGuests": 199, "price": 615 },
+         { "minGuests": 200, "maxGuests": 299, "price": 500 },
+         { "minGuests": 300, "maxGuests": 499, "price": 485 },
+         { "minGuests": 500, "maxGuests": 799, "price": 460 },
+         { "minGuests": 800, "maxGuests": 999, "price": 430 },
+         { "minGuests": 1000, "maxGuests": null, "price": 420 }
+       ]
+
+4. Extract Package CATEGORIES & Selection Rules:
+   - For each package, extract EVERY category belonging to that package.
+   - If dishes are directly listed under the category on the card (self-contained card), put all those dishes in the category's "items" array.
+   - If the package card lists category quotas/quantities (e.g. "1 Salad", "1 Veg Soup", "1 Non-Veg Starter (1 Chicken)", "1 Veg Starter", "2 Chicken Gravies", "1 Indian Bread", etc.):
+     - Set the categoryName cleanly (e.g. "Salad", "Veg Soup", "Non-Veg Starter", "Veg Starter", "Chicken Gravy", "Veg Gravy", "Dal", "Indian Bread", "Biryani", "Veg Biryani", "Dessert", "Ice Cream", "Welcome Drink").
+     - Determine the selectionRule directly from the quantity phrase:
+       - "1 Salad", "1 Veg Soup", "1 Veg Starter", "1 Chicken Gravy", "1 Indian Bread", "1 Dessert", "Choose Any 1", "Any One", "Any 1" -> "Choose Any One"
+       - "2 Salads", "2 Starters", "2 Chicken Gravies", "2 Veg Gravies", "Choose Any 2", "Any Two", "Any 2" -> "Choose Any Two"
+       - "3 Salads", "3 Starters", "3 Breads", "3 Desserts", "Choose Any 3", "Any Three", "Any 3" -> "Choose Any Three"
+       - "4 Starters", "4 Veg Starters", "Choose Any 4" -> "Choose Any Four"
+       - "5 Starters", "Choose Any 5" -> "Choose Any Five"
+       - "6 Starters", "Choose Any Six" -> "Choose Any Six"
+       - "Non-Veg Starters (1 Fish, 1 Chicken)" (total 2) -> "Choose Any Two"
+       - "Non-Veg Starters (1 Fish, 2 Chicken, 1 Prawn)" (total 4) -> "Choose Any Four"
+       - "Non-Veg Starters (2 Fish, 2 Chicken, 1 Prawn, 1 Mutton)" (total 6) -> "Choose Any Six"
+       - Fixed accompaniments that come with every meal with NO choice (e.g. "Mirchi Ka Salan & Raita", "Steamed Rice", "Common Items") -> "Included"
+       - Dashed notations on cards (e.g. "Veg Starters -------1" or "Drink --------2"):
+         - "-------1" -> "Choose Any One"
+         - "-------2" -> "Choose Any Two"
+         - "-------3" -> "Choose Any Three"
+         - "COMMON ITEMS --8" -> categoryName: "Common Items", selectionRule: "Included"
+       - Optional add-ons -> "Optional"
+       - Supported selectionRule values MUST be: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
+     - Do not create a category if count is 0 (e.g. "0 Welcome Drink", "0 Ice Cream").
+
+5. Extract ADD-ONS & INCLUDED ITEMS:
+   - addOns: array of { itemName, price, unit }
+   - includedItems: array of fixed accompaniment strings.
 
 Strict Rules:
-- Return ONLY valid JSON. No markdown wrappers (\`\`\`json etc.).
-- EXTRACT ONLY WHAT IS EXACTLY WRITTEN IN THE TEXT. Do not invent, guess, or hallucinate dishes, categories, or packages.
-- CRITICAL: DO NOT create a category if there are no valid dishes found in the document.
-- Ignore empty categories entirely.
-- Ensure selection rules match the supported strings: "Choose Any One", "Choose Any Two", "Choose Any Three", "Choose Any Four", "Choose Any Five", "Choose Any Six", "Included", "Optional", "Needs Review".
-- Ensure pricing slabs are properly structured.
+- Return ONLY valid JSON. No markdown formatting.
+- EXTRACT ONLY WHAT IS EXACTLY WRITTEN IN THE TEXT. Do not invent dishes, categories, or packages.
+- Ensure selection rules match supported strings.
 - Output schema MUST follow EXACTLY:
 {
   "catererDetails": {
@@ -3850,6 +4001,24 @@ Strict Rules:
     "logoFound": Boolean,
     "logoUrl": "String | null"
   },
+  "masterDishes": {
+    "Salads": ["String"],
+    "Soups": ["String"],
+    "Veg Starters": ["String"],
+    "Veg Gravies": ["String"],
+    "Mutton Starter": ["String"],
+    "Chicken Starter": ["String"],
+    "Sea Food Starter": ["String"],
+    "Indian Breads": ["String"],
+    "Mutton Gravies": ["String"],
+    "Chicken Gravies": ["String"],
+    "Haleem": ["String"],
+    "Paya": ["String"],
+    "Biryani": ["String"],
+    "Desserts": ["String"],
+    "Welcome Drink": ["String"],
+    "Ice Cream": ["String"]
+  },
   "packages": [
     {
       "packageName": "String",
@@ -3863,7 +4032,7 @@ Strict Rules:
         {
           "categoryName": "String",
           "selectionRule": "String",
-          "items": ["String", "String"]
+          "items": ["String"]
         }
       ]
     }
@@ -3878,7 +4047,7 @@ Strict Rules:
     // Process actual uploaded files and run Gemini multimodal model with resilient failover & exponential backoff
     let response: any = null;
     let successfulModel: string = "";
-    // Ordered candidate models: primary fast & verified model (gemini-3.1-flash-lite), followed by resilient fallbacks
+    // Candidate models in strict priority order
     const candidateModels = [
       "gemini-3.1-flash-lite",
       "gemini-3.8-flash",
@@ -3930,20 +4099,23 @@ Strict Rules:
         try {
           console.log(`[MENU PARSER] Attempting extraction with model: ${modelName} (Attempt ${attempt}/${maxRetriesPerModel})`);
           
-          // Instantiate a fresh GoogleGenAI Client for each attempt so an aborted signal on one model never poisons subsequent models
           const freshAiClient = new GoogleGenAI({
             apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
             httpOptions: {
-              timeout: 80000,
+              timeout: 100000,
               headers: {
                 "User-Agent": "aistudio-build",
               },
             },
           });
 
+          const geminiContents: any = parts.length > 0 
+            ? { parts: [...parts, { text: prompt }] }
+            : prompt;
+
           response = await freshAiClient.models.generateContent({
             model: modelName,
-            contents: { parts: [...parts, { text: prompt }] },
+            contents: geminiContents,
             config: {
               responseMimeType: "application/json",
             },
@@ -3971,7 +4143,6 @@ Strict Rules:
             `[MENU PARSER FALLBACK] Model '${modelName}' attempt ${attempt}/${maxRetriesPerModel} failed: HTTP ${status || "unknown"} - ${sanitizedMsg.substring(0, 180)}`
           );
 
-          // If the model is experiencing high demand spike (503), do a rapid backoff retry on attempt 1 before failing over
           if (isOverloadedOrExhausted) {
             if (attempt < maxRetriesPerModel) {
               const backoff = 2500 + Math.floor(Math.random() * 1000);
@@ -3985,13 +4156,13 @@ Strict Rules:
                   `[MENU PARSER FALLBACK] Model '${modelName}' demand spike persisted. Failing over to next candidate model: '${nextModel}'.`
                 );
               }
-              break; // Break inner retry loop to advance to next model
+              break;
             }
           }
 
           if (isAbortedError) {
             console.warn(`[MENU PARSER FALLBACK] Model '${modelName}' attempt timed out/aborted. Failing over to next candidate model...`);
-            break; // Break inner loop so next model attempt starts fresh
+            break;
           }
 
           if (isNetworkError && attempt < maxRetriesPerModel) {
@@ -4014,7 +4185,6 @@ Strict Rules:
     }
 
     const text = (response.text || "").trim();
-    // Clean JSON parsing
     let jsonStr = text;
     if (jsonStr.startsWith("```json")) {
       jsonStr = jsonStr.substring(7);
@@ -4042,7 +4212,6 @@ Strict Rules:
 
     // Auto logo logic from menu upload
     if (data.catererDetails) {
-      // Keep compatible with legacy fields
       data.catererDetails.phone =
         data.catererDetails.primaryWhatsApp || data.catererDetails.phone;
       data.catererDetails.alternatePhone =
@@ -4060,7 +4229,7 @@ Strict Rules:
       }
     }
 
-    // Normalize category selection rules and auto-map food images
+    // Normalize category selection rules
     const normalizeServerCategoryRule = (rule?: string): string => {
       if (!rule || !String(rule).trim()) return "Needs Review";
       const clean = String(rule).trim();
@@ -4124,6 +4293,89 @@ Strict Rules:
       return clean;
     };
 
+    // Helper: Find dishes in masterDishes for a category
+    const findDishesForCategory = (catName: string, masterDishes?: Record<string, string[]>): string[] | null => {
+      if (!masterDishes || typeof masterDishes !== "object") return null;
+      const lower = catName.toLowerCase().trim();
+      const masterKeys = Object.keys(masterDishes);
+
+      // Direct exact match
+      for (const k of masterKeys) {
+        if (k.toLowerCase().trim() === lower && Array.isArray(masterDishes[k]) && masterDishes[k].length > 0) {
+          return masterDishes[k];
+        }
+      }
+
+      // Semantic matching
+      if (lower.includes("salad")) {
+        return masterDishes["Salads"] || masterDishes["Salad"] || null;
+      }
+      if (lower.includes("veg soup")) {
+        return masterDishes["Veg Soup"] || (masterDishes["Soups"] || []).filter((s: string) => /veg|corn|tomato/i.test(s)) || null;
+      }
+      if (lower.includes("chicken soup")) {
+        return masterDishes["Chicken Soup"] || (masterDishes["Soups"] || []).filter((s: string) => /chicken/i.test(s)) || null;
+      }
+      if (lower.includes("soup")) {
+        return masterDishes["Soups"] || null;
+      }
+      if (lower.includes("non-veg starter") || lower.includes("non veg starter")) {
+        if (lower.includes("chicken") && !lower.includes("fish") && !lower.includes("mutton") && !lower.includes("prawn")) {
+          return masterDishes["Chicken Starter"] || masterDishes["Non-Veg Starters"] || null;
+        }
+        if (lower.includes("fish") || lower.includes("prawn") || lower.includes("mutton")) {
+          const combined = [
+            ...(masterDishes["Sea Food Starter"] || []),
+            ...(masterDishes["Chicken Starter"] || []),
+            ...(masterDishes["Mutton Starter"] || []),
+          ];
+          return combined.length > 0 ? combined : null;
+        }
+        const combined = [
+          ...(masterDishes["Chicken Starter"] || []),
+          ...(masterDishes["Sea Food Starter"] || []),
+          ...(masterDishes["Mutton Starter"] || []),
+        ];
+        return combined.length > 0 ? combined : (masterDishes["Non-Veg Starters"] || null);
+      }
+      if (lower.includes("veg starter")) {
+        return masterDishes["Veg Starters"] || masterDishes["Veg Starter"] || null;
+      }
+      if (lower.includes("chicken gravy") || lower.includes("chicken cur")) {
+        return masterDishes["Chicken Gravies"] || masterDishes["Chicken Gravy"] || null;
+      }
+      if (lower.includes("mutton gravy") || lower.includes("mutton cur")) {
+        return masterDishes["Mutton Gravies"] || masterDishes["Mutton Gravy"] || null;
+      }
+      if (lower.includes("veg gravy") || lower.includes("veg cur")) {
+        return masterDishes["Veg Gravies"] || masterDishes["Veg Gravy"] || null;
+      }
+      if (lower.includes("dal") || lower.includes("dall")) {
+        return masterDishes["Dal"] || masterDishes["Variety of Dal"] || ["Dal Makhni", "Dal Fry", "Dal Tadka"];
+      }
+      if (lower.includes("bread") || lower.includes("roti") || lower.includes("naan")) {
+        return masterDishes["Indian Breads"] || masterDishes["Breads"] || null;
+      }
+      if (lower.includes("biryani")) {
+        return masterDishes["Biryani"] || masterDishes["Non Veg Biryani"] || null;
+      }
+      if (lower.includes("dessert") || lower.includes("sweet")) {
+        return masterDishes["Desserts"] || masterDishes["Sweets"] || null;
+      }
+      if (lower.includes("drink")) {
+        return masterDishes["Welcome Drink"] || masterDishes["Drinks"] || null;
+      }
+      if (lower.includes("ice cream")) {
+        return masterDishes["Ice Cream"] || ["Butterscotch", "Vanilla", "Chocolate", "Kulfi", "Cream Stone Ice Cream"];
+      }
+      if (lower.includes("common item") || lower.includes("accompaniment")) {
+        return ["Mirchi Ka Salan & Raita", "Steamed Rice", "Regular Mineral Water"];
+      }
+
+      return null;
+    };
+
+    // Auto-enrich packages, categories, selection rules, and items
     if (data.packages && Array.isArray(data.packages)) {
       data.packages.forEach((pkg: any) => {
         if (!pkg.pricePerPlate && pkg.pricingSlabs && pkg.pricingSlabs[0]) {
@@ -4132,51 +4384,108 @@ Strict Rules:
         if (!pkg.minimumGuests && pkg.pricingSlabs && pkg.pricingSlabs[0]) {
           pkg.minimumGuests = pkg.pricingSlabs[0].minGuests;
         }
+
         if (pkg.categories && Array.isArray(pkg.categories)) {
+          const commonItemsList: string[] = [];
+          const processedCategories: any[] = [];
+
           pkg.categories.forEach((cat: any) => {
-            // Clean categoryName if it retained trailing dash-number notation (e.g. "Veg Starters -------1")
-            if (cat.categoryName && typeof cat.categoryName === "string") {
-              const catDashMatch = cat.categoryName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
-              if (catDashMatch) {
-                const cleanedName = catDashMatch[1].trim();
-                const detectedCount = parseInt(catDashMatch[2], 10);
-                if (cleanedName.toLowerCase().includes("common item")) {
-                  cat.categoryName = "Common Items";
-                  if (!cat.selectionRule || cat.selectionRule === "Needs Review") {
-                    cat.selectionRule = "Included";
-                  }
-                } else {
-                  cat.categoryName = cleanedName;
-                  if (!cat.selectionRule || cat.selectionRule === "Needs Review" || cat.selectionRule === "Included") {
-                    cat.selectionRule = detectedCount === 1 ? "Choose Any One" : detectedCount === 2 ? "Choose Any Two" : detectedCount === 3 ? "Choose Any Three" : `Choose Any ${detectedCount}`;
-                  }
-                }
-              } else if (cat.categoryName.toLowerCase().includes("common item")) {
-                cat.selectionRule = "Included";
+            let catName = (cat.categoryName || "").trim();
+            const lower = catName.toLowerCase();
+
+            // Extract trailing dashes or dashed counts (e.g. "Veg Starters -------1")
+            const catDashMatch = catName.match(/^(.*?)\s*[-–—]+\s*(?:any\s*)?(\d+)\s*$/i);
+            let detectedCountRule = "";
+            if (catDashMatch) {
+              catName = catDashMatch[1].trim();
+              const count = parseInt(catDashMatch[2], 10);
+              if (catName.toLowerCase().includes("common item")) {
+                catName = "Common Items";
+                detectedCountRule = "Included";
+              } else {
+                detectedCountRule =
+                  count === 1 ? "Choose Any One" :
+                  count === 2 ? "Choose Any Two" :
+                  count === 3 ? "Choose Any Three" :
+                  count === 4 ? "Choose Any Four" :
+                  count === 5 ? "Choose Any Five" :
+                  count === 6 ? "Choose Any Six" : `Choose Any ${count}`;
               }
             }
 
-            const rawRule = cat.selectionRule;
-            const normalizedRule = normalizeServerCategoryRule(rawRule);
-            cat.selectionRule = normalizedRule;
+            // Consolidate Common Items / accompaniments
+            if (
+              lower.includes("common item") ||
+              lower.includes("mirchi ka salan") ||
+              lower.includes("steamed rice") ||
+              lower === "common items"
+            ) {
+              if (Array.isArray(cat.items)) {
+                cat.items.forEach((it: any) => {
+                  const itName = typeof it === "string" ? it : it?.name;
+                  if (itName && !commonItemsList.includes(itName)) commonItemsList.push(itName);
+                });
+              }
+              if (lower.includes("mirchi ka salan") && !commonItemsList.includes("Mirchi Ka Salan & Raita")) {
+                commonItemsList.push("Mirchi Ka Salan & Raita");
+              }
+              if (lower.includes("steamed rice") && !commonItemsList.includes("Steamed Rice")) {
+                commonItemsList.push("Steamed Rice");
+              }
+              return; // Do not push individual accompaniment items as separate categories
+            }
 
-            // Guard against categories with multiple choices being falsely marked as Included (except Common Items)
+            cat.categoryName = catName;
+
+            // Determine selection rule
+            const rawRule = detectedCountRule || cat.selectionRule;
+            cat.selectionRule = normalizeServerCategoryRule(rawRule);
+
+            // Populate dishes from masterDishes if category has generic placeholder items or <= 1 item
+            const hasMultipleRealDishes = Array.isArray(cat.items) && cat.items.length > 1;
+            const isGenericPlaceholderList =
+              !Array.isArray(cat.items) ||
+              cat.items.length <= 1 ||
+              cat.items.every((it: any) =>
+                /^(fish|chicken|mutton|prawn|salad|soup|veg|non-veg|starter|gravy|bread|dessert|dal|ice cream|biryani)$/i.test(
+                  String(it || "").trim()
+                )
+              );
+            const singleItemMatchesCat =
+              Array.isArray(cat.items) &&
+              cat.items.length === 1 &&
+              typeof cat.items[0] === "string" &&
+              (
+                cat.items[0].toLowerCase().trim() === lower ||
+                /salad|soup|starter|gravy|bread|dessert|biryani|dal/i.test(cat.items[0])
+              );
+
+            if (isGenericPlaceholderList || !hasMultipleRealDishes || singleItemMatchesCat) {
+              const enrichedDishes = findDishesForCategory(catName, data.masterDishes);
+              if (enrichedDishes && enrichedDishes.length > 0) {
+                cat.items = enrichedDishes;
+                console.log(`[MENU PARSER ENRICHMENT] Populated ${enrichedDishes.length} items for "${catName}" in "${pkg.packageName}"`);
+              }
+            }
+
+            // Guard: If category has multiple choices and is not Common Items/Accompaniments, never allow it to remain 'Included'
             if (
               cat.selectionRule === "Included" &&
-              !cat.categoryName.toLowerCase().includes("common item") &&
-              !cat.categoryName.toLowerCase().includes("accompaniment") &&
+              !catName.toLowerCase().includes("common item") &&
+              !catName.toLowerCase().includes("accompaniment") &&
               Array.isArray(cat.items) &&
               cat.items.length > 1
             ) {
               console.log(
-                `[MENU PARSER GUARD] Category "${cat.categoryName}" has ${cat.items.length} items but was marked "Included". Correcting to "Choose Any One".`
+                `[MENU PARSER GUARD] Category "${catName}" has ${cat.items.length} items but was "Included". Correcting to "Choose Any One".`
               );
               cat.selectionRule = "Choose Any One";
             }
 
             console.log(
-              `[MENU PARSER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${cat.categoryName}" | Raw AI Rule: "${rawRule}" | Normalized Server Rule: "${cat.selectionRule}"`
+              `[MENU PARSER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${cat.categoryName}" | Items: ${cat.items?.length || 0} | Rule: "${cat.selectionRule}"`
             );
+
             if (cat.items && Array.isArray(cat.items)) {
               cat.items.forEach((item: string) => {
                 if (typeof item === "string" && item) {
@@ -4184,7 +4493,21 @@ Strict Rules:
                 }
               });
             }
+
+            processedCategories.push(cat);
           });
+
+          // Add consolidated Common Items category if accompaniments exist
+          if (commonItemsList.length > 0) {
+            processedCategories.push({
+              categoryName: "Common Items",
+              selectionRule: "Included",
+              items: commonItemsList,
+            });
+            commonItemsList.forEach((it) => autoMapFoodImage(it));
+          }
+
+          pkg.categories = processedCategories;
         }
       });
     }

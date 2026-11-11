@@ -559,28 +559,70 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
           const rawRule = detectedRule || cat.selectionRule;
           let finalRule = normalizeCategoryRule(rawRule);
 
+          let itemsList = Array.isArray(cat.items) ? cat.items.map((it: any) => (typeof it === 'string' ? it : (it?.name || String(it)))) : [];
+          
+          // Defensive client-side enrichment from masterDishes if category has placeholder item
+          if (itemsList.length <= 1 && data.masterDishes && typeof data.masterDishes === 'object') {
+            const lower = categoryName.toLowerCase();
+            const masterKeys = Object.keys(data.masterDishes);
+            for (const k of masterKeys) {
+              if (k.toLowerCase() === lower && Array.isArray(data.masterDishes[k]) && data.masterDishes[k].length > 0) {
+                itemsList = data.masterDishes[k];
+                break;
+              }
+            }
+            if (itemsList.length <= 1) {
+              if (lower.includes('salad')) itemsList = data.masterDishes['Salads'] || data.masterDishes['Salad'] || itemsList;
+              else if (lower.includes('veg soup')) itemsList = data.masterDishes['Veg Soup'] || itemsList;
+              else if (lower.includes('chicken soup')) itemsList = data.masterDishes['Chicken Soup'] || itemsList;
+              else if (lower.includes('soup')) itemsList = data.masterDishes['Soups'] || itemsList;
+              else if (lower.includes('non-veg starter') || lower.includes('non veg starter')) {
+                if (lower.includes('chicken') && !lower.includes('fish') && !lower.includes('mutton') && !lower.includes('prawn')) {
+                  itemsList = data.masterDishes['Chicken Starter'] || data.masterDishes['Non-Veg Starters'] || itemsList;
+                } else {
+                  const combined = [
+                    ...(data.masterDishes['Chicken Starter'] || []),
+                    ...(data.masterDishes['Sea Food Starter'] || []),
+                    ...(data.masterDishes['Mutton Starter'] || [])
+                  ];
+                  itemsList = combined.length > 0 ? combined : (data.masterDishes['Non-Veg Starters'] || itemsList);
+                }
+              }
+              else if (lower.includes('veg starter')) itemsList = data.masterDishes['Veg Starters'] || data.masterDishes['Veg Starter'] || itemsList;
+              else if (lower.includes('chicken gravy') || lower.includes('chicken cur')) itemsList = data.masterDishes['Chicken Gravies'] || data.masterDishes['Chicken Gravy'] || itemsList;
+              else if (lower.includes('mutton gravy') || lower.includes('mutton cur')) itemsList = data.masterDishes['Mutton Gravies'] || data.masterDishes['Mutton Gravy'] || itemsList;
+              else if (lower.includes('veg gravy') || lower.includes('veg cur')) itemsList = data.masterDishes['Veg Gravies'] || data.masterDishes['Veg Gravy'] || itemsList;
+              else if (lower.includes('dal') || lower.includes('dall')) itemsList = data.masterDishes['Dal'] || data.masterDishes['Variety of Dal'] || ['Dal Makhni', 'Dal Fry', 'Dal Tadka'];
+              else if (lower.includes('bread') || lower.includes('roti') || lower.includes('naan')) itemsList = data.masterDishes['Indian Breads'] || data.masterDishes['Breads'] || itemsList;
+              else if (lower.includes('biryani')) itemsList = data.masterDishes['Biryani'] || data.masterDishes['Non Veg Biryani'] || itemsList;
+              else if (lower.includes('dessert') || lower.includes('sweet')) itemsList = data.masterDishes['Desserts'] || data.masterDishes['Sweets'] || itemsList;
+              else if (lower.includes('drink')) itemsList = data.masterDishes['Welcome Drink'] || data.masterDishes['Drinks'] || itemsList;
+              else if (lower.includes('ice cream')) itemsList = data.masterDishes['Ice Cream'] || ['Butterscotch', 'Vanilla', 'Chocolate', 'Kulfi', 'Cream Stone Ice Cream'];
+            }
+          }
+
           // Guard: If category has multiple choices and is not Common Items/Accompaniments, never allow it to remain 'Included'
           if (
             finalRule === 'Included' &&
             !categoryName.toLowerCase().includes('common item') &&
             !categoryName.toLowerCase().includes('accompaniment') &&
-            Array.isArray(cat.items) &&
-            cat.items.length > 1
+            Array.isArray(itemsList) &&
+            itemsList.length > 1
           ) {
             console.log(
-              `[MENU BUILDER GUARD] Category "${categoryName}" has ${cat.items.length} items but was "Included". Correcting to "Choose Any One".`
+              `[MENU BUILDER GUARD] Category "${categoryName}" has ${itemsList.length} items but was "Included". Correcting to "Choose Any One".`
             );
             finalRule = 'Choose Any One';
           }
 
           console.log(
-            `[MENU BUILDER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${categoryName}" | Raw AI/JSON Rule: "${cat.selectionRule}" | Final UI Rule: "${finalRule}"`
+            `[MENU BUILDER DIAGNOSTIC] Package: "${pkg.packageName}" | Category: "${categoryName}" | Items: ${itemsList.length} | Rule: "${finalRule}"`
           );
           return {
             ...cat,
             categoryName,
             selectionRule: finalRule,
-            items: Array.isArray(cat.items) ? cat.items.map((it: any) => (typeof it === 'string' ? it : (it?.name || String(it)))) : [],
+            items: itemsList,
           };
         }),
       });
