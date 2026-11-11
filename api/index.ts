@@ -12,10 +12,10 @@ import { createRequire } from "module";
 import zlib from "zlib";
 import { execSync } from "child_process";
 
-const requireModule = createRequire(import.meta.url);
 let PDFParse: any = null;
 try {
-  const _pdfPkg = requireModule("pdf-parse");
+  const req = typeof require !== "undefined" ? require : createRequire(import.meta.url);
+  const _pdfPkg = req("pdf-parse");
   PDFParse = _pdfPkg?.PDFParse || _pdfPkg?.default || _pdfPkg;
 } catch (pdfLoadErr) {
   console.warn("[SERVER] Notice: pdf-parse optional module load:", pdfLoadErr);
