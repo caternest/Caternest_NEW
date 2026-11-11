@@ -522,8 +522,31 @@ app.post("/api/notifications/order-approved", async (req: any, res: any) => {
 // API routes
 const upload = multer({ storage: multer.memoryStorage() });
 
+async function ensureBucketExists(supabase: any, bucketName: string, isPublic: boolean = false) {
+  try {
+    const { data: buckets, error: listErr } = await supabase.storage.listBuckets();
+    if (!listErr && buckets) {
+      const exists = buckets.some((b: any) => b.name === bucketName);
+      if (!exists) {
+        console.log(`[STORAGE] Bucket "${bucketName}" not found. Creating bucket (public: ${isPublic})...`);
+        const { error: createErr } = await supabase.storage.createBucket(bucketName, {
+          public: isPublic,
+          fileSizeLimit: 52428800, // 50MB
+        });
+        if (createErr) {
+          console.warn(`[STORAGE] Could not create bucket "${bucketName}":`, createErr.message);
+        } else {
+          console.log(`[STORAGE] Successfully created bucket "${bucketName}"`);
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[STORAGE] Error in ensureBucketExists for "${bucketName}":`, err?.message);
+  }
+}
+
 app.post("/api/storage/sign", async (req: any, res: any) => {
-  const bucket = req.body.bucket || "branding-images";
+  const bucket = req.body.bucket || "documents";
   const filePath = req.body.filePath;
   const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -539,46 +562,83 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
 
   const supabase = getSupabaseClient();
   if (!supabase) {
-    const errorMsg =
-      "Presign failed: Supabase backend client or service role key is not configured.";
-    console.warn(`[STORAGE SIGN] ${errorMsg}`);
-    return res.status(500).json({ error: errorMsg });
+    console.warn("[STORAGE SIGN] Supabase credentials not configured on server (local offline mode)");
+    return res.json({
+      success: false,
+      offline: true,
+      error: "Supabase credentials not configured in this environment.",
+    });
   }
 
   try {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUploadUrl(filePath);
+    let targetBucket = bucket;
+    await ensureBucketExists(supabase, targetBucket, false);
 
-    if (error) {
+    let { data, error } = await supabase.storage
+      .from(targetBucket)
+      .createSignedUploadUrl(filePath, { upsert: true });
+
+    // Fallback if target bucket failed and is not "documents"
+    if (error && targetBucket !== "documents") {
+      console.warn(`[STORAGE SIGN] Failed for bucket "${targetBucket}": ${error.message}. Falling back to "documents"...`);
+      targetBucket = "documents";
+      await ensureBucketExists(supabase, targetBucket, false);
+      const retry = await supabase.storage
+        .from(targetBucket)
+        .createSignedUploadUrl(filePath, { upsert: true });
+      if (!retry.error && retry.data) {
+        data = retry.data;
+        error = null;
+      } else {
+        error = retry.error || error;
+      }
+    }
+
+    if (error || !data) {
       console.warn(
-        `[STORAGE SIGN] Storage Error generating signed URL for bucket ${bucket}:`,
-        error.message || error,
+        `[STORAGE SIGN] Storage Error generating signed URL for bucket ${targetBucket}:`,
+        error?.message || error,
       );
-      if (!hasServiceRole && (error.message?.includes("row-level security") || (error as any).statusCode === "403")) {
+      if (!hasServiceRole && (error?.message?.includes("row-level security") || (error as any)?.statusCode === "403")) {
         return res.status(500).json({
           error: "SUPABASE_SERVICE_ROLE_KEY is required in Vercel environment variables to generate signed upload URLs for storage.",
           details: error.message
         });
       }
-      return res.status(500).json({ error: error.message, details: error });
+      return res.status(500).json({ error: error?.message || "Failed to generate signed upload URL", details: error });
+    }
+
+    // Generate signed download URL for secure private bucket read access
+    let signedDownloadUrl: string | null = null;
+    try {
+      const { data: dlData, error: dlErr } = await supabase.storage
+        .from(targetBucket)
+        .createSignedUrl(filePath, 3600); // 1 hour validity
+      if (!dlErr && dlData) {
+        signedDownloadUrl = dlData.signedUrl;
+      }
+    } catch (dlEx) {
+      console.warn("[STORAGE SIGN] Failed to generate signed download URL:", dlEx);
     }
 
     const { data: publicData } = supabase.storage
-      .from(bucket)
+      .from(targetBucket)
       .getPublicUrl(filePath);
 
     const publicUrl = publicData?.publicUrl || null;
 
     console.log(
-      `[STORAGE SIGN] Presigned URL and Public verification URL generated successfully.`,
+      `[STORAGE SIGN] Presigned upload URL generated successfully for ${targetBucket}/${filePath}.`,
     );
     return res.json({
       success: true,
       signedUrl: data.signedUrl,
       token: data.token,
       path: data.path,
-      publicUrl,
+      bucket: targetBucket,
+      filePath,
+      signedDownloadUrl,
+      publicUrl: signedDownloadUrl || publicUrl,
     });
   } catch (err: any) {
     console.warn(
@@ -3764,8 +3824,10 @@ const extractPdfAssetsAndText = async (
 };
 
 const parseMenuHandler = async (req: any, res: any) => {
+  const tempFilesToClean: { bucket: string; path: string }[] = [];
+  const supabase = getSupabaseClient();
   try {
-    const { imageBase64, images, urls, catererId } = req.body;
+    const { imageBase64, images, urls, storageFiles, catererId } = req.body;
 
     if (!process.env.GEMINI_API_KEY) {
       return res
@@ -3776,9 +3838,103 @@ const parseMenuHandler = async (req: any, res: any) => {
     const parts: any[] = [];
     let combinedPdfText = "";
 
+    // 1. Process files from secure Supabase storage
+    if (storageFiles && Array.isArray(storageFiles) && storageFiles.length > 0) {
+      console.log(`[MENU PARSER] Processing ${storageFiles.length} file(s) from secure storage...`);
+      for (const sf of storageFiles) {
+        if (!sf.bucket || !sf.path) continue;
+        if (typeof sf.path === "string" && sf.path.includes("temp-menu-")) {
+          tempFilesToClean.push({ bucket: sf.bucket, path: sf.path });
+        }
+
+        let downloadedBuffer: Buffer | null = null;
+        let detectedMime = sf.path.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg";
+
+        // Method A: Direct server download from private bucket using Supabase service client
+        if (supabase) {
+          try {
+            console.log(`[MENU PARSER] Downloading ${sf.bucket}/${sf.path} from storage...`);
+            const { data: fileBlob, error: dlErr } = await supabase.storage
+              .from(sf.bucket)
+              .download(sf.path);
+            if (!dlErr && fileBlob) {
+              const ab = await fileBlob.arrayBuffer();
+              downloadedBuffer = Buffer.from(ab);
+              detectedMime = fileBlob.type || detectedMime;
+              console.log(`[MENU PARSER] Downloaded ${(downloadedBuffer.length / 1024 / 1024).toFixed(2)} MB from storage.`);
+            } else if (dlErr) {
+              console.warn(`[MENU PARSER] supabase.download failed for ${sf.path}:`, dlErr.message);
+            }
+          } catch (dlEx: any) {
+            console.warn(`[MENU PARSER] Exception during storage download:`, dlEx?.message);
+          }
+        }
+
+        // Method B: Signed download URL fallback
+        if (!downloadedBuffer && sf.url) {
+          try {
+            console.log(`[MENU PARSER] Fetching file via signed URL: ${sf.url}`);
+            const fetchRes = await fetch(sf.url);
+            if (fetchRes.ok) {
+              const ab = await fetchRes.arrayBuffer();
+              downloadedBuffer = Buffer.from(ab);
+              detectedMime = fetchRes.headers.get("content-type") || detectedMime;
+            }
+          } catch (fErr: any) {
+            console.warn(`[MENU PARSER] Fetch via signed URL failed:`, fErr?.message);
+          }
+        }
+
+        if (downloadedBuffer) {
+          const isPdf = sf.path.toLowerCase().endsWith(".pdf") || detectedMime.includes("pdf");
+          if (isPdf) {
+            console.log(`[MENU PARSER] Extracting text and assets from storage PDF (${(downloadedBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
+            try {
+              const { text: pdfText, cardImages } = await extractPdfAssetsAndText(downloadedBuffer);
+              if (pdfText) {
+                combinedPdfText += (combinedPdfText ? "\n\n" : "") + pdfText;
+                console.log(`[MENU PARSER] Extracted ${pdfText.length} text characters from storage PDF.`);
+              }
+              if (cardImages && cardImages.length > 0) {
+                console.log(`[MENU PARSER] Extracted ${cardImages.length} high-resolution package cards from storage PDF.`);
+                cardImages.forEach((img) => {
+                  parts.push({
+                    inlineData: {
+                      data: img.b64,
+                      mimeType: img.mimeType,
+                    },
+                  });
+                });
+              }
+            } catch (pErr) {
+              console.warn(`[MENU PARSER] Error in text/card extraction from storage PDF:`, pErr);
+            }
+
+            // Push complete PDF as inlineData so Gemini multimodal sees every page
+            const b64 = downloadedBuffer.toString("base64").replace(/[\r\n\s]/g, "");
+            parts.push({
+              inlineData: {
+                data: b64,
+                mimeType: "application/pdf",
+              },
+            });
+          } else {
+            const b64 = downloadedBuffer.toString("base64").replace(/[\r\n\s]/g, "");
+            parts.push({
+              inlineData: {
+                data: b64,
+                mimeType: detectedMime,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Process public or signed URLs
     if (urls && Array.isArray(urls) && urls.length > 0) {
       console.log(
-        `[MENU PARSER] Processing menu files from public URLs:`,
+        `[MENU PARSER] Processing menu files from URLs:`,
         urls,
       );
       for (const url of urls) {
@@ -3812,22 +3968,21 @@ const parseMenuHandler = async (req: any, res: any) => {
                   },
                 });
               });
-            } else if (buf.length <= 4 * 1024 * 1024) {
-              // Pass small PDF directly as inlineData if no internal cards extracted
-              parts.push({
-                inlineData: {
-                  data: buf.toString("base64"),
-                  mimeType: "application/pdf",
-                },
-              });
             }
+            // Always push full PDF as inlineData
+            parts.push({
+              inlineData: {
+                data: buf.toString("base64").replace(/[\r\n\s]/g, ""),
+                mimeType: "application/pdf",
+              },
+            });
           } else {
             let mimeType = fetchRes.headers.get("content-type") || "image/jpeg";
             if (cleanUrl.endsWith(".png")) mimeType = "image/png";
             else if (cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg")) mimeType = "image/jpeg";
             parts.push({
               inlineData: {
-                data: buf.toString("base64"),
+                data: buf.toString("base64").replace(/[\r\n\s]/g, ""),
                 mimeType: mimeType,
               },
             });
@@ -3841,6 +3996,7 @@ const parseMenuHandler = async (req: any, res: any) => {
       }
     }
 
+    // 3. Process base64 images & direct base64 PDFs
     const imageArray = images || (imageBase64 ? [imageBase64] : []);
     if (imageArray.length > 0) {
       for (const b64 of imageArray) {
@@ -3874,14 +4030,14 @@ const parseMenuHandler = async (req: any, res: any) => {
                 },
               });
             });
-          } else if (buf.length <= 4 * 1024 * 1024) {
-            parts.push({
-              inlineData: {
-                data: base64Data,
-                mimeType: "application/pdf",
-              },
-            });
           }
+          // Push full PDF as inlineData
+          parts.push({
+            inlineData: {
+              data: base64Data,
+              mimeType: "application/pdf",
+            },
+          });
         } else {
           parts.push({
             inlineData: {
@@ -4545,10 +4701,23 @@ Strict Rules:
     data.modelUsed = successfulModel;
     console.log(`[MENU PARSER] Menu parsing successfully completed using model: ${successfulModel}`);
 
-    res.json(data);
+    return res.json(data);
   } catch (error: any) {
     console.error("Error parsing menu:", error);
     res.status(500).json({ error: "Failed to parse menu: " + error.message });
+  } finally {
+    // Clean up temporary storage files after extraction
+    if (tempFilesToClean.length > 0 && supabase) {
+      console.log(`[MENU PARSER] Cleaning up ${tempFilesToClean.length} temporary storage file(s)...`);
+      for (const item of tempFilesToClean) {
+        try {
+          await supabase.storage.from(item.bucket).remove([item.path]);
+          console.log(`[MENU PARSER] Cleaned up temporary upload: ${item.bucket}/${item.path}`);
+        } catch (cleanErr: any) {
+          console.warn(`[MENU PARSER] Failed to remove temporary file ${item.path}:`, cleanErr?.message);
+        }
+      }
+    }
   }
 };
 

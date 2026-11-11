@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { UploadCloud, CheckCircle2, Loader2, Trash2, Edit2, Plus, GripVertical, X, Copy, ChevronDown, Check, ChefHat, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { getSupabase, uploadToSupabaseBucket } from '../lib/supabase';
+import { getSupabase, uploadToSupabaseBucket, uploadMenuDocumentToStorage } from '../lib/supabase';
 
 interface MenuCategory {
   categoryName: string;
@@ -426,33 +426,46 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       setScanStatus('Reading document files...');
 
       const uploadedUrls: string[] = [];
+      const storageFiles: { bucket: string; path: string; url?: string }[] = [];
       const base64Images: string[] = [];
 
       for (const file of Array.from(files)) {
         const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
         if (isPdf) {
-          // If PDF is larger than 2MB, upload directly to Supabase storage to bypass Vercel 4.5MB request limit
-          if (file.size > 2 * 1024 * 1024) {
-            setScanStatus(`Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) securely...`);
-            const fileExt = file.name.split('.').pop() || 'pdf';
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
-            const publicUrl = await uploadToSupabaseBucket('menu-cards', fileName, file, 'application/pdf');
-            if (publicUrl) {
-              console.log(`[MENU BUILDER] Large PDF uploaded directly to Supabase Storage: ${publicUrl}`);
-              uploadedUrls.push(publicUrl);
-            } else {
-              console.warn(`[MENU BUILDER] Direct storage upload returned null for ${file.name}`);
-              if (file.size < 4 * 1024 * 1024) {
-                const b64 = await readPdfAsBase64(file);
-                if (b64) base64Images.push(b64);
-              } else {
-                throw new Error(`Large PDF (${(file.size / 1024 / 1024).toFixed(1)}MB) could not be uploaded to storage. Please check your connection and try again.`);
-              }
+          if (file.size > 25 * 1024 * 1024) {
+            throw new Error(`File "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds the 25MB limit. Please upload a PDF under 25MB.`);
+          }
+
+          setScanStatus(`Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) securely...`);
+          const uploadRes = await uploadMenuDocumentToStorage(file, (pct) => {
+            setScanStatus(`Uploading ${file.name} (${pct}%)...`);
+            setUploadProgress(pct);
+          });
+
+          if (uploadRes.success && uploadRes.bucket && uploadRes.path) {
+            console.log(`[MENU BUILDER] PDF uploaded to storage: ${uploadRes.bucket}/${uploadRes.path}`);
+            storageFiles.push({
+              bucket: uploadRes.bucket,
+              path: uploadRes.path,
+              url: uploadRes.url,
+            });
+            if (uploadRes.url) {
+              uploadedUrls.push(uploadRes.url);
             }
-          } else {
-            // Small PDF (<= 2MB): read as dataURL directly
+          } else if (uploadRes.offline) {
+            // Local dev mode without Supabase storage credentials: read directly as base64 (Express dev server handles up to 50MB)
+            console.log(`[MENU BUILDER] Storage server in offline mode. Reading ${file.name} as base64 for local processing...`);
+            setScanStatus(`Reading ${file.name} for local processing...`);
             const b64 = await readPdfAsBase64(file);
             if (b64) base64Images.push(b64);
+          } else {
+            console.warn(`[MENU BUILDER] Direct storage upload failed for ${file.name}:`, uploadRes.error);
+            if (file.size <= 4 * 1024 * 1024) {
+              const b64 = await readPdfAsBase64(file);
+              if (b64) base64Images.push(b64);
+            } else {
+              throw new Error(uploadRes.error || `Large PDF (${(file.size / 1024 / 1024).toFixed(1)}MB) could not be uploaded to storage. Please check your connection and try again.`);
+            }
           }
         } else {
           // All images (JPG, PNG, WebP): compress to JPEG max 2048px (200-350KB each)
@@ -461,7 +474,7 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
         }
       }
 
-      if (uploadedUrls.length === 0 && base64Images.length === 0) {
+      if (uploadedUrls.length === 0 && storageFiles.length === 0 && base64Images.length === 0) {
         throw new Error('No valid menu documents found.');
       }
 
@@ -470,11 +483,12 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       setScanStatus('Analyzing menu layout & document pages...');
 
       const reqBody: any = {};
+      if (storageFiles.length > 0) reqBody.storageFiles = storageFiles;
       if (uploadedUrls.length > 0) reqBody.urls = uploadedUrls;
       if (base64Images.length > 0) reqBody.images = base64Images;
 
       console.log(
-        `[MENU BUILDER] Payload ready (${uploadedUrls.length} URL(s), ${base64Images.length} Base64 image(s)). Sending request to /api/parse-menu...`
+        `[MENU BUILDER] Payload ready (${storageFiles.length} Storage file(s), ${uploadedUrls.length} URL(s), ${base64Images.length} Base64 image(s)). Sending request to /api/parse-menu...`
       );
 
       // Smooth progress pacing that informs user of each stage
@@ -665,9 +679,10 @@ export default function CatererMenuBuilder({ packages, onChange, isParsing, setI
       setIsParsing(false);
       const isAbort = err.name === 'AbortError';
       const userMessage = isAbort
-        ? 'Scanning timed out after 2 minutes. Please check your internet connection or try a smaller PDF / fewer images.'
+        ? 'Scanning timed out after 3 minutes. Please check your internet connection or try a smaller PDF / fewer images.'
         : (err.message || 'Error parsing menu card. Please try again.');
       setScanError(userMessage);
+      onChange([]); // Clear stale previous extraction results so old data isn't displayed on scan failure
     }
   };
 

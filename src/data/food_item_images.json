@@ -2839,5 +2839,27 @@
     "cuisine": "Multicuisine",
     "created_at": "2026-11-08T15:44:43.075Z",
     "updated_at": "2026-11-08T15:44:43.075Z"
+  },
+  {
+    "id": "h07a678es",
+    "item_name": "Zafrani Fish Biryani",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Rice",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-11T07:13:09.980Z",
+    "updated_at": "2026-11-11T07:13:09.980Z"
+  },
+  {
+    "id": "tyzc4u4vc",
+    "item_name": "Zafrani Vegetable Biryani",
+    "image_url": "",
+    "approved_by_admin": false,
+    "status": "No Image",
+    "category": "Rice",
+    "cuisine": "Multicuisine",
+    "created_at": "2026-11-11T07:13:09.982Z",
+    "updated_at": "2026-11-11T07:13:09.982Z"
   }
 ]

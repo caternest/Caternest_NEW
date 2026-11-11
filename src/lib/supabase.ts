@@ -391,10 +391,173 @@ export function getSupabase() {
   return supabaseInstance;
 }
 
+export interface UploadMenuResult {
+  success: boolean;
+  bucket?: string;
+  path?: string;
+  url?: string;
+  offline?: boolean;
+  error?: string;
+}
+
+/**
+ * Dedicated, progress-aware direct upload for menu files (PDFs, images up to 25MB).
+ * Uploads directly from the browser to Supabase Storage via signed upload URL,
+ * completely bypassing Vercel's 4.5MB serverless payload limit.
+ */
+export async function uploadMenuDocumentToStorage(
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<UploadMenuResult> {
+  const fileExt = file.name.split('.').pop() || 'pdf';
+  const cleanExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const fileName = `temp-menu-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${cleanExt}`;
+  const targetBucket = 'documents';
+
+  try {
+    console.log(`[MENU STORAGE] Requesting signed upload URL for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
+    onProgress?.(5);
+
+    // 1. Obtain signed upload URL and tokens from backend
+    const signRes = await fetch('/api/storage/sign', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bucket: targetBucket,
+        filePath: fileName,
+      }),
+    });
+
+    if (!signRes.ok) {
+      const errText = await signRes.text().catch(() => '');
+      console.warn(`[MENU STORAGE] Storage sign failed (HTTP ${signRes.status}):`, errText);
+      return {
+        success: false,
+        error: `Storage service unavailable (HTTP ${signRes.status}).`,
+      };
+    }
+
+    const signJson = await signRes.json();
+    if (signJson.offline) {
+      console.log(`[MENU STORAGE] Server operating in local offline mode (no Supabase credentials).`);
+      return {
+        success: false,
+        offline: true,
+      };
+    }
+
+    const { signedUrl, token, bucket, filePath, signedDownloadUrl, publicUrl } = signJson;
+    if (!signedUrl) {
+      return {
+        success: false,
+        error: signJson.error || 'No signed upload URL returned by storage service.',
+      };
+    }
+
+    console.log(`[MENU STORAGE] Signed upload URL acquired. Uploading raw file directly to storage...`);
+    onProgress?.(10);
+
+    // 2. Direct browser-to-Supabase upload with byte-level progress reporting
+    const uploadSuccess = await new Promise<boolean>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', signedUrl);
+      xhr.timeout = 180000; // 3 minutes timeout for up to 25MB
+
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && evt.total > 0) {
+          // Scale progress between 10% and 95%
+          const pct = Math.min(95, Math.max(10, Math.round(10 + (evt.loaded / evt.total) * 85)));
+          onProgress?.(pct);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log(`[MENU STORAGE] Direct XHR upload succeeded with HTTP ${xhr.status}.`);
+          onProgress?.(100);
+          resolve(true);
+        } else {
+          console.warn(`[MENU STORAGE] Direct XHR upload failed with HTTP ${xhr.status}:`, xhr.responseText);
+          resolve(false);
+        }
+      };
+
+      xhr.onerror = () => {
+        console.warn(`[MENU STORAGE] Direct XHR network error.`);
+        resolve(false);
+      };
+
+      xhr.ontimeout = () => {
+        console.warn(`[MENU STORAGE] Direct XHR upload timed out after 180s.`);
+        resolve(false);
+      };
+
+      const formData = new FormData();
+      formData.append('', file);
+      xhr.send(formData);
+    });
+
+    if (uploadSuccess) {
+      return {
+        success: true,
+        bucket: bucket || targetBucket,
+        path: filePath || fileName,
+        url: signedDownloadUrl || publicUrl,
+      };
+    }
+
+    // 3. Fallback to Supabase JS SDK uploadToSignedUrl if XHR failed
+    try {
+      const client = getSupabase();
+      if (client && token) {
+        console.log(`[MENU STORAGE] Retrying upload via supabase.storage.uploadToSignedUrl...`);
+        const { data, error } = await client.storage
+          .from(bucket || targetBucket)
+          .uploadToSignedUrl(filePath || fileName, token, file, {
+            contentType: file.type || 'application/pdf',
+            upsert: true,
+          });
+        if (!error && data) {
+          console.log(`[MENU STORAGE] SDK uploadToSignedUrl succeeded!`);
+          onProgress?.(100);
+          return {
+            success: true,
+            bucket: bucket || targetBucket,
+            path: filePath || fileName,
+            url: signedDownloadUrl || publicUrl,
+          };
+        }
+        console.warn(`[MENU STORAGE] SDK uploadToSignedUrl failed:`, error?.message);
+      }
+    } catch (sdkErr) {
+      console.warn(`[MENU STORAGE] Exception in SDK uploadToSignedUrl:`, sdkErr);
+    }
+
+    return {
+      success: false,
+      error: `Direct storage upload failed. Please check your network connection and retry.`,
+    };
+  } catch (err: any) {
+    console.warn(`[MENU STORAGE] Unexpected error in uploadMenuDocumentToStorage:`, err);
+    return {
+      success: false,
+      error: err?.message || 'Storage upload error',
+    };
+  }
+}
+
 // Helper to check if a bucket exists or upload file to Supabase storage
 export async function uploadToSupabaseBucket(bucket: string, filePath: string, fileBody: any, fileType: string = 'image/jpeg') {
-  // Helper for server-side multipart upload fallback
+  const isLargeFile = fileBody && (fileBody.size > 4 * 1024 * 1024 || (typeof fileBody === 'string' && fileBody.length > 5 * 1024 * 1024));
+
+  // Helper for server-side multipart upload fallback (only for small files <= 4MB to prevent Vercel 413)
   const uploadViaServerMultipart = async (): Promise<string | null> => {
+    if (isLargeFile) {
+      console.warn(`[STORAGE CLIENT LOGGER] File exceeds 4MB. Skipping server multipart fallback to prevent Vercel 413.`);
+      return null;
+    }
     try {
       console.warn(`[STORAGE CLIENT LOGGER] Attempting server multipart upload fallback via /api/upload for bucket "${bucket}"...`);
       const formData = new FormData();
@@ -464,26 +627,49 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
     }
 
     const signJson = await signRes.json();
-    const { signedUrl, publicUrl } = signJson;
+    if (signJson.offline) {
+      console.log(`[STORAGE CLIENT LOGGER] Storage server in offline mode.`);
+      return await uploadViaServerMultipart();
+    }
+
+    const { signedUrl, token, publicUrl, signedDownloadUrl } = signJson;
 
     if (!signedUrl) {
       console.warn(`[STORAGE CLIENT LOGGER] Storage returned empty signed URL configuration:`, signJson);
       return await uploadViaServerMultipart();
     }
 
-    console.log(`[STORAGE CLIENT LOGGER] Signed upload URL acquired. Uploading raw binary directly to Supabase storage...`);
+    console.log(`[STORAGE CLIENT LOGGER] Signed upload URL acquired. Uploading directly to Supabase storage...`);
 
-    // 2. Transmit the raw binary file directly to S3/Supabase storage endpoint with PUT with 40s safety timeout
+    // 2. Try Supabase JS client uploadToSignedUrl if client instance and token are available
+    try {
+      const client = getSupabase();
+      if (client && token) {
+        const { data, error } = await client.storage
+          .from(bucket)
+          .uploadToSignedUrl(filePath, token, fileBody, {
+            contentType: fileType,
+            upsert: true,
+          });
+        if (!error && data) {
+          console.log(`[STORAGE CLIENT LOGGER] SDK uploadToSignedUrl successful.`);
+          return signedDownloadUrl || publicUrl || null;
+        }
+      }
+    } catch (sdkEx) {
+      console.warn(`[STORAGE CLIENT LOGGER] SDK uploadToSignedUrl attempt failed:`, sdkEx);
+    }
+
+    // 3. Fallback: Transmit directly using FormData PUT with 180s safety timeout
     const putController = new AbortController();
-    const putTimeout = setTimeout(() => putController.abort(), 40000);
+    const putTimeout = setTimeout(() => putController.abort(), 180000);
     let uploadRes: Response;
     try {
+      const formData = new FormData();
+      formData.append('', fileBody);
       uploadRes = await fetch(signedUrl, {
         method: "PUT",
-        headers: {
-          "Content-Type": fileType
-        },
-        body: fileBody,
+        body: formData,
         signal: putController.signal
       });
     } finally {
@@ -496,8 +682,8 @@ export async function uploadToSupabaseBucket(bucket: string, filePath: string, f
       return await uploadViaServerMultipart();
     }
 
-    console.log(`[STORAGE CLIENT LOGGER] Direct client-to-bucket upload successful. Returning resolution URL: ${publicUrl}`);
-    return publicUrl || null;
+    console.log(`[STORAGE CLIENT LOGGER] Direct client-to-bucket upload successful. Returning resolution URL: ${signedDownloadUrl || publicUrl}`);
+    return signedDownloadUrl || publicUrl || null;
   } catch (error) {
     console.warn(`[STORAGE CLIENT LOGGER] Exception during direct upload under bucket ${bucket}:`, error);
     return await uploadViaServerMultipart();
