@@ -599,13 +599,15 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
         `[STORAGE SIGN] Storage Error generating signed URL for bucket ${targetBucket}:`,
         error?.message || error,
       );
-      if (!hasServiceRole && (error?.message?.includes("row-level security") || (error as any)?.statusCode === "403")) {
-        return res.status(500).json({
-          error: "SUPABASE_SERVICE_ROLE_KEY is required in Vercel environment variables to generate signed upload URLs for storage.",
-          details: error.message
-        });
-      }
-      return res.status(500).json({ error: error?.message || "Failed to generate signed upload URL", details: error });
+      // Gracefully signal to frontend to perform direct client upload directly to Supabase storage
+      return res.status(200).json({
+        success: false,
+        useClientDirectUpload: true,
+        bucket: targetBucket,
+        filePath,
+        message: "Signed upload URL unavailable; falling back to direct browser Supabase storage upload.",
+        details: error?.message || error,
+      });
     }
 
     // Generate signed download URL for secure private bucket read access
@@ -645,7 +647,13 @@ app.post("/api/storage/sign", async (req: any, res: any) => {
       `[STORAGE SIGN] Unexpected Error in pre-sign handler for bucket ${bucket}:`,
       err,
     );
-    return res.status(500).json({ error: err.message || err.toString() });
+    return res.status(200).json({
+      success: false,
+      useClientDirectUpload: true,
+      bucket: bucket,
+      filePath,
+      error: err?.message || err?.toString(),
+    });
   }
 });
 
@@ -2923,8 +2931,8 @@ app.post("/api/sync", async (req: any, res: any) => {
       }
 
       if (!success && errorResponse) {
-        console.error(`[SERVER SYNC ERROR] Failed item upsert for "${tableName}":`, errorResponse);
-        return res.status(500).json({ error: errorResponse.message || "Upsert failed" });
+        console.warn(`[SERVER SYNC WARNING] Server-side item upsert failed for "${tableName}" (service role key not configured or RLS applied). Signaling client direct sync fallback:`, errorResponse.message);
+        return res.status(200).json({ success: false, fallbackToClientSync: true, warning: errorResponse.message || "Upsert failed" });
       }
     }
 
@@ -3882,6 +3890,26 @@ const parseMenuHandler = async (req: any, res: any) => {
             }
           } catch (fErr: any) {
             console.warn(`[MENU PARSER] Fetch via signed URL failed:`, fErr?.message);
+          }
+        }
+
+        // Method C: Public URL fallback
+        if (!downloadedBuffer && supabase) {
+          try {
+            const { data: pubData } = supabase.storage
+              .from(sf.bucket)
+              .getPublicUrl(sf.path);
+            if (pubData?.publicUrl) {
+              console.log(`[MENU PARSER] Fetching file via public URL fallback: ${pubData.publicUrl}`);
+              const fetchRes = await fetch(pubData.publicUrl);
+              if (fetchRes.ok) {
+                const ab = await fetchRes.arrayBuffer();
+                downloadedBuffer = Buffer.from(ab);
+                detectedMime = fetchRes.headers.get("content-type") || detectedMime;
+              }
+            }
+          } catch (pubEx: any) {
+            console.warn(`[MENU PARSER] Fetch via public URL fallback failed:`, pubEx?.message);
           }
         }
 
